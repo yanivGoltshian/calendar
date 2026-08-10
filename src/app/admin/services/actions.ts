@@ -1,0 +1,117 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { getFirstBusiness } from '@/server/repos/business';
+import {
+  createService,
+  updateService,
+  deleteService,
+  setServiceHidden,
+} from '@/server/repos/services';
+import { shekelsToAgorot } from '@/lib/money';
+
+const saveSchema = z.object({
+  id: z.string().trim().optional(),
+  name: z.string().trim().min(1, 'name'),
+  description: z.string().trim().max(500).optional(),
+  durationMin: z.coerce.number().int().positive('duration'),
+  priceShekels: z.coerce.number().min(0, 'price'),
+  hidePrice: z.boolean(),
+  hideDuration: z.boolean(),
+  hidden: z.boolean(),
+});
+
+export type SaveServiceState = {
+  ok: boolean;
+  mode: 'add' | 'edit';
+  error?: string;
+};
+
+function checkbox(formData: FormData, key: string): boolean {
+  const v = formData.get(key);
+  return v === 'on' || v === 'true' || v === '1';
+}
+
+function revalidatePublic(slug: string) {
+  revalidatePath('/admin/services');
+  revalidatePath(`/b/${slug}`);
+}
+
+/** יצירה או עדכון של שירות (חתימת useActionState). */
+export async function saveServiceAction(
+  _prev: SaveServiceState,
+  formData: FormData,
+): Promise<SaveServiceState> {
+  const rawId = String(formData.get('id') || '').trim();
+  const mode: 'add' | 'edit' = rawId ? 'edit' : 'add';
+
+  const parsed = saveSchema.safeParse({
+    id: rawId || undefined,
+    name: formData.get('name'),
+    description: formData.get('description') || undefined,
+    durationMin: formData.get('durationMin'),
+    priceShekels: formData.get('priceShekels'),
+    hidePrice: checkbox(formData, 'hidePrice'),
+    hideDuration: checkbox(formData, 'hideDuration'),
+    hidden: checkbox(formData, 'hidden'),
+  });
+
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0]?.message;
+    const error =
+      issue === 'name'
+        ? 'name'
+        : issue === 'duration'
+          ? 'duration'
+          : issue === 'price'
+            ? 'price'
+            : 'bad_request';
+    return { ok: false, mode, error };
+  }
+
+  const data = parsed.data;
+  const business = await getFirstBusiness();
+  if (!business) return { ok: false, mode, error: 'no_business' };
+
+  const payload = {
+    name: data.name,
+    description: data.description ?? null,
+    durationMin: data.durationMin,
+    priceAgorot: shekelsToAgorot(data.priceShekels),
+    hidePrice: data.hidePrice,
+    hideDuration: data.hideDuration,
+    hidden: data.hidden,
+  };
+
+  if (mode === 'edit' && data.id) {
+    const updated = await updateService(business.id, data.id, payload);
+    if (!updated) return { ok: false, mode, error: 'not_found' };
+  } else {
+    await createService(business.id, payload);
+  }
+
+  revalidatePublic(business.slug);
+  return { ok: true, mode };
+}
+
+/** מחיקת שירות (פעולת טופס פשוטה). */
+export async function deleteServiceAction(formData: FormData) {
+  const id = String(formData.get('id') || '').trim();
+  if (!id) return;
+  const business = await getFirstBusiness();
+  if (!business) return;
+  await deleteService(business.id, id);
+  revalidatePublic(business.slug);
+}
+
+/** החלפת מצב הצגה/הסתרה מהעמוד הציבורי (פעולת טופס פשוטה). */
+export async function toggleServiceHiddenAction(formData: FormData) {
+  const id = String(formData.get('id') || '').trim();
+  const hidden = checkbox(formData, 'hidden');
+  if (!id) return;
+  const business = await getFirstBusiness();
+  if (!business) return;
+  await setServiceHidden(business.id, id, hidden);
+  revalidatePublic(business.slug);
+}
