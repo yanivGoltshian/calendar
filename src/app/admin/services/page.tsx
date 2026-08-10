@@ -46,19 +46,6 @@ export default async function AdminServicesPage({ searchParams }: Props) {
         </h1>
       </header>
 
-      {/* ניווט ניהול */}
-      <nav className="mb-6 flex gap-2" aria-label={t.nav.admin}>
-        <Link
-          href="/admin"
-          className="rounded-full bg-slate-100 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-        >
-          {t.admin.nav.calendar}
-        </Link>
-        <span className="rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white">
-          {t.admin.nav.services}
-        </span>
-      </nav>
-
       <h2 className="mb-3 text-lg font-bold text-slate-900">
         {t.admin.services.listTitle}
       </h2>

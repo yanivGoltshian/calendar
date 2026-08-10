@@ -25,11 +25,12 @@ enum StaffPermission {
 }
 
 enum AppointmentStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  DONE
-  NO_SHOW
+  PENDING // ממתין לאישור עסק
+  CONFIRMED // מאושר
+  ARRIVED // הגיע
+  CANCELLED // בוטל
+  DONE // הושלם
+  NO_SHOW // הברזה
 }
 
 enum ReminderChannel {
@@ -50,6 +51,35 @@ enum WorkingHoursScope {
   STAFF
 }
 
+// סוג העסק — לשימוש בהתאמת חוויית ה-onboarding והתצוגה הציבורית.
+enum BusinessType {
+  BARBERSHOP // מספרה לגברים
+  HAIR_SALON // עיצוב שיער
+  NAILS // מניקור ופדיקור
+  BEAUTY_COSMETICS // קוסמטיקה וטיפוח
+  SPA_MASSAGE // ספא ועיסוי
+  BROWS_LASHES // גבות וריסים
+  TATTOO_PIERCING // קעקועים ופירסינג
+  CLINIC // מרפאה ורפואה משלימה
+  FITNESS // כושר ואימון אישי
+  OTHER // אחר
+}
+
+enum WaitlistStatus {
+  WAITING // ממתין
+  NOTIFIED // נשלחה הודעה
+  BOOKED // הוזמן
+  CANCELLED // בוטל
+  EXPIRED // פג תוקף
+}
+
+enum PunchCardStatus {
+  ACTIVE // פעילה
+  COMPLETED // נוצלה
+  EXPIRED // פגה
+  CANCELLED // בוטלה
+}
+
 // ---------- Core ----------
 
 model Business {
@@ -63,23 +93,26 @@ model Business {
   logoUrl       String?
   coverImageUrl String?
   timezone      String   @default("Asia/Jerusalem")
+  type          BusinessType?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   ownerId String?
   owner   User?   @relation("BusinessOwner", fields: [ownerId], references: [id])
 
-  settings     Settings?
-  staff        StaffMember[]
-  services     Service[]
-  workingHours WorkingHours[]
-  appointments Appointment[]
-  clients      Client[]
+  settings        BusinessSettings?
+  staff           StaffMember[]
+  services        Service[]
+  workingHours    WorkingHours[]
+  appointments    Appointment[]
+  clients         Client[]
+  waitlistEntries WaitlistEntry[]
+  punchCards      PunchCard[]
 
   @@index([slug])
 }
 
-model Settings {
+model BusinessSettings {
   id         String   @id @default(cuid())
   businessId String   @unique
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
@@ -89,6 +122,13 @@ model Settings {
   cancellationWindowHours Int @default(24) // חלון ביטול לפני התור
   slotGranularityMinutes  Int @default(15) // רזולוציית משבצות הזמן
   maxAdvanceBookingDays   Int @default(60) // עד כמה ימים קדימה ניתן להזמין
+
+  // האם תור חדש דורש אישור עסק (נשאר PENDING עד אישור)
+  bookingRequiresApproval Boolean @default(true)
+  // כמה שעות לפני התור לשלוח תזכורת
+  reminderLeadHours       Int     @default(24)
+  // מדיניות/הודעה חופשית לתצוגה ללקוח
+  policyText              String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -126,8 +166,10 @@ model StaffMember {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workingHours WorkingHours[]
-  appointments Appointment[]
+  workingHours    WorkingHours[]
+  appointments    Appointment[]
+  serviceLinks    ServiceStaff[]
+  waitlistEntries WaitlistEntry[]
 
   @@unique([businessId, userId])
   @@index([businessId])
@@ -151,6 +193,9 @@ model Service {
   updatedAt DateTime @updatedAt
 
   appointmentServices AppointmentService[]
+  staffLinks          ServiceStaff[]
+  waitlistEntries     WaitlistEntry[]
+  punchCards          PunchCard[]
 
   @@index([businessId])
 }
@@ -192,7 +237,9 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  appointments Appointment[]
+  appointments    Appointment[]
+  waitlistEntries WaitlistEntry[]
+  punchCards      PunchCard[]
 
   @@unique([businessId, phone])
   @@index([businessId])
@@ -218,8 +265,9 @@ model Appointment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  services  AppointmentService[]
-  reminders Reminder[]
+  services      AppointmentService[]
+  reminders     Reminder[]
+  confirmations ReminderConfirmation[]
 
   @@index([businessId, startAt])
   @@index([staffId, startAt])
@@ -268,4 +316,89 @@ model OtpCode {
   createdAt DateTime @default(now())
 
   @@index([phone, expiresAt])
+}
+
+// ---------- קישור שירות ↔ איש צוות (m2m) ----------
+model ServiceStaff {
+  id        String      @id @default(cuid())
+  serviceId String
+  service   Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([serviceId, staffId])
+  @@index([staffId])
+}
+
+// ---------- אישור תזכורת ע"י הלקוח ----------
+model ReminderConfirmation {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  channel     ReminderChannel @default(SMS)
+  token       String          @unique @default(cuid()) // מזהה ייחודי לקישור האישור
+  confirmed   Boolean         @default(false)
+  confirmedAt DateTime?
+  respondedAt DateTime?
+  response    String? // תגובת הלקוח הגולמית
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([appointmentId])
+}
+
+// ---------- רשימת המתנה (schema בלבד — ללא לוגיקה ב-MVP) ----------
+model WaitlistEntry {
+  id         String       @id @default(cuid())
+  businessId String
+  business   Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId  String?
+  service    Service?     @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  staffId    String?
+  staff      StaffMember? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  clientId   String?
+  client     Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // פרטי קשר (למקרה שאין רשומת לקוח מקושרת)
+  name  String
+  phone String
+
+  // חלון זמן מבוקש
+  desiredDate    String? // YYYY-MM-DD (מקומי)
+  earliestMinute Int? // דקות מתחילת היום
+  latestMinute   Int?
+  note           String?
+
+  status    WaitlistStatus @default(WAITING)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([businessId, status])
+}
+
+// ---------- כרטיסייה (schema בלבד — ללא לוגיקה ב-MVP) ----------
+model PunchCard {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId  String?
+  service    Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  totalPunches Int // מספר הכניסות בכרטיסייה
+  usedPunches  Int       @default(0)
+  priceAgorot  Int? // מחיר הכרטיסייה (אם נמכרה)
+  expiresAt    DateTime?
+
+  status    PunchCardStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([businessId, status])
+  @@index([clientId])
 }
