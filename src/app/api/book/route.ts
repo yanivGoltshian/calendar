@@ -54,6 +54,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'invalid_time' }, { status: 400 });
   }
 
+  // אכיפת מדיניות ההזמנות של העסק (עם ברירות מחדל תואמות ל-BusinessSettings).
+  const settings = business.settings;
+  const minLeadMinutes = settings?.minLeadTimeMinutes ?? 120;
+  const maxAdvanceDays = settings?.maxAdvanceBookingDays ?? 60;
+  const requiresApproval = settings?.bookingRequiresApproval ?? true;
+  const reminderLeadHours = settings?.reminderLeadHours ?? 24;
+
+  const now = Date.now();
+  if (startAt.getTime() < now + minLeadMinutes * 60_000) {
+    return NextResponse.json({ ok: false, error: 'too_early' }, { status: 400 });
+  }
+  if (startAt.getTime() > now + maxAdvanceDays * 24 * 60 * 60 * 1000) {
+    return NextResponse.json({ ok: false, error: 'too_far' }, { status: 400 });
+  }
+
   const totalDuration = services.reduce((sum, s) => sum + s.durationMin, 0);
   const totalPrice = services.reduce((sum, s) => sum + s.priceAgorot, 0);
   const endAt = new Date(startAt.getTime() + totalDuration * 60_000);
@@ -71,6 +86,9 @@ export async function POST(req: Request) {
     userId: session.userId,
   });
 
+  // סטטוס התחלתי לפי מדיניות: PENDING כשנדרש אישור עסק, אחרת CONFIRMED.
+  const status = requiresApproval ? 'PENDING' : 'CONFIRMED';
+
   const appointment = await createAppointment({
     businessId: business.id,
     clientId: client.id,
@@ -84,12 +102,13 @@ export async function POST(req: Request) {
       priceAgorot: s.priceAgorot,
     })),
     totalPriceAgorot: totalPrice,
+    status,
   });
 
-  // תזכורת ברירת מחדל: 24 שעות לפני התור (לא לפני "עכשיו"). השליחה עצמה תמומש ב-worker עתידי.
-  const reminderLeadMs = 24 * 60 * 60 * 1000;
+  // תזכורת לפי מדיניות (reminderLeadHours), לא לפני "עכשיו". השליחה עצמה תמומש ב-worker עתידי.
+  const reminderLeadMs = reminderLeadHours * 60 * 60 * 1000;
   const sendAt = new Date(Math.max(startAt.getTime() - reminderLeadMs, Date.now() + 60_000));
   await createReminder(appointment.id, sendAt);
 
-  return NextResponse.json({ ok: true, appointmentId: appointment.id });
+  return NextResponse.json({ ok: true, appointmentId: appointment.id, status });
 }

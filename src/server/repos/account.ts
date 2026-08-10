@@ -24,7 +24,15 @@ export async function getAppointmentsForUser(identity: UserIdentity) {
     include: {
       services: true,
       staff: true,
-      business: { select: { id: true, name: true, slug: true, timezone: true } },
+      business: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          timezone: true,
+          settings: { select: { cancellationWindowHours: true } },
+        },
+      },
     },
     orderBy: { startAt: 'desc' },
   });
