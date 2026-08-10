@@ -19,6 +19,10 @@ export type ServiceFormValues = {
 type Props = {
   /** ערכים התחלתיים במצב עריכה. כשלא מועבר — מצב הוספה. */
   initial?: ServiceFormValues;
+  /** אנשי צוות פעילים לבחירה כמעניקי השירות. */
+  staffOptions?: { id: string; displayName: string }[];
+  /** מזהי אנשי הצוות המשויכים כרגע לשירות (במצב עריכה). */
+  selectedStaffIds?: string[];
 };
 
 const emptyState: SaveServiceState = { ok: false, mode: 'add' };
@@ -27,7 +31,7 @@ const editState: SaveServiceState = { ok: false, mode: 'edit' };
 const inputClass =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
-export default function ServiceForm({ initial }: Props) {
+export default function ServiceForm({ initial, staffOptions = [], selectedStaffIds = [] }: Props) {
   const isEdit = Boolean(initial);
   const [state, formAction, pending] = useActionState(
     saveServiceAction,
@@ -165,6 +169,36 @@ export default function ServiceForm({ initial }: Props) {
             />
             {t.admin.services.hiddenLabel}
           </label>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            {t.admin.services.staffLinkLabel}
+          </label>
+          {staffOptions.length === 0 ? (
+            <p className="text-sm text-slate-500">{t.admin.services.staffLinkEmpty}</p>
+          ) : (
+            <>
+              <p className="mb-2 text-xs text-slate-500">{t.admin.services.staffLinkHint}</p>
+              <div className="space-y-2 rounded-lg bg-slate-50 p-3">
+                {staffOptions.map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex items-center gap-2 text-sm text-slate-700"
+                  >
+                    <input
+                      type="checkbox"
+                      name="staffIds"
+                      value={s.id}
+                      defaultChecked={selectedStaffIds.includes(s.id)}
+                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    {s.displayName}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {errorText ? <p className="text-sm text-red-600">{errorText}</p> : null}

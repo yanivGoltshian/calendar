@@ -8,6 +8,7 @@ import {
   updateService,
   deleteService,
   setServiceHidden,
+  setServiceStaff,
 } from '@/server/repos/services';
 import { shekelsToAgorot } from '@/lib/money';
 
@@ -84,11 +85,15 @@ export async function saveServiceAction(
     hidden: data.hidden,
   };
 
+  const staffIds = formData.getAll('staffIds').map((v) => String(v));
+
   if (mode === 'edit' && data.id) {
     const updated = await updateService(business.id, data.id, payload);
     if (!updated) return { ok: false, mode, error: 'not_found' };
+    await setServiceStaff(business.id, data.id, staffIds);
   } else {
-    await createService(business.id, payload);
+    const created = await createService(business.id, payload);
+    await setServiceStaff(business.id, created.id, staffIds);
   }
 
   revalidatePublic(business.slug);

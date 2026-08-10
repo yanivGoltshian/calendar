@@ -13,6 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/appointments', label: t.admin.nav.appointments },
   { href: '/admin/services', label: t.admin.nav.services },
   { href: '/admin/team', label: t.admin.nav.team },
+  { href: '/admin/working-hours', label: t.admin.nav.workingHours },
   { href: '/admin/clients', label: t.admin.nav.clients },
   { href: '/admin/onboarding', label: t.admin.nav.onboarding },
   { href: '/admin/settings', label: t.admin.nav.settings },

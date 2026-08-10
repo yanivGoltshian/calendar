@@ -4,7 +4,8 @@ import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { getFirstBusiness } from '@/server/repos/business';
-import { listServicesWithUsage, getServiceById } from '@/server/repos/services';
+import { listServicesWithUsage, getServiceById, getServiceStaffIds } from '@/server/repos/services';
+import { listStaff } from '@/server/repos/staff';
 import { formatAgorot, agorotToShekels } from '@/lib/money';
 import { formatDuration } from '@/lib/time';
 import ServiceForm, { type ServiceFormValues } from './ServiceForm';
@@ -22,8 +23,13 @@ export default async function AdminServicesPage({ searchParams }: Props) {
   if (!business) notFound();
 
   const services = await listServicesWithUsage(business.id);
+  const staff = await listStaff(business.id);
+  const staffOptions = staff.map((s) => ({ id: s.id, displayName: s.displayName }));
 
   const editing = sp.edit ? await getServiceById(business.id, sp.edit) : null;
+  const selectedStaffIds = editing
+    ? await getServiceStaffIds(business.id, editing.id)
+    : [];
   const initial: ServiceFormValues | undefined = editing
     ? {
         id: editing.id,
@@ -87,6 +93,23 @@ export default async function AdminServicesPage({ searchParams }: Props) {
                         ? t.admin.services.priceHidden
                         : formatAgorot(s.priceAgorot)}
                     </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                      <span>{t.admin.services.staffBadgePrefix}</span>
+                      {s.staffLinks.length === 0 ? (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
+                          {t.admin.services.staffNoneBadge}
+                        </span>
+                      ) : (
+                        s.staffLinks.map((link) => (
+                          <span
+                            key={link.staff.id}
+                            className="rounded-full bg-brand-50 px-2 py-0.5 text-brand-700"
+                          >
+                            {link.staff.displayName}
+                          </span>
+                        ))
+                      )}
+                    </p>
                   </div>
                 </div>
 
@@ -133,7 +156,12 @@ export default async function AdminServicesPage({ searchParams }: Props) {
       )}
 
       {/* טופס הוספה/עריכה */}
-      <ServiceForm key={editing?.id ?? 'new'} initial={initial} />
+      <ServiceForm
+        key={editing?.id ?? 'new'}
+        initial={initial}
+        staffOptions={staffOptions}
+        selectedStaffIds={selectedStaffIds}
+      />
     </main>
   );
 }
