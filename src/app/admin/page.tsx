@@ -95,19 +95,6 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
         </h1>
       </header>
 
-      {/* ניווט ניהול */}
-      <nav className="mb-6 flex gap-2" aria-label={t.nav.admin}>
-        <span className="rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white">
-          {t.admin.nav.calendar}
-        </span>
-        <Link
-          href="/admin/services"
-          className="rounded-full bg-slate-100 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-        >
-          {t.admin.nav.services}
-        </Link>
-      </nav>
-
       {/* בורר איש צוות */}
       {staff.length > 0 ? (
         <nav className="mb-4 flex flex-wrap gap-2" aria-label={t.admin.staffLabel}>

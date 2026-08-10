@@ -76,6 +76,10 @@ const he = {
     invalidPhone: 'מספר טלפון לא תקין',
     invalidCode: 'קוד שגוי או שפג תוקפו',
     devHint: 'מצב פיתוח: הקוד מודפס ללוג השרת (console).',
+    back: 'חזרה',
+    sending: 'שולח…',
+    verifying: 'מאמת…',
+    error: 'אירעה שגיאה. נסו שוב.',
   },
   admin: {
     calendarTitle: 'יומן',
@@ -92,9 +96,21 @@ const he = {
     status: 'סטטוס',
     time: 'שעה',
     confirmAttendance: 'אישור הגעה',
+    panelTitle: 'אזור ניהול',
+    logout: 'התנתקות',
     nav: {
       calendar: 'יומן',
+      appointments: 'הזמנות',
       services: 'שירותים',
+      team: 'צוות',
+      clients: 'לקוחות',
+      onboarding: 'הקמה',
+      settings: 'הגדרות',
+    },
+    stub: {
+      badge: 'בקרוב',
+      title: 'המודול בהכנה',
+      body: 'המסך הזה יתמלא בתוכן בגרסה הקרובה. השלד מוכן לחיבור הפיצ׳ר.',
     },
     form: {
       clientName: 'שם הלקוח/ה',
@@ -109,6 +125,7 @@ const he = {
     statuses: {
       PENDING: 'ממתין',
       CONFIRMED: 'מאושר',
+      ARRIVED: 'הגיע',
       CANCELLED: 'בוטל',
       DONE: 'הושלם',
       NO_SHOW: 'לא הגיע',
@@ -148,6 +165,21 @@ const he = {
       errorDuration: 'יש להזין משך חוקי בדקות.',
       errorPrice: 'יש להזין מחיר חוקי.',
     },
+  },
+  account: {
+    title: 'החשבון שלי',
+    subtitle: 'ניהול התורים והפרטים שלך',
+    upcomingTitle: 'התורים הקרובים',
+    pastTitle: 'היסטוריית תורים',
+    noUpcoming: 'אין לך תורים קרובים.',
+    noPast: 'אין עדיין היסטוריית תורים.',
+    bookCta: 'קביעת תור חדש',
+    logout: 'התנתקות',
+    at: 'בשעה',
+    with: 'עם',
+    status: 'סטטוס',
+    business: 'עסק',
+    total: 'סך הכול',
   },
   marketing: {
     nav: {

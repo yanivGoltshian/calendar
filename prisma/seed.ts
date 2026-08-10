@@ -31,8 +31,17 @@ function weekdayHours(
 
 async function main() {
   console.log('מנקה נתוני דמו קודמים…');
-  // מחיקה מבוקרת של העסק הקיים (cascade ינקה את כל הישויות התלויות).
-  await prisma.business.deleteMany({ where: { slug: SLUG } });
+  // מחיקה מבוקרת של העסק הקיים. יש למחוק קודם את התורים כדי לנקות את
+  // AppointmentService (FK serviceId עם onDelete: Restrict) לפני שה-cascade
+  // של העסק מנסה למחוק את השירותים.
+  const existingBusiness = await prisma.business.findUnique({
+    where: { slug: SLUG },
+    select: { id: true },
+  });
+  if (existingBusiness) {
+    await prisma.appointment.deleteMany({ where: { businessId: existingBusiness.id } });
+    await prisma.business.deleteMany({ where: { slug: SLUG } });
+  }
   // ניקוי משתמשי דמו יתומים לפי טלפון.
   const demoPhones = ['050-1111111', '050-2222222', '050-3333333', '052-9876543'].map(
     normalizePhone,
@@ -53,6 +62,7 @@ async function main() {
     data: {
       slug: SLUG,
       name: 'מספרת דמו',
+      type: 'BARBERSHOP',
       description:
         'מספרה לגברים בלב תל אביב. תספורות, עיצוב זקן וטיפוח, באווירה נעימה ומקצועית.',
       address: 'רחוב דיזנגוף 100, תל אביב',
@@ -164,6 +174,23 @@ async function main() {
       },
     });
     staff.push(member);
+  }
+
+  console.log('מקשר צוות לשירותים…');
+  // ServiceStaff (m2m): יוסי (בכיר) מבצע את כל השירותים; אבי את התספורות ועיצוב הזקן.
+  const staffServiceLinks: Array<{ staffIdx: number; serviceIdxs: number[] }> = [
+    { staffIdx: 0, serviceIdxs: [0, 1, 2, 3, 4, 5] },
+    { staffIdx: 1, serviceIdxs: [0, 1, 2, 3] },
+  ];
+  for (const link of staffServiceLinks) {
+    for (const svcIdx of link.serviceIdxs) {
+      await prisma.serviceStaff.create({
+        data: {
+          serviceId: services[svcIdx].id,
+          staffId: staff[link.staffIdx].id,
+        },
+      });
+    }
   }
 
   console.log('יוצר לקוח ותורים לדוגמה…');
