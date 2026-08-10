@@ -5,13 +5,25 @@ import { getBusinessBySlug } from '@/server/repos/business';
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration } from '@/lib/time';
+import { buildMetadata, localBusinessJsonLd } from '@/lib/seo';
+import { JsonLd } from '@/components/JsonLd';
 
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const business = await getBusinessBySlug(slug);
-  return { title: business?.name ?? 'עסק' };
+  if (!business) return { title: 'עסק' };
+
+  return buildMetadata({
+    title: business.name,
+    description:
+      business.description?.slice(0, 160) ??
+      `קביעת תור אונליין אצל ${business.name}. בחירת שירות, בחירת מועד ואישור מיידי.`,
+    path: `/b/${business.slug}`,
+    ogTitle: business.name,
+    ogSubtitle: business.address ?? undefined,
+  });
 }
 
 export default async function BusinessPublicPage({ params }: Props) {
@@ -21,8 +33,20 @@ export default async function BusinessPublicPage({ params }: Props) {
 
   const services = business.services;
 
+  const jsonLd = localBusinessJsonLd({
+    name: business.name,
+    slug: business.slug,
+    description: business.description,
+    address: business.address,
+    phone: business.phone,
+    image: business.coverImageUrl ?? business.logoUrl,
+    instagramUrl: business.instagramUrl,
+    priceRange: '₪₪',
+  });
+
   return (
     <main className="mx-auto max-w-2xl pb-24">
+      <JsonLd data={jsonLd} />
       {/* תמונת נושא */}
       <div className="relative h-44 w-full bg-gradient-to-l from-brand-600 to-brand-700 sm:h-56">
         {business.coverImageUrl ? (

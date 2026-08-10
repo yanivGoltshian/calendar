@@ -1,0 +1,97 @@
+import Link from 'next/link';
+import { BRAND } from '@/config/brand';
+import { t } from '@/i18n';
+import { Container } from './Container';
+
+/** Footer — כותרת תחתונה עם קישורי שער, קרדיט ופרטי מותג. */
+export function Footer({ demoSlug }: { demoSlug?: string }) {
+  const year = new Date().getFullYear();
+  const f = t.marketing.footer;
+
+  return (
+    <footer className="border-t border-sand-200 bg-sand-100/60 dark:border-sand-800 dark:bg-sand-950">
+      <Container className="py-14">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-3">
+            <Link href="/" className="flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-gradient text-lg font-bold text-white">
+                {BRAND.name.charAt(0)}
+              </span>
+              <span className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
+                {BRAND.name}
+              </span>
+            </Link>
+            <p className="max-w-xs text-sm leading-relaxed text-sand-600 dark:text-sand-400">
+              {f.tagline}
+            </p>
+          </div>
+
+          <nav className="space-y-3">
+            <h3 className="text-sm font-bold text-sand-900 dark:text-sand-100">{f.productTitle}</h3>
+            <ul className="space-y-2 text-sm text-sand-600 dark:text-sand-400">
+              <li>
+                <a href="#features" className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
+                  {f.links.features}
+                </a>
+              </li>
+              <li>
+                <a href="#pricing" className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
+                  {f.links.pricing}
+                </a>
+              </li>
+              {demoSlug && (
+                <li>
+                  <Link
+                    href={`/b/${demoSlug}`}
+                    className="transition-colors hover:text-brand-700 dark:hover:text-brand-200"
+                  >
+                    {f.links.demo}
+                  </Link>
+                </li>
+              )}
+            </ul>
+          </nav>
+
+          <nav className="space-y-3">
+            <h3 className="text-sm font-bold text-sand-900 dark:text-sand-100">{f.companyTitle}</h3>
+            <ul className="space-y-2 text-sm text-sand-600 dark:text-sand-400">
+              <li>
+                <Link href="/admin" className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
+                  {f.links.admin}
+                </Link>
+              </li>
+              <li>
+                <a href="#faq" className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
+                  {t.marketing.nav.faq}
+                </a>
+              </li>
+            </ul>
+          </nav>
+
+          <nav className="space-y-3">
+            <h3 className="text-sm font-bold text-sand-900 dark:text-sand-100">{f.legalTitle}</h3>
+            <ul className="space-y-2 text-sm text-sand-600 dark:text-sand-400">
+              <li>
+                <span className="cursor-default">{f.links.privacy}</span>
+              </li>
+              <li>
+                <span className="cursor-default">{f.links.terms}</span>
+              </li>
+            </ul>
+          </nav>
+        </div>
+
+        <div className="mt-12 flex flex-col items-center gap-3 border-t border-sand-200 pt-8 text-center text-sm text-sand-500 sm:flex-row sm:justify-between sm:text-start dark:border-sand-800">
+          <p>
+            © {year} {BRAND.name}. {f.rights}
+          </p>
+          <p className="font-medium text-sand-600 dark:text-sand-400">
+            {t.publicPage.creditLine}
+          </p>
+        </div>
+      </Container>
+    </footer>
+  );
+}
+
+export default Footer;

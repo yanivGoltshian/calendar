@@ -2,42 +2,104 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== טוקנים סמנטיים (בהיר / כהה) ===== */
 :root {
-  --brand-50: #eef2ff;
-  --brand-600: #4f46e5;
-  --brand-700: #4338ca;
+  --bg: #faf8f5;
+  --surface: #ffffff;
+  --text: #2a2119;
+  --muted: #7c6650;
+  --border: #e8dfd4;
+  --brand: #7a37e0;
+  --brand-strong: #6826bd;
+}
+
+.dark {
+  --bg: #16110d;
+  --surface: #211a14;
+  --text: #f4efe9;
+  --muted: #b8a48d;
+  --border: #3a2f25;
+  --brand: #a67cfa;
+  --brand-strong: #c3aaff;
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
-  font-family:
-    'Assistant',
-    'Rubik',
-    'Heebo',
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), 'Assistant', 'Heebo', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* גלילה חלקה ושמירה על כיווניות RTL */
+/* כותרות בפונט התצוגה */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), 'Frank Ruhl Libre', Georgia, serif;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
 /* מצב פוקוס נגיש */
 :focus-visible {
-  @apply outline-2 outline-offset-2 outline-brand-600;
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* התאמת שדות טופס לכיוון ימין-לשמאל */
 input,
 textarea,
 select,
 button {
   font-family: inherit;
+}
+
+/* מכבדים העדפת תנועה מופחתת ברמת המערכת */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* עזרי עיצוב חוזרים */
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(120deg, #6826bd 0%, #8b53f0 50%, #d99a26 120%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(122 55 224 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(122 55 224 / 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

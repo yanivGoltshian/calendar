@@ -11,7 +11,7 @@ export const BRAND = {
   /** תיאור קצר / סלוגן — ריק בינתיים */
   tagline: '',
   /** צבע המותג הראשי (משמש גם ב-PWA manifest וב-theme-color) */
-  themeColor: '#4f46e5',
+  themeColor: '#7a37e0',
   backgroundColor: '#ffffff',
 } as const;
 

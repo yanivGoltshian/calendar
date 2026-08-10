@@ -33,3 +33,11 @@ export async function getFirstBusiness() {
     orderBy: { createdAt: 'asc' },
   });
 }
+
+/** שליפת כל ה-slugs של העסקים — לשימוש במפת האתר ובבנייה סטטית. */
+export async function getAllBusinessSlugs(): Promise<{ slug: string; updatedAt: Date }[]> {
+  return prisma.business.findMany({
+    select: { slug: true, updatedAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+}
