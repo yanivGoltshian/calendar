@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import type { AppointmentStatus } from '@prisma/client';
 import { getFirstBusiness } from '@/server/repos/business';
 import { getServicesByIds } from '@/server/repos/services';
 import {
@@ -14,20 +15,27 @@ import { createReminder } from '@/server/repos/reminders';
 import { localWallTimeToUtc } from '@/lib/time';
 import { normalizePhone } from '@/lib/crypto';
 
-/** אישור הגעה של לקוח (סטטוס → CONFIRMED). */
-export async function confirmAttendanceAction(formData: FormData) {
-  const id = String(formData.get('appointmentId') || '');
-  if (!id) return;
-  await updateAppointmentStatus(id, 'CONFIRMED');
-  revalidatePath('/admin');
-}
+const STATUS_VALUES = [
+  'PENDING',
+  'CONFIRMED',
+  'ARRIVED',
+  'CANCELLED',
+  'NO_SHOW',
+  'DONE',
+] as const satisfies readonly AppointmentStatus[];
 
-/** ביטול תור (סטטוס → CANCELLED). */
-export async function cancelAppointmentAction(formData: FormData) {
-  const id = String(formData.get('appointmentId') || '');
-  if (!id) return;
-  await updateAppointmentStatus(id, 'CANCELLED');
+/** שינוי סטטוס תור מהיומן (מאושר/הגיע/בוטל/הברזה/הושלם/ממתין). */
+export async function setAppointmentStatusAction(
+  appointmentId: string,
+  status: string,
+): Promise<{ ok: boolean }> {
+  if (!appointmentId) return { ok: false };
+  if (!(STATUS_VALUES as readonly string[]).includes(status)) {
+    return { ok: false };
+  }
+  await updateAppointmentStatus(appointmentId, status as AppointmentStatus);
   revalidatePath('/admin');
+  return { ok: true };
 }
 
 const createSchema = z.object({
