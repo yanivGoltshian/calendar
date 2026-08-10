@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-50: #eef2ff;
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+  font-family:
+    'Assistant',
+    'Rubik',
+    'Heebo',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+
+/* גלילה חלקה ושמירה על כיווניות RTL */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* מצב פוקוס נגיש */
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-brand-600;
+}
+
+/* התאמת שדות טופס לכיוון ימין-לשמאל */
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+}

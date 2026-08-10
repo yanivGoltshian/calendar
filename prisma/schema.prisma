@@ -1,0 +1,271 @@
+// Prisma schema — פלטפורמת קביעת תורים (MVP)
+// מוסכמות: כסף באגורות (Int), משכים בדקות (Int), חותמות זמן ב-UTC.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  CLIENT
+  STAFF
+  OWNER
+  ADMIN
+}
+
+enum StaffPermission {
+  CALENDAR_ONLY // צוות: גישה ליומן בלבד
+  MANAGER // ניהול מלא של העסק
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  DONE
+  NO_SHOW
+}
+
+enum ReminderChannel {
+  SMS
+  PUSH
+  EMAIL
+}
+
+enum ReminderStatus {
+  SCHEDULED
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum WorkingHoursScope {
+  BUSINESS
+  STAFF
+}
+
+// ---------- Core ----------
+
+model Business {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  description   String?
+  address       String?
+  phone         String?
+  instagramUrl  String?
+  logoUrl       String?
+  coverImageUrl String?
+  timezone      String   @default("Asia/Jerusalem")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ownerId String?
+  owner   User?   @relation("BusinessOwner", fields: [ownerId], references: [id])
+
+  settings     Settings?
+  staff        StaffMember[]
+  services     Service[]
+  workingHours WorkingHours[]
+  appointments Appointment[]
+  clients      Client[]
+
+  @@index([slug])
+}
+
+model Settings {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // מדיניות הזמנות
+  minLeadTimeMinutes      Int @default(120) // זמן מינימלי מראש להזמנה
+  cancellationWindowHours Int @default(24) // חלון ביטול לפני התור
+  slotGranularityMinutes  Int @default(15) // רזולוציית משבצות הזמן
+  maxAdvanceBookingDays   Int @default(60) // עד כמה ימים קדימה ניתן להזמין
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id    String @id @default(cuid())
+  phone String @unique
+  name  String?
+  role  Role   @default(CLIENT)
+  // מזהים רגישים נשמרים כ-hash בלבד (למשל ת"ז) — לא בשימוש ב-MVP אך שמור מראש
+  nationalIdHash String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ownedBusinesses  Business[]    @relation("BusinessOwner")
+  staffMemberships StaffMember[]
+  clientProfiles   Client[]
+}
+
+model StaffMember {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  displayName     String
+  title           String?
+  bio             String?
+  avatarUrl       String?
+  permissionLevel StaffPermission @default(CALENDAR_ONLY)
+  active          Boolean         @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workingHours WorkingHours[]
+  appointments Appointment[]
+
+  @@unique([businessId, userId])
+  @@index([businessId])
+}
+
+model Service {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name         String
+  description  String?
+  durationMin  Int
+  priceAgorot  Int
+  hidePrice    Boolean @default(false)
+  hideDuration Boolean @default(false)
+  hidden       Boolean @default(false) // הסתרה מהעמוד הציבורי
+  sortOrder    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointmentServices AppointmentService[]
+
+  @@index([businessId])
+}
+
+// שעות עבודה — משויכות לעסק (ברירת מחדל) או לאיש צוות ספציפי.
+model WorkingHours {
+  id         String            @id @default(cuid())
+  scope      WorkingHoursScope
+  businessId String?
+  business   Business?         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staffId    String?
+  staff      StaffMember?      @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  weekday     Int // 0=ראשון ... 6=שבת
+  startMinute Int // דקות מתחילת היום (מקומי)
+  endMinute   Int
+  // הפסקות ביום, כמערך זוגות דקות: [[start,end], ...]
+  breaks      Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([staffId, weekday])
+  @@index([businessId, weekday])
+}
+
+model Client {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  name  String
+  phone String
+  email String?
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments Appointment[]
+
+  @@unique([businessId, phone])
+  @@index([businessId])
+}
+
+model Appointment {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  staffId    String
+  staff      StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  startAt          DateTime // UTC
+  endAt            DateTime // UTC
+  status           AppointmentStatus @default(PENDING)
+  totalPriceAgorot Int               @default(0)
+  notes            String?
+  confirmedAt      DateTime?
+  cancelledAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services  AppointmentService[]
+  reminders Reminder[]
+
+  @@index([businessId, startAt])
+  @@index([staffId, startAt])
+}
+
+// טבלת קישור בין תור לשירותים (תור יכול לכלול כמה שירותים)
+model AppointmentService {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  serviceId     String
+  service       Service     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  // צילום מצב של הנתונים בזמן ההזמנה
+  nameSnapshot        String
+  durationMinSnapshot Int
+  priceAgorotSnapshot Int
+
+  @@unique([appointmentId, serviceId])
+  @@index([serviceId])
+}
+
+model Reminder {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  sendAt  DateTime // UTC
+  channel ReminderChannel @default(SMS)
+  status  ReminderStatus  @default(SCHEDULED)
+  sentAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, sendAt])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([phone, expiresAt])
+}
