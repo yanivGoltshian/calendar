@@ -33,6 +33,29 @@ export function getAppointmentsForStaffRange(staffId: string, fromUtc: Date, toU
   });
 }
 
+/**
+ * כל התורים (לא מבוטלים) של העסק בטווח UTC — לתצוגת יומן רב-צוותי (יום/שבוע).
+ * כולל לקוח ושירותים; ה-staffId זמין לפילוח לעמודות לפי איש צוות.
+ */
+export function getAppointmentsForBusinessRange(
+  businessId: string,
+  fromUtc: Date,
+  toUtc: Date,
+) {
+  return prisma.appointment.findMany({
+    where: {
+      businessId,
+      startAt: { gte: fromUtc, lt: toUtc },
+      status: { not: 'CANCELLED' },
+    },
+    orderBy: { startAt: 'asc' },
+    include: {
+      client: true,
+      services: true,
+    },
+  });
+}
+
 /** בדיקת חפיפה: האם קיים תור חוסם שמתנגש עם הטווח המבוקש. */
 export async function hasConflict(
   staffId: string,
