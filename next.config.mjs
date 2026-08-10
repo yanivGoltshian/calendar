@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // פלט standalone לבנייה רזה לקונטיינר (Docker). ראו docs/deployment-cost.md.
+  output: 'standalone',
   async headers() {
     return [
       {
