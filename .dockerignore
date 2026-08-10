@@ -1,0 +1,35 @@
+# תלויות ותוצרי בנייה — נבנים מחדש בתוך האימג'
+node_modules
+.next
+out
+build
+dist
+
+# סביבה וסודות — לעולם לא נכנסים לאימג'
+.env
+.env.*
+!.env.example
+
+# Git ו-CI
+.git
+.gitignore
+.github
+
+# תיעוד ותשתית — לא נדרשים בזמן ריצה
+docs
+infra
+*.md
+Dockerfile
+.dockerignore
+
+# כלי פיתוח
+.vscode
+.idea
+coverage
+.turbo
+.copilot
+
+# מערכת
+.DS_Store
+*.log
+npm-debug.log*
