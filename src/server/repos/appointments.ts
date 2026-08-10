@@ -33,6 +33,29 @@ export function getAppointmentsForStaffRange(staffId: string, fromUtc: Date, toU
   });
 }
 
+/**
+ * כל התורים (לא מבוטלים) של העסק בטווח UTC — לתצוגת יומן רב-צוותי (יום/שבוע).
+ * כולל לקוח ושירותים; ה-staffId זמין לפילוח לעמודות לפי איש צוות.
+ */
+export function getAppointmentsForBusinessRange(
+  businessId: string,
+  fromUtc: Date,
+  toUtc: Date,
+) {
+  return prisma.appointment.findMany({
+    where: {
+      businessId,
+      startAt: { gte: fromUtc, lt: toUtc },
+      status: { not: 'CANCELLED' },
+    },
+    orderBy: { startAt: 'asc' },
+    include: {
+      client: true,
+      services: true,
+    },
+  });
+}
+
 /** בדיקת חפיפה: האם קיים תור חוסם שמתנגש עם הטווח המבוקש. */
 export async function hasConflict(
   staffId: string,
@@ -59,10 +82,13 @@ export type CreateAppointmentInput = {
   services: { id: string; name: string; durationMin: number; priceAgorot: number }[];
   totalPriceAgorot: number;
   notes?: string;
+  // סטטוס התחלתי: PENDING כברירת מחדל, או CONFIRMED כאשר העסק אינו דורש אישור.
+  status?: AppointmentStatus;
 };
 
 /** יצירת תור עם שירותים (snapshot) ותזכורת ברירת מחדל. */
 export function createAppointment(input: CreateAppointmentInput) {
+  const status: AppointmentStatus = input.status ?? 'PENDING';
   return prisma.appointment.create({
     data: {
       businessId: input.businessId,
@@ -70,7 +96,8 @@ export function createAppointment(input: CreateAppointmentInput) {
       staffId: input.staffId,
       startAt: input.startAt,
       endAt: input.endAt,
-      status: 'PENDING',
+      status,
+      confirmedAt: status === 'CONFIRMED' ? new Date() : undefined,
       totalPriceAgorot: input.totalPriceAgorot,
       notes: input.notes,
       services: {
@@ -103,5 +130,59 @@ export function getAppointmentById(id: string) {
   return prisma.appointment.findUnique({
     where: { id },
     include: { services: true, client: true, staff: true, reminders: true },
+  });
+}
+
+/**
+ * שליפת תור לצורך ביטול בצד הלקוח: כולל זהות הלקוח (userId/phone) לאימות בעלות,
+ * ואת חלון הביטול של העסק לאכיפת המדיניות.
+ */
+export function getAppointmentForOwner(id: string) {
+  return prisma.appointment.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      status: true,
+      startAt: true,
+      client: { select: { userId: true, phone: true } },
+      business: {
+        select: {
+          timezone: true,
+          settings: { select: { cancellationWindowHours: true } },
+        },
+      },
+    },
+  });
+}
+
+export type BusinessAppointmentsOptions = {
+  statuses?: AppointmentStatus[];
+  fromUtc?: Date;
+  toUtc?: Date;
+  order?: 'asc' | 'desc';
+  take?: number;
+};
+
+/** שליפת תורי העסק למודול הניהול, עם סינון סטטוס/טווח זמן ומיון. */
+export function getBusinessAppointments(
+  businessId: string,
+  options: BusinessAppointmentsOptions = {},
+) {
+  const { statuses, fromUtc, toUtc, order = 'asc', take } = options;
+  return prisma.appointment.findMany({
+    where: {
+      businessId,
+      ...(statuses && statuses.length > 0 ? { status: { in: statuses } } : {}),
+      ...(fromUtc || toUtc
+        ? { startAt: { ...(fromUtc ? { gte: fromUtc } : {}), ...(toUtc ? { lt: toUtc } : {}) } }
+        : {}),
+    },
+    orderBy: { startAt: order },
+    ...(take ? { take } : {}),
+    include: {
+      services: true,
+      client: true,
+      staff: true,
+    },
   });
 }

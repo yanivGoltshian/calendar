@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
+import { LEGAL_LINKS } from '@/content/legal/links';
 import { Container } from './Container';
 
 /** Footer — כותרת תחתונה עם קישורי שער, קרדיט ופרטי מותג. */
@@ -71,12 +72,16 @@ export function Footer({ demoSlug }: { demoSlug?: string }) {
           <nav className="space-y-3">
             <h3 className="text-sm font-bold text-sand-900 dark:text-sand-100">{f.legalTitle}</h3>
             <ul className="space-y-2 text-sm text-sand-600 dark:text-sand-400">
-              <li>
-                <span className="cursor-default">{f.links.privacy}</span>
-              </li>
-              <li>
-                <span className="cursor-default">{f.links.terms}</span>
-              </li>
+              {LEGAL_LINKS.map((link) => (
+                <li key={link.path}>
+                  <Link
+                    href={link.path}
+                    className="transition-colors hover:text-brand-700 dark:hover:text-brand-200"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </nav>
         </div>

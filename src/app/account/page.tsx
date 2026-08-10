@@ -4,6 +4,7 @@ import { t } from '@/i18n';
 import { requireClientSession } from '@/lib/auth';
 import { getAppointmentsForUser } from '@/server/repos/account';
 import { logout } from './actions';
+import { CancelAppointmentButton } from './CancelAppointmentButton';
 import {
   Card,
   CardBody,
@@ -37,6 +38,13 @@ function AppointmentCard({ appt }: { appt: Appointment }) {
   const dateStr = formatDateString(appt.startAt, tz);
   const totalMinutes = appt.services.reduce((sum, s) => sum + s.durationMinSnapshot, 0);
   const serviceNames = appt.services.map((s) => s.nameSnapshot).join(', ');
+
+  // ביטול אפשרי רק לתור ממתין/מאושר, וכל עוד לא נכנסנו לחלון הביטול של העסק.
+  const windowHours = appt.business.settings?.cancellationWindowHours ?? 24;
+  const cancellableStatus = appt.status === 'PENDING' || appt.status === 'CONFIRMED';
+  const canCancel =
+    cancellableStatus &&
+    Date.now() < appt.startAt.getTime() - windowHours * 60 * 60 * 1000;
 
   return (
     <Card>
@@ -75,6 +83,12 @@ function AppointmentCard({ appt }: { appt: Appointment }) {
             </dd>
           </div>
         </dl>
+
+        {canCancel ? (
+          <div className="border-t border-[#16233A] pt-3">
+            <CancelAppointmentButton appointmentId={appt.id} />
+          </div>
+        ) : null}
       </CardBody>
     </Card>
   );

@@ -130,6 +130,23 @@ model BusinessSettings {
   // מדיניות/הודעה חופשית לתצוגה ללקוח
   policyText              String?
 
+  // מתגי שקיפות בעמוד הציבורי (ברירת מחדל: הצג). נוספו במודול ההגדרות.
+  showPricesPublic   Boolean @default(true) // הצגת מחירים
+  showDurationPublic Boolean @default(true) // הצגת משך טיפול
+  showStaffPublic    Boolean @default(true) // הצגת נותני שירות
+
+  // טקסטים מותאמים ללקוח. נוספו במודול ההגדרות.
+  welcomeMessage      String? // הודעת פתיחה בעמוד ההזמנה
+  confirmationMessage String? // הודעה לאחר קביעת תור
+
+  // תצורת תזכורות ואישורים. נוספו במודול ההגדרות.
+  remindersEnabled     Boolean         @default(true) // הפעלת תזכורות
+  reminderChannel      ReminderChannel @default(SMS) // ערוץ שליחת התזכורת
+  confirmationRequired Boolean         @default(false) // בקשת אישור הגעה מהלקוח
+
+  // מצב אונבורדינג — האם ההקמה הראשונית הושלמה. נוסף במודול ההקמה.
+  onboardingCompleted Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -229,10 +246,11 @@ model Client {
   userId     String?
   user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  name  String
-  phone String
-  email String?
-  notes String?
+  name    String
+  phone   String
+  email   String?
+  notes   String?
+  blocked Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
