@@ -45,6 +45,7 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
+  const [bookedStatus, setBookedStatus] = useState<'PENDING' | 'CONFIRMED'>('CONFIRMED');
 
   const selectedServices = services.filter((s) => selectedServiceIds.includes(s.id));
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMin, 0);
@@ -137,10 +138,20 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
       });
       const bookData = await bookRes.json();
       if (!bookRes.ok || !bookData.ok) {
-        setError(bookData.error === 'slot_taken' ? t.booking.slotTaken : t.common.error);
+        const code = bookData.error;
+        setError(
+          code === 'slot_taken'
+            ? t.booking.slotTaken
+            : code === 'too_early'
+              ? t.booking.tooEarly
+              : code === 'too_far'
+                ? t.booking.tooFar
+                : t.common.error,
+        );
         return;
       }
       setConfirmedId(bookData.appointmentId);
+      setBookedStatus(bookData.status === 'PENDING' ? 'PENDING' : 'CONFIRMED');
       setPhase('done');
     } catch {
       setError(t.common.error);
@@ -151,13 +162,22 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
 
   // ----- מסך הצלחה -----
   if (phase === 'done' && confirmedId) {
+    const isPending = bookedStatus === 'PENDING';
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
-          ✓
+        <div
+          className={`flex h-16 w-16 items-center justify-center rounded-full text-3xl ${
+            isPending ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
+          }`}
+        >
+          {isPending ? '⏳' : '✓'}
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">{t.booking.bookingSuccessTitle}</h1>
-        <p className="text-slate-600">{t.booking.bookingSuccessBody}</p>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {isPending ? t.booking.pendingTitle : t.booking.bookingSuccessTitle}
+        </h1>
+        <p className="text-slate-600">
+          {isPending ? t.booking.pendingBody : t.booking.bookingSuccessBody}
+        </p>
         <Link
           href={`/b/${slug}`}
           className="mt-4 rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white hover:bg-brand-700"
