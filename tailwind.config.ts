@@ -3,7 +3,7 @@ import type { Config } from 'tailwindcss';
 /**
  * מערכת עיצוב — טוקנים מרוכזים.
  *
- * בסיס ניטרלי חמים (sand), אקסנט סגול מעודן (brand) ואקסנט זהב חם (accent),
+ * בסיס ניטרלי חמים (sand), אקסנט נייבי עמוק (brand) ואקסנט זהב חם (accent),
  * עם רדיוסים, צללים, גרדיאנטים וטיפוגרפיה כטוקנים. תמיכת מצב כהה דרך class.
  */
 const config: Config = {
@@ -41,33 +41,33 @@ const config: Config = {
           900: '#2a2119',
           950: '#1a140f',
         },
-        // אקסנט ראשי — סגול מעודן ועשיר
+        // אקסנט ראשי — נייבי מלכותי עמוק
         brand: {
-          50: '#f5f2ff',
-          100: '#ece6ff',
-          200: '#dccfff',
-          300: '#c3aaff',
-          400: '#a67cfa',
-          500: '#8b53f0',
-          600: '#7a37e0',
-          700: '#6826bd',
-          800: '#57219a',
-          900: '#481d7c',
-          950: '#2d0f54',
+          50: '#eef3fa',
+          100: '#d9e2f1',
+          200: '#b7c8e2',
+          300: '#8ba6cd',
+          400: '#5c7fb0',
+          500: '#35548a',
+          600: '#24406e',
+          700: '#16233a',
+          800: '#0f1d33',
+          900: '#0a182d',
+          950: '#06101f',
         },
-        // אקסנט משני — זהב חם להדגשות עדינות
+        // אקסנט משני — זהב חם להדגשות
         accent: {
-          50: '#fdf9ed',
-          100: '#faf0cf',
-          200: '#f4df9c',
-          300: '#edc75f',
-          400: '#e7b23a',
-          500: '#d99a26',
-          600: '#c07a1d',
-          700: '#9f5b1b',
-          800: '#82481d',
-          900: '#6c3c1b',
-          950: '#3e1e0b',
+          50: '#fbf6ea',
+          100: '#f6ead0',
+          200: '#f2d695',
+          300: '#e4bf6f',
+          400: '#d6ac54',
+          500: '#cea24a',
+          600: '#b5873a',
+          700: '#9a7635',
+          800: '#7c5f2e',
+          900: '#674f28',
+          950: '#3b2c13',
         },
       },
       fontFamily: {
@@ -86,15 +86,15 @@ const config: Config = {
       boxShadow: {
         soft: '0 2px 8px -2px rgb(42 33 25 / 0.08), 0 4px 24px -6px rgb(42 33 25 / 0.08)',
         elevated: '0 8px 30px -6px rgb(42 33 25 / 0.12), 0 2px 8px -2px rgb(42 33 25 / 0.06)',
-        glow: '0 10px 40px -10px rgb(122 55 224 / 0.45)',
-        'glow-soft': '0 8px 30px -12px rgb(122 55 224 / 0.35)',
+        glow: '0 10px 40px -10px rgb(206 162 74 / 0.40)',
+        'glow-soft': '0 8px 30px -12px rgb(10 24 45 / 0.35)',
       },
       backgroundImage: {
-        'brand-gradient': 'linear-gradient(135deg, #7a37e0 0%, #a67cfa 100%)',
-        'brand-sheen': 'linear-gradient(135deg, #6826bd 0%, #8b53f0 55%, #d99a26 130%)',
+        'brand-gradient': 'linear-gradient(135deg, #0a182d 0%, #24406e 100%)',
+        'brand-sheen': 'linear-gradient(135deg, #06101f 0%, #16233a 55%, #cea24a 130%)',
         'sand-fade': 'linear-gradient(180deg, #faf8f5 0%, #f4efe9 100%)',
         'radial-glow':
-          'radial-gradient(60% 60% at 50% 0%, rgb(139 83 240 / 0.14) 0%, transparent 70%)',
+          'radial-gradient(60% 60% at 50% 0%, rgb(36 64 110 / 0.16) 0%, transparent 70%)',
       },
       keyframes: {
         float: {

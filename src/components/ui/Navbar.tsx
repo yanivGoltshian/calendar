@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
@@ -50,9 +51,14 @@ export function Navbar({ demoSlug }: { demoSlug?: string }) {
     >
       <Container className="flex h-16 items-center justify-between sm:h-18">
         <Link href="/" className="flex items-center gap-2" aria-label={BRAND.name}>
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-gradient text-lg font-bold text-white shadow-glow-soft">
-            {BRAND.name.charAt(0)}
-          </span>
+          <Image
+            src="/brand/torchick-emblem-navy-256.png"
+            alt=""
+            width={36}
+            height={36}
+            priority
+            className="h-9 w-9 rounded-xl object-cover shadow-glow-soft"
+          />
           <span className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
             {BRAND.name}
           </span>

@@ -155,7 +155,7 @@ flowchart TD
 1. הקצו את המסד המנוהל: הריצו פריסה עם `deployPostgres=true` ו-`postgresAdminPassword` מאוכלס.
 2. הריצו את סכימת Prisma מול המסד החדש:
    ```bash
-   DATABASE_URL="postgresql://booqiadmin:<סיסמה>@torchick-pg-prod.postgres.database.azure.com:5432/booqi?sslmode=require" \
+   DATABASE_URL="postgresql://torchickadmin:<סיסמה>@torchick-pg-prod.postgres.database.azure.com:5432/torchick?sslmode=require" \
      npx prisma migrate deploy
    ```
 3. העבירו נתונים קיימים (אם יש) עם `pg_dump` מהמסד הישן ו-`pg_restore` או `psql` אל החדש.
@@ -175,7 +175,7 @@ flowchart TD
 
 | שם | תיאור | דוגמה |
 |---|---|---|
-| `DATABASE_URL` | מחרוזת חיבור מלאה ל-PostgreSQL | `postgresql://user:pass@host:5432/booqi?sslmode=require` |
+| `DATABASE_URL` | מחרוזת חיבור מלאה ל-PostgreSQL | `postgresql://user:pass@host:5432/torchick?sslmode=require` |
 | `SESSION_SECRET` | מפתח חתימת עוגיית התחברות | מחרוזת אקראית 32 בתים (hex) |
 | `OTP_PEPPER` | פלפל להצפנת קודי OTP | מחרוזת אקראית 32 בתים (hex) |
 
