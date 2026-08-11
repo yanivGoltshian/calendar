@@ -374,7 +374,7 @@ export default async function HomePage() {
         </Section>
 
         {/* PWA INSTALL (platform) */}
-        <Section>
+        <Section id="get-app">
           <Container>
             <Reveal>
               <div className="mx-auto max-w-2xl">

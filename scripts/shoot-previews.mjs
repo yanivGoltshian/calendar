@@ -17,10 +17,22 @@ const sections = [
   ['features', 'features'],
   ['how-it-works', 'how-it-works'],
   ['migrate', 'migrate'],
+  ['get-app', 'get-app'],
 ];
 
 async function settle(page, ms = 700) {
   await page.waitForTimeout(ms);
+}
+
+// Reveal (framer-motion whileInView) leaves off-screen sections at opacity:0
+// inline until scrolled into view, which breaks fullPage screenshots. Force
+// every motion element visible so captures show the complete page.
+async function forceVisible(page) {
+  await page.addStyleTag({
+    content: `[style*="opacity: 0"], [style*="opacity:0"] { opacity: 1 !important; }
+      [style*="translate"], [style*="translateY"], [style*="translateX"] { transform: none !important; }`,
+  });
+  await page.waitForTimeout(150);
 }
 
 const browser = await chromium.launch();
@@ -35,6 +47,7 @@ try {
     const page = await ctx.newPage();
     await page.goto(BASE, { waitUntil: 'load' });
     await settle(page, 1200);
+    await forceVisible(page);
 
     // Full page
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -68,6 +81,7 @@ try {
     const bizPage = await ctx.newPage();
     await bizPage.goto(`${BASE}/b/demo-barbershop`, { waitUntil: 'load' });
     await settle(bizPage, 1200);
+    await forceVisible(bizPage);
     await bizPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await settle(bizPage, 700);
     await bizPage.evaluate(() => window.scrollTo(0, 0));
