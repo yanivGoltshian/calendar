@@ -80,6 +80,20 @@ enum PunchCardStatus {
   CANCELLED // בוטלה
 }
 
+// סטטוס קמפיין דיוור SMS.
+enum CampaignStatus {
+  DRAFT // טיוטה
+  SENDING // בשליחה
+  SENT // נשלח
+  FAILED // נכשל
+}
+
+// תוצאת שליחת הודעת דיוור בודדת.
+enum MessageStatus {
+  SENT // נשלח
+  FAILED // נכשל
+}
+
 // ---------- Core ----------
 
 model Business {
@@ -108,6 +122,8 @@ model Business {
   clients         Client[]
   waitlistEntries WaitlistEntry[]
   punchCards      PunchCard[]
+  campaigns       Campaign[]
+  messageLogs     MessageLog[]
 
   @@index([slug])
 }
@@ -258,6 +274,7 @@ model Client {
   appointments    Appointment[]
   waitlistEntries WaitlistEntry[]
   punchCards      PunchCard[]
+  messageLogs     MessageLog[]
 
   @@unique([businessId, phone])
   @@index([businessId])
@@ -392,6 +409,8 @@ model WaitlistEntry {
   note           String?
 
   status    WaitlistStatus @default(WAITING)
+  notifiedAt DateTime? // מתי נשלחה הודעת עדכון ללקוח
+  promotedAt DateTime? // מתי קודם ידנית (הוזמן) מהרשימה
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
@@ -412,6 +431,10 @@ model PunchCard {
   usedPunches  Int       @default(0)
   priceAgorot  Int? // מחיר הכרטיסייה (אם נמכרה)
   expiresAt    DateTime?
+  title        String? // כותרת/תיאור הכרטיסייה (למשל "כרטיסיית 10 תספורות")
+  note         String? // הערה חופשית
+  lastPunchAt  DateTime? // מתי בוצע הניקוב האחרון
+  completedAt  DateTime? // מתי נוצלה במלואה
 
   status    PunchCardStatus @default(ACTIVE)
   createdAt DateTime        @default(now())
@@ -419,4 +442,51 @@ model PunchCard {
 
   @@index([businessId, status])
   @@index([clientId])
+}
+
+// ---------- דיוור SMS (Campaign) ----------
+// קמפיין דיוור מפולח ללקוחות. הפילוח נשמר כמפתח סגמנט (segment) ומחושב בזמן שליחה.
+model Campaign {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name    String // שם הקמפיין (לזיהוי פנימי)
+  body    String // תוכן הודעת ה-SMS
+  segment String @default("all") // מפתח סגמנט: all / active / with_appointments
+
+  status         CampaignStatus @default(DRAFT)
+  recipientCount Int            @default(0) // כמות נמענים בפילוח בזמן השליחה
+  sentCount      Int            @default(0)
+  failedCount    Int            @default(0)
+  sentAt         DateTime? // מתי בוצעה השליחה
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages MessageLog[]
+
+  @@index([businessId, status])
+}
+
+// יומן הודעות דיוור — רשומה לכל נמען (מקושרת לקמפיין וללקוח כשקיימים).
+model MessageLog {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  clientId   String?
+  client     Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  phone  String
+  body   String
+  status MessageStatus @default(SENT)
+  error  String? // הודעת שגיאה אם השליחה נכשלה
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([campaignId])
 }
