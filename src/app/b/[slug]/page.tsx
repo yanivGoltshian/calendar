@@ -7,6 +7,7 @@ import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatMinutes } from '@/lib/time';
 import { buildMetadata, localBusinessJsonLd } from '@/lib/seo';
 import { JsonLd } from '@/components/JsonLd';
+import InstallApp from '@/components/pwa/InstallApp';
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -278,8 +279,18 @@ export default async function BusinessPublicPage({ params }: Props) {
           </section>
         ) : null}
 
+        {/* התקנת אפליקציה ממותגת של העסק */}
+        <div className="mt-10">
+          <InstallApp
+            variant="business"
+            appName={business.name}
+            logoUrl={business.logoUrl}
+            brandColor={business.brandColor}
+          />
+        </div>
+
         {/* שורת קרדיט מותג */}
-        <div className="mt-12 rounded-2xl bg-gradient-to-l from-brand-900 to-brand-700 px-5 py-6 text-center shadow-sm">
+        <div className="mt-10 rounded-2xl bg-gradient-to-l from-brand-900 to-brand-700 px-5 py-6 text-center shadow-sm">
           <p className="text-sm text-brand-100">{t.publicPage.creditLine}</p>
           <Link
             href="/"

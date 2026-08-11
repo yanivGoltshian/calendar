@@ -147,6 +147,7 @@ model Business {
   phone         String?
   instagramUrl  String?
   logoUrl       String?
+  brandColor    String?
   coverImageUrl String?
   timezone      String        @default("Asia/Jerusalem")
   type          BusinessType?

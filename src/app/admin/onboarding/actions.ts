@@ -67,6 +67,7 @@ export async function saveOnboardingProfile(
     instagramUrl: nullableStr(fd, 'instagramUrl'),
     logoUrl: nullableStr(fd, 'logoUrl'),
     coverImageUrl: nullableStr(fd, 'coverImageUrl'),
+    brandColor: nullableStr(fd, 'brandColor'),
     timezone: str(fd, 'timezone') || 'Asia/Jerusalem',
   });
 

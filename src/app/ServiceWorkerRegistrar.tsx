@@ -20,6 +20,10 @@ export default function ServiceWorkerRegistrar() {
         /* התעלמות משגיאות רישום בשקט */
       });
     };
+    if (document.readyState === 'complete') {
+      register();
+      return;
+    }
     window.addEventListener('load', register);
     return () => window.removeEventListener('load', register);
   }, []);

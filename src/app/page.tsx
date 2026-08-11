@@ -11,6 +11,7 @@ import { MascotTip } from '@/components/landing/MascotTip';
 import { AudienceSpotlight } from '@/components/landing/AudienceSpotlight';
 import { audienceIcons, featureIcons, SparkleIcon } from '@/components/landing/icons';
 import Image from 'next/image';
+import InstallApp from '@/components/pwa/InstallApp';
 
 const m = t.marketing;
 
@@ -367,6 +368,17 @@ export default async function HomePage() {
                     )}
                   </div>
                 </div>
+              </div>
+            </Reveal>
+          </Container>
+        </Section>
+
+        {/* PWA INSTALL (platform) */}
+        <Section>
+          <Container>
+            <Reveal>
+              <div className="mx-auto max-w-2xl">
+                <InstallApp variant="platform" />
               </div>
             </Reveal>
           </Container>

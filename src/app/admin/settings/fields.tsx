@@ -25,6 +25,7 @@ export type ProfileValues = Pick<
   | 'instagramUrl'
   | 'logoUrl'
   | 'coverImageUrl'
+  | 'brandColor'
   | 'timezone'
 >;
 
@@ -120,6 +121,18 @@ export function ProfileFields({ b }: { b: ProfileValues }) {
             className={inputClass}
           />
         </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>{s.brandColorLabel}</label>
+        <input
+          name="brandColor"
+          dir="ltr"
+          defaultValue={b.brandColor ?? ''}
+          placeholder="#0A182D"
+          className={inputClass}
+        />
+        <p className={hintClass}>{s.brandColorHint}</p>
       </div>
 
       <div>

@@ -45,3 +45,14 @@ export async function getAllBusinessSlugs(): Promise<{ slug: string; updatedAt: 
     orderBy: { createdAt: 'asc' },
   });
 }
+
+/**
+ * שליפת שדות המיתוג בלבד של עסק לפי slug — לשימוש במניפסט ובאייקון של ה-PWA.
+ * שולף מעט שדות כדי לא להעמיס, ומחזיר null כשהעסק לא קיים.
+ */
+export async function getBusinessBranding(slug: string) {
+  return prisma.business.findUnique({
+    where: { slug },
+    select: { slug: true, name: true, logoUrl: true, brandColor: true },
+  });
+}
