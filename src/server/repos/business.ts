@@ -132,11 +132,13 @@ export async function createBusiness(input: {
   phone?: string | null;
   address?: string | null;
   ownerEmail: string;
+  priorCalendar?: string | null;
+  referralSource?: string | null;
 }) {
   const slug = await generateUniqueSlug(input.name);
   // תקופת ניסיון חינם של 14 יום מרגע היצירה (חבילת בסיס, מצב trialing).
   const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-  return prisma.business.create({
+  const business = await prisma.business.create({
     data: {
       name: input.name,
       type: input.type ?? undefined,
@@ -152,4 +154,22 @@ export async function createBusiness(input: {
     },
     include: { settings: true },
   });
+
+  // שאלות השיווק (אפיק D2) נשמרות בצורה עמידה: אם המיגרציה האדיטיבית טרם הוחלה
+  // בסביבה, יצירת העסק לא תישבר; העדכון נכשל בשקט והשדות פשוט לא נכתבים עד שתרוץ.
+  if (input.priorCalendar || input.referralSource) {
+    try {
+      await prisma.business.update({
+        where: { id: business.id },
+        data: {
+          priorCalendar: input.priorCalendar ?? null,
+          referralSource: input.referralSource ?? null,
+        },
+      });
+    } catch {
+      // עמודות השיווק האדיטיביות עדיין לא קיימות בסביבה; מתעלמים בבטחה.
+    }
+  }
+
+  return business;
 }
