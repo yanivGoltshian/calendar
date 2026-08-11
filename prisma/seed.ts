@@ -68,7 +68,7 @@ async function main() {
       address: 'רחוב דיזנגוף 100, תל אביב',
       phone: normalizePhone('03-1234567'),
       instagramUrl: 'https://instagram.com/demo_barbershop',
-      logoUrl: null,
+      logoUrl: '/brand/business/demo-barbershop.png',
       coverImageUrl: null,
       timezone: TZ,
       ownerId: owner.id,
