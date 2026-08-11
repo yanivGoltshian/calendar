@@ -72,6 +72,11 @@ async function main() {
       coverImageUrl: null,
       timezone: TZ,
       ownerId: owner.id,
+      // עסק הדגמה תמיד פרימיום פעיל — כדי שהתצוגה לעולם לא תיחסם ב-paywall.
+      plan: 'premium',
+      subscriptionStatus: 'active',
+      premiumSince: new Date(),
+      paidUntil: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000),
       settings: {
         create: {
           minLeadTimeMinutes: 120,
