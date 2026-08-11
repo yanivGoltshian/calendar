@@ -19,7 +19,7 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # ---------- שלב 2: בנייה ----------
 FROM node:20-alpine AS builder
