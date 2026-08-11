@@ -12,6 +12,9 @@ targetScope = 'resourceGroup'
 @description('אזור Azure. ברירת מחדל: אזור קבוצת המשאבים.')
 param location string = resourceGroup().location
 
+@description('אזור למשאבי Container Apps. ברירת מחדל: כמו location. נדרש כאשר location אינו תומך ב-Container Apps (למשל israelcentral) — אז מפרידים את המחשוב לאזור נתמך בעוד שמסד הנתונים נשאר ב-location.')
+param containerAppsLocation string = location
+
 @description('קידומת לשמות המשאבים')
 param namePrefix string = 'torchick'
 
@@ -134,7 +137,7 @@ module containerEnv 'modules/containerAppsEnvironment.bicep' = {
   name: 'containerAppsEnvironment'
   params: {
     name: caeName
-    location: location
+    location: containerAppsLocation
     logAnalyticsWorkspaceName: logAnalytics.outputs.name
     tags: tags
   }
@@ -144,7 +147,7 @@ module containerApp 'modules/containerApp.bicep' = {
   name: 'containerApp'
   params: {
     name: appName
-    location: location
+    location: containerAppsLocation
     environmentId: containerEnv.outputs.id
     image: containerImage
     targetPort: containerTargetPort
