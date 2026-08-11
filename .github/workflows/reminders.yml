@@ -1,0 +1,63 @@
+# ============================================================================
+# תזכורות 24 שעות — טריגר מתוזמן שקורא ל-endpoint בפרודקשן.
+# ----------------------------------------------------------------------------
+# רץ כל 15 דקות (וגם ידנית), ומפעיל את POST /api/cron/reminders עם כותרת הסוד.
+# ה-endpoint עצמו מוצא תורים בחלון ~24 שעות, שולח הודעה ומסמן אידמפוטנטית.
+#
+# דרישות סוד (חייבות להיות מוגדרות באותו ערך בשני המקומות):
+#   1) Repository secret בשם CRON_SECRET   — נשלח ככותרת x-cron-secret.
+#   2) משתנה סביבה CRON_SECRET על ה-Container App (torchick-app-prod) —
+#      מולו ה-endpoint משווה. אם הערכים לא תואמים יתקבל 401.
+#   בנוסף: Repository secret בשם APP_PUBLIC_URL עם כתובת הפרודקשן
+#   (למשל https://torchick.com), ממנה נבנית כתובת ה-endpoint.
+# ============================================================================
+
+name: Reminders (24h)
+
+on:
+  schedule:
+    # כל 15 דקות. חלון הסבילות ב-endpoint (±15 דק׳ סביב 24 שעות) תואם לתדירות זו.
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: reminders-cron
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminders endpoint
+        env:
+          APP_PUBLIC_URL: ${{ secrets.APP_PUBLIC_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_PUBLIC_URL:-}" ]; then
+            echo "APP_PUBLIC_URL secret is not set" >&2
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "CRON_SECRET secret is not set" >&2
+            exit 1
+          fi
+          BASE="${APP_PUBLIC_URL%/}"
+          URL="${BASE}/api/cron/reminders"
+          echo "POST ${URL}"
+          # ‎-sS שקט אך מדווח שגיאות; מפרידים גוף מסטטוס לצורך בדיקה.
+          BODY_FILE="$(mktemp)"
+          CODE="$(curl -sS -o "${BODY_FILE}" -w '%{http_code}' \
+            -X POST "${URL}" \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            -H 'content-type: application/json' \
+            --max-time 60 || true)"
+          echo "HTTP ${CODE}"
+          echo "Response:"; cat "${BODY_FILE}" || true; echo
+          if [ "${CODE}" != "200" ]; then
+            echo "Reminders endpoint returned non-200 (${CODE})" >&2
+            exit 1
+          fi

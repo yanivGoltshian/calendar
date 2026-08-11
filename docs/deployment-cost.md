@@ -178,6 +178,14 @@ flowchart TD
 | `DATABASE_URL` | מחרוזת חיבור מלאה ל-PostgreSQL | `postgresql://user:pass@host:5432/torchick?sslmode=require` |
 | `SESSION_SECRET` | מפתח חתימת עוגיית התחברות | מחרוזת אקראית 32 בתים (hex) |
 | `OTP_PEPPER` | פלפל להצפנת קודי OTP | מחרוזת אקראית 32 בתים (hex) |
+| `CRON_SECRET` | אימות ה-cron של התזכורות (`/api/cron/reminders`) | מחרוזת אקראית 32 בתים (hex) |
+
+> **‏`CRON_SECRET` — ערך כפול חובה:** אותו ערך בדיוק חייב להיות מוגדר בשני מקומות: (1) כ-repository secret בשם `CRON_SECRET` (ה-workflow `reminders.yml` שולח אותו ככותרת `x-cron-secret`), ו-(2) כמשתנה סביבה `CRON_SECRET` על ה-Container App‏ `torchick-app-prod` (מולו ה-endpoint משווה). אי-התאמה מחזירה 401 והתזכורות לא יישלחו. הגדרה על ה-Container App:
+> ```bash
+> az containerapp update --subscription 1c691a07-fdfe-4dfd-bb81-d95c8f9d4e6f \
+>   -g torchick-prod-rg -n torchick-app-prod \
+>   --set-env-vars CRON_SECRET=<same-value>
+> ```
 
 יצירת ערך אקראי בטוח:
 ```bash
@@ -219,7 +227,12 @@ az containerapp secret set \
 | `AZURE_TENANT_ID` | מזהה ה-tenant |
 | `AZURE_SUBSCRIPTION_ID` | מזהה המנוי |
 | `APP_PUBLIC_URL` | כתובת ציבורית, למשל `https://torchick.com` |
+| `CRON_SECRET` | סוד ה-cron של התזכורות; נשלח ככותרת `x-cron-secret` מ-`reminders.yml`. חייב להיות זהה לערך שעל ה-Container App |
 | `GITHUB_TOKEN` | מסופק אוטומטית, לדחיפה ל-GHCR |
+
+### תזכורות מתוזמנות (`reminders.yml`)
+
+ה-workflow ‏`.github/workflows/reminders.yml` רץ כל 15 דקות (וניתן להריצו ידנית) ומפעיל‏ `POST /api/cron/reminders` בפרודקשן עם הכותרת `x-cron-secret`. ה-endpoint מוצא תורים פעילים בחלון ~24 שעות קדימה (±15 דק׳, תואם לתדירות ה-cron), שולח תזכורת דרך שכבת ההודעות ומסמן `reminderSentAt` באופן אידמפוטנטי (בטוח לריצה חוזרת). הדרישות: הסודות `APP_PUBLIC_URL` ו-`CRON_SECRET` ב-repository secrets, וערך `CRON_SECRET` זהה על ה-Container App. אם `SMS_PROVIDER=console` בפרודקשן, התזכורות מחושבות ומסומנות אך לא נשלחות בפועל (מודפסות ללוג).
 
 ### משתני סביבה לא-סודיים
 

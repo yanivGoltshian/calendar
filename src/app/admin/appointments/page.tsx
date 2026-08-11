@@ -40,6 +40,18 @@ function statusBadgeClass(status: string): string {
   }
 }
 
+// גוון תג אישור הלקוח מהתזכורת (ירוק לאישור, אדום להודעת אי-הגעה).
+function confirmationBadgeClass(status: string): string {
+  switch (status) {
+    case 'CONFIRMED':
+      return 'bg-green-50 text-green-700 ring-1 ring-green-200';
+    case 'DECLINED':
+      return 'bg-red-50 text-red-700 ring-1 ring-red-200';
+    default:
+      return 'bg-slate-100 text-slate-600';
+  }
+}
+
 function queryForTab(tab: Tab): BusinessAppointmentsOptions {
   const now = new Date();
   switch (tab) {
@@ -154,13 +166,26 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
                       ) : null}
                     </p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(
-                      appt.status,
-                    )}`}
-                  >
-                    {t.admin.statuses[appt.status]}
-                  </span>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(
+                        appt.status,
+                      )}`}
+                    >
+                      {t.admin.statuses[appt.status]}
+                    </span>
+                    {/* אישור הלקוח מהתזכורת — מוצג רק כאשר הלקוח הגיב בפועל. */}
+                    {appt.confirmationStatus === 'CONFIRMED' ||
+                    appt.confirmationStatus === 'DECLINED' ? (
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${confirmationBadgeClass(
+                          appt.confirmationStatus,
+                        )}`}
+                      >
+                        {t.admin.confirmationStatuses[appt.confirmationStatus]}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
                 {/* פעולות */}

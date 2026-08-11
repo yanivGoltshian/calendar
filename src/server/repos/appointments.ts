@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import type { AppointmentStatus } from '@prisma/client';
+import type { AppointmentStatus, ConfirmationStatus } from '@prisma/client';
 
 // סטטוסים שתופסים משבצת זמן ולכן חוסמים זמינות.
 const BLOCKING_STATUSES: AppointmentStatus[] = ['PENDING', 'CONFIRMED', 'DONE'];
@@ -184,5 +184,76 @@ export function getBusinessAppointments(
       client: true,
       staff: true,
     },
+  });
+}
+
+// ─── מודול תזכורות 24 שעות ואישור הגעה ───────────────────────────────────────
+
+// סטטוסים פעילים שרלוונטיים לתזכורת (תור שעדיין אמור להתקיים).
+const REMINDABLE_STATUSES: AppointmentStatus[] = ['PENDING', 'CONFIRMED'];
+
+// בחירת שדות אחידה לתצוגת קישור האישור וההודעה — שם עסק, טלפון לקוח, צוות ושירותים.
+const reminderInclude = {
+  business: {
+    select: { id: true, name: true, slug: true, phone: true, timezone: true },
+  },
+  client: { select: { id: true, name: true, phone: true } },
+  staff: { select: { id: true, displayName: true, title: true } },
+  services: { select: { nameSnapshot: true } },
+} as const;
+
+/**
+ * תורים שעל סף חלון ה-24 שעות שטרם נשלחה עבורם תזכורת.
+ * הטווח (windowStart..windowEnd ב-UTC) מחושב אצל הקורא לפי תדירות ה-cron.
+ * מסנן לפי reminderSentAt ריק וסטטוס פעיל, כדי שהריצה תהיה אידמפוטנטית.
+ */
+export function getAppointmentsDueForReminder(windowStart: Date, windowEnd: Date) {
+  return prisma.appointment.findMany({
+    where: {
+      reminderSentAt: null,
+      status: { in: REMINDABLE_STATUSES },
+      startAt: { gte: windowStart, lte: windowEnd },
+    },
+    orderBy: { startAt: 'asc' },
+    include: reminderInclude,
+  });
+}
+
+/** שליפת תור בודד לפי טוקן האישור הציבורי — לעמוד /c/<token>. */
+export function getAppointmentByConfirmToken(token: string) {
+  return prisma.appointment.findUnique({
+    where: { confirmToken: token },
+    include: reminderInclude,
+  });
+}
+
+/**
+ * סימון שנשלחה תזכורת, באופן אטומי ואידמפוטנטי: מעדכן רק אם reminderSentAt עדיין ריק.
+ * מחזיר את מספר השורות שעודכנו (0 אם כבר סומן במקביל), למניעת שליחה כפולה.
+ */
+export async function markReminderSent(id: string, sentAt: Date = new Date()): Promise<number> {
+  const result = await prisma.appointment.updateMany({
+    where: { id, reminderSentAt: null },
+    data: { reminderSentAt: sentAt },
+  });
+  return result.count;
+}
+
+/**
+ * עדכון אישור ההגעה מצד הלקוח לפי טוקן. מחזיר את התור המעודכן, או null אם הטוקן לא נמצא.
+ */
+export async function setConfirmationStatusByToken(
+  token: string,
+  status: ConfirmationStatus,
+) {
+  const existing = await prisma.appointment.findUnique({
+    where: { confirmToken: token },
+    select: { id: true },
+  });
+  if (!existing) return null;
+  return prisma.appointment.update({
+    where: { confirmToken: token },
+    data: { confirmationStatus: status },
+    include: reminderInclude,
   });
 }
