@@ -128,11 +128,19 @@ enum MessageStatus {
   FAILED // נכשל
 }
 
+// סוג תנועת מלאי (אפוס L — מלאי בסיסי). enum חדש ונפרד, ללא נגיעה ב-enums קיימים.
+enum StockMovementType {
+  PURCHASE // קליטת סחורה / רכש (כניסה)
+  SALE // מכירה בקופה (יציאה, ניכוי אוטומטי)
+  ADJUSTMENT // תיקון ידני / ספירת מלאי
+  RETURN // החזרה (כניסה)
+}
+
 // ---------- Core ----------
 
 model Business {
-  id            String   @id @default(cuid())
-  slug          String   @unique
+  id            String        @id @default(cuid())
+  slug          String        @unique
   name          String
   description   String?
   address       String?
@@ -140,10 +148,10 @@ model Business {
   instagramUrl  String?
   logoUrl       String?
   coverImageUrl String?
-  timezone      String   @default("Asia/Jerusalem")
+  timezone      String        @default("Asia/Jerusalem")
   type          BusinessType?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   ownerId String?
   owner   User?   @relation("BusinessOwner", fields: [ownerId], references: [id])
@@ -163,6 +171,11 @@ model Business {
   products  Product[]
   sales     Sale[]
   documents Document[]
+
+  // מודול מלאי (אפוס L) — קשרים אדיטיביים
+  stockLevels    StockLevel[]
+  stockMovements StockMovement[]
+  lowStockAlerts LowStockAlert[]
 
   @@index([slug])
 }
@@ -207,10 +220,10 @@ model BusinessSettings {
 }
 
 model User {
-  id    String @id @default(cuid())
-  phone String @unique
-  name  String?
-  role  Role   @default(CLIENT)
+  id             String   @id @default(cuid())
+  phone          String   @unique
+  name           String?
+  role           Role     @default(CLIENT)
   // מזהים רגישים נשמרים כ-hash בלבד (למשל ת"ז) — לא בשימוש ב-MVP אך שמור מראש
   nationalIdHash String?
   createdAt      DateTime @default(now())
@@ -324,11 +337,11 @@ model Client {
 }
 
 model Appointment {
-  id         String   @id @default(cuid())
+  id         String      @id @default(cuid())
   businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   clientId   String
-  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client     Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
   staffId    String
   staff      StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
@@ -453,11 +466,11 @@ model WaitlistEntry {
   latestMinute   Int?
   note           String?
 
-  status    WaitlistStatus @default(WAITING)
+  status     WaitlistStatus @default(WAITING)
   notifiedAt DateTime? // מתי נשלחה הודעת עדכון ללקוח
   promotedAt DateTime? // מתי קודם ידנית (הוזמן) מהרשימה
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
   @@index([businessId, status])
 }
@@ -512,6 +525,11 @@ model Product {
   updatedAt DateTime @updatedAt
 
   saleItems SaleItem[]
+
+  // מודול מלאי (אפוס L) — קשרים חוזרים אדיטיביים בלבד (ללא שינוי שדות קיימים)
+  stockLevel     StockLevel?
+  stockMovements StockMovement[]
+  lowStockAlerts LowStockAlert[]
 
   @@index([businessId])
 }
@@ -676,4 +694,66 @@ model MessageLog {
 
   @@index([businessId, createdAt])
   @@index([campaignId])
+}
+
+// ---------- מלאי (אפוס L — מלאי בסיסי) ----------
+// כל המודלים כאן חדשים ואדיטיביים. כמויות = מספרים שלמים (Int).
+// עלויות/מחירים = אגורות (Int), עקבי ל-priceAgorot בקופה.
+
+// רמת מלאי נוכחית למוצר — רשומה אחת לכל מוצר (יחס 1:1).
+model StockLevel {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productId  String   @unique
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity          Int @default(0) // כמות זמינה נוכחית (יחידות שלמות)
+  lowStockThreshold Int @default(0) // סף התראת מלאי נמוך (0 = ללא התראה)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+// תנועת מלאי — רשומה לכל שינוי כמות (רכש/מכירה/תיקון/החזרה).
+// saleId נשמר כהפניה רכה (ללא FK) לצורך אידמפוטנטיות בניכוי אוטומטי מהקופה.
+model StockMovement {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  type           StockMovementType
+  quantityDelta  Int // שינוי הכמות: חיובי = כניסה, שלילי = יציאה
+  unitCostAgorot Int? // עלות יחידה באגורות (רשות, רלוונטי לרכש)
+  note           String? // הערה חופשית / הקשר
+
+  saleId String? // הפניה רכה לעסקת קופה (SALE) — למניעת ניכוי כפול
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([productId])
+  @@index([saleId])
+}
+
+// התראת מלאי נמוך — נרשמת כשמלאי המוצר יורד אל סף ההתראה או מתחתיו.
+model LowStockAlert {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantityAtAlert Int // הכמות שנרשמה ברגע ההתראה
+  threshold       Int // הסף שהופעל
+  resolvedAt      DateTime? // מולא כאשר המלאי חזר מעל הסף
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, resolvedAt])
+  @@index([productId])
 }
