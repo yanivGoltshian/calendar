@@ -7,15 +7,17 @@ import { absoluteUrl } from '@/lib/seo';
 import { DEFAULT_TZ, formatDateString, formatLongDate, formatTime } from '@/lib/time';
 
 /**
- * שכבת שליחת תזכורות. מרכזת את בניית תוכן ההודעה ואת בחירת הערוץ.
+ * שכבת שליחת תזכורות. מרכזת את בניית תוכן ההודעה ואת שליחתה בערוץ WhatsApp.
  *
- * חשוב: מודול זה אינו מממש אינטגרציית SMS/WhatsApp משלו. הוא צורך אך ורק את
- * הממשק הציבורי של שכבת הספקים המשותפת (src/server/providers/messaging):
- * getMessagingProvider().sendSms / sendWhatsApp. בחירת הספק והקרדנשלס נקבעים
- * שם לפי משתני הסביבה. כאן רק מחליטים על העדפת הערוץ ומטפלים בשגיאות.
+ * חשוב: מודול זה אינו מממש אינטגרציית WhatsApp/SMS משלו ואינו קורא ל-Meta ישירות.
+ * הוא צורך אך ורק את הממשק הציבורי של שכבת הספקים המשותפת
+ * (src/server/providers/messaging): getMessagingProvider().sendWhatsApp. הערוץ
+ * האמיתי הוא WhatsApp Cloud API, ובחירת הספק, הקרדנשלס ותבנית ה-utility לתזכורת
+ * (שם התבנית מגיע ממשתנה הסביבה WHATSAPP_REMINDER_TEMPLATE שהשכבה חושפת) נקבעים
+ * כולם בשכבה. כאן רק בונים את הגוף בעברית בעזרת i18n ומטפלים בשגיאות.
  */
 
-export type ReminderChannel = 'SMS' | 'WHATSAPP';
+export type ReminderChannel = 'WHATSAPP';
 
 /** נתוני התור הדרושים לבניית ושליחת ההודעה (תת-קבוצה של השאילתה בריפו). */
 export type ReminderAppointment = {
@@ -45,8 +47,8 @@ export function buildReminderBody(appt: ReminderAppointment): string {
 
 /**
  * תוצאת שליחה מובנית (איחוד מבחין):
- *   sent    — נשלח בפועל בערוץ שצוין (או נרשם ללוג במתאם console בפיתוח).
- *   skipped — הספק אינו כשיר לשליחה (למשל SMS_PROVIDER=console בפרודקשן, או
+ *   sent    — נשלח בפועל ב-WhatsApp (או נרשם ללוג במתאם console בפיתוח).
+ *   skipped — הספק אינו כשיר לשליחה (למשל MESSAGING_PROVIDER=console בפרודקשן, או
  *             חוסר קרדנשלס). לפי שער הקרדנשלס: לא שולחים אך כן מסמנים, כדי
  *             שהריצה תישאר אידמפוטנטית ולא תיתקע. אינו כשל.
  *   failed  — כשל שליחה חולף (רשת/דחיית ספק). אין לסמן — ייעשה ניסיון חוזר.
@@ -56,20 +58,15 @@ export type SendReminderResult =
   | { status: 'skipped'; reason: string }
   | { status: 'failed'; channel: ReminderChannel; error: string };
 
-/** העדפת הערוץ. ברירת מחדל: WhatsApp אם מוגדר, אחרת נפילה חלקה ל-SMS.
- *  אפשר לכפות SMS בלבד עם REMINDER_CHANNEL=sms. */
-function prefersWhatsApp(): boolean {
-  return (process.env.REMINDER_CHANNEL ?? '').trim().toLowerCase() !== 'sms';
-}
-
 function errText(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
 /**
- * שליחת הודעת תזכורת ללקוח דרך שכבת הספקים המשותפת.
+ * שליחת הודעת תזכורת ללקוח דרך שכבת הספקים המשותפת, בערוץ WhatsApp בלבד.
  * לעולם אינה זורקת חריגה — מחזירה תוצאה מובנית כדי שה-cron ירוץ על אצווה בבטחה.
- * מעדיף WhatsApp אם הספק תומך ומוגדר, אחרת נופל בחלקה ל-SMS.
+ * שגיאת תצורה (ספק console / חוסר קרדנשלס) מסומנת כ-skipped: מחושב ומסומן אך
+ * לא נשלח בפועל (no-op-אבל-מסומן). כשל חולף מסומן כ-failed ויקבל ניסיון חוזר.
  */
 export async function sendReminder(appt: ReminderAppointment): Promise<SendReminderResult> {
   const body = buildReminderBody(appt);
@@ -83,30 +80,18 @@ export async function sendReminder(appt: ReminderAppointment): Promise<SendRemin
     if (err instanceof MessagingConfigError) {
       return { status: 'skipped', reason: err.message };
     }
-    return { status: 'failed', channel: 'SMS', error: errText(err) };
+    return { status: 'failed', channel: 'WHATSAPP', error: errText(err) };
   }
 
-  // העדפת WhatsApp: מנסים תחילה, ורק אם הערוץ אינו נתמך/מוגדר (שגיאת תצורה)
-  // נופלים ל-SMS. כשל שליחה אמיתי ב-WhatsApp אינו נופל ל-SMS, כדי לא לשלוח פעמיים.
-  if (prefersWhatsApp()) {
-    try {
-      await provider.sendWhatsApp(to, body);
-      return { status: 'sent', channel: 'WHATSAPP' };
-    } catch (err) {
-      if (!(err instanceof MessagingConfigError)) {
-        return { status: 'failed', channel: 'WHATSAPP', error: errText(err) };
-      }
-      // WhatsApp אינו זמין אצל הספק הזה — ממשיכים ל-SMS.
-    }
-  }
-
+  // ערוץ יחיד: WhatsApp דרך השכבה המשותפת. שם תבנית ה-utility נבחר בשכבה
+  // (WHATSAPP_REMINDER_TEMPLATE). שגיאת תצורה => skipped (no-op-אבל-מסומן).
   try {
-    await provider.sendSms(to, body);
-    return { status: 'sent', channel: 'SMS' };
+    await provider.sendWhatsApp(to, body);
+    return { status: 'sent', channel: 'WHATSAPP' };
   } catch (err) {
     if (err instanceof MessagingConfigError) {
       return { status: 'skipped', reason: err.message };
     }
-    return { status: 'failed', channel: 'SMS', error: errText(err) };
+    return { status: 'failed', channel: 'WHATSAPP', error: errText(err) };
   }
 }
