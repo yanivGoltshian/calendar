@@ -6,6 +6,7 @@ import { Navbar, Footer, Container, Section, Button, Card, Badge } from '@/compo
 import { Reveal, Stagger, StaggerItem, FadeIn } from '@/components/motion';
 import { HeroVisual } from '@/components/landing/HeroVisual';
 import { FaqAccordion } from '@/components/landing/FaqAccordion';
+import InstallApp from '@/components/pwa/InstallApp';
 
 const m = t.marketing;
 
@@ -310,6 +311,17 @@ export default async function HomePage() {
                     )}
                   </div>
                 </div>
+              </div>
+            </Reveal>
+          </Container>
+        </Section>
+
+        {/* PWA INSTALL (platform) */}
+        <Section>
+          <Container>
+            <Reveal>
+              <div className="mx-auto max-w-2xl">
+                <InstallApp variant="platform" />
               </div>
             </Reveal>
           </Container>
