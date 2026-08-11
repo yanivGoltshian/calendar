@@ -37,10 +37,8 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
-  // מצב אימות / אישור
-  const [phase, setPhase] = useState<'phone' | 'code' | 'done'>('phone');
+  // מצב אישור הזמנת אורח (ללא OTP)
   const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -88,49 +86,10 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
     void loadSlots(next);
   }
 
-  async function requestCode() {
+  async function submitBooking() {
     setBusy(true);
     setError('');
     try {
-      const res = await fetch('/api/otp/request', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        if (res.status === 429) {
-          setError(typeof data.message === 'string' ? data.message : t.auth.tooManyRequests);
-        } else if (res.status >= 500) {
-          setError(typeof data.message === 'string' ? data.message : t.auth.sendFailed);
-        } else {
-          setError(t.auth.invalidPhone);
-        }
-        return;
-      }
-      setPhase('code');
-    } catch {
-      setError(t.common.error);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verifyAndBook() {
-    setBusy(true);
-    setError('');
-    try {
-      const verifyRes = await fetch('/api/otp/verify', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ phone, code, name }),
-      });
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok || !verifyData.ok) {
-        setError(t.auth.invalidCode);
-        return;
-      }
-
       const bookRes = await fetch('/api/book', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -140,10 +99,19 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
           serviceIds: selectedServiceIds,
           startAtUtc: selectedSlot?.startAtUtc,
           name,
+          phone,
         }),
       });
       const bookData = await bookRes.json();
       if (!bookRes.ok || !bookData.ok) {
+        if (bookRes.status === 429) {
+          setError(typeof bookData.message === 'string' ? bookData.message : t.auth.tooManyRequests);
+          return;
+        }
+        if (bookRes.status >= 500) {
+          setError(t.common.error);
+          return;
+        }
         const code = bookData.error;
         setError(
           code === 'slot_taken'
@@ -152,13 +120,16 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
               ? t.booking.tooEarly
               : code === 'too_far'
                 ? t.booking.tooFar
-                : t.common.error,
+                : code === 'invalid_phone'
+                  ? t.auth.invalidPhone
+                  : code === 'bad_request'
+                    ? t.booking.guestMissingFields
+                    : t.common.error,
         );
         return;
       }
       setConfirmedId(bookData.appointmentId);
       setBookedStatus(bookData.status === 'PENDING' ? 'PENDING' : 'CONFIRMED');
-      setPhase('done');
     } catch {
       setError(t.common.error);
     } finally {
@@ -167,7 +138,7 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
   }
 
   // ----- מסך הצלחה -----
-  if (phase === 'done' && confirmedId) {
+  if (confirmedId) {
     const isPending = bookedStatus === 'PENDING';
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
@@ -391,81 +362,39 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
         </div>
       ) : null}
 
-      {/* ----- שלב 5: אישור (OTP) ----- */}
+      {/* ----- שלב 5: אישור (הזמנת אורח, ללא OTP) ----- */}
       {step === 5 ? (
         <div className="space-y-4">
-          {phase === 'phone' ? (
-            <>
-              <p className="text-slate-600">{t.auth.phoneTitle}</p>
-              <div>
-                <label className="mb-1 block text-sm text-slate-600">{t.auth.nameLabel}</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t.auth.namePlaceholder}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm text-slate-600">{t.auth.phoneLabel}</label>
-                <input
-                  type="tel"
-                  inputMode="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder={t.auth.phonePlaceholder}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                />
-              </div>
-              <button
-                type="button"
-                disabled={busy || !phone || !name}
-                onClick={requestCode}
-                className="w-full rounded-xl bg-brand-600 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-40"
-              >
-                {busy ? t.common.loading : t.auth.sendCode}
-              </button>
-              {process.env.NODE_ENV !== 'production' ? (
-                <p className="text-center text-xs text-slate-400">{t.auth.devHint}</p>
-              ) : null}
-            </>
-          ) : null}
-
-          {phase === 'code' ? (
-            <>
-              <p className="text-slate-600">
-                {t.auth.codeSentTo} {phone}
-              </p>
-              <div>
-                <label className="mb-1 block text-sm text-slate-600">{t.auth.codeLabel}</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="------"
-                  maxLength={6}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-center text-2xl tracking-[0.5em]"
-                />
-              </div>
-              <button
-                type="button"
-                disabled={busy || code.length < 4}
-                onClick={verifyAndBook}
-                className="w-full rounded-xl bg-brand-600 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-40"
-              >
-                {busy ? t.common.loading : t.booking.confirmBooking}
-              </button>
-              <button
-                type="button"
-                onClick={() => setPhase('phone')}
-                className="w-full text-center text-sm text-slate-500 hover:text-slate-700"
-              >
-                {t.auth.resend}
-              </button>
-            </>
-          ) : null}
+          <p className="text-slate-600">{t.booking.guestHint}</p>
+          <div>
+            <label className="mb-1 block text-sm text-slate-600">{t.booking.guestName}</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t.booking.guestNamePlaceholder}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-slate-600">{t.booking.guestPhone}</label>
+            <input
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder={t.booking.guestPhonePlaceholder}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={busy || !phone || !name.trim()}
+            onClick={submitBooking}
+            className="w-full rounded-xl bg-brand-600 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-40"
+          >
+            {busy ? t.common.loading : t.booking.confirmBooking}
+          </button>
         </div>
       ) : null}
 
