@@ -33,7 +33,7 @@ param storageSizeGB int = 32
 param postgresVersion string = '16'
 
 @description('שם מסד הנתונים שייווצר')
-param databaseName string = 'booqi'
+param databaseName string = 'torchick'
 
 @description('ימי שמירת גיבוי')
 param backupRetentionDays int = 7

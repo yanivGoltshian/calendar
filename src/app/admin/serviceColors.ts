@@ -4,7 +4,7 @@
 export type ServiceColor = { bg: string; border: string; text: string };
 
 export const SERVICE_PALETTE: readonly ServiceColor[] = [
-  { bg: '#EDE9FE', border: '#7A37E0', text: '#4C1D95' }, // סגול מותג
+  { bg: '#E7ECF5', border: '#24406E', text: '#0A182D' }, // נייבי מותג
   { bg: '#FEF3C7', border: '#D99A26', text: '#78350F' }, // זהב
   { bg: '#DCFCE7', border: '#16A34A', text: '#14532D' }, // ירוק
   { bg: '#DBEAFE', border: '#2563EB', text: '#1E3A8A' }, // כחול
