@@ -10,6 +10,7 @@
     "lint": "next lint",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/server/providers/messaging.test.ts src/server/repos/rateLimitPolicy.test.ts",
     "gen:icons": "node scripts/gen-icons.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

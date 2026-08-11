@@ -184,6 +184,33 @@ flowchart TD
 openssl rand -hex 32
 ```
 
+### סודות שליחת הודעות (רק כאשר עולים מ-console לספק אמיתי)
+
+מוזרקים כ-secrets ב-Container App (`secretRef`) ומחווטים ב-`infra/modules/containerApp.bicep` באופן מותנה: כל עוד הערך ריק, לא נוצר סוד ולא מתווסף משתנה env, כך שפריסת `console` נשארת ללא שינוי.
+
+מתאם Twilio (`SMS_PROVIDER=twilio`):
+
+| שם | תיאור |
+|---|---|
+| `TWILIO_ACCOUNT_SID` | מזהה חשבון Twilio |
+| `TWILIO_AUTH_TOKEN` | טוקן אימות Twilio |
+
+מתאם שער ישראלי (`SMS_PROVIDER=httpgateway`):
+
+| שם | תיאור |
+|---|---|
+| `SMS_GATEWAY_TOKEN` | טוקן אימות לשער (מצב `bearer`/`header`) |
+| `SMS_GATEWAY_USERNAME` | שם משתמש לשער (מצב `basic`) |
+| `SMS_GATEWAY_PASSWORD` | סיסמה לשער (מצב `basic`) |
+
+הגדרת סוד ל-Container App בפרודקשן, למשל:
+```bash
+az containerapp secret set \
+  --name torchick-app-prod \
+  --resource-group torchick-prod-rg \
+  --secrets twilio-account-sid=ACxxxx twilio-auth-token=xxxx
+```
+
 ### סודות נוספים ל-GitHub Actions (שלב הפרישה המאושרת)
 
 | שם | תיאור |
@@ -199,7 +226,14 @@ openssl rand -hex 32
 | שם | ברירת מחדל | הערה |
 |---|---|---|
 | `BUSINESS_TIMEZONE` | `Asia/Jerusalem` | אזור זמן עסקי |
-| `SMS_PROVIDER` | `console` | ספק SMS. `console` להדפסה מקומית בפיתוח |
+| `SMS_PROVIDER` | `console` | ספק ההודעות: `console` (פיתוח), `twilio`, `httpgateway`. בפרודקשן חובה ספק אמיתי |
+| `TWILIO_MESSAGING_SERVICE_SID` / `TWILIO_FROM` | ריק | מקור שליחת SMS ב-Twilio (אחד מהם) |
+| `TWILIO_WHATSAPP_FROM` | ריק | מספר שולח ל-WhatsApp ב-Twilio |
+| `SMS_GATEWAY_PRESET` | ריק | preset לשער ישראלי: `019` או `inforu` |
+| `SMS_GATEWAY_ENDPOINT` / `_METHOD` / `_AUTH_MODE` / `_AUTH_HEADER` / `_FROM` / `_TO_FIELD` / `_TEXT_FIELD` / `_FROM_FIELD` / `_EXTRA_JSON` | ריק | תצורת שער HTTP לא-סודית (ראו `.env.example`) |
+| `OTP_COOLDOWN_SECONDS` | `60` | קול-דאון בין שליחות OTP לאותו טלפון |
+| `OTP_MAX_PER_PHONE_PER_DAY` | `8` | תקרת OTP יומית לכל טלפון |
+| `OTP_MAX_PER_IP_PER_DAY` | `30` | תקרת OTP יומית לכל IP |
 | `NEXT_PUBLIC_APP_URL` | `https://torchick.com` | **מוטמע בזמן build.** ראו הערה למטה |
 | `PORT` | `3000` | פורט האזנה |
 | `HOSTNAME` | `0.0.0.0` | האזנה על כל הממשקים בקונטיינר |

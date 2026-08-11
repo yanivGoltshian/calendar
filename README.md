@@ -63,8 +63,49 @@ npm run dev
 | `BUSINESS_TIMEZONE` | אזור זמן עסקי ברירת מחדל (IANA), למשל `Asia/Jerusalem` |
 | `SESSION_SECRET` | מפתח לחתימת עוגיית ההתחברות (מחרוזת אקראית ארוכה) |
 | `OTP_PEPPER` | "פלפל" להצפנת קודי OTP (מחרוזת אקראית ארוכה) |
-| `SMS_PROVIDER` | ספק ה-SMS; `console` להדפסה ללוג בפיתוח |
+| `SMS_PROVIDER` | ספק ההודעות: `console` (פיתוח), `twilio`, או `httpgateway` |
 | `NEXT_PUBLIC_APP_URL` | כתובת בסיס ציבורית של האפליקציה |
+
+### שליחת הודעות (SMS ו-WhatsApp)
+
+שכבת ההודעות תחת `src/server/providers/messaging.ts` בוחרת מתאם לפי `SMS_PROVIDER`.
+בפרודקשן חובה לבחור מתאם אמיתי; אם נשאר `console` או שחסרים קרדנשלס, שליחת ה-OTP נכשלת ברעש (שגיאה בלוג והודעת i18n גנרית ללקוח) ולא מתבצעת הצלחה שקטה.
+
+מתאם Twilio (`SMS_PROVIDER=twilio`) שולח SMS וגם WhatsApp:
+
+| משתנה | תיאור |
+| --- | --- |
+| `TWILIO_ACCOUNT_SID` | מזהה חשבון Twilio (סוד) |
+| `TWILIO_AUTH_TOKEN` | טוקן אימות Twilio (סוד) |
+| `TWILIO_MESSAGING_SERVICE_SID` | מזהה Messaging Service (או להשתמש ב-`TWILIO_FROM`) |
+| `TWILIO_FROM` | מספר שולח ל-SMS (אם אין Messaging Service) |
+| `TWILIO_WHATSAPP_FROM` | מספר שולח ל-WhatsApp (נופל חזרה ל-`TWILIO_FROM`) |
+
+מתאם שער ישראלי גנרי מבוסס HTTP (`SMS_PROVIDER=httpgateway`):
+
+| משתנה | תיאור |
+| --- | --- |
+| `SMS_GATEWAY_PRESET` | preset מוכן: `019` או `inforu` (קובע endpoint ו-payload) |
+| `SMS_GATEWAY_ENDPOINT` | כתובת ה-endpoint (דורש אם אין preset) |
+| `SMS_GATEWAY_METHOD` | שיטת HTTP (ברירת מחדל `POST`) |
+| `SMS_GATEWAY_AUTH_MODE` | מצב אימות: `bearer`, `basic`, `header`, `none` |
+| `SMS_GATEWAY_TOKEN` | טוקן אימות (סוד; ל-`bearer`/`header`) |
+| `SMS_GATEWAY_USERNAME` | שם משתמש (סוד; ל-`basic`) |
+| `SMS_GATEWAY_PASSWORD` | סיסמה (סוד; ל-`basic`) |
+| `SMS_GATEWAY_AUTH_HEADER` | שם כותרת אימות מותאם (ל-`header`) |
+| `SMS_GATEWAY_FROM` | מזהה/שם השולח |
+| `SMS_GATEWAY_TO_FIELD` | שם שדה היעד ב-payload (ברירת מחדל `to`) |
+| `SMS_GATEWAY_TEXT_FIELD` | שם שדה הטקסט ב-payload (ברירת מחדל `text`) |
+| `SMS_GATEWAY_FROM_FIELD` | שם שדה השולח ב-payload (ברירת מחדל `from`) |
+| `SMS_GATEWAY_EXTRA_JSON` | JSON נוסף שממוזג ל-payload (מחרוזת JSON) |
+
+הגבלת קצב של בקשות OTP (הגנה מפני ניצול לרעה ועלויות):
+
+| משתנה | תיאור |
+| --- | --- |
+| `OTP_COOLDOWN_SECONDS` | קול-דאון בין שליחות חוזרות לאותו טלפון (ברירת מחדל 60) |
+| `OTP_MAX_PER_PHONE_PER_DAY` | תקרת בקשות ליום לכל טלפון (ברירת מחדל 8) |
+| `OTP_MAX_PER_IP_PER_DAY` | תקרת בקשות ליום לכל IP (ברירת מחדל 30) |
 
 ## סקריפטים שימושיים
 

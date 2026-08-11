@@ -99,7 +99,13 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(t.auth.invalidPhone);
+        if (res.status === 429) {
+          setError(typeof data.message === 'string' ? data.message : t.auth.tooManyRequests);
+        } else if (res.status >= 500) {
+          setError(typeof data.message === 'string' ? data.message : t.auth.sendFailed);
+        } else {
+          setError(t.auth.invalidPhone);
+        }
         return;
       }
       setPhase('code');
@@ -420,7 +426,9 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
               >
                 {busy ? t.common.loading : t.auth.sendCode}
               </button>
-              <p className="text-center text-xs text-slate-400">{t.auth.devHint}</p>
+              {process.env.NODE_ENV !== 'production' ? (
+                <p className="text-center text-xs text-slate-400">{t.auth.devHint}</p>
+              ) : null}
             </>
           ) : null}
 
