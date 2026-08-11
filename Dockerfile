@@ -19,7 +19,9 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+# npm install (ולא npm ci) כי תלות wasm אופציונלית של sharp נגזמת בפלטפורמה המקומית
+# ונדרשת רק על linux-musl בזמן הבנייה; install מפייס את העץ לפלטפורמת היעד
+RUN npm install --no-audit --no-fund
 
 # ---------- שלב 2: בנייה ----------
 FROM node:20-alpine AS builder
