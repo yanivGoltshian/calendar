@@ -1,18 +1,21 @@
 /**
  * מותג המוצר — מרוכז כאן בלבד.
  *
- * שם המוצר הסופי נקבע בנפרד. אין להטמיע שם קבוע בקוד; יש להשתמש ב-BRAND.name
- * בכל מקום (כותרות דפים, כותרת עליונה, manifest של ה-PWA, מיילים וכו').
- * החלפת השם בעתיד = שינוי שורה אחת כאן.
+ * יש להשתמש ב-BRAND.name בכל מקום (כותרות דפים, כותרת עליונה,
+ * manifest של ה-PWA, מיילים וכו') ולא להטמיע את השם ידנית.
  */
 export const BRAND = {
-  /** שם זמני (placeholder) — יוחלף כשייקבע השם הסופי */
-  name: 'Booqi',
-  /** תיאור קצר / סלוגן — ריק בינתיים */
-  tagline: '',
-  /** צבע המותג הראשי (משמש גם ב-PWA manifest וב-theme-color) */
-  themeColor: '#7a37e0',
-  backgroundColor: '#ffffff',
+  /** שם המותג להצגה (עברית) */
+  name: 'תור צ׳יק',
+  /** מזהה לטיני למטא-דאטה, קבצים וקוד */
+  latinName: 'Torchick',
+  /** סלוגן קצר */
+  tagline: 'להזמין תור בצ׳יק',
+  /** דומיין ראשי */
+  domain: 'torchick.com',
+  /** צבע המותג הראשי — נייבי (משמש גם ב-PWA manifest וב-theme-color) */
+  themeColor: '#0A182D',
+  backgroundColor: '#FAF8F5',
 } as const;
 
 export type Brand = typeof BRAND;
