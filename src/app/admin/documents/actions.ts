@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { issueCreditNote } from '@/server/repos/documents';
 
 /**
@@ -24,7 +24,7 @@ export async function issueCreditNoteAction(formData: FormData): Promise<void> {
   });
   if (!parsed.success) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
 
   const credit = await issueCreditNote(business.id, parsed.data.documentId, {

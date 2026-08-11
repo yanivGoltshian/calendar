@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { createProduct, updateProduct, setProductActive } from '@/server/repos/products';
 import { shekelsToAgorot } from '@/lib/money';
 
@@ -49,7 +49,7 @@ export async function saveProductAction(
     return { ok: false, mode, error };
   }
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, mode, error: 'generic' };
 
   const data = parsed.data;
@@ -82,7 +82,7 @@ export async function toggleProductActiveAction(formData: FormData): Promise<voi
   const active = String(formData.get('active') ?? '') === '1';
   if (!id) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
 
   await setProductActive(business.id, id, active);

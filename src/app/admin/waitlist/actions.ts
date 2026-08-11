@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   addWaitlistEntry,
   notifyWaitlistEntry,
@@ -48,7 +48,7 @@ export async function addWaitlistAction(
     return { ok: false, error };
   }
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'generic' };
 
   await addWaitlistEntry(business.id, {
@@ -70,7 +70,7 @@ async function withBusiness(
 ) {
   const id = String(formData.get('id') ?? '').trim();
   if (!id) return;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await fn(business.id, id);
   revalidatePath('/admin/waitlist');

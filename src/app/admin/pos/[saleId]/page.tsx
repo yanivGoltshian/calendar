@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { PaymentMethod, SaleStatus, DocumentType } from '@prisma/client';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { getSaleWithDetails } from '@/server/repos/sales';
 import { listActiveProducts } from '@/server/repos/products';
 import { listServices } from '@/server/repos/services';
@@ -77,7 +77,7 @@ const subtleBtn =
 
 export default async function SaleEditorPage({ params }: Props) {
   const { saleId } = await params;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const sale = await getSaleWithDetails(business.id, saleId);

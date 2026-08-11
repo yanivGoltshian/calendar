@@ -65,6 +65,12 @@ npm run dev
 | `OTP_PEPPER` | "פלפל" להצפנת קודי OTP (מחרוזת אקראית ארוכה) |
 | `MESSAGING_PROVIDER` | ספק ההודעות: `console` (פיתוח) או `whatsapp-cloud` (פרודקשן). תאימות לאחור ל-`SMS_PROVIDER` |
 | `NEXT_PUBLIC_APP_URL` | כתובת בסיס ציבורית של האפליקציה |
+| `NEXTAUTH_SECRET` | סוד לחתימת ה-JWT של כניסת הבעלים (NextAuth). חובה בפרודקשן |
+| `NEXTAUTH_URL` | כתובת בסיס ל-callbacks של NextAuth, למשל `https://torchick.com` |
+| `GOOGLE_CLIENT_ID` | מזהה לקוח של Google OAuth. ריק = כפתור Google מוסתר |
+| `GOOGLE_CLIENT_SECRET` | סוד לקוח של Google OAuth. ריק = כפתור Google מוסתר |
+| `EMAIL_SERVER` | חיבור SMTP ל-magic-link (אופציונלי, מושבת כברירת מחדל) |
+| `EMAIL_FROM` | כתובת שולח ל-magic-link (אופציונלי) |
 
 ### שליחת הודעות (WhatsApp)
 

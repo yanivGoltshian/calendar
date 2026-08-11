@@ -82,9 +82,15 @@ export function Navbar({ demoSlug }: { demoSlug?: string }) {
             href="/login"
             className="text-sm font-medium text-sand-600 transition-colors hover:text-brand-700 dark:text-sand-300 dark:hover:text-brand-200"
           >
+            {t.marketing.nav.clientLogin}
+          </Link>
+          <Link
+            href="/business/login"
+            className="text-sm font-medium text-sand-600 transition-colors hover:text-brand-700 dark:text-sand-300 dark:hover:text-brand-200"
+          >
             {t.marketing.nav.login}
           </Link>
-          <Button href="/admin" size="sm">
+          <Button href="/business/new" size="sm">
             {t.marketing.nav.cta}
           </Button>
         </div>
@@ -149,10 +155,13 @@ export function Navbar({ demoSlug }: { demoSlug?: string }) {
                 </a>
               )}
               <div className="mt-3 flex flex-col gap-2 border-t border-sand-200/70 pt-4 dark:border-sand-800/70">
-                <Button href="/login" variant="secondary" size="md" onClick={() => setOpen(false)}>
+                <Button href="/login" variant="ghost" size="md" onClick={() => setOpen(false)}>
+                  {t.marketing.nav.clientLogin}
+                </Button>
+                <Button href="/business/login" variant="secondary" size="md" onClick={() => setOpen(false)}>
                   {t.marketing.nav.login}
                 </Button>
-                <Button href="/admin" size="md" onClick={() => setOpen(false)}>
+                <Button href="/business/new" size="md" onClick={() => setOpen(false)}>
                   {t.marketing.nav.cta}
                 </Button>
               </div>

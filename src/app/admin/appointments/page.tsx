@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   getBusinessAppointments,
   type BusinessAppointmentsOptions,
@@ -69,7 +69,7 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const tab: Tab = sp.tab === 'pending' || sp.tab === 'all' ? sp.tab : 'upcoming';
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const tz = business.timezone;

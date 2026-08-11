@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { getDocument } from '@/server/repos/documents';
 import type { DocumentType, PaymentMethod } from '@prisma/client';
 import { formatAgorot } from '@/lib/money';
@@ -36,7 +36,7 @@ const printCss =
 
 export default async function DocumentDetailPage({ params }: Props) {
   const { id } = await params;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const doc = await getDocument(business.id, id);

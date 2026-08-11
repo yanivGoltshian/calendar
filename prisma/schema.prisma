@@ -165,6 +165,10 @@ model Business {
   ownerId String?
   owner   User?   @relation("BusinessOwner", fields: [ownerId], references: [id])
 
+  // בעלות דרך NextAuth (Google/מייל): מזהה הבעלים לפי כתובת המייל המאומתת.
+  // עמודה אדיטיבית בלבד; אינה נוגעת במודל User (שמבוסס טלפון) ואינה דורסת נתונים.
+  ownerEmail String?
+
   settings        BusinessSettings?
   staff           StaffMember[]
   services        Service[]
@@ -187,6 +191,7 @@ model Business {
   lowStockAlerts LowStockAlert[]
 
   @@index([slug])
+  @@index([ownerEmail])
 }
 
 model BusinessSettings {

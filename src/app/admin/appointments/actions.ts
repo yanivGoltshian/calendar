@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   getAppointmentById,
   updateAppointmentStatus,
@@ -14,7 +14,7 @@ import {
 
 async function assertBelongsToBusiness(id: string): Promise<boolean> {
   if (!id) return false;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return false;
   const appt = await getAppointmentById(id);
   return appt?.businessId === business.id;

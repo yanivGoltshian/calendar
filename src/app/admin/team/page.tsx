@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { listAllStaff, getStaffMemberById } from '@/server/repos/staff';
 import { displayPhone } from '@/lib/crypto';
 import StaffForm, { type StaffFormValues } from './StaffForm';
@@ -17,7 +17,7 @@ type Props = {
 
 export default async function AdminTeamPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const staff = await listAllStaff(business.id);

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   createCampaign,
   sendCampaign,
@@ -38,7 +38,7 @@ export async function createCampaignAction(
     return { ok: false, error };
   }
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'generic' };
 
   // הגנה נוספת: ודא שהסגמנט מוכר.
@@ -61,7 +61,7 @@ export async function sendCampaignAction(formData: FormData): Promise<void> {
   const id = String(formData.get('id') ?? '').trim();
   if (!id) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
 
   await sendCampaign(business.id, id);

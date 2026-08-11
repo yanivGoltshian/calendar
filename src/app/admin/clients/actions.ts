@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { createClient, updateClient, setClientBlocked } from '@/server/repos/clients';
 import { isValidIsraeliMobile } from '@/lib/crypto';
 
@@ -43,7 +43,7 @@ export async function saveClientAction(
     return { ok: false, mode, error };
   }
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, mode, error: 'generic' };
 
   const data = parsed.data;
@@ -79,7 +79,7 @@ export async function toggleClientBlockedAction(formData: FormData): Promise<voi
   const blocked = String(formData.get('blocked') ?? '') === '1';
   if (!id) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
 
   await setClientBlocked(business.id, id, blocked);

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { listStaff } from '@/server/repos/staff';
 import { listServices } from '@/server/repos/services';
 import { getAppointmentsForBusinessRange } from '@/server/repos/appointments';
@@ -53,7 +53,7 @@ function dayMonthLabel(dateStr: string): string {
 
 export default async function AdminCalendarPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const tz = business.timezone;

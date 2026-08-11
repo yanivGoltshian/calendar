@@ -70,6 +70,27 @@ param messagingProvider string = 'console'
 @description('כתובת בסיס ציבורית של האפליקציה')
 param appPublicUrl string
 
+@description('סוד לחתימת ה-JWT של NextAuth (כניסת בעלים). ריק = לא מוגדר')
+@secure()
+param nextAuthSecret string = ''
+
+@description('כתובת בסיס ל-callbacks של NextAuth (ריק = נגזר מ-appPublicUrl)')
+param nextAuthUrl string = ''
+
+@description('מזהה לקוח Google OAuth (ריק = כפתור Google מוסתר)')
+param googleClientId string = ''
+
+@description('סוד לקוח Google OAuth (ריק = כפתור Google מוסתר)')
+@secure()
+param googleClientSecret string = ''
+
+@description('חיבור SMTP ל-magic-link (אופציונלי, ריק = מושבת)')
+@secure()
+param emailServer string = ''
+
+@description('כתובת שולח ל-magic-link (אופציונלי)')
+param emailFrom string = ''
+
 @description('תגיות משאב')
 param tags object = {}
 
@@ -114,6 +135,68 @@ var registrySecret = [
   }
 ]
 
+// סודות NextAuth — נוספים רק כשהערך קיים (אדיטיבי, לא שובר פריסות קיימות).
+var authSecrets = concat(
+  empty(nextAuthSecret) ? [] : [
+    {
+      name: 'nextauth-secret'
+      value: nextAuthSecret
+    }
+  ],
+  empty(googleClientSecret) ? [] : [
+    {
+      name: 'google-client-secret'
+      value: googleClientSecret
+    }
+  ],
+  empty(emailServer) ? [] : [
+    {
+      name: 'email-server'
+      value: emailServer
+    }
+  ]
+)
+
+// משתני סביבה של NextAuth — נפלטים רק כשהערך קיים (degrade gracefully).
+var authEnv = concat(
+  empty(nextAuthSecret) ? [] : [
+    {
+      name: 'NEXTAUTH_SECRET'
+      secretRef: 'nextauth-secret'
+    }
+  ],
+  [
+    {
+      name: 'NEXTAUTH_URL'
+      value: empty(nextAuthUrl) ? appPublicUrl : nextAuthUrl
+    }
+  ],
+  empty(googleClientId) ? [] : [
+    {
+      name: 'GOOGLE_CLIENT_ID'
+      value: googleClientId
+    }
+  ],
+  empty(googleClientSecret) ? [] : [
+    {
+      name: 'GOOGLE_CLIENT_SECRET'
+      secretRef: 'google-client-secret'
+    }
+  ],
+  empty(emailServer) ? [] : [
+    {
+      name: 'EMAIL_SERVER'
+      secretRef: 'email-server'
+    }
+  ],
+  empty(emailFrom) ? [] : [
+    {
+      name: 'EMAIL_FROM'
+      value: emailFrom
+    }
+  ]
+)
+
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
@@ -137,7 +220,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           }
         ]
       }
-      secrets: concat(baseSecrets, messagingSecrets, useRegistryAuth ? registrySecret : [])
+      secrets: concat(baseSecrets, messagingSecrets, authSecrets, useRegistryAuth ? registrySecret : [])
       registries: useRegistryAuth ? [
         {
           server: registryServer
@@ -188,7 +271,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'HOSTNAME'
               value: '0.0.0.0'
             }
-          ], messagingSecretEnv, messagingConfigEnv)
+          ], messagingSecretEnv, messagingConfigEnv, authEnv)
         }
       ]
       scale: {

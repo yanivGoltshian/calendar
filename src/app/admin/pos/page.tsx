@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import type { PaymentMethod } from '@prisma/client';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { listSales, getRegisterSummary, type SaleFilter } from '@/server/repos/sales';
 import { formatAgorot } from '@/lib/money';
 import {
@@ -52,7 +52,7 @@ const STATUS_CLASS: Record<string, string> = {
 
 export default async function AdminPosPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const tab: SaleFilter =

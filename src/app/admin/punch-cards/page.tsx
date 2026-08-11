@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { listPunchCards } from '@/server/repos/punchCards';
 import { listClients } from '@/server/repos/clients';
 import { listServices } from '@/server/repos/services';
@@ -30,7 +30,7 @@ const FILTERS: (PunchCardStatus | 'all')[] = ['all', 'ACTIVE', 'COMPLETED', 'CAN
 
 export default async function AdminPunchCardsPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const p = t.admin.punchCardsModule;

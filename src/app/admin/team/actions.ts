@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   createStaffMember,
   updateStaffMember,
@@ -64,7 +64,7 @@ export async function saveStaffAction(
     return { ok: false, mode, error: 'phone' };
   }
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, mode, error: 'generic' };
 
   const input: StaffInput = {
@@ -94,7 +94,7 @@ export async function toggleStaffActiveAction(formData: FormData): Promise<void>
   const id = String(formData.get('id') ?? '').trim();
   if (!id) return;
   const active = checkbox(formData, 'active');
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await setStaffActive(business.id, id, active);
   revalidatePath('/admin/team');
@@ -104,7 +104,7 @@ export async function toggleStaffActiveAction(formData: FormData): Promise<void>
 export async function deleteStaffAction(formData: FormData): Promise<void> {
   const id = String(formData.get('id') ?? '').trim();
   if (!id) return;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await deleteStaffMember(business.id, id);
   revalidatePath('/admin/team');
