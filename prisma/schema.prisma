@@ -1,0 +1,759 @@
+// Prisma schema — פלטפורמת קביעת תורים (MVP)
+// מוסכמות: כסף באגורות (Int), משכים בדקות (Int), חותמות זמן ב-UTC.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  CLIENT
+  STAFF
+  OWNER
+  ADMIN
+}
+
+enum StaffPermission {
+  CALENDAR_ONLY // צוות: גישה ליומן בלבד
+  MANAGER // ניהול מלא של העסק
+}
+
+enum AppointmentStatus {
+  PENDING // ממתין לאישור עסק
+  CONFIRMED // מאושר
+  ARRIVED // הגיע
+  CANCELLED // בוטל
+  DONE // הושלם
+  NO_SHOW // הברזה
+}
+
+enum ReminderChannel {
+  SMS
+  PUSH
+  EMAIL
+}
+
+enum ReminderStatus {
+  SCHEDULED
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum WorkingHoursScope {
+  BUSINESS
+  STAFF
+}
+
+// סוג העסק — לשימוש בהתאמת חוויית ה-onboarding והתצוגה הציבורית.
+enum BusinessType {
+  BARBERSHOP // מספרה לגברים
+  HAIR_SALON // עיצוב שיער
+  NAILS // מניקור ופדיקור
+  BEAUTY_COSMETICS // קוסמטיקה וטיפוח
+  SPA_MASSAGE // ספא ועיסוי
+  BROWS_LASHES // גבות וריסים
+  TATTOO_PIERCING // קעקועים ופירסינג
+  CLINIC // מרפאה ורפואה משלימה
+  FITNESS // כושר ואימון אישי
+  OTHER // אחר
+}
+
+enum WaitlistStatus {
+  WAITING // ממתין
+  NOTIFIED // נשלחה הודעה
+  BOOKED // הוזמן
+  CANCELLED // בוטל
+  EXPIRED // פג תוקף
+}
+
+enum PunchCardStatus {
+  ACTIVE // פעילה
+  COMPLETED // נוצלה
+  EXPIRED // פגה
+  CANCELLED // בוטלה
+}
+
+// ---------- קופה ומכירות (אפוסים J+K) ----------
+
+// מצב עסקה בקופה
+enum SaleStatus {
+  OPEN // פתוחה (סל פעיל)
+  COMPLETED // הושלמה ושולמה
+  VOIDED // בוטלה
+  REFUNDED // זוכתה
+}
+
+// אמצעי תשלום
+enum PaymentMethod {
+  CASH // מזומן
+  CARD // כרטיס אשראי
+  BIT // ביט
+  BANK_TRANSFER // העברה בנקאית
+  OTHER // אחר
+}
+
+// סוג פריט בעסקה
+enum SaleItemKind {
+  PRODUCT // מוצר
+  SERVICE // שירות
+  CUSTOM // פריט חופשי
+}
+
+// סוג מסמך חשבונאי
+enum DocumentType {
+  RECEIPT // קבלה
+  TAX_INVOICE // חשבונית מס
+  INVOICE_RECEIPT // חשבונית מס-קבלה
+  CREDIT_NOTE // חשבונית זיכוי
+}
+
+// סטטוס קמפיין דיוור SMS.
+enum CampaignStatus {
+  DRAFT // טיוטה
+  SENDING // בשליחה
+  SENT // נשלח
+  FAILED // נכשל
+}
+
+// תוצאת שליחת הודעת דיוור בודדת.
+enum MessageStatus {
+  SENT // נשלח
+  FAILED // נכשל
+}
+
+// סוג תנועת מלאי (אפוס L — מלאי בסיסי). enum חדש ונפרד, ללא נגיעה ב-enums קיימים.
+enum StockMovementType {
+  PURCHASE // קליטת סחורה / רכש (כניסה)
+  SALE // מכירה בקופה (יציאה, ניכוי אוטומטי)
+  ADJUSTMENT // תיקון ידני / ספירת מלאי
+  RETURN // החזרה (כניסה)
+}
+
+// ---------- Core ----------
+
+model Business {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  name          String
+  description   String?
+  address       String?
+  phone         String?
+  instagramUrl  String?
+  logoUrl       String?
+  coverImageUrl String?
+  timezone      String        @default("Asia/Jerusalem")
+  type          BusinessType?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  ownerId String?
+  owner   User?   @relation("BusinessOwner", fields: [ownerId], references: [id])
+
+  settings        BusinessSettings?
+  staff           StaffMember[]
+  services        Service[]
+  workingHours    WorkingHours[]
+  appointments    Appointment[]
+  clients         Client[]
+  waitlistEntries WaitlistEntry[]
+  punchCards      PunchCard[]
+  campaigns       Campaign[]
+  messageLogs     MessageLog[]
+
+  // מודול קופה ומסמכים (אפוסים J+K) — קשרים אדיטיביים
+  products  Product[]
+  sales     Sale[]
+  documents Document[]
+
+  // מודול מלאי (אפוס L) — קשרים אדיטיביים
+  stockLevels    StockLevel[]
+  stockMovements StockMovement[]
+  lowStockAlerts LowStockAlert[]
+
+  @@index([slug])
+}
+
+model BusinessSettings {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // מדיניות הזמנות
+  minLeadTimeMinutes      Int @default(120) // זמן מינימלי מראש להזמנה
+  cancellationWindowHours Int @default(24) // חלון ביטול לפני התור
+  slotGranularityMinutes  Int @default(15) // רזולוציית משבצות הזמן
+  maxAdvanceBookingDays   Int @default(60) // עד כמה ימים קדימה ניתן להזמין
+
+  // האם תור חדש דורש אישור עסק (נשאר PENDING עד אישור)
+  bookingRequiresApproval Boolean @default(true)
+  // כמה שעות לפני התור לשלוח תזכורת
+  reminderLeadHours       Int     @default(24)
+  // מדיניות/הודעה חופשית לתצוגה ללקוח
+  policyText              String?
+
+  // מתגי שקיפות בעמוד הציבורי (ברירת מחדל: הצג). נוספו במודול ההגדרות.
+  showPricesPublic   Boolean @default(true) // הצגת מחירים
+  showDurationPublic Boolean @default(true) // הצגת משך טיפול
+  showStaffPublic    Boolean @default(true) // הצגת נותני שירות
+
+  // טקסטים מותאמים ללקוח. נוספו במודול ההגדרות.
+  welcomeMessage      String? // הודעת פתיחה בעמוד ההזמנה
+  confirmationMessage String? // הודעה לאחר קביעת תור
+
+  // תצורת תזכורות ואישורים. נוספו במודול ההגדרות.
+  remindersEnabled     Boolean         @default(true) // הפעלת תזכורות
+  reminderChannel      ReminderChannel @default(SMS) // ערוץ שליחת התזכורת
+  confirmationRequired Boolean         @default(false) // בקשת אישור הגעה מהלקוח
+
+  // מצב אונבורדינג — האם ההקמה הראשונית הושלמה. נוסף במודול ההקמה.
+  onboardingCompleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id             String   @id @default(cuid())
+  phone          String   @unique
+  name           String?
+  role           Role     @default(CLIENT)
+  // מזהים רגישים נשמרים כ-hash בלבד (למשל ת"ז) — לא בשימוש ב-MVP אך שמור מראש
+  nationalIdHash String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ownedBusinesses  Business[]    @relation("BusinessOwner")
+  staffMemberships StaffMember[]
+  clientProfiles   Client[]
+}
+
+model StaffMember {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  displayName     String
+  title           String?
+  bio             String?
+  avatarUrl       String?
+  permissionLevel StaffPermission @default(CALENDAR_ONLY)
+  active          Boolean         @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workingHours    WorkingHours[]
+  appointments    Appointment[]
+  serviceLinks    ServiceStaff[]
+  waitlistEntries WaitlistEntry[]
+
+  sales Sale[] // מודול קופה — קשר אדיטיבי (מי הפעיל את הקופה)
+
+  @@unique([businessId, userId])
+  @@index([businessId])
+}
+
+model Service {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name         String
+  description  String?
+  durationMin  Int
+  priceAgorot  Int
+  hidePrice    Boolean @default(false)
+  hideDuration Boolean @default(false)
+  hidden       Boolean @default(false) // הסתרה מהעמוד הציבורי
+  sortOrder    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointmentServices AppointmentService[]
+  staffLinks          ServiceStaff[]
+  waitlistEntries     WaitlistEntry[]
+  punchCards          PunchCard[]
+
+  @@index([businessId])
+}
+
+// שעות עבודה — משויכות לעסק (ברירת מחדל) או לאיש צוות ספציפי.
+model WorkingHours {
+  id         String            @id @default(cuid())
+  scope      WorkingHoursScope
+  businessId String?
+  business   Business?         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staffId    String?
+  staff      StaffMember?      @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  weekday     Int // 0=ראשון ... 6=שבת
+  startMinute Int // דקות מתחילת היום (מקומי)
+  endMinute   Int
+  // הפסקות ביום, כמערך זוגות דקות: [[start,end], ...]
+  breaks      Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([staffId, weekday])
+  @@index([businessId, weekday])
+}
+
+model Client {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  name    String
+  phone   String
+  email   String?
+  notes   String?
+  blocked Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments    Appointment[]
+  waitlistEntries WaitlistEntry[]
+  punchCards      PunchCard[]
+  messageLogs     MessageLog[]
+
+  sales Sale[] // מודול קופה — קשר אדיטיבי
+
+  @@unique([businessId, phone])
+  @@index([businessId])
+}
+
+model Appointment {
+  id         String      @id @default(cuid())
+  businessId String
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  staffId    String
+  staff      StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  startAt          DateTime // UTC
+  endAt            DateTime // UTC
+  status           AppointmentStatus @default(PENDING)
+  totalPriceAgorot Int               @default(0)
+  notes            String?
+  confirmedAt      DateTime?
+  cancelledAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services      AppointmentService[]
+  reminders     Reminder[]
+  confirmations ReminderConfirmation[]
+
+  sales Sale[] // מודול קופה — קשר אדיטיבי
+
+  @@index([businessId, startAt])
+  @@index([staffId, startAt])
+}
+
+// טבלת קישור בין תור לשירותים (תור יכול לכלול כמה שירותים)
+model AppointmentService {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  serviceId     String
+  service       Service     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  // צילום מצב של הנתונים בזמן ההזמנה
+  nameSnapshot        String
+  durationMinSnapshot Int
+  priceAgorotSnapshot Int
+
+  @@unique([appointmentId, serviceId])
+  @@index([serviceId])
+}
+
+model Reminder {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  sendAt  DateTime // UTC
+  channel ReminderChannel @default(SMS)
+  status  ReminderStatus  @default(SCHEDULED)
+  sentAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, sendAt])
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([phone, expiresAt])
+}
+
+// ---------- קישור שירות ↔ איש צוות (m2m) ----------
+model ServiceStaff {
+  id        String      @id @default(cuid())
+  serviceId String
+  service   Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([serviceId, staffId])
+  @@index([staffId])
+}
+
+// ---------- אישור תזכורת ע"י הלקוח ----------
+model ReminderConfirmation {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  channel     ReminderChannel @default(SMS)
+  token       String          @unique @default(cuid()) // מזהה ייחודי לקישור האישור
+  confirmed   Boolean         @default(false)
+  confirmedAt DateTime?
+  respondedAt DateTime?
+  response    String? // תגובת הלקוח הגולמית
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([appointmentId])
+}
+
+// ---------- רשימת המתנה (schema בלבד — ללא לוגיקה ב-MVP) ----------
+model WaitlistEntry {
+  id         String       @id @default(cuid())
+  businessId String
+  business   Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  serviceId  String?
+  service    Service?     @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  staffId    String?
+  staff      StaffMember? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  clientId   String?
+  client     Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // פרטי קשר (למקרה שאין רשומת לקוח מקושרת)
+  name  String
+  phone String
+
+  // חלון זמן מבוקש
+  desiredDate    String? // YYYY-MM-DD (מקומי)
+  earliestMinute Int? // דקות מתחילת היום
+  latestMinute   Int?
+  note           String?
+
+  status     WaitlistStatus @default(WAITING)
+  notifiedAt DateTime? // מתי נשלחה הודעת עדכון ללקוח
+  promotedAt DateTime? // מתי קודם ידנית (הוזמן) מהרשימה
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([businessId, status])
+}
+
+// ---------- כרטיסייה (schema בלבד — ללא לוגיקה ב-MVP) ----------
+model PunchCard {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId  String?
+  service    Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  totalPunches Int // מספר הכניסות בכרטיסייה
+  usedPunches  Int       @default(0)
+  priceAgorot  Int? // מחיר הכרטיסייה (אם נמכרה)
+  expiresAt    DateTime?
+  title        String? // כותרת/תיאור הכרטיסייה (למשל "כרטיסיית 10 תספורות")
+  note         String? // הערה חופשית
+  lastPunchAt  DateTime? // מתי בוצע הניקוב האחרון
+  completedAt  DateTime? // מתי נוצלה במלואה
+
+  status    PunchCardStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([businessId, status])
+  @@index([clientId])
+}
+
+// ==========================================================================
+// מודול קופה, מכירות ומסמכים (אפוסים J+K)
+// כל המודלים אדיטיביים. כסף באגורות (Int). מספור מסמכים רץ לכל עסק+סוג.
+// ==========================================================================
+
+// מוצר — הגדרה מינימלית ונקייה. הבעלות על המודל היא של מודול הקופה,
+// אך מודול המלאי (Wave 3) יסתעף ויוסיף שדות/מודלים בתוספת אדיטיבית בלבד.
+// אין כאן לוגיקת ספירת מלאי או תנועות מלאי.
+model Product {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name        String
+  sku         String? // מק"ט (אופציונלי)
+  priceAgorot Int // מחיר מכירה באגורות (כולל מע"מ)
+  category    String? // קטגוריה (אופציונלי)
+  active      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  saleItems SaleItem[]
+
+  // מודול מלאי (אפוס L) — קשרים חוזרים אדיטיביים בלבד (ללא שינוי שדות קיימים)
+  stockLevel     StockLevel?
+  stockMovements StockMovement[]
+  lowStockAlerts LowStockAlert[]
+
+  @@index([businessId])
+}
+
+// עסקה בקופה — משמשת כסל פעיל (OPEN) עד לסגירה.
+model Sale {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // קישורים אופציונליים ללקוח, לתור ולאיש הצוות שהפעיל את הקופה
+  clientId      String?
+  client        Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  staffId       String?
+  staff         StaffMember? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+
+  status SaleStatus @default(OPEN)
+
+  // סכומים באגורות
+  subtotalAgorot Int @default(0) // סכום הפריטים לפני הנחה
+  discountAgorot Int @default(0) // הנחה כוללת על העסקה
+  totalAgorot    Int @default(0) // סך לתשלום (subtotal - discount)
+  paidAgorot     Int @default(0) // סך ששולם בפועל
+
+  note     String?
+  closedAt DateTime? // מועד סגירת העסקה
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     SaleItem[]
+  payments  Payment[]
+  documents Document[]
+
+  @@index([businessId, status])
+  @@index([businessId, createdAt])
+  @@index([clientId])
+  @@index([appointmentId])
+}
+
+// פריט בעסקה — צילום מצב של המחיר/השם בזמן המכירה.
+// productId מקושר למודל Product (בבעלותי). serviceId נשמר כמזהה רך (snapshot)
+// כדי לא לגעת במודל השירותים שבבעלות מודול אחר.
+model SaleItem {
+  id     String @id @default(cuid())
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  kind      SaleItemKind @default(PRODUCT)
+  productId String?
+  product   Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  serviceId String? // הפניה רכה לשירות (ללא FK) — נשמר כ-snapshot
+
+  nameSnapshot    String // שם הפריט בזמן המכירה
+  quantity        Int    @default(1)
+  unitPriceAgorot Int // מחיר יחידה באגורות
+  lineTotalAgorot Int // סך השורה (quantity * unitPrice)
+
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// תשלום כנגד עסקה — עסקה יכולה לכלול כמה תשלומים (תשלום מפוצל).
+model Payment {
+  id     String @id @default(cuid())
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  method       PaymentMethod @default(CASH)
+  amountAgorot Int // סכום התשלום באגורות
+  reference    String? // אסמכתא (4 ספרות אחרונות, מספר עסקת ביט וכו')
+
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+}
+
+// מסמך חשבונאי דיגיטלי (קבלה / חשבונית מס / זיכוי) עם מספור רץ.
+// המספר הרץ (serialNumber) ייחודי לכל עסק+סוג ומוקצה בתוך טרנזקציה.
+model Document {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  saleId     String?
+  sale       Sale?    @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
+  type           DocumentType
+  serialNumber   Int // מספר רץ פנימי לכל עסק+סוג
+  documentNumber String // מספר תצוגה, למשל "INV-00001"
+
+  // צילום פרטי הלקוח בזמן ההפקה
+  clientName  String?
+  clientPhone String?
+
+  // סכומים באגורות (מע"מ מגולם בתוך הסכום)
+  subtotalAgorot Int // לפני מע"מ
+  vatRateBps     Int @default(1800) // שיעור מע"מ ב-basis points (1800 = 18%)
+  vatAgorot      Int // רכיב המע"מ
+  totalAgorot    Int // סך הכול כולל מע"מ
+
+  // עבור זיכוי — קישור למסמך המקורי שמזוכה
+  relatedDocumentId String?
+  relatedDocument   Document?  @relation("DocumentCredits", fields: [relatedDocumentId], references: [id], onDelete: SetNull)
+  credits           Document[] @relation("DocumentCredits")
+
+  note      String?
+  issuedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@unique([businessId, type, serialNumber])
+  @@index([businessId, type])
+  @@index([saleId])
+}
+
+// ---------- דיוור SMS (Campaign) ----------
+// קמפיין דיוור מפולח ללקוחות. הפילוח נשמר כמפתח סגמנט (segment) ומחושב בזמן שליחה.
+model Campaign {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name    String // שם הקמפיין (לזיהוי פנימי)
+  body    String // תוכן הודעת ה-SMS
+  segment String @default("all") // מפתח סגמנט: all / active / with_appointments
+
+  status         CampaignStatus @default(DRAFT)
+  recipientCount Int            @default(0) // כמות נמענים בפילוח בזמן השליחה
+  sentCount      Int            @default(0)
+  failedCount    Int            @default(0)
+  sentAt         DateTime? // מתי בוצעה השליחה
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages MessageLog[]
+
+  @@index([businessId, status])
+}
+
+// יומן הודעות דיוור — רשומה לכל נמען (מקושרת לקמפיין וללקוח כשקיימים).
+model MessageLog {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  clientId   String?
+  client     Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  phone  String
+  body   String
+  status MessageStatus @default(SENT)
+  error  String? // הודעת שגיאה אם השליחה נכשלה
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([campaignId])
+}
+
+// ---------- מלאי (אפוס L — מלאי בסיסי) ----------
+// כל המודלים כאן חדשים ואדיטיביים. כמויות = מספרים שלמים (Int).
+// עלויות/מחירים = אגורות (Int), עקבי ל-priceAgorot בקופה.
+
+// רמת מלאי נוכחית למוצר — רשומה אחת לכל מוצר (יחס 1:1).
+model StockLevel {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productId  String   @unique
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity          Int @default(0) // כמות זמינה נוכחית (יחידות שלמות)
+  lowStockThreshold Int @default(0) // סף התראת מלאי נמוך (0 = ללא התראה)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId])
+}
+
+// תנועת מלאי — רשומה לכל שינוי כמות (רכש/מכירה/תיקון/החזרה).
+// saleId נשמר כהפניה רכה (ללא FK) לצורך אידמפוטנטיות בניכוי אוטומטי מהקופה.
+model StockMovement {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  type           StockMovementType
+  quantityDelta  Int // שינוי הכמות: חיובי = כניסה, שלילי = יציאה
+  unitCostAgorot Int? // עלות יחידה באגורות (רשות, רלוונטי לרכש)
+  note           String? // הערה חופשית / הקשר
+
+  saleId String? // הפניה רכה לעסקת קופה (SALE) — למניעת ניכוי כפול
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([productId])
+  @@index([saleId])
+}
+
+// התראת מלאי נמוך — נרשמת כשמלאי המוצר יורד אל סף ההתראה או מתחתיו.
+model LowStockAlert {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantityAtAlert Int // הכמות שנרשמה ברגע ההתראה
+  threshold       Int // הסף שהופעל
+  resolvedAt      DateTime? // מולא כאשר המלאי חזר מעל הסף
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, resolvedAt])
+  @@index([productId])
+}

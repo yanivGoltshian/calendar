@@ -1,0 +1,208 @@
+import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
+import { BRAND } from '@/config/brand';
+import { t } from '@/i18n';
+import { getFirstBusiness } from '@/server/repos/business';
+import { listStaff } from '@/server/repos/staff';
+import { listServices } from '@/server/repos/services';
+import { getAppointmentsForBusinessRange } from '@/server/repos/appointments';
+import {
+  todayDateString,
+  addDaysToDateString,
+  formatLongDate,
+  formatTime,
+  formatDateString,
+  localWallTimeToUtc,
+  utcToLocalParts,
+  weekdayForDateString,
+} from '@/lib/time';
+import { displayPhone } from '@/lib/crypto';
+import { hashToIndex } from './serviceColors';
+import CalendarBoard from './CalendarBoard';
+import type {
+  ApptBlock,
+  CalendarColumn,
+  CalendarView,
+  ServiceOption,
+  StaffOption,
+} from './calendar-types';
+
+export const metadata: Metadata = { title: t.admin.calendarTitle };
+
+type Props = {
+  searchParams: Promise<{ date?: string; staffId?: string; view?: string }>;
+};
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DEFAULT_START = 8 * 60; // 08:00
+const DEFAULT_END = 20 * 60; // 20:00
+
+function midnightUtc(dateStr: string, tz: string): Date {
+  return localWallTimeToUtc(
+    Number(dateStr.slice(0, 4)),
+    Number(dateStr.slice(5, 7)),
+    Number(dateStr.slice(8, 10)),
+    0,
+    tz,
+  );
+}
+
+function dayMonthLabel(dateStr: string): string {
+  return `${Number(dateStr.slice(8, 10))}.${Number(dateStr.slice(5, 7))}`;
+}
+
+export default async function AdminCalendarPage({ searchParams }: Props) {
+  const sp = await searchParams;
+  const business = await getFirstBusiness();
+  if (!business) notFound();
+
+  const tz = business.timezone;
+  const cal = t.admin.calendar;
+  const staffRows = await listStaff(business.id);
+  const serviceRows = await listServices(business.id);
+
+  const view: CalendarView = sp.view === 'week' ? 'week' : 'day';
+  const date =
+    sp.date && DATE_RE.test(sp.date) ? sp.date : todayDateString(tz);
+  const today = todayDateString(tz);
+
+  const activeStaff =
+    staffRows.find((s) => s.id === sp.staffId) ?? staffRows[0] ?? null;
+  const activeStaffId = activeStaff?.id ?? '';
+
+  // מיפוי שירות → אינדקס צבע (לפי סדר המיון), + אפשרויות שירות לטופס ולמקרא.
+  const colorByServiceId = new Map<string, number>();
+  serviceRows.forEach((s, i) => colorByServiceId.set(s.id, i));
+  const services: ServiceOption[] = serviceRows.map((s, i) => ({
+    id: s.id,
+    name: s.name,
+    durationMin: s.durationMin,
+    priceAgorot: s.priceAgorot,
+    colorIndex: i,
+  }));
+  const staff: StaffOption[] = staffRows.map((s) => ({
+    id: s.id,
+    displayName: s.displayName,
+    title: s.title ?? '',
+  }));
+
+  // טווח הזמן לשליפה + מבנה העמודות.
+  let fromUtc: Date;
+  let toUtc: Date;
+  let weekStart = date;
+  let columns: CalendarColumn[] = [];
+  let headerLabel = '';
+
+  if (view === 'week') {
+    const weekday = weekdayForDateString(date, tz); // 0=ראשון
+    weekStart = addDaysToDateString(date, -weekday);
+    const weekEnd = addDaysToDateString(weekStart, 6);
+    const weekDates = Array.from({ length: 7 }, (_, i) =>
+      addDaysToDateString(weekStart, i),
+    );
+    fromUtc = midnightUtc(weekStart, tz);
+    toUtc = midnightUtc(addDaysToDateString(weekStart, 7), tz);
+    headerLabel = `${dayMonthLabel(weekStart)} – ${dayMonthLabel(weekEnd)}`;
+    columns = activeStaff
+      ? weekDates.map((d, i) => ({
+          key: d,
+          title: cal.weekdaysLong[i],
+          subtitle: dayMonthLabel(d),
+          staffId: activeStaff.id,
+          date: d,
+          isToday: d === today,
+        }))
+      : [];
+  } else {
+    fromUtc = midnightUtc(date, tz);
+    toUtc = midnightUtc(addDaysToDateString(date, 1), tz);
+    headerLabel = formatLongDate(date, tz);
+    columns = staffRows.map((s) => ({
+      key: s.id,
+      title: s.displayName,
+      subtitle: s.title ?? '',
+      staffId: s.id,
+      date,
+      isToday: date === today,
+    }));
+  }
+
+  const rows = staffRows.length
+    ? await getAppointmentsForBusinessRange(business.id, fromUtc, toUtc)
+    : [];
+
+  // הכנת בלוקים לרינדור + חישוב חלון הגריד.
+  let minStart = DEFAULT_START;
+  let maxEnd = DEFAULT_END;
+  const appts: ApptBlock[] = [];
+
+  for (const a of rows) {
+    if (view === 'week' && a.staffId !== activeStaffId) continue;
+    if (view === 'day' && !columns.some((c) => c.staffId === a.staffId)) {
+      continue;
+    }
+    const parts = utcToLocalParts(a.startAt, tz);
+    const startMinute = parts.minutes;
+    const durationMin = Math.max(
+      1,
+      Math.round((a.endAt.getTime() - a.startAt.getTime()) / 60_000),
+    );
+    const localDate = formatDateString(a.startAt, tz);
+    const serviceNames = a.services.map((s) => s.nameSnapshot).join(' + ');
+    const firstServiceId = a.services[0]?.serviceId;
+    const colorIndex =
+      (firstServiceId ? colorByServiceId.get(firstServiceId) : undefined) ??
+      hashToIndex(serviceNames || a.id);
+
+    minStart = Math.min(minStart, startMinute);
+    maxEnd = Math.max(maxEnd, startMinute + durationMin);
+
+    appts.push({
+      id: a.id,
+      columnKey: view === 'week' ? localDate : a.staffId,
+      startMinute,
+      durationMin,
+      status: a.status,
+      clientName: a.client?.name ?? '',
+      clientPhone: a.client?.phone ? displayPhone(a.client.phone) : '',
+      serviceNames,
+      colorIndex,
+      priceAgorot: a.totalPriceAgorot,
+      startLabel: formatTime(a.startAt, tz),
+      endLabel: formatTime(a.endAt, tz),
+    });
+  }
+
+  const gridStartMinute = Math.max(0, Math.floor(minStart / 60) * 60);
+  const gridEndMinute = Math.min(1440, Math.ceil(maxEnd / 60) * 60);
+  const granularity = business.settings?.slotGranularityMinutes ?? 15;
+  const defaultDurationMin = serviceRows[0]?.durationMin ?? 30;
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
+      <header className="mb-5">
+        <p className="text-sm text-slate-500">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {t.admin.calendarTitle} · {business.name}
+        </h1>
+      </header>
+
+      <CalendarBoard
+        view={view}
+        date={date}
+        weekStart={weekStart}
+        today={today}
+        headerLabel={headerLabel}
+        columns={columns}
+        appts={appts}
+        services={services}
+        staff={staff}
+        activeStaffId={activeStaffId}
+        gridStartMinute={gridStartMinute}
+        gridEndMinute={gridEndMinute}
+        granularity={granularity}
+        defaultDurationMin={defaultDurationMin}
+      />
+    </main>
+  );
+}

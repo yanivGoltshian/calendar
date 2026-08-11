@@ -1,0 +1,115 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import type { AppointmentStatus } from '@prisma/client';
+import { getFirstBusiness } from '@/server/repos/business';
+import { getServicesByIds } from '@/server/repos/services';
+import {
+  createAppointment,
+  hasConflict,
+  updateAppointmentStatus,
+} from '@/server/repos/appointments';
+import { findOrCreateClient } from '@/server/repos/clients';
+import { createReminder } from '@/server/repos/reminders';
+import { localWallTimeToUtc } from '@/lib/time';
+import { normalizePhone } from '@/lib/crypto';
+
+const STATUS_VALUES = [
+  'PENDING',
+  'CONFIRMED',
+  'ARRIVED',
+  'CANCELLED',
+  'NO_SHOW',
+  'DONE',
+] as const satisfies readonly AppointmentStatus[];
+
+/** שינוי סטטוס תור מהיומן (מאושר/הגיע/בוטל/הברזה/הושלם/ממתין). */
+export async function setAppointmentStatusAction(
+  appointmentId: string,
+  status: string,
+): Promise<{ ok: boolean }> {
+  if (!appointmentId) return { ok: false };
+  if (!(STATUS_VALUES as readonly string[]).includes(status)) {
+    return { ok: false };
+  }
+  await updateAppointmentStatus(appointmentId, status as AppointmentStatus);
+  revalidatePath('/admin');
+  return { ok: true };
+}
+
+const createSchema = z.object({
+  staffId: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+  clientName: z.string().trim().min(1),
+  clientPhone: z.string().trim().min(1),
+  serviceId: z.string().min(1),
+});
+
+export type CreateApptState = { ok: boolean; error?: string };
+
+/** יצירת תור ידנית מתוך יומן הניהול (חתימת useActionState). */
+export async function createManualAppointmentAction(
+  _prev: CreateApptState,
+  formData: FormData,
+): Promise<CreateApptState> {
+  const parsed = createSchema.safeParse({
+    staffId: formData.get('staffId'),
+    date: formData.get('date'),
+    time: formData.get('time'),
+    clientName: formData.get('clientName'),
+    clientPhone: formData.get('clientPhone'),
+    serviceId: formData.get('serviceId'),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: 'bad_request' };
+  }
+  const data = parsed.data;
+
+  const business = await getFirstBusiness();
+  if (!business) return { ok: false, error: 'no_business' };
+
+  const services = await getServicesByIds(business.id, [data.serviceId]);
+  if (services.length === 0) return { ok: false, error: 'invalid_service' };
+
+  const [y, m, d] = data.date.split('-').map(Number);
+  const [hh, mm] = data.time.split(':').map(Number);
+  const startAt = localWallTimeToUtc(y, m, d, hh * 60 + mm, business.timezone);
+  const totalDuration = services.reduce((s, svc) => s + svc.durationMin, 0);
+  const totalPrice = services.reduce((s, svc) => s + svc.priceAgorot, 0);
+  const endAt = new Date(startAt.getTime() + totalDuration * 60_000);
+
+  if (await hasConflict(data.staffId, startAt, endAt)) {
+    return { ok: false, error: 'slot_taken' };
+  }
+
+  const client = await findOrCreateClient({
+    businessId: business.id,
+    phone: normalizePhone(data.clientPhone),
+    name: data.clientName,
+  });
+
+  const appointment = await createAppointment({
+    businessId: business.id,
+    clientId: client.id,
+    staffId: data.staffId,
+    startAt,
+    endAt,
+    services: services.map((s) => ({
+      id: s.id,
+      name: s.name,
+      durationMin: s.durationMin,
+      priceAgorot: s.priceAgorot,
+    })),
+    totalPriceAgorot: totalPrice,
+  });
+
+  const sendAt = new Date(
+    Math.max(startAt.getTime() - 24 * 60 * 60 * 1000, Date.now() + 60_000),
+  );
+  await createReminder(appointment.id, sendAt);
+
+  revalidatePath('/admin');
+  return { ok: true };
+}

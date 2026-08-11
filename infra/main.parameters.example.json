@@ -1,0 +1,87 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "namePrefix": {
+      "value": "torchick"
+    },
+    "environmentName": {
+      "value": "prod"
+    },
+    "location": {
+      "value": "westeurope"
+    },
+    "containerImage": {
+      "value": "ghcr.io/yanivgoltshian/calendar:latest"
+    },
+    "appPublicUrl": {
+      "value": "https://torchick.com"
+    },
+    "minReplicas": {
+      "value": 0
+    },
+    "maxReplicas": {
+      "value": 3
+    },
+    "containerCpu": {
+      "value": "0.25"
+    },
+    "containerMemory": {
+      "value": "0.5Gi"
+    },
+    "registryServer": {
+      "value": "ghcr.io"
+    },
+    "registryUsername": {
+      "value": "REPLACE_ME_GHCR_USERNAME_OR_LEAVE_EMPTY_FOR_PUBLIC_IMAGE"
+    },
+    "registryPasswordToken": {
+      "value": "REPLACE_ME_GHCR_PAT_OR_LEAVE_EMPTY_FOR_PUBLIC_IMAGE"
+    },
+    "databaseUrl": {
+      "value": "REPLACE_ME_postgresql://user:password@host:5432/dbname?sslmode=require"
+    },
+    "sessionSecret": {
+      "value": "REPLACE_ME_RANDOM_32_BYTE_HEX"
+    },
+    "otpPepper": {
+      "value": "REPLACE_ME_RANDOM_32_BYTE_HEX"
+    },
+    "businessTimezone": {
+      "value": "Asia/Jerusalem"
+    },
+    "smsProvider": {
+      "value": "console"
+    },
+    "deployStaticWebApp": {
+      "value": true
+    },
+    "staticWebAppLocation": {
+      "value": "westeurope"
+    },
+    "staticWebAppSku": {
+      "value": "Free"
+    },
+    "deployPostgres": {
+      "value": false
+    },
+    "postgresAdminLogin": {
+      "value": "torchickadmin"
+    },
+    "postgresAdminPassword": {
+      "value": "REPLACE_ME_ONLY_IF_deployPostgres_true"
+    },
+    "postgresSkuName": {
+      "value": "Standard_B1ms"
+    },
+    "postgresStorageGB": {
+      "value": 32
+    },
+    "postgresVersion": {
+      "value": "16"
+    },
+    "logAnalyticsRetentionDays": {
+      "value": 30
+    }
+  }
+}

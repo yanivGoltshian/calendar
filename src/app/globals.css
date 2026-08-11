@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== טוקנים סמנטיים (בהיר / כהה) ===== */
+:root {
+  --bg: #faf8f5;
+  --surface: #ffffff;
+  --text: #2a2119;
+  --muted: #7c6650;
+  --border: #e8dfd4;
+  --brand: #24406e;
+  --brand-strong: #0a182d;
+}
+
+.dark {
+  --bg: #16110d;
+  --surface: #211a14;
+  --text: #f4efe9;
+  --muted: #b8a48d;
+  --border: #3a2f25;
+  --brand: #8ba6cd;
+  --brand-strong: #b7c8e2;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), 'Assistant', 'Heebo', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* כותרות בפונט התצוגה */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), 'Frank Ruhl Libre', Georgia, serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* מצב פוקוס נגיש */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+}
+
+/* מכבדים העדפת תנועה מופחתת ברמת המערכת */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* עזרי עיצוב חוזרים */
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(120deg, #0a182d 0%, #24406e 45%, #cea24a 120%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(10 24 45 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(10 24 45 / 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
