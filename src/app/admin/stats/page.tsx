@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { getStatsSummary } from '@/server/repos/stats';
 import { formatAgorot } from '@/lib/money';
 import {
@@ -32,7 +32,7 @@ const PRESETS = [7, 30, 90];
 
 export default async function AdminStatsPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const s = t.admin.statsModule;

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import type { DocumentType, PaymentMethod } from '@prisma/client';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   createSale,
   getSaleWithDetails,
@@ -27,7 +27,7 @@ import { shekelsToAgorot } from '@/lib/money';
 /**
  * פעולות שרת למודול הקופה. רוב הפעולות הן טפסים פשוטים (void) שמרעננים את
  * העמוד; פתיחת עסקה חדשה והפקת מסמך מנתבות לעמוד היעד. כל פעולה מאמתת קודם את
- * העסק דרך getFirstBusiness ומסננת לפיו.
+ * העסק דרך getActiveBusiness ומסננת לפיו.
  */
 
 const PAYMENT_METHODS: PaymentMethod[] = ['CASH', 'CARD', 'BIT', 'BANK_TRANSFER', 'OTHER'];
@@ -39,7 +39,7 @@ function salePath(saleId: string) {
 
 /** פתיחת עסקה חדשה וניתוב לעורך העסקה. */
 export async function createSaleAction(): Promise<void> {
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   const sale = await createSale(business.id);
   revalidatePath('/admin/pos');
@@ -53,7 +53,7 @@ export async function addProductItemAction(formData: FormData): Promise<void> {
   const quantity = Number(formData.get('quantity') ?? 1) || 1;
   if (!saleId || !productId) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await addProductItem(business.id, saleId, productId, quantity);
   revalidatePath(salePath(saleId));
@@ -66,7 +66,7 @@ export async function addServiceItemAction(formData: FormData): Promise<void> {
   const quantity = Number(formData.get('quantity') ?? 1) || 1;
   if (!saleId || !serviceId) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await addServiceItem(business.id, saleId, serviceId, quantity);
   revalidatePath(salePath(saleId));
@@ -80,7 +80,7 @@ export async function addCustomItemAction(formData: FormData): Promise<void> {
   const quantity = Number(formData.get('quantity') ?? 1) || 1;
   if (!saleId || !name || !Number.isFinite(priceShekels) || priceShekels < 0) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await addCustomItem(business.id, saleId, name, shekelsToAgorot(priceShekels), quantity);
   revalidatePath(salePath(saleId));
@@ -93,7 +93,7 @@ export async function updateItemQuantityAction(formData: FormData): Promise<void
   const quantity = Number(formData.get('quantity') ?? 1) || 1;
   if (!saleId || !itemId) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await updateItemQuantity(business.id, saleId, itemId, quantity);
   revalidatePath(salePath(saleId));
@@ -105,7 +105,7 @@ export async function removeItemAction(formData: FormData): Promise<void> {
   const itemId = String(formData.get('itemId') ?? '').trim();
   if (!saleId || !itemId) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await removeItem(business.id, saleId, itemId);
   revalidatePath(salePath(saleId));
@@ -117,7 +117,7 @@ export async function setDiscountAction(formData: FormData): Promise<void> {
   const discountShekels = Number(formData.get('discount') ?? 0);
   if (!saleId || !Number.isFinite(discountShekels) || discountShekels < 0) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await setDiscount(business.id, saleId, shekelsToAgorot(discountShekels));
   revalidatePath(salePath(saleId));
@@ -132,7 +132,7 @@ export async function setSaleLinksAction(formData: FormData): Promise<void> {
   const appointmentId = String(formData.get('appointmentId') ?? '').trim();
   const staffId = String(formData.get('staffId') ?? '').trim();
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await setSaleLinks(business.id, saleId, {
     clientId: clientId || null,
@@ -154,7 +154,7 @@ export async function addPaymentAction(formData: FormData): Promise<void> {
     ? (rawMethod as PaymentMethod)
     : 'CASH';
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await addPayment(business.id, saleId, method, shekelsToAgorot(amountShekels), reference);
   revalidatePath(salePath(saleId));
@@ -166,7 +166,7 @@ export async function removePaymentAction(formData: FormData): Promise<void> {
   const paymentId = String(formData.get('paymentId') ?? '').trim();
   if (!saleId || !paymentId) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await removePayment(business.id, saleId, paymentId);
   revalidatePath(salePath(saleId));
@@ -177,7 +177,7 @@ export async function closeSaleAction(formData: FormData): Promise<void> {
   const saleId = String(formData.get('saleId') ?? '').trim();
   if (!saleId) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   const closed = await closeSale(business.id, saleId);
   // ניכוי מלאי אוטומטי בהשלמת מכירה (מודול המלאי). אידמפוטנטי ולא-זורק —
@@ -192,7 +192,7 @@ export async function voidSaleAction(formData: FormData): Promise<void> {
   const saleId = String(formData.get('saleId') ?? '').trim();
   if (!saleId) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await voidSale(business.id, saleId);
   revalidatePath('/admin/pos');
@@ -216,7 +216,7 @@ export async function issueDocumentFromSaleAction(formData: FormData): Promise<v
     ? (parsed.data.type as DocumentType)
     : 'RECEIPT';
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
 
   const sale = await getSaleWithDetails(business.id, parsed.data.saleId);

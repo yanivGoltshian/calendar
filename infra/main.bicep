@@ -85,6 +85,27 @@ param messagingConfig object = {}
 @description('כתובת בסיס ציבורית של האפליקציה')
 param appPublicUrl string
 
+@description('סוד לחתימת ה-JWT של NextAuth (כניסת בעלים, סוד)')
+@secure()
+param nextAuthSecret string = ''
+
+@description('כתובת בסיס ל-callbacks של NextAuth (ריק = נגזר מ-appPublicUrl)')
+param nextAuthUrl string = ''
+
+@description('מזהה לקוח Google OAuth (ריק = כפתור Google מוסתר)')
+param googleClientId string = ''
+
+@description('סוד לקוח Google OAuth (ריק = כפתור Google מוסתר)')
+@secure()
+param googleClientSecret string = ''
+
+@description('חיבור SMTP ל-magic-link (אופציונלי, סוד)')
+@secure()
+param emailServer string = ''
+
+@description('כתובת שולח ל-magic-link (אופציונלי)')
+param emailFrom string = ''
+
 // ---------- Static Web App ----------
 @description('האם לפרוס Static Web App')
 param deployStaticWebApp bool = true
@@ -170,6 +191,12 @@ module containerApp 'modules/containerApp.bicep' = {
     whatsAppAccessToken: whatsAppAccessToken
     messagingConfig: messagingConfig
     appPublicUrl: appPublicUrl
+    nextAuthSecret: nextAuthSecret
+    nextAuthUrl: nextAuthUrl
+    googleClientId: googleClientId
+    googleClientSecret: googleClientSecret
+    emailServer: emailServer
+    emailFrom: emailFrom
     tags: tags
   }
 }

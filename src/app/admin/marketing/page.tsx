@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   listCampaigns,
   listMessageLog,
@@ -29,7 +29,7 @@ const STATUS_STYLE: Record<CampaignStatus, string> = {
 };
 
 export default async function AdminMarketingPage() {
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const m = t.admin.marketingModule;

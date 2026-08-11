@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { listDocuments, type DocumentFilter } from '@/server/repos/documents';
 import type { DocumentType } from '@prisma/client';
 import { formatAgorot } from '@/lib/money';
@@ -42,7 +42,7 @@ function isFilter(v: string | undefined): v is DocumentFilter {
 
 export default async function DocumentsPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const filter: DocumentFilter = isFilter(sp.tab) ? sp.tab : 'all';

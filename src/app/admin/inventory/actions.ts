@@ -2,14 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { adjustStock, setStockCount, setLowStockThreshold } from '@/server/repos/inventory';
 import { shekelsToAgorot } from '@/lib/money';
 
 /**
  * פעולות שרת למודול המלאי (בבעלות admin/inventory). כל הכמויות מספרים שלמים
  * ועלויות באגורות (מוזנות בשקלים ומומרות). כל פעולה מאמתת קודם את העסק דרך
- * getFirstBusiness ומסתמכת על שכבת ה-repo לאימות שייכות המוצר לעסק (מחזירה null
+ * getActiveBusiness ומסתמכת על שכבת ה-repo לאימות שייכות המוצר לעסק (מחזירה null
  * אם המוצר אינו של העסק). לוגיקת המלאי כולה מרוכזת ב-repos/inventory.
  */
 
@@ -54,7 +54,7 @@ export async function saveStockMovementAction(
   if ((mode === 'purchase' || mode === 'return') && amount <= 0) return { ok: false, error: 'amount' };
   if (mode === 'adjustment' && amount === 0) return { ok: false, error: 'amount' };
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'generic' };
 
   try {
@@ -99,7 +99,7 @@ export async function saveThresholdAction(formData: FormData): Promise<void> {
   const parsed = z.coerce.number().int().min(0).safeParse(raw === '' ? 0 : raw);
   if (!parsed.success) return;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
 
   await setLowStockThreshold(business.id, productId, parsed.data);

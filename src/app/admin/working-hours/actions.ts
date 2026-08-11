@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   setBusinessHours,
   setStaffHours,
@@ -29,7 +29,7 @@ export async function saveWorkingHoursAction(
   _prev: SaveWorkingHoursState,
   formData: FormData,
 ): Promise<SaveWorkingHoursState> {
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'generic' };
 
   const staffId = String(formData.get('staffId') ?? '').trim() || null;

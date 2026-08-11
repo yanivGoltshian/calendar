@@ -2,14 +2,14 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
 import OnboardingWizard from './OnboardingWizard';
 
 export const metadata: Metadata = { title: t.admin.onboarding.title };
 
 export default async function AdminOnboardingPage() {
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const settings = await getOrCreateSettings(business.id);

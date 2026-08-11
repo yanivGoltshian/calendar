@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { listStaff } from '@/server/repos/staff';
 import { getBusinessHours, getStaffHours } from '@/server/repos/workingHours';
 import { formatMinutes } from '@/lib/time';
@@ -61,7 +61,7 @@ function buildRows(records: HoursRecord[]): DayRow[] {
 
 export default async function AdminWorkingHoursPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const staff = await listStaff(business.id);

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { BusinessType, ReminderChannel } from '@prisma/client';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   updateBusinessProfile,
   updateBookingPolicy,
@@ -57,7 +57,7 @@ export async function saveProfileAction(
     type = rawType as BusinessType;
   }
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
 
   await updateBusinessProfile(business.id, {
@@ -97,7 +97,7 @@ export async function savePolicyAction(
   });
   if (!parsed.success) return { ok: false, error: 'number' };
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
 
   await updateBookingPolicy(business.id, {
@@ -114,7 +114,7 @@ export async function saveTransparencyAction(
   _prev: SaveState,
   fd: FormData,
 ): Promise<SaveState> {
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
 
   await updateTransparency(business.id, {
@@ -132,7 +132,7 @@ export async function saveTextsAction(
   _prev: SaveState,
   fd: FormData,
 ): Promise<SaveState> {
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
 
   await updateCustomTexts(business.id, {
@@ -158,7 +158,7 @@ export async function saveRemindersAction(
     ? (rawChannel as ReminderChannel)
     : ReminderChannel.SMS;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
 
   await updateReminders(business.id, {

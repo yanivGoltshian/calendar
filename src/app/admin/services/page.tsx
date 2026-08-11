@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { listServicesWithUsage, getServiceById, getServiceStaffIds } from '@/server/repos/services';
 import { listStaff } from '@/server/repos/staff';
 import { formatAgorot, agorotToShekels } from '@/lib/money';
@@ -19,7 +19,7 @@ type Props = {
 
 export default async function AdminServicesPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const services = await listServicesWithUsage(business.id);

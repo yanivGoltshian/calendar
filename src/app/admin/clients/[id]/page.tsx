@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { getClientWithHistory } from '@/server/repos/clients';
 import { displayPhone } from '@/lib/crypto';
 import { formatAgorot } from '@/lib/money';
@@ -29,7 +29,7 @@ const statusClass: Record<string, string> = {
 
 export default async function AdminClientDetailPage({ params }: Props) {
   const { id } = await params;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const client = await getClientWithHistory(business.id, id);

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { listProducts, getProductById } from '@/server/repos/products';
 import { formatAgorot, agorotToShekels } from '@/lib/money';
 import ProductForm, { type ProductFormValues } from './ProductForm';
@@ -17,7 +17,7 @@ type Props = {
 
 export default async function ProductsPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const q = sp.q?.trim() ?? '';

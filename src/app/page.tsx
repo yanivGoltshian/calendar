@@ -90,7 +90,7 @@ export default async function HomePage() {
               </Reveal>
               <Reveal delay={0.2}>
                 <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
-                  <Button href="/admin" size="lg" className="w-full sm:w-auto">
+                  <Button href="/business/new" size="lg" className="w-full sm:w-auto">
                     {m.hero.primaryCta}
                   </Button>
                   {demoHref && (
@@ -301,7 +301,7 @@ export default async function HomePage() {
                     </ul>
                     <div className="mt-auto">
                       <Button
-                        href="/admin"
+                        href="/business/new"
                         variant={plan.popular ? 'primary' : 'secondary'}
                         size="lg"
                         className="w-full"
@@ -354,7 +354,7 @@ export default async function HomePage() {
                   </h2>
                   <p className="mx-auto mt-4 max-w-xl text-lg text-white/90">{m.finalCta.subtitle}</p>
                   <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                    <Button href="/admin" variant="accent" size="lg" className="w-full sm:w-auto">
+                    <Button href="/business/new" variant="accent" size="lg" className="w-full sm:w-auto">
                       {m.finalCta.primaryCta}
                     </Button>
                     {demoHref && (

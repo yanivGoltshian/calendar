@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
 import SettingsSection from './SettingsSection';
 import {
@@ -24,7 +24,7 @@ import {
 export const metadata: Metadata = { title: t.admin.settings.title };
 
 export default async function AdminSettingsPage() {
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) notFound();
 
   const settings = await getOrCreateSettings(business.id);

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   createPunchCard,
   punchPunchCard,
@@ -46,7 +46,7 @@ export async function createPunchCardAction(
     return { ok: false, error };
   }
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'generic' };
 
   const result = await createPunchCard(business.id, {
@@ -70,7 +70,7 @@ export async function createPunchCardAction(
 async function withBusiness(fn: (businessId: string, id: string) => Promise<unknown>, formData: FormData) {
   const id = String(formData.get('id') ?? '').trim();
   if (!id) return;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await fn(business.id, id);
   revalidatePath('/admin/punch-cards');

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import {
   createService,
   updateService,
@@ -72,7 +72,7 @@ export async function saveServiceAction(
   }
 
   const data = parsed.data;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, mode, error: 'no_business' };
 
   const payload = {
@@ -104,7 +104,7 @@ export async function saveServiceAction(
 export async function deleteServiceAction(formData: FormData) {
   const id = String(formData.get('id') || '').trim();
   if (!id) return;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await deleteService(business.id, id);
   revalidatePublic(business.slug);
@@ -115,7 +115,7 @@ export async function toggleServiceHiddenAction(formData: FormData) {
   const id = String(formData.get('id') || '').trim();
   const hidden = checkbox(formData, 'hidden');
   if (!id) return;
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return;
   await setServiceHidden(business.id, id, hidden);
   revalidatePublic(business.slug);

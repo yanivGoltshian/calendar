@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { AppointmentStatus } from '@prisma/client';
-import { getFirstBusiness } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
 import { getServicesByIds } from '@/server/repos/services';
 import {
   createAppointment,
@@ -67,7 +67,7 @@ export async function createManualAppointmentAction(
   }
   const data = parsed.data;
 
-  const business = await getFirstBusiness();
+  const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
 
   const services = await getServicesByIds(business.id, [data.serviceId]);
