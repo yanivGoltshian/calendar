@@ -13,7 +13,7 @@ import {
 /** ממשק ספק ה-SMS ההיסטורי. MessagingProvider הוא על-קבוצה שלו. */
 export type SmsProvider = MessagingProvider;
 
-/** בחירת ספק ה-SMS לפי משתנה הסביבה SMS_PROVIDER (מאציל ל-messaging). */
+/** בחירת ספק ה-SMS לפי MESSAGING_PROVIDER (תאימות לאחור ל-SMS_PROVIDER; מאציל ל-messaging). */
 export function getSmsProvider(): SmsProvider {
   return getMessagingProvider();
 }

@@ -50,22 +50,10 @@
     "businessTimezone": {
       "value": "Asia/Jerusalem"
     },
-    "smsProvider": {
+    "messagingProvider": {
       "value": "console"
     },
-    "twilioAccountSid": {
-      "value": ""
-    },
-    "twilioAuthToken": {
-      "value": ""
-    },
-    "smsGatewayToken": {
-      "value": ""
-    },
-    "smsGatewayUsername": {
-      "value": ""
-    },
-    "smsGatewayPassword": {
+    "whatsAppAccessToken": {
       "value": ""
     },
     "messagingConfig": {
