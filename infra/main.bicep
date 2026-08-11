@@ -72,30 +72,14 @@ param otpPepper string
 @description('אזור זמן עסקי (IANA)')
 param businessTimezone string = 'Asia/Jerusalem'
 
-@description('ספק SMS')
-param smsProvider string = 'console'
+@description('ספק הודעות (console כברירת מחדל; whatsapp-cloud לפרודקשן)')
+param messagingProvider string = 'console'
 
-@description('Twilio Account SID (סוד; ריק אם לא בשימוש)')
+@description('WhatsApp Cloud API access token (סוד; ריק אם לא בשימוש)')
 @secure()
-param twilioAccountSid string = ''
+param whatsAppAccessToken string = ''
 
-@description('Twilio Auth Token (סוד; ריק אם לא בשימוש)')
-@secure()
-param twilioAuthToken string = ''
-
-@description('טוקן שער SMS ישראלי (סוד; ריק אם לא בשימוש)')
-@secure()
-param smsGatewayToken string = ''
-
-@description('שם משתמש לשער SMS ישראלי (סוד; ריק אם לא בשימוש)')
-@secure()
-param smsGatewayUsername string = ''
-
-@description('סיסמה לשער SMS ישראלי (סוד; ריק אם לא בשימוש)')
-@secure()
-param smsGatewayPassword string = ''
-
-@description('תצורת הודעות לא-סודית (זוגות שם/ערך של משתני סביבה, למשל TWILIO_FROM, SMS_GATEWAY_ENDPOINT)')
+@description('תצורת הודעות לא-סודית (זוגות שם/ערך של משתני סביבה, למשל WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_OTP_TEMPLATE)')
 param messagingConfig object = {}
 
 @description('כתובת בסיס ציבורית של האפליקציה')
@@ -182,12 +166,8 @@ module containerApp 'modules/containerApp.bicep' = {
     sessionSecret: sessionSecret
     otpPepper: otpPepper
     businessTimezone: businessTimezone
-    smsProvider: smsProvider
-    twilioAccountSid: twilioAccountSid
-    twilioAuthToken: twilioAuthToken
-    smsGatewayToken: smsGatewayToken
-    smsGatewayUsername: smsGatewayUsername
-    smsGatewayPassword: smsGatewayPassword
+    messagingProvider: messagingProvider
+    whatsAppAccessToken: whatsAppAccessToken
     messagingConfig: messagingConfig
     appPublicUrl: appPublicUrl
     tags: tags

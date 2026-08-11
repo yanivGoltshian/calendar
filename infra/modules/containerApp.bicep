@@ -54,34 +54,18 @@ param sessionSecret string
 @secure()
 param otpPepper string
 
-@description('Twilio Account SID (סוד; ריק אם לא בשימוש)')
+@description('WhatsApp Cloud API access token (סוד; ריק אם לא בשימוש)')
 @secure()
-param twilioAccountSid string = ''
+param whatsAppAccessToken string = ''
 
-@description('Twilio Auth Token (סוד; ריק אם לא בשימוש)')
-@secure()
-param twilioAuthToken string = ''
-
-@description('טוקן שער SMS ישראלי (סוד; ריק אם לא בשימוש)')
-@secure()
-param smsGatewayToken string = ''
-
-@description('שם משתמש לשער SMS ישראלי (סוד; ריק אם לא בשימוש)')
-@secure()
-param smsGatewayUsername string = ''
-
-@description('סיסמה לשער SMS ישראלי (סוד; ריק אם לא בשימוש)')
-@secure()
-param smsGatewayPassword string = ''
-
-@description('תצורת הודעות לא-סודית (זוגות שם/ערך של משתני סביבה, למשל TWILIO_FROM, SMS_GATEWAY_ENDPOINT). ריק כברירת מחדל.')
+@description('תצורת הודעות לא-סודית (זוגות שם/ערך של משתני סביבה, למשל WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_OTP_TEMPLATE). ריק כברירת מחדל.')
 param messagingConfig object = {}
 
 @description('אזור זמן עסקי (IANA)')
 param businessTimezone string = 'Asia/Jerusalem'
 
-@description('ספק SMS')
-param smsProvider string = 'console'
+@description('ספק הודעות (console כברירת מחדל; whatsapp-cloud לפרודקשן)')
+param messagingProvider string = 'console'
 
 @description('כתובת בסיס ציבורית של האפליקציה')
 param appPublicUrl string
@@ -106,23 +90,15 @@ var baseSecrets = [
   }
 ]
 
-// סודות ההודעות מתווספים רק כאשר סופק ערך, כדי לשמור על אפס שינוי כאשר
-// SMS_PROVIDER=console (כל הערכים ריקים → אין סודות ואין env חדשים).
+// סוד ההודעות מתווסף רק כאשר סופק ערך, כדי לשמור על אפס שינוי כאשר
+// MESSAGING_PROVIDER=console (כל הערכים ריקים → אין סודות ואין env חדשים).
 var messagingSecrets = concat(
-  empty(twilioAccountSid) ? [] : [ { name: 'twilio-account-sid', value: twilioAccountSid } ],
-  empty(twilioAuthToken) ? [] : [ { name: 'twilio-auth-token', value: twilioAuthToken } ],
-  empty(smsGatewayToken) ? [] : [ { name: 'sms-gateway-token', value: smsGatewayToken } ],
-  empty(smsGatewayUsername) ? [] : [ { name: 'sms-gateway-username', value: smsGatewayUsername } ],
-  empty(smsGatewayPassword) ? [] : [ { name: 'sms-gateway-password', value: smsGatewayPassword } ]
+  empty(whatsAppAccessToken) ? [] : [ { name: 'whatsapp-access-token', value: whatsAppAccessToken } ]
 )
 
 // כניסות env של הסודות (secretRef), מותנות באותו אופן.
 var messagingSecretEnv = concat(
-  empty(twilioAccountSid) ? [] : [ { name: 'TWILIO_ACCOUNT_SID', secretRef: 'twilio-account-sid' } ],
-  empty(twilioAuthToken) ? [] : [ { name: 'TWILIO_AUTH_TOKEN', secretRef: 'twilio-auth-token' } ],
-  empty(smsGatewayToken) ? [] : [ { name: 'SMS_GATEWAY_TOKEN', secretRef: 'sms-gateway-token' } ],
-  empty(smsGatewayUsername) ? [] : [ { name: 'SMS_GATEWAY_USERNAME', secretRef: 'sms-gateway-username' } ],
-  empty(smsGatewayPassword) ? [] : [ { name: 'SMS_GATEWAY_PASSWORD', secretRef: 'sms-gateway-password' } ]
+  empty(whatsAppAccessToken) ? [] : [ { name: 'WHATSAPP_ACCESS_TOKEN', secretRef: 'whatsapp-access-token' } ]
 )
 
 // תצורת הודעות לא-סודית → env רגיל. מתועד ב-.env.example ו-docs.
@@ -197,8 +173,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
               value: businessTimezone
             }
             {
-              name: 'SMS_PROVIDER'
-              value: smsProvider
+              name: 'MESSAGING_PROVIDER'
+              value: messagingProvider
             }
             {
               name: 'NEXT_PUBLIC_APP_URL'

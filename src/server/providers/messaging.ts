@@ -3,63 +3,57 @@ import { BRAND } from '@/config/brand';
 /**
  * שכבת הודעות אגנוסטית-ערוץ.
  *
- * זו נקודת הכניסה הציבורית והיציבה לשליחת הודעות יוצאות במערכת (SMS,
- * WhatsApp ו-OTP הבנוי מעליהם). סשנים אחרים (למשל תזכורות) מייבאים מכאן,
- * ולכן הממשק הציבורי נשמר יציב ונקי. הבחירה בספק נעשית לפי משתנה הסביבה
- * `SMS_PROVIDER`.
+ * ממשק ציבורי יציב: sendSms / sendWhatsApp / sendOtp. סשנים אחרים (למשל
+ * התזכורות) מיַבְּאים את השכבה הזו ולא מדברים מול ספק ההודעות ישירות.
  *
- * שמות משתני הסביבה (ראו .env.example ו-docs/deployment-cost.md):
+ * בחירת המתאם לפי משתנה הסביבה MESSAGING_PROVIDER (עם תאימות לאחור ל-
+ * SMS_PROVIDER). ברירת המחדל היא console (פיתוח בלבד, רק לוג). המתאם האמיתי
+ * הוא whatsapp-cloud מול WhatsApp Cloud API של מטא (Graph API).
  *
- *   בחירת ספק:
- *     SMS_PROVIDER = console | twilio | httpgateway   (ברירת מחדל: console)
+ * ערכים אפשריים ל-MESSAGING_PROVIDER:
+ *   console         - הדפסה ללוג בלבד (ברירת מחדל לפיתוח).
+ *   whatsapp-cloud  - WhatsApp Cloud API של מטא (aliases: whatsapp, whatsapp_cloud).
  *
- *   Twilio (SMS + WhatsApp דרך REST):
- *     TWILIO_ACCOUNT_SID
- *     TWILIO_AUTH_TOKEN
- *     TWILIO_MESSAGING_SERVICE_SID   (או TWILIO_FROM)
- *     TWILIO_FROM                    (מספר שולח ל-SMS, אם אין Messaging Service)
- *     TWILIO_WHATSAPP_FROM           (whatsapp:+... ; רשות, אחרת נגזר מ-TWILIO_FROM)
+ * משתני הסביבה של whatsapp-cloud:
+ *   WHATSAPP_PHONE_NUMBER_ID     (חובה) מזהה מספר השולח ב-WhatsApp Cloud.
+ *   WHATSAPP_ACCESS_TOKEN        (חובה, סוד) טוקן Graph API.
+ *   WHATSAPP_OTP_TEMPLATE        (חובה) שם תבנית מאושרת מסוג authentication.
+ *   WHATSAPP_BUSINESS_ACCOUNT_ID (אופציונלי) מזהה ה-WABA, לרפרנס/לוג.
+ *   WHATSAPP_OTP_TEMPLATE_LANG   (אופציונלי, ברירת מחדל he) קוד שפת התבנית;
+ *                                חייב להתאים לשפת התבנית המאושרת (למשל he, en_US).
+ *   WHATSAPP_OTP_BUTTON_SUBTYPE  (אופציונלי, ברירת מחדל url) sub_type של כפתור
+ *                                העתקת הקוד בתבנית authentication; none/ריק משמיט
+ *                                את רכיב הכפתור (לתבניות בלי כפתור).
+ *   WHATSAPP_GRAPH_VERSION       (אופציונלי, ברירת מחדל v21.0) גרסת Graph API.
+ *   WHATSAPP_GRAPH_BASE_URL      (אופציונלי, ברירת מחדל https://graph.facebook.com).
+ *   WHATSAPP_DEFAULT_COUNTRY_CODE(אופציונלי, ברירת מחדל 972) קידומת מדינה עבור
+ *                                מספרים בפורמט מקומי (0...).
  *
- *   שער ישראלי גנרי מבוסס HTTP (SMS):
- *     SMS_GATEWAY_PRESET   = generic | 019 | inforu   (ברירת מחדל: generic)
- *     SMS_GATEWAY_ENDPOINT = כתובת ה-HTTP endpoint
- *     SMS_GATEWAY_METHOD   = POST | GET               (ברירת מחדל: POST)
- *     SMS_GATEWAY_AUTH_MODE = none | bearer | basic | header   (ברירת מחדל: none)
- *     SMS_GATEWAY_TOKEN     = טוקן (ל-bearer / header)
- *     SMS_GATEWAY_USERNAME  = שם משתמש (ל-basic)
- *     SMS_GATEWAY_PASSWORD  = סיסמה (ל-basic)
- *     SMS_GATEWAY_AUTH_HEADER = שם ה-header (ל-header, ברירת מחדל: Authorization)
- *     SMS_GATEWAY_FROM      = שם/מספר השולח
- *     SMS_GATEWAY_TO_FIELD   = שם שדה הנמען ב-payload   (ברירת מחדל: to)
- *     SMS_GATEWAY_TEXT_FIELD = שם שדה הטקסט ב-payload    (ברירת מחדל: text)
- *     SMS_GATEWAY_FROM_FIELD = שם שדה השולח ב-payload    (ברירת מחדל: from)
- *     SMS_GATEWAY_EXTRA_JSON = JSON סטטי שיתמזג ל-payload (לשדות ספציפיים לספק)
- *
- * לעולם אין להטמיע סודות בקוד. כל הקרדנשלס מגיעים ממשתני סביבה בלבד.
+ * הערה: whatsapp-cloud הוא ספק WhatsApp בלבד. sendSms נמסר גם הוא דרך WhatsApp
+ * (אין ערוץ SMS בתשלום). התפר ל-sendSms נשמר נקי כדי שאדפטר SMS ייעודי עתידי
+ * יוכל לממש SMS אמיתי בלי לשנות את הממשק.
  */
 
-/** ערוצי המסירה הנתמכים. */
+/** ערוצי המסירה הנתמכים על ידי שכבת ההודעות. */
 export type MessageChannel = 'sms' | 'whatsapp';
 
 /**
- * ממשק ספק ההודעות. כל מתאם ערוץ (console/twilio/שער) מממש אותו.
- * זהו החוזה הציבורי שסשנים אחרים מסתמכים עליו.
+ * ממשק ספק ההודעות. כל מתאם (console / whatsapp-cloud / אדפטר עתידי) מממש אותו.
  */
 export interface MessagingProvider {
-  /** מזהה קריא של הספק, לצורכי לוג ובדיקות. */
+  /** שם קריא של המתאם, לצורכי לוג ואבחון. */
   readonly name: string;
-  /** שליחת SMS פשוט. */
+  /** שליחת הודעת טקסט חופשי בערוץ SMS. */
   sendSms(to: string, message: string): Promise<void>;
-  /** שליחת הודעת WhatsApp. */
+  /** שליחת הודעת טקסט חופשי בערוץ WhatsApp. */
   sendWhatsApp(to: string, message: string): Promise<void>;
-  /** שליחת קוד OTP בערוץ ברירת המחדל (SMS). בנוי מעל sendSms. */
+  /** שליחת קוד OTP בן שש ספרות (בנוי מעל ערוצי הבסיס). */
   sendOtp(to: string, code: string): Promise<void>;
 }
 
 /**
- * שגיאת תצורה של שכבת ההודעות. נזרקת כשהספק אינו כשיר לשלוח בפועל
- * (למשל `console` בפרודקשן, או חוסר בקרדנשלס). ה-API אמור לתפוס אותה,
- * לרשום ללוג השרת, ולהחזיר שגיאה מטופלת עם הודעת i18n גנרית למשתמש.
+ * שגיאת תצורה: הספק לא הוגדר כראוי (למשל console בפרודקשן, או קרדנשלס חסרים).
+ * גורמת לכשל רועש במקום הצלחה שקטה.
  */
 export class MessagingConfigError extends Error {
   constructor(message: string) {
@@ -69,8 +63,7 @@ export class MessagingConfigError extends Error {
 }
 
 /**
- * שגיאת שליחה בפועל (כשל רשת/דחייה מצד הספק). נזרקת ממתאם אמיתי
- * כאשר קריאת ה-REST נכשלה.
+ * שגיאת שליחה: הספק הוגדר אך המסירה בפועל נכשלה (שגיאת רשת או תגובת שגיאה).
  */
 export class MessagingSendError extends Error {
   constructor(message: string) {
@@ -79,30 +72,28 @@ export class MessagingSendError extends Error {
   }
 }
 
-/** מבנה משתני הסביבה הרלוונטיים לשכבת ההודעות. */
+/** מפת משתני סביבה (חלקית) שממנה נגזרת בחירת הספק ותצורתו. */
 export type MessagingEnv = Record<string, string | undefined>;
 
+/** האם רצים בפרודקשן (קובע כשל-רועש ורמזי פיתוח). */
 function isProduction(env: MessagingEnv): boolean {
-  return env.NODE_ENV === 'production';
+  return (env.NODE_ENV ?? '').toLowerCase() === 'production';
 }
 
-/** הרכבת הודעת ה-OTP הסטנדרטית. */
+/** בניית נוסח הודעת ה-OTP הגנרית (כאשר אין תבנית ייעודית, למשל ב-console). */
 export function buildOtpMessage(code: string): string {
   return `${BRAND.name}: קוד האימות שלך הוא ${code}`;
 }
 
-// ---------- מתאם console (פיתוח בלבד) ----------
-
-/**
- * מתאם פיתוח: כותב את ההודעה ללוג השרת בלבד ואינו שולח דבר.
- * מיועד לפיתוח מקומי בלבד. בפרודקשן resolveMessagingProvider ימנע בחירה בו.
- */
+// ---------------------------------------------------------------------------
+// מתאם console: פיתוח בלבד. רק כותב ללוג, לעולם לא שולח בפועל.
+// ---------------------------------------------------------------------------
 export class ConsoleMessagingProvider implements MessagingProvider {
   readonly name = 'console';
 
   private log(channel: MessageChannel, to: string, message: string): void {
-    // eslint-disable-next-line no-console
-    console.log(`\n📱 [${channel.toUpperCase()} → ${to}]\n${message}\n`);
+    // לוג שרת בלבד, לא נחשף ללקוח.
+    console.info(`[messaging:console] (${channel}) -> ${to}: ${message}`);
   }
 
   async sendSms(to: string, message: string): Promise<void> {
@@ -114,380 +105,237 @@ export class ConsoleMessagingProvider implements MessagingProvider {
   }
 
   async sendOtp(to: string, code: string): Promise<void> {
-    // באנר בולט ללוג הפיתוח, רק כשלא בפרודקשן.
-    if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.log(
-        `\n════════════════════════════════════\n📱 קוד אימות ל-${to}: ${code}\n════════════════════════════════════\n`,
+    this.log('whatsapp', to, buildOtpMessage(code));
+    // באנר פיתוח בולט, רק כשלא בפרודקשן, כדי לא לדלוף קוד בסביבת אמת.
+    if (!isProduction(process.env)) {
+      console.info(
+        `\n============================\n[DEV OTP] ${to} -> ${code}\n============================\n`,
       );
     }
-    await this.sendSms(to, buildOtpMessage(code));
   }
 }
 
-// ---------- מתאם Twilio (SMS + WhatsApp דרך REST) ----------
-
-export interface TwilioConfig {
-  accountSid: string;
-  authToken: string;
-  messagingServiceSid?: string;
-  from?: string;
-  whatsAppFrom?: string;
+// ---------------------------------------------------------------------------
+// מתאם whatsapp-cloud: WhatsApp Cloud API של מטא (Graph API). הספק הראשי.
+// ---------------------------------------------------------------------------
+export interface WhatsAppCloudConfig {
+  /** מזהה מספר השולח (WHATSAPP_PHONE_NUMBER_ID). */
+  phoneNumberId: string;
+  /** טוקן Graph API (סוד). */
+  accessToken: string;
+  /** מזהה ה-WABA, אופציונלי, לרפרנס בלבד. */
+  businessAccountId?: string;
+  /** שם תבנית ה-OTP מסוג authentication. */
+  otpTemplate: string;
+  /** קוד שפת התבנית (למשל he, en_US). */
+  otpTemplateLang: string;
+  /** sub_type של כפתור העתקת הקוד, או null כדי להשמיט אותו. */
+  otpButtonSubType: string | null;
+  /** גרסת Graph API (למשל v21.0). */
+  graphVersion: string;
+  /** בסיס כתובת Graph (למשל https://graph.facebook.com). */
+  baseUrl: string;
+  /** קידומת מדינה למספרים בפורמט מקומי (למשל 972). */
+  defaultCountryCode: string;
 }
 
-/** נרמול מספר ל-whatsapp:+... כפי ש-Twilio מצפה. */
-function toWhatsAppAddress(value: string): string {
-  const trimmed = value.trim();
-  return trimmed.startsWith('whatsapp:') ? trimmed : `whatsapp:${trimmed}`;
-}
-
-/**
- * מתאם Twilio. שולח SMS ו-WhatsApp דרך Messages REST API.
- * ה-fetch מוזרק לצורכי בדיקה (ברירת מחדל: fetch הגלובלי).
- */
-export class TwilioMessagingProvider implements MessagingProvider {
-  readonly name = 'twilio';
-  private readonly config: TwilioConfig;
+export class WhatsAppCloudProvider implements MessagingProvider {
+  readonly name = 'whatsapp-cloud';
+  private readonly config: WhatsAppCloudConfig;
   private readonly fetchImpl: typeof fetch;
 
-  constructor(config: TwilioConfig, fetchImpl: typeof fetch = fetch) {
+  constructor(config: WhatsAppCloudConfig, fetchImpl: typeof fetch = fetch) {
     this.config = config;
     this.fetchImpl = fetchImpl;
   }
 
-  private async post(params: Record<string, string>): Promise<void> {
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(
-      this.config.accountSid,
-    )}/Messages.json`;
-    const auth = Buffer.from(`${this.config.accountSid}:${this.config.authToken}`).toString(
-      'base64',
-    );
+  /** נורמליזציה של מספר היעד לפורמט WhatsApp (ספרות בלבד, ללא +). */
+  private toRecipient(to: string): string {
+    const digits = to.replace(/\D/g, '');
+    if (digits.startsWith('0')) {
+      return `${this.config.defaultCountryCode}${digits.slice(1)}`;
+    }
+    return digits;
+  }
+
+  /** שליחת payload ל-Graph API עם טיפול בשגיאות רשת ותגובות שגיאה. */
+  private async post(payload: Record<string, unknown>): Promise<void> {
+    const url = `${this.config.baseUrl}/${this.config.graphVersion}/${encodeURIComponent(
+      this.config.phoneNumberId,
+    )}/messages`;
     let res: Response;
     try {
       res = await this.fetchImpl(url, {
         method: 'POST',
         headers: {
-          Authorization: `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Bearer ${this.config.accessToken}`,
+          'Content-Type': 'application/json',
         },
-        body: new URLSearchParams(params).toString(),
+        body: JSON.stringify(payload),
       });
     } catch (err) {
-      throw new MessagingSendError(`Twilio request failed: ${(err as Error).message}`);
+      throw new MessagingSendError(
+        `WhatsApp Cloud request failed: ${(err as Error).message}`,
+      );
     }
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
-      throw new MessagingSendError(`Twilio responded ${res.status}: ${detail}`);
+      throw new MessagingSendError(
+        `WhatsApp Cloud responded ${res.status}: ${detail}`,
+      );
     }
-  }
-
-  private smsSender(): Record<string, string> {
-    if (this.config.messagingServiceSid) {
-      return { MessagingServiceSid: this.config.messagingServiceSid };
-    }
-    if (this.config.from) {
-      return { From: this.config.from };
-    }
-    throw new MessagingConfigError('Twilio: missing TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM');
-  }
-
-  async sendSms(to: string, message: string): Promise<void> {
-    await this.post({ ...this.smsSender(), To: to, Body: message });
   }
 
   async sendWhatsApp(to: string, message: string): Promise<void> {
-    const from =
-      this.config.whatsAppFrom ??
-      (this.config.from ? toWhatsAppAddress(this.config.from) : undefined);
-    if (!from) {
-      throw new MessagingConfigError(
-        'Twilio WhatsApp: missing TWILIO_WHATSAPP_FROM or TWILIO_FROM',
-      );
-    }
     await this.post({
-      From: toWhatsAppAddress(from),
-      To: toWhatsAppAddress(to),
-      Body: message,
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: this.toRecipient(to),
+      type: 'text',
+      text: { preview_url: false, body: message },
     });
   }
 
-  async sendOtp(to: string, code: string): Promise<void> {
-    await this.sendSms(to, buildOtpMessage(code));
-  }
-}
-
-// ---------- מתאם שער ישראלי גנרי מבוסס HTTP ----------
-
-export type GatewayAuthMode = 'none' | 'bearer' | 'basic' | 'header';
-
-export interface HttpGatewayConfig {
-  endpoint: string;
-  method: 'POST' | 'GET';
-  authMode: GatewayAuthMode;
-  token?: string;
-  username?: string;
-  password?: string;
-  authHeader: string;
-  from?: string;
-  toField: string;
-  textField: string;
-  fromField: string;
-  extra: Record<string, unknown>;
-}
-
-/** פריסטים לשערים ישראליים נפוצים. ניתנים לדריסה מלאה ב-env. */
-const GATEWAY_PRESETS: Record<string, Partial<HttpGatewayConfig>> = {
-  generic: {},
-  // 019 SMS: משתמשים בדרך כלל ב-JSON עם טוקן ב-header. אמתו מול תיעוד הספק העדכני.
-  '019': {
-    method: 'POST',
-    authMode: 'bearer',
-    toField: 'phone',
-    textField: 'message',
-    fromField: 'source',
-  },
-  // InforU: JSON עם אימות Basic. אמתו מול תיעוד הספק העדכני.
-  inforu: {
-    method: 'POST',
-    authMode: 'basic',
-    toField: 'recipients',
-    textField: 'message',
-    fromField: 'sender',
-  },
-};
-
-/**
- * מתאם שער HTTP גנרי. מבנה ה-endpoint, האימות וה-payload נקבעים ב-env,
- * עם פריסטים ל-019 ול-InforU. שולח JSON. WhatsApp אינו נתמך בשער זה.
- */
-export class HttpGatewayMessagingProvider implements MessagingProvider {
-  readonly name = 'httpgateway';
-  private readonly config: HttpGatewayConfig;
-  private readonly fetchImpl: typeof fetch;
-
-  constructor(config: HttpGatewayConfig, fetchImpl: typeof fetch = fetch) {
-    this.config = config;
-    this.fetchImpl = fetchImpl;
-  }
-
-  private authHeaders(): Record<string, string> {
-    const { authMode, token, username, password, authHeader } = this.config;
-    switch (authMode) {
-      case 'bearer':
-        return token ? { Authorization: `Bearer ${token}` } : {};
-      case 'basic': {
-        const basic = Buffer.from(`${username ?? ''}:${password ?? ''}`).toString('base64');
-        return { Authorization: `Basic ${basic}` };
-      }
-      case 'header':
-        return token ? { [authHeader]: token } : {};
-      case 'none':
-      default:
-        return {};
-    }
-  }
-
   async sendSms(to: string, message: string): Promise<void> {
-    const payload: Record<string, unknown> = {
-      ...this.config.extra,
-      [this.config.toField]: to,
-      [this.config.textField]: message,
-    };
-    if (this.config.from) {
-      payload[this.config.fromField] = this.config.from;
-    }
-
-    let res: Response;
-    try {
-      res = await this.fetchImpl(this.config.endpoint, {
-        method: this.config.method,
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          ...this.authHeaders(),
-        },
-        body: this.config.method === 'GET' ? undefined : JSON.stringify(payload),
-      });
-    } catch (err) {
-      throw new MessagingSendError(`SMS gateway request failed: ${(err as Error).message}`);
-    }
-    if (!res.ok) {
-      const detail = await res.text().catch(() => '');
-      throw new MessagingSendError(`SMS gateway responded ${res.status}: ${detail}`);
-    }
-  }
-
-  async sendWhatsApp(_to: string, _message: string): Promise<void> {
-    throw new MessagingConfigError('httpgateway provider does not support WhatsApp');
+    // whatsapp-cloud מדבר WhatsApp בלבד; אין ערוץ SMS בתשלום. הודעות טקסט
+    // כלליות נמסרות דרך WhatsApp כדי לא לשבור צרכנים קיימים של sendSms.
+    await this.sendWhatsApp(to, message);
   }
 
   async sendOtp(to: string, code: string): Promise<void> {
-    await this.sendSms(to, buildOtpMessage(code));
+    const components: Array<Record<string, unknown>> = [
+      { type: 'body', parameters: [{ type: 'text', text: code }] },
+    ];
+    if (this.config.otpButtonSubType) {
+      components.push({
+        type: 'button',
+        sub_type: this.config.otpButtonSubType,
+        index: '0',
+        parameters: [{ type: 'text', text: code }],
+      });
+    }
+    await this.post({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: this.toRecipient(to),
+      type: 'template',
+      template: {
+        name: this.config.otpTemplate,
+        language: { code: this.config.otpTemplateLang },
+        components,
+      },
+    });
   }
 }
 
-// ---------- בחירת ספק ----------
+// ---------------------------------------------------------------------------
+// בחירת ספק: קורא MESSAGING_PROVIDER (עם תאימות לאחור ל-SMS_PROVIDER).
+// ---------------------------------------------------------------------------
 
-function parseExtraJson(raw: string | undefined): Record<string, unknown> {
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    throw new MessagingConfigError('SMS_GATEWAY_EXTRA_JSON is not valid JSON');
-  }
-}
+/** בניית מתאם whatsapp-cloud מתוך משתני הסביבה; זורק אם חסרים קרדנשלס. */
+function buildWhatsAppCloudProvider(
+  env: MessagingEnv,
+  fetchImpl?: typeof fetch,
+): MessagingProvider {
+  const phoneNumberId = (env.WHATSAPP_PHONE_NUMBER_ID ?? '').trim();
+  const accessToken = (env.WHATSAPP_ACCESS_TOKEN ?? '').trim();
+  const otpTemplate = (env.WHATSAPP_OTP_TEMPLATE ?? '').trim();
 
-function buildTwilioProvider(env: MessagingEnv, fetchImpl?: typeof fetch): TwilioMessagingProvider {
-  const accountSid = env.TWILIO_ACCOUNT_SID;
-  const authToken = env.TWILIO_AUTH_TOKEN;
-  const messagingServiceSid = env.TWILIO_MESSAGING_SERVICE_SID;
-  const from = env.TWILIO_FROM;
-
-  if (!accountSid || !authToken) {
+  const missing: string[] = [];
+  if (!phoneNumberId) missing.push('WHATSAPP_PHONE_NUMBER_ID');
+  if (!accessToken) missing.push('WHATSAPP_ACCESS_TOKEN');
+  if (!otpTemplate) missing.push('WHATSAPP_OTP_TEMPLATE');
+  if (missing.length > 0) {
     throw new MessagingConfigError(
-      'Twilio provider selected but TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN are missing',
-    );
-  }
-  if (!messagingServiceSid && !from) {
-    throw new MessagingConfigError(
-      'Twilio provider selected but neither TWILIO_MESSAGING_SERVICE_SID nor TWILIO_FROM is set',
+      `whatsapp-cloud provider selected but missing required env: ${missing.join(', ')}`,
     );
   }
 
-  return new TwilioMessagingProvider(
+  const buttonRaw = (env.WHATSAPP_OTP_BUTTON_SUBTYPE ?? 'url').trim().toLowerCase();
+  const otpButtonSubType = buttonRaw === '' || buttonRaw === 'none' ? null : buttonRaw;
+  const defaultCountryCode =
+    (env.WHATSAPP_DEFAULT_COUNTRY_CODE ?? '972').replace(/\D/g, '') || '972';
+  const baseUrl = (env.WHATSAPP_GRAPH_BASE_URL ?? 'https://graph.facebook.com')
+    .trim()
+    .replace(/\/+$/, '');
+
+  return new WhatsAppCloudProvider(
     {
-      accountSid,
-      authToken,
-      messagingServiceSid,
-      from,
-      whatsAppFrom: env.TWILIO_WHATSAPP_FROM,
+      phoneNumberId,
+      accessToken,
+      businessAccountId: (env.WHATSAPP_BUSINESS_ACCOUNT_ID ?? '').trim() || undefined,
+      otpTemplate,
+      otpTemplateLang: (env.WHATSAPP_OTP_TEMPLATE_LANG ?? 'he').trim() || 'he',
+      otpButtonSubType,
+      graphVersion: (env.WHATSAPP_GRAPH_VERSION ?? 'v21.0').trim() || 'v21.0',
+      baseUrl: baseUrl || 'https://graph.facebook.com',
+      defaultCountryCode,
     },
     fetchImpl,
   );
 }
 
-function buildHttpGatewayProvider(
-  env: MessagingEnv,
-  fetchImpl?: typeof fetch,
-): HttpGatewayMessagingProvider {
-  const presetKey = (env.SMS_GATEWAY_PRESET ?? 'generic').toLowerCase();
-  const preset = GATEWAY_PRESETS[presetKey];
-  if (!preset) {
-    throw new MessagingConfigError(
-      `Unknown SMS_GATEWAY_PRESET "${presetKey}" (expected generic | 019 | inforu)`,
-    );
-  }
-
-  const endpoint = env.SMS_GATEWAY_ENDPOINT;
-  if (!endpoint) {
-    throw new MessagingConfigError('httpgateway provider selected but SMS_GATEWAY_ENDPOINT is missing');
-  }
-
-  const method = (env.SMS_GATEWAY_METHOD ?? preset.method ?? 'POST').toUpperCase();
-  if (method !== 'POST' && method !== 'GET') {
-    throw new MessagingConfigError(`Unsupported SMS_GATEWAY_METHOD "${method}"`);
-  }
-
-  const authMode = (env.SMS_GATEWAY_AUTH_MODE ?? preset.authMode ?? 'none').toLowerCase();
-  if (!['none', 'bearer', 'basic', 'header'].includes(authMode)) {
-    throw new MessagingConfigError(`Unsupported SMS_GATEWAY_AUTH_MODE "${authMode}"`);
-  }
-
-  const config: HttpGatewayConfig = {
-    endpoint,
-    method: method as 'POST' | 'GET',
-    authMode: authMode as GatewayAuthMode,
-    token: env.SMS_GATEWAY_TOKEN,
-    username: env.SMS_GATEWAY_USERNAME,
-    password: env.SMS_GATEWAY_PASSWORD,
-    authHeader: env.SMS_GATEWAY_AUTH_HEADER ?? 'Authorization',
-    from: env.SMS_GATEWAY_FROM,
-    toField: env.SMS_GATEWAY_TO_FIELD ?? preset.toField ?? 'to',
-    textField: env.SMS_GATEWAY_TEXT_FIELD ?? preset.textField ?? 'text',
-    fromField: env.SMS_GATEWAY_FROM_FIELD ?? preset.fromField ?? 'from',
-    extra: parseExtraJson(env.SMS_GATEWAY_EXTRA_JSON),
-  };
-
-  if (authMode === 'basic' && (!config.username || !config.password)) {
-    throw new MessagingConfigError(
-      'httpgateway basic auth selected but SMS_GATEWAY_USERNAME / SMS_GATEWAY_PASSWORD are missing',
-    );
-  }
-  if ((authMode === 'bearer' || authMode === 'header') && !config.token) {
-    throw new MessagingConfigError(
-      'httpgateway bearer/header auth selected but SMS_GATEWAY_TOKEN is missing',
-    );
-  }
-
-  return new HttpGatewayMessagingProvider(config, fetchImpl);
-}
-
 /**
- * בחירת ספק ההודעות לפי משתני הסביבה. פונקציה טהורה (ללא סינגלטון) לצורכי
- * בדיקה והזרקת תלות. זורקת MessagingConfigError בכל מצב שאינו כשיר לשליחה
- * אמיתית: ספק לא מוכר, קרדנשלס חסרים, או `console`/חוסר קרדנשלס בפרודקשן.
- *
- * @param env משתני הסביבה (ברירת מחדל: process.env)
- * @param fetchImpl מימוש fetch להזרקה בבדיקות
+ * מזהה ובונה את ספק ההודעות מתוך משתני הסביבה. ניתן להזריק env ו-fetch לבדיקות.
+ * ברירת המחדל console; בפרודקשן console/ריק זורק MessagingConfigError (כשל רועש).
  */
 export function resolveMessagingProvider(
   env: MessagingEnv = process.env,
   fetchImpl?: typeof fetch,
 ): MessagingProvider {
-  const selected = (env.SMS_PROVIDER ?? 'console').toLowerCase();
+  const selected = (env.MESSAGING_PROVIDER ?? env.SMS_PROVIDER ?? 'console')
+    .trim()
+    .toLowerCase();
 
   switch (selected) {
-    case 'twilio':
-      return buildTwilioProvider(env, fetchImpl);
-    case 'httpgateway':
-    case 'gateway':
-      return buildHttpGatewayProvider(env, fetchImpl);
+    case 'whatsapp-cloud':
+    case 'whatsapp_cloud':
+    case 'whatsapp':
+      return buildWhatsAppCloudProvider(env, fetchImpl);
     case 'console':
     case '':
       if (isProduction(env)) {
         throw new MessagingConfigError(
-          'SMS_PROVIDER is "console" in production; configure a real provider (twilio or httpgateway)',
+          'MESSAGING_PROVIDER is "console" in production; configure a real provider (whatsapp-cloud)',
         );
       }
       return new ConsoleMessagingProvider();
     default:
       throw new MessagingConfigError(
-        `Unknown SMS_PROVIDER "${selected}" (expected console | twilio | httpgateway)`,
+        `Unknown MESSAGING_PROVIDER "${selected}" (expected console | whatsapp-cloud)`,
       );
   }
 }
 
-let cached: MessagingProvider | null = null;
+// ---------------------------------------------------------------------------
+// סינגלטון נוח + פונקציות עזר ציבוריות.
+// ---------------------------------------------------------------------------
+let cachedProvider: MessagingProvider | null = null;
 
-/**
- * ספק ההודעות הפעיל (סינגלטון), נבחר לפי משתני הסביבה. זורק
- * MessagingConfigError אם התצורה אינה כשירה לשליחה אמיתית.
- */
+/** מחזיר את ספק ההודעות (סינגלטון), בונה בפעם הראשונה. */
 export function getMessagingProvider(): MessagingProvider {
-  if (cached) return cached;
-  cached = resolveMessagingProvider();
-  return cached;
+  if (!cachedProvider) {
+    cachedProvider = resolveMessagingProvider();
+  }
+  return cachedProvider;
 }
 
-/** איפוס הסינגלטון (לצורכי בדיקה בלבד). */
+/** איפוס הסינגלטון (לשימוש בבדיקות). */
 export function resetMessagingProvider(): void {
-  cached = null;
+  cachedProvider = null;
 }
-
-// ---------- פונקציות נוחות ציבוריות ----------
 
 /** שליחת SMS דרך הספק הפעיל. */
-export async function sendSms(to: string, text: string): Promise<void> {
-  await getMessagingProvider().sendSms(to, text);
+export function sendSms(to: string, message: string): Promise<void> {
+  return getMessagingProvider().sendSms(to, message);
 }
 
-/** שליחת הודעת WhatsApp דרך הספק הפעיל. */
-export async function sendWhatsApp(to: string, text: string): Promise<void> {
-  await getMessagingProvider().sendWhatsApp(to, text);
+/** שליחת WhatsApp דרך הספק הפעיל. */
+export function sendWhatsApp(to: string, message: string): Promise<void> {
+  return getMessagingProvider().sendWhatsApp(to, message);
 }
 
-/** שליחת קוד OTP דרך הספק הפעיל. */
-export async function sendOtp(to: string, code: string): Promise<void> {
-  await getMessagingProvider().sendOtp(to, code);
+/** שליחת OTP דרך הספק הפעיל. */
+export function sendOtp(to: string, code: string): Promise<void> {
+  return getMessagingProvider().sendOtp(to, code);
 }

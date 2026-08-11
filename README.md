@@ -50,8 +50,8 @@ npm run dev
 
 ### קוד ה-OTP בפיתוח
 
-ספק ה-SMS ברירת המחדל הוא `console`: כאשר לקוח מבקש קוד הזדהות, הקוד **מודפס ללוג של
-שרת הפיתוח** במקום להישלח ב-SMS. חפשו שורה כמו `OTP for +9725… : 123456` בטרמינל.
+ספק ההודעות ברירת המחדל הוא `console`: כאשר לקוח מבקש קוד הזדהות, הקוד **מודפס ללוג של
+שרת הפיתוח** במקום להישלח ב-WhatsApp. חפשו שורה כמו `OTP for +9725… : 123456` בטרמינל.
 
 ## משתני סביבה
 
@@ -63,41 +63,29 @@ npm run dev
 | `BUSINESS_TIMEZONE` | אזור זמן עסקי ברירת מחדל (IANA), למשל `Asia/Jerusalem` |
 | `SESSION_SECRET` | מפתח לחתימת עוגיית ההתחברות (מחרוזת אקראית ארוכה) |
 | `OTP_PEPPER` | "פלפל" להצפנת קודי OTP (מחרוזת אקראית ארוכה) |
-| `SMS_PROVIDER` | ספק ההודעות: `console` (פיתוח), `twilio`, או `httpgateway` |
+| `MESSAGING_PROVIDER` | ספק ההודעות: `console` (פיתוח) או `whatsapp-cloud` (פרודקשן). תאימות לאחור ל-`SMS_PROVIDER` |
 | `NEXT_PUBLIC_APP_URL` | כתובת בסיס ציבורית של האפליקציה |
 
-### שליחת הודעות (SMS ו-WhatsApp)
+### שליחת הודעות (WhatsApp)
 
-שכבת ההודעות תחת `src/server/providers/messaging.ts` בוחרת מתאם לפי `SMS_PROVIDER`.
+שכבת ההודעות תחת `src/server/providers/messaging.ts` בוחרת מתאם לפי `MESSAGING_PROVIDER` (ואם אינו מוגדר, לפי `SMS_PROVIDER` לתאימות לאחור).
 בפרודקשן חובה לבחור מתאם אמיתי; אם נשאר `console` או שחסרים קרדנשלס, שליחת ה-OTP נכשלת ברעש (שגיאה בלוג והודעת i18n גנרית ללקוח) ולא מתבצעת הצלחה שקטה.
 
-מתאם Twilio (`SMS_PROVIDER=twilio`) שולח SMS וגם WhatsApp:
+מתאם WhatsApp Cloud API של מטא (`MESSAGING_PROVIDER=whatsapp-cloud`) שולח את קוד ה-OTP דרך תבנית מסוג authentication, ותומך גם בהודעות טקסט חופשי:
 
 | משתנה | תיאור |
 | --- | --- |
-| `TWILIO_ACCOUNT_SID` | מזהה חשבון Twilio (סוד) |
-| `TWILIO_AUTH_TOKEN` | טוקן אימות Twilio (סוד) |
-| `TWILIO_MESSAGING_SERVICE_SID` | מזהה Messaging Service (או להשתמש ב-`TWILIO_FROM`) |
-| `TWILIO_FROM` | מספר שולח ל-SMS (אם אין Messaging Service) |
-| `TWILIO_WHATSAPP_FROM` | מספר שולח ל-WhatsApp (נופל חזרה ל-`TWILIO_FROM`) |
+| `WHATSAPP_PHONE_NUMBER_ID` | מזהה מספר הטלפון העסקי ב-Graph (חובה) |
+| `WHATSAPP_ACCESS_TOKEN` | access token של WhatsApp Cloud API (סוד; חובה) |
+| `WHATSAPP_OTP_TEMPLATE` | שם תבנית ה-OTP המאושרת ב-Meta (authentication; חובה) |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | מזהה חשבון ה-WhatsApp Business (אופציונלי) |
+| `WHATSAPP_OTP_TEMPLATE_LANG` | קוד שפת התבנית (ברירת מחדל `he`; חייב להתאים לתבנית שאושרה) |
+| `WHATSAPP_OTP_BUTTON_SUBTYPE` | סוג כפתור העתקת-קוד (ברירת מחדל `url`; `none`/ריק = ללא כפתור) |
+| `WHATSAPP_GRAPH_VERSION` | גרסת Graph API (ברירת מחדל `v21.0`) |
+| `WHATSAPP_GRAPH_BASE_URL` | כתובת בסיס של Graph (ברירת מחדל `https://graph.facebook.com`) |
+| `WHATSAPP_DEFAULT_COUNTRY_CODE` | קידומת מדינה לנרמול מספרים מקומיים (ברירת מחדל `972`) |
 
-מתאם שער ישראלי גנרי מבוסס HTTP (`SMS_PROVIDER=httpgateway`):
-
-| משתנה | תיאור |
-| --- | --- |
-| `SMS_GATEWAY_PRESET` | preset מוכן: `019` או `inforu` (קובע endpoint ו-payload) |
-| `SMS_GATEWAY_ENDPOINT` | כתובת ה-endpoint (דורש אם אין preset) |
-| `SMS_GATEWAY_METHOD` | שיטת HTTP (ברירת מחדל `POST`) |
-| `SMS_GATEWAY_AUTH_MODE` | מצב אימות: `bearer`, `basic`, `header`, `none` |
-| `SMS_GATEWAY_TOKEN` | טוקן אימות (סוד; ל-`bearer`/`header`) |
-| `SMS_GATEWAY_USERNAME` | שם משתמש (סוד; ל-`basic`) |
-| `SMS_GATEWAY_PASSWORD` | סיסמה (סוד; ל-`basic`) |
-| `SMS_GATEWAY_AUTH_HEADER` | שם כותרת אימות מותאם (ל-`header`) |
-| `SMS_GATEWAY_FROM` | מזהה/שם השולח |
-| `SMS_GATEWAY_TO_FIELD` | שם שדה היעד ב-payload (ברירת מחדל `to`) |
-| `SMS_GATEWAY_TEXT_FIELD` | שם שדה הטקסט ב-payload (ברירת מחדל `text`) |
-| `SMS_GATEWAY_FROM_FIELD` | שם שדה השולח ב-payload (ברירת מחדל `from`) |
-| `SMS_GATEWAY_EXTRA_JSON` | JSON נוסף שממוזג ל-payload (מחרוזת JSON) |
+> מתאם SMS עתידי יכול להתחבר לאותו ממשק (`sendSms`/`sendWhatsApp`/`sendOtp`) בלי לשנות את הצרכנים; כרגע אין ערוץ SMS בתשלום, ו-`sendSms` מאציל ל-WhatsApp.
 
 הגבלת קצב של בקשות OTP (הגנה מפני ניצול לרעה ועלויות):
 
