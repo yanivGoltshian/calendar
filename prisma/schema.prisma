@@ -198,6 +198,11 @@ model Business {
   // מועד המעבר לפרימיום (אופציונלי, לתיעוד).
   premiumSince DateTime?
 
+  // שאלות שיווק באונבורדינג (אפיק D2), בדומה ל-calmark: מאיזה יומן הגיע הבעלים
+  // וכיצד שמע עלינו. עמודות nullable אדיטיביות בלבד; נאספות בהקמת העסק לצורכי אנליטיקה.
+  priorCalendar  String?
+  referralSource String?
+
   settings        BusinessSettings?
   staff           StaffMember[]
   services        Service[]

@@ -12,6 +12,17 @@ export type CreateBusinessState = {
 
 const VALID_TYPES = new Set(Object.values(BusinessType) as string[]);
 
+// מפתחות תשובה חוקיים לשאלות השיווק (אפיק D2). ערך שאינו ברשימה מנוקה ל-null.
+const PRIOR_CALENDAR_KEYS = new Set([
+  'none',
+  'paper',
+  'google',
+  'spreadsheet',
+  'otherSystem',
+  'other',
+]);
+const REFERRAL_KEYS = new Set(['google', 'instagram', 'facebook', 'tiktok', 'friend', 'other']);
+
 /**
  * פעולת יצירת עסק אמיתית (אפיק D1).
  * מאמתת בעלים מחובר, מוודאת שם וסוג, יוצרת עסק חדש בבעלות המייל,
@@ -41,8 +52,22 @@ export async function createBusinessAction(
   const phone = String(formData.get('phone') ?? '').trim() || null;
   const address = String(formData.get('address') ?? '').trim() || null;
 
+  // שאלות שיווק (אפיק D2): נאספות באונבורדינג בדומה ל-calmark; אופציונליות.
+  const priorCalendarRaw = String(formData.get('priorCalendar') ?? '').trim();
+  const priorCalendar = PRIOR_CALENDAR_KEYS.has(priorCalendarRaw) ? priorCalendarRaw : null;
+  const referralRaw = String(formData.get('referralSource') ?? '').trim();
+  const referralSource = REFERRAL_KEYS.has(referralRaw) ? referralRaw : null;
+
   try {
-    await createBusiness({ name, type, phone, address, ownerEmail: email });
+    await createBusiness({
+      name,
+      type,
+      phone,
+      address,
+      ownerEmail: email,
+      priorCalendar,
+      referralSource,
+    });
   } catch {
     return { error: t.business.create.errorGeneric };
   }
