@@ -9,6 +9,9 @@ import {
 import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
 import { getClientSession } from '@/lib/session';
+import { isValidIsraeliMobile, normalizePhone } from '@/lib/crypto';
+import { checkBookRequestAllowed } from '@/server/repos/bookRateLimit';
+import { t } from '@/i18n';
 
 const bodySchema = z.object({
   slug: z.string().min(1),
@@ -16,13 +19,35 @@ const bodySchema = z.object({
   serviceIds: z.array(z.string().min(1)).min(1),
   startAtUtc: z.string().datetime(),
   name: z.string().trim().min(1).optional(),
+  phone: z.string().optional(),
 });
 
+/** חילוץ כתובת ה-IP של הלקוח מכותרות ה-proxy (best-effort). */
+function extractClientIp(request: Request): string | null {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const first = forwarded.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) return realIp.trim();
+  return null;
+}
+
 export async function POST(req: Request) {
-  // חובה התחברות (אימות טלפון הושלם) לפני קביעת תור.
+  // קביעת תור אינה דורשת עוד OTP: אם קיימת התחברות לקוח נשתמש בה (תאימות
+  // לאחור), אחרת נקבל הזמנת אורח לפי שם + טלפון. אישור העסק (PENDING) עדיין
+  // חוסם את התור, ולכן זה בטוח ל-MVP.
   const session = await getClientSession();
-  if (!session) {
-    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+
+  // הגבלת קצב מבוססת IP למניעת ספאם של הזמנות אורח.
+  const ip = extractClientIp(req);
+  const rateLimit = checkBookRequestAllowed(ip);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'rate_limited', reason: rateLimit.reason, message: t.auth.tooManyRequests },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } },
+    );
   }
 
   let parsed;
@@ -30,6 +55,28 @@ export async function POST(req: Request) {
     parsed = bodySchema.parse(await req.json());
   } catch {
     return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
+  }
+
+  // זהות הלקוח: מתוך ההתחברות אם קיימת, אחרת מפרטי הזמנת האורח.
+  let clientPhone: string;
+  let clientName: string;
+  let clientUserId: string | undefined;
+  if (session) {
+    clientPhone = session.phone;
+    clientName = parsed.name ?? session.name ?? session.phone;
+    clientUserId = session.userId;
+  } else {
+    const guestName = parsed.name?.trim();
+    const guestPhone = parsed.phone?.trim();
+    if (!guestName || !guestPhone) {
+      return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
+    }
+    if (!isValidIsraeliMobile(guestPhone)) {
+      return NextResponse.json({ ok: false, error: 'invalid_phone' }, { status: 400 });
+    }
+    clientPhone = normalizePhone(guestPhone);
+    clientName = guestName;
+    clientUserId = undefined;
   }
 
   const business = await getBusinessBySlug(parsed.slug);
@@ -78,12 +125,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'slot_taken' }, { status: 409 });
   }
 
-  // יצירה/איתור לקוח לפי טלפון מתוך ההתחברות.
+  // יצירה/איתור לקוח לפי טלפון (מהתחברות או מהזמנת אורח).
   const client = await findOrCreateClient({
     businessId: business.id,
-    phone: session.phone,
-    name: parsed.name ?? session.name ?? session.phone,
-    userId: session.userId,
+    phone: clientPhone,
+    name: clientName,
+    userId: clientUserId,
   });
 
   // סטטוס התחלתי לפי מדיניות: PENDING כשנדרש אישור עסק, אחרת CONFIRMED.
