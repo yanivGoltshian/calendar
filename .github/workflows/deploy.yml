@@ -79,6 +79,9 @@ jobs:
 
   # ---------- פריסת תשתית ועדכון האפליקציה ----------
   deploy:
+    # מסלול בנייה בלבד: בהרצה עם deployInfra=false ה-job הזה מדולג לגמרי,
+    # ושום דבר לא נוגע ב-Azure — רק build-and-push ל-GHCR רץ (חינם, לפני אישור עלות).
+    if: ${{ github.event.inputs.deployInfra == 'true' }}
     runs-on: ubuntu-latest
     needs: build-and-push
     environment: production
@@ -108,17 +111,6 @@ jobs:
             sessionSecret=${{ secrets.SESSION_SECRET }}
             otpPepper=${{ secrets.OTP_PEPPER }}
           failOnStdErr: false
-
-      - name: Update Container App image (fast path, ללא שינוי תשתית)
-        if: ${{ github.event.inputs.deployInfra != 'true' }}
-        uses: azure/cli@v2
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az containerapp update \
-              --name torchick-app-prod \
-              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
-              --image "${{ needs.build-and-push.outputs.image }}"
 
       - name: Azure logout
         if: always()

@@ -23,6 +23,10 @@ yarn-error.log*
 .env
 .env*.local
 
+# Azure deployment parameters that contain secrets — never commit
+infra/main.parameters.prod.json
+infra/main.parameters.*.local.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
