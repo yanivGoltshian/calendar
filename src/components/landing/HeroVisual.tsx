@@ -3,10 +3,13 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
 import { Float } from '@/components/motion';
+import { ArrowNextIcon } from '@/components/landing/icons';
+import { t } from '@/i18n';
 
 /**
- * HeroVisual — מוקאפ מוצר מונפש ועדין: כרטיס יומן עם שעות פנויות,
- * שבב אישור צף וזוהר מותג. מכבד prefers-reduced-motion.
+ * HeroVisual — סצנה אנושית ומזמינה: מאיה (בעלת עסק) עומדת לצד כרטיס יומן
+ * מונפש עם שעות פנויות ושבב אישור צף. מכבד prefers-reduced-motion,
+ * ושומרת על עמוד נקי גם במובייל.
  */
 const slots = [
   { time: '09:00', taken: false },
@@ -21,7 +24,7 @@ export function HeroVisual() {
   const reduce = useReducedMotion();
 
   return (
-    <div className="relative mx-auto w-full max-w-md">
+    <div className="relative mx-auto w-full max-w-md pb-4 sm:pe-16 lg:pe-20">
       {/* הילת רקע */}
       <div
         aria-hidden
@@ -74,7 +77,7 @@ export function HeroVisual() {
           {/* פס פעולה */}
           <div className="mt-4 flex items-center justify-between rounded-2xl bg-brand-gradient px-4 py-3 text-white">
             <span className="text-sm font-semibold">אישור התור</span>
-            <span aria-hidden className="text-lg">←</span>
+            <ArrowNextIcon aria-hidden className="h-5 w-5" />
           </div>
         </div>
       </Float>
@@ -93,6 +96,23 @@ export function HeroVisual() {
           <div className="text-xs font-bold text-sand-900 dark:text-sand-50">התור נקבע</div>
           <div className="text-[11px] text-sand-500">תזכורת תישלח אוטומטית</div>
         </div>
+      </motion.div>
+
+      {/* מאיה — בעלת עסק, עומדת לצד הכרטיס */}
+      <motion.div
+        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+        className="pointer-events-none absolute -bottom-4 -end-3 z-10 w-24 sm:-end-2 sm:w-28 lg:w-32"
+      >
+        <Image
+          src="/brand/mascots/maya-full.png"
+          alt={t.marketing.mascots.heroAlt}
+          width={358}
+          height={1240}
+          priority
+          className="h-auto w-full drop-shadow-xl"
+        />
       </motion.div>
     </div>
   );

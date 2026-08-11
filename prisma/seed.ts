@@ -52,7 +52,7 @@ async function main() {
   const owner = await prisma.user.create({
     data: {
       phone: normalizePhone('050-1111111'),
-      name: 'דנה כהן',
+      name: 'יניב לוי',
       role: 'OWNER',
     },
   });
@@ -61,10 +61,10 @@ async function main() {
   const business = await prisma.business.create({
     data: {
       slug: SLUG,
-      name: 'מספרת דמו',
+      name: 'מספרת הבית',
       type: 'BARBERSHOP',
       description:
-        'מספרה לגברים בלב תל אביב. תספורות, עיצוב זקן וטיפוח, באווירה נעימה ומקצועית.',
+        'מספרת בוטיק לכל המשפחה בלב תל אביב. תספורות גברים ונשים, עיצוב זקן, פן, החלקות ומניקור, באווירה חמה ומקצועית. קובעים תור אונליין בכמה שניות.',
       address: 'רחוב דיזנגוף 100, תל אביב',
       phone: normalizePhone('03-1234567'),
       instagramUrl: 'https://instagram.com/demo_barbershop',
@@ -79,6 +79,25 @@ async function main() {
           slotGranularityMinutes: 15,
           maxAdvanceBookingDays: 60,
         },
+      },
+      // שעות פעילות ברמת העסק (scope BUSINESS): א׳-ה׳ 09:00-19:00, ו׳ 09:00-14:00, שבת סגור.
+      workingHours: {
+        create: [
+          ...[0, 1, 2, 3, 4].map((weekday) => ({
+            scope: 'BUSINESS' as const,
+            weekday,
+            startMinute: 9 * 60,
+            endMinute: 19 * 60,
+            breaks: [],
+          })),
+          {
+            scope: 'BUSINESS' as const,
+            weekday: 5,
+            startMinute: 9 * 60,
+            endMinute: 14 * 60,
+            breaks: [],
+          },
+        ],
       },
     },
   });
@@ -100,18 +119,21 @@ async function main() {
       sortOrder: 4,
       hideDuration: true,
     },
+    { name: 'תספורת נשים', durationMin: 45, priceAgorot: 14000, sortOrder: 5 },
+    { name: 'פן ועיצוב', durationMin: 40, priceAgorot: 9000, sortOrder: 6 },
+    { name: 'מניקור ג׳ל', durationMin: 50, priceAgorot: 12000, sortOrder: 7 },
     {
-      name: 'טיפול פנים לגבר',
-      durationMin: 40,
-      priceAgorot: 12000,
-      sortOrder: 5,
+      name: 'החלקת שיער',
+      durationMin: 120,
+      priceAgorot: 35000,
+      sortOrder: 8,
       hidePrice: true,
     },
     {
       name: 'צביעת שיער',
-      durationMin: 60,
-      priceAgorot: 15000,
-      sortOrder: 6,
+      durationMin: 75,
+      priceAgorot: 18000,
+      sortOrder: 9,
       hidden: true, // מוסתר מהעמוד הציבורי לצורך הדגמה
     },
   ];
@@ -128,18 +150,22 @@ async function main() {
   const staffSpecs = [
     {
       phone: '050-2222222',
-      name: 'יוסי לוי',
-      displayName: 'יוסי',
-      title: 'ספר בכיר',
+      name: 'יניב לוי',
+      displayName: 'יניב',
+      title: 'בעלים וספר בכיר',
+      bio: 'מייסד מספרת הבית. מתמחה בתספורות גברים, עיצוב זקן וטיפוח קלאסי, עם יחס אישי לכל לקוח.',
+      avatarUrl: '/brand/mascots/adam-head.png',
       permissionLevel: 'MANAGER' as const,
-      // ראשון-חמישי 09:00-18:00 עם הפסקה 13:00-14:00
-      hours: weekdayHours(9 * 60, 18 * 60, [[13 * 60, 14 * 60]]),
+      // ראשון-חמישי 09:00-19:00 עם הפסקה 13:00-14:00
+      hours: weekdayHours(9 * 60, 19 * 60, [[13 * 60, 14 * 60]]),
     },
     {
       phone: '050-3333333',
-      name: 'אבי מזרחי',
-      displayName: 'אבי',
-      title: 'ספר',
+      name: 'גלי אלון',
+      displayName: 'גלי',
+      title: 'מעצבת שיער ומניקור',
+      bio: 'מעצבת שיער נשים, פן, החלקות ומניקור. יד רכה, אוזן קשבת ותשומת לב לכל פרט.',
+      avatarUrl: '/brand/mascots/maya-head.png',
       permissionLevel: 'CALENDAR_ONLY' as const,
       // ראשון-חמישי 10:00-19:00 עם הפסקה 14:00-15:00
       hours: weekdayHours(10 * 60, 19 * 60, [[14 * 60, 15 * 60]]),
@@ -161,6 +187,8 @@ async function main() {
         userId: user.id,
         displayName: spec.displayName,
         title: spec.title,
+        bio: spec.bio,
+        avatarUrl: spec.avatarUrl,
         permissionLevel: spec.permissionLevel,
         workingHours: {
           create: spec.hours.map((h) => ({
@@ -177,10 +205,10 @@ async function main() {
   }
 
   console.log('מקשר צוות לשירותים…');
-  // ServiceStaff (m2m): יוסי (בכיר) מבצע את כל השירותים; אבי את התספורות ועיצוב הזקן.
+  // ServiceStaff (m2m): יניב מבצע שירותי גברים וילדים; גלי שירותי נשים, מניקור וצביעה.
   const staffServiceLinks: Array<{ staffIdx: number; serviceIdxs: number[] }> = [
-    { staffIdx: 0, serviceIdxs: [0, 1, 2, 3, 4, 5] },
-    { staffIdx: 1, serviceIdxs: [0, 1, 2, 3] },
+    { staffIdx: 0, serviceIdxs: [0, 1, 2, 3] },
+    { staffIdx: 1, serviceIdxs: [4, 5, 6, 7, 8] },
   ];
   for (const link of staffServiceLinks) {
     for (const svcIdx of link.serviceIdxs) {
@@ -203,7 +231,7 @@ async function main() {
     },
   });
 
-  // תורים לדוגמה להיום עבור יוסי (staff[0]).
+  // תורים לדוגמה להיום: יניב (staff[0]) וגלי (staff[1]).
   const today = todayDateString(TZ);
   const [y, m, d] = today.split('-').map(Number);
 
@@ -216,7 +244,7 @@ async function main() {
   const sampleAppts = [
     { at: apptAt(10 * 60, services[0]), status: 'CONFIRMED' as const, staff: staff[0] },
     { at: apptAt(11 * 60 + 30, services[2]), status: 'PENDING' as const, staff: staff[0] },
-    { at: apptAt(15 * 60, services[1]), status: 'CONFIRMED' as const, staff: staff[1] },
+    { at: apptAt(15 * 60, services[4]), status: 'CONFIRMED' as const, staff: staff[1] },
   ];
 
   for (const a of sampleAppts) {

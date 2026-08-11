@@ -16,6 +16,7 @@ const sectionLinks: NavLink[] = [
   { href: '#features', label: t.marketing.nav.features },
   { href: '#audiences', label: t.marketing.nav.audiences },
   { href: '#how-it-works', label: t.marketing.nav.howItWorks },
+  { href: '#migrate', label: t.marketing.nav.migrate },
   { href: '#pricing', label: t.marketing.nav.pricing },
   { href: '#faq', label: t.marketing.nav.faq },
 ];
@@ -50,16 +51,16 @@ export function Navbar({ demoSlug }: { demoSlug?: string }) {
       )}
     >
       <Container className="flex h-16 items-center justify-between sm:h-18">
-        <Link href="/" className="flex items-center gap-2" aria-label={BRAND.name}>
+        <Link href="/" className="flex items-center gap-2.5" aria-label={BRAND.name}>
           <Image
             src="/brand/torchick-emblem-navy-256.png"
             alt=""
-            width={36}
-            height={36}
+            width={40}
+            height={40}
             priority
-            className="h-9 w-9 rounded-xl object-cover shadow-glow-soft"
+            className="h-10 w-10 rounded-xl object-cover shadow-glow-soft"
           />
-          <span className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
+          <span className="font-display text-xl font-bold tracking-tight text-sand-900 dark:text-sand-50">
             {BRAND.name}
           </span>
         </Link>

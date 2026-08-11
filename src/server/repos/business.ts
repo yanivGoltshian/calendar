@@ -14,6 +14,10 @@ export async function getBusinessBySlug(slug: string) {
         where: { active: true },
         orderBy: { createdAt: 'asc' },
       },
+      workingHours: {
+        where: { scope: 'BUSINESS' },
+        orderBy: { weekday: 'asc' },
+      },
     },
   });
 }
