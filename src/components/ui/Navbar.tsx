@@ -53,12 +53,12 @@ export function Navbar({ demoSlug }: { demoSlug?: string }) {
       <Container className="flex h-16 items-center justify-between sm:h-18">
         <Link href="/" className="flex items-center gap-2.5" aria-label={BRAND.name}>
           <Image
-            src="/brand/torchick-emblem-navy-256.png"
+            src="/brand/torchick-emblem-mark.png"
             alt=""
             width={40}
             height={40}
             priority
-            className="h-10 w-10 rounded-xl object-cover shadow-glow-soft"
+            className="h-10 w-10 object-contain"
           />
           <span className="font-display text-xl font-bold tracking-tight text-sand-900 dark:text-sand-50">
             {BRAND.name}
@@ -79,7 +79,7 @@ export function Navbar({ demoSlug }: { demoSlug?: string }) {
 
         <div className="hidden items-center gap-3 lg:flex">
           <Link
-            href="/admin"
+            href="/login"
             className="text-sm font-medium text-sand-600 transition-colors hover:text-brand-700 dark:text-sand-300 dark:hover:text-brand-200"
           >
             {t.marketing.nav.login}
@@ -149,7 +149,7 @@ export function Navbar({ demoSlug }: { demoSlug?: string }) {
                 </a>
               )}
               <div className="mt-3 flex flex-col gap-2 border-t border-sand-200/70 pt-4 dark:border-sand-800/70">
-                <Button href="/admin" variant="secondary" size="md" onClick={() => setOpen(false)}>
+                <Button href="/login" variant="secondary" size="md" onClick={() => setOpen(false)}>
                   {t.marketing.nav.login}
                 </Button>
                 <Button href="/admin" size="md" onClick={() => setOpen(false)}>

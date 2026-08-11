@@ -54,12 +54,12 @@ export default async function HomePage() {
               <FadeIn>
                 <div className="mb-6 flex items-center justify-center">
                   <Image
-                    src="/brand/torchick-emblem-navy-256.png"
+                    src="/brand/torchick-emblem-mark.png"
                     alt="תור צ׳יק"
                     width={112}
                     height={112}
                     priority
-                    className="h-20 w-20 rounded-3xl object-cover shadow-glow sm:h-24 sm:w-24"
+                    className="h-20 w-20 object-contain sm:h-24 sm:w-24"
                   />
                 </div>
               </FadeIn>

@@ -20,11 +20,11 @@ export function MascotTip({
     >
       <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-accent-100 to-accent-200/50 shadow-glow ring-4 ring-white/80 animate-float motion-reduce:animate-none sm:h-32 sm:w-32 dark:from-accent-900/40 dark:to-accent-950/20 dark:ring-sand-900/80">
         <Image
-          src="/brand/mascots/sean-face.png"
+          src="/brand/mascots/sean-wink.png"
           alt={seanAlt}
           width={320}
           height={320}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover object-top"
         />
       </div>
       <div className="flex-1 rounded-3xl border border-accent-200/70 bg-accent-50/70 p-4 pe-5 shadow-soft dark:border-accent-900/40 dark:bg-accent-950/20">

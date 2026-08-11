@@ -37,11 +37,11 @@ export function HeroVisual() {
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Image
-                src="/brand/torchick-emblem-navy-256.png"
+                src="/brand/torchick-emblem-mark.png"
                 alt=""
                 width={36}
                 height={36}
-                className="h-9 w-9 rounded-xl object-cover"
+                className="h-9 w-9 object-contain"
               />
               <div>
                 <div className="text-sm font-bold text-sand-900 dark:text-sand-50">
