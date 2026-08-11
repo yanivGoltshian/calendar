@@ -80,6 +80,40 @@ enum PunchCardStatus {
   CANCELLED // בוטלה
 }
 
+// ---------- קופה ומכירות (אפוסים J+K) ----------
+
+// מצב עסקה בקופה
+enum SaleStatus {
+  OPEN // פתוחה (סל פעיל)
+  COMPLETED // הושלמה ושולמה
+  VOIDED // בוטלה
+  REFUNDED // זוכתה
+}
+
+// אמצעי תשלום
+enum PaymentMethod {
+  CASH // מזומן
+  CARD // כרטיס אשראי
+  BIT // ביט
+  BANK_TRANSFER // העברה בנקאית
+  OTHER // אחר
+}
+
+// סוג פריט בעסקה
+enum SaleItemKind {
+  PRODUCT // מוצר
+  SERVICE // שירות
+  CUSTOM // פריט חופשי
+}
+
+// סוג מסמך חשבונאי
+enum DocumentType {
+  RECEIPT // קבלה
+  TAX_INVOICE // חשבונית מס
+  INVOICE_RECEIPT // חשבונית מס-קבלה
+  CREDIT_NOTE // חשבונית זיכוי
+}
+
 // ---------- Core ----------
 
 model Business {
@@ -108,6 +142,11 @@ model Business {
   clients         Client[]
   waitlistEntries WaitlistEntry[]
   punchCards      PunchCard[]
+
+  // מודול קופה ומסמכים (אפוסים J+K) — קשרים אדיטיביים
+  products  Product[]
+  sales     Sale[]
+  documents Document[]
 
   @@index([slug])
 }
@@ -188,6 +227,8 @@ model StaffMember {
   serviceLinks    ServiceStaff[]
   waitlistEntries WaitlistEntry[]
 
+  sales Sale[] // מודול קופה — קשר אדיטיבי (מי הפעיל את הקופה)
+
   @@unique([businessId, userId])
   @@index([businessId])
 }
@@ -259,6 +300,8 @@ model Client {
   waitlistEntries WaitlistEntry[]
   punchCards      PunchCard[]
 
+  sales Sale[] // מודול קופה — קשר אדיטיבי
+
   @@unique([businessId, phone])
   @@index([businessId])
 }
@@ -286,6 +329,8 @@ model Appointment {
   services      AppointmentService[]
   reminders     Reminder[]
   confirmations ReminderConfirmation[]
+
+  sales Sale[] // מודול קופה — קשר אדיטיבי
 
   @@index([businessId, startAt])
   @@index([staffId, startAt])
@@ -419,4 +464,146 @@ model PunchCard {
 
   @@index([businessId, status])
   @@index([clientId])
+}
+
+// ==========================================================================
+// מודול קופה, מכירות ומסמכים (אפוסים J+K)
+// כל המודלים אדיטיביים. כסף באגורות (Int). מספור מסמכים רץ לכל עסק+סוג.
+// ==========================================================================
+
+// מוצר — הגדרה מינימלית ונקייה. הבעלות על המודל היא של מודול הקופה,
+// אך מודול המלאי (Wave 3) יסתעף ויוסיף שדות/מודלים בתוספת אדיטיבית בלבד.
+// אין כאן לוגיקת ספירת מלאי או תנועות מלאי.
+model Product {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name        String
+  sku         String? // מק"ט (אופציונלי)
+  priceAgorot Int // מחיר מכירה באגורות (כולל מע"מ)
+  category    String? // קטגוריה (אופציונלי)
+  active      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  saleItems SaleItem[]
+
+  @@index([businessId])
+}
+
+// עסקה בקופה — משמשת כסל פעיל (OPEN) עד לסגירה.
+model Sale {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // קישורים אופציונליים ללקוח, לתור ולאיש הצוות שהפעיל את הקופה
+  clientId      String?
+  client        Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  staffId       String?
+  staff         StaffMember? @relation(fields: [staffId], references: [id], onDelete: SetNull)
+
+  status SaleStatus @default(OPEN)
+
+  // סכומים באגורות
+  subtotalAgorot Int @default(0) // סכום הפריטים לפני הנחה
+  discountAgorot Int @default(0) // הנחה כוללת על העסקה
+  totalAgorot    Int @default(0) // סך לתשלום (subtotal - discount)
+  paidAgorot     Int @default(0) // סך ששולם בפועל
+
+  note     String?
+  closedAt DateTime? // מועד סגירת העסקה
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     SaleItem[]
+  payments  Payment[]
+  documents Document[]
+
+  @@index([businessId, status])
+  @@index([businessId, createdAt])
+  @@index([clientId])
+  @@index([appointmentId])
+}
+
+// פריט בעסקה — צילום מצב של המחיר/השם בזמן המכירה.
+// productId מקושר למודל Product (בבעלותי). serviceId נשמר כמזהה רך (snapshot)
+// כדי לא לגעת במודל השירותים שבבעלות מודול אחר.
+model SaleItem {
+  id     String @id @default(cuid())
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  kind      SaleItemKind @default(PRODUCT)
+  productId String?
+  product   Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  serviceId String? // הפניה רכה לשירות (ללא FK) — נשמר כ-snapshot
+
+  nameSnapshot    String // שם הפריט בזמן המכירה
+  quantity        Int    @default(1)
+  unitPriceAgorot Int // מחיר יחידה באגורות
+  lineTotalAgorot Int // סך השורה (quantity * unitPrice)
+
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// תשלום כנגד עסקה — עסקה יכולה לכלול כמה תשלומים (תשלום מפוצל).
+model Payment {
+  id     String @id @default(cuid())
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  method       PaymentMethod @default(CASH)
+  amountAgorot Int // סכום התשלום באגורות
+  reference    String? // אסמכתא (4 ספרות אחרונות, מספר עסקת ביט וכו')
+
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+}
+
+// מסמך חשבונאי דיגיטלי (קבלה / חשבונית מס / זיכוי) עם מספור רץ.
+// המספר הרץ (serialNumber) ייחודי לכל עסק+סוג ומוקצה בתוך טרנזקציה.
+model Document {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  saleId     String?
+  sale       Sale?    @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
+  type           DocumentType
+  serialNumber   Int // מספר רץ פנימי לכל עסק+סוג
+  documentNumber String // מספר תצוגה, למשל "INV-00001"
+
+  // צילום פרטי הלקוח בזמן ההפקה
+  clientName  String?
+  clientPhone String?
+
+  // סכומים באגורות (מע"מ מגולם בתוך הסכום)
+  subtotalAgorot Int // לפני מע"מ
+  vatRateBps     Int @default(1800) // שיעור מע"מ ב-basis points (1800 = 18%)
+  vatAgorot      Int // רכיב המע"מ
+  totalAgorot    Int // סך הכול כולל מע"מ
+
+  // עבור זיכוי — קישור למסמך המקורי שמזוכה
+  relatedDocumentId String?
+  relatedDocument   Document?  @relation("DocumentCredits", fields: [relatedDocumentId], references: [id], onDelete: SetNull)
+  credits           Document[] @relation("DocumentCredits")
+
+  note      String?
+  issuedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@unique([businessId, type, serialNumber])
+  @@index([businessId, type])
+  @@index([saleId])
 }
