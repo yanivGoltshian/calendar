@@ -12,6 +12,9 @@ import {
 import ServiceWorkerRegistrar from './ServiceWorkerRegistrar';
 import './globals.css';
 
+// כל הדפים מוגשים דינמית (SSR) — הרינדור ניגש למסד בזמן ריצה, לכן אין prerender ב-build.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
