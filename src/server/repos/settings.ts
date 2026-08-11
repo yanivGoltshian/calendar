@@ -24,6 +24,7 @@ export type BusinessProfileInput = {
   instagramUrl: string | null;
   logoUrl: string | null;
   coverImageUrl: string | null;
+  brandColor: string | null;
   timezone: string;
 };
 
