@@ -3,7 +3,7 @@
  * אסטרטגיה: network-first עבור ניווטים, עם נפילה למטמון (cache) בעת כשל רשת.
  * דחיפת התראות (push) תמומש מאחורי ממשק בהמשך.
  */
-const CACHE = 'booqi-shell-v1';
+const CACHE = 'torchick-shell-v1';
 const SHELL = ['/', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {

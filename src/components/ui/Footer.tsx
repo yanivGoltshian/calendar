@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { LEGAL_LINKS } from '@/content/legal/links';
@@ -15,9 +16,13 @@ export function Footer({ demoSlug }: { demoSlug?: string }) {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-3">
             <Link href="/" className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-gradient text-lg font-bold text-white">
-                {BRAND.name.charAt(0)}
-              </span>
+              <Image
+                src="/brand/torchick-emblem-navy-256.png"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-xl object-cover"
+              />
               <span className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
                 {BRAND.name}
               </span>

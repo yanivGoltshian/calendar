@@ -9,8 +9,8 @@
   --text: #2a2119;
   --muted: #7c6650;
   --border: #e8dfd4;
-  --brand: #7a37e0;
-  --brand-strong: #6826bd;
+  --brand: #24406e;
+  --brand-strong: #0a182d;
 }
 
 .dark {
@@ -19,8 +19,8 @@
   --text: #f4efe9;
   --muted: #b8a48d;
   --border: #3a2f25;
-  --brand: #a67cfa;
-  --brand-strong: #c3aaff;
+  --brand: #8ba6cd;
+  --brand-strong: #b7c8e2;
 }
 
 html {
@@ -81,7 +81,7 @@ button {
 /* עזרי עיצוב חוזרים */
 @layer utilities {
   .text-gradient {
-    background: linear-gradient(120deg, #6826bd 0%, #8b53f0 50%, #d99a26 120%);
+    background: linear-gradient(120deg, #0a182d 0%, #24406e 45%, #cea24a 120%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -90,8 +90,8 @@ button {
 
   .bg-grid {
     background-image:
-      linear-gradient(to right, rgb(122 55 224 / 0.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(122 55 224 / 0.05) 1px, transparent 1px);
+      linear-gradient(to right, rgb(10 24 45 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(10 24 45 / 0.05) 1px, transparent 1px);
     background-size: 40px 40px;
   }
 

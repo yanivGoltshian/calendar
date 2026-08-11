@@ -66,7 +66,7 @@
       "value": false
     },
     "postgresAdminLogin": {
-      "value": "booqiadmin"
+      "value": "torchickadmin"
     },
     "postgresAdminPassword": {
       "value": "REPLACE_ME_ONLY_IF_deployPostgres_true"

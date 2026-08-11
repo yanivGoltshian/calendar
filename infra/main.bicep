@@ -93,7 +93,7 @@ param staticWebAppSku string = 'Free'
 param deployPostgres bool = false
 
 @description('שם משתמש מנהל ל-PostgreSQL')
-param postgresAdminLogin string = 'booqiadmin'
+param postgresAdminLogin string = 'torchickadmin'
 
 @description('סיסמת מנהל ל-PostgreSQL (נדרש רק אם deployPostgres=true)')
 @secure()

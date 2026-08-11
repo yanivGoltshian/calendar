@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
+import Image from 'next/image';
 import { Float } from '@/components/motion';
 
 /**
@@ -32,9 +33,13 @@ export function HeroVisual() {
           {/* כותרת הכרטיס */}
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-gradient text-sm font-bold text-white">
-                ב
-              </span>
+              <Image
+                src="/brand/torchick-emblem-navy-256.png"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-xl object-cover"
+              />
               <div>
                 <div className="text-sm font-bold text-sand-900 dark:text-sand-50">
                   בחירת מועד
