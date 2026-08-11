@@ -6,6 +6,11 @@ import { Navbar, Footer, Container, Section, Button, Card, Badge } from '@/compo
 import { Reveal, Stagger, StaggerItem, FadeIn } from '@/components/motion';
 import { HeroVisual } from '@/components/landing/HeroVisual';
 import { FaqAccordion } from '@/components/landing/FaqAccordion';
+import { MigrateSection } from '@/components/landing/MigrateSection';
+import { MascotTip } from '@/components/landing/MascotTip';
+import { AudienceSpotlight } from '@/components/landing/AudienceSpotlight';
+import { audienceIcons, featureIcons, SparkleIcon } from '@/components/landing/icons';
+import Image from 'next/image';
 import InstallApp from '@/components/pwa/InstallApp';
 
 const m = t.marketing;
@@ -16,24 +21,6 @@ export const metadata = buildMetadata({
   path: '/',
 });
 
-const audienceIcons: Record<string, string> = {
-  hair: '✂️',
-  barber: '💈',
-  cosmetics: '💆',
-  beauty: '💄',
-  nails: '💅',
-  trainers: '🏋️',
-  dogs: '🐩',
-  more: '✨',
-};
-
-const featureIcons: Record<string, string> = {
-  booking: '🗓️',
-  calendar: '📅',
-  reminders: '🔔',
-  page: '🎨',
-};
-
 const trustStats = Object.values(m.trust.stats);
 
 export default async function HomePage() {
@@ -41,7 +28,10 @@ export default async function HomePage() {
   const demoSlug = business?.slug;
   const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
 
-  const audiences = Object.entries(m.audiences.items);
+  const spotlightAudiences = ['barber', 'nails'];
+  const gridAudiences = Object.entries(m.audiences.items).filter(
+    ([key]) => !spotlightAudiences.includes(key),
+  );
   const features = Object.entries(m.features.items);
   const steps = Object.values(m.howItWorks.steps);
   const plans = [
@@ -62,9 +52,32 @@ export default async function HomePage() {
           <Container className="grid items-center gap-14 py-16 sm:py-24 lg:grid-cols-2 lg:gap-10 lg:py-32">
             <div className="text-center lg:text-start">
               <FadeIn>
-                <Badge tone="brand" className="mb-5">✦ {m.hero.badge}</Badge>
+                <div className="mb-6 flex items-center justify-center">
+                  <Image
+                    src="/brand/torchick-emblem-navy-256.png"
+                    alt="תור צ׳יק"
+                    width={112}
+                    height={112}
+                    priority
+                    className="h-20 w-20 rounded-3xl object-cover shadow-glow sm:h-24 sm:w-24"
+                  />
+                </div>
+              </FadeIn>
+              <FadeIn>
+                <Badge tone="brand" className="mb-5">
+                  <span className="inline-flex items-center gap-1.5">
+                    <SparkleIcon aria-hidden className="h-3.5 w-3.5" />
+                    {m.hero.badge}
+                  </span>
+                </Badge>
               </FadeIn>
               <Reveal>
+                {/*
+                  וריאנט כותרת ל-A/B — יניב בוחר כיוון:
+                  ראשי (פעיל):  m.hero.title / m.hero.titleAccent / m.hero.subtitle
+                  חלופי:        m.hero.altTitle / m.hero.altTitleAccent / m.hero.altSubtitle
+                  להחלפה: החלף את שלושת ה-m.hero.* למטה ב-m.hero.alt* המקבילים.
+                */}
                 <h1 className="font-display text-4xl font-bold leading-[1.1] tracking-tight text-sand-900 dark:text-sand-50 sm:text-5xl lg:text-display-lg">
                   {m.hero.title}{' '}
                   <span className="text-gradient">{m.hero.titleAccent}</span>
@@ -128,15 +141,45 @@ export default async function HomePage() {
               </h2>
               <p className="mt-4 text-lg text-sand-600 dark:text-sand-300">{m.audiences.subtitle}</p>
             </Reveal>
-            <Stagger className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4" gap={0.06}>
-              {audiences.map(([key, label]) => (
-                <StaggerItem key={key}>
-                  <Card interactive className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                    <span className="text-4xl" aria-hidden>{audienceIcons[key] ?? '✨'}</span>
-                    <span className="font-semibold text-sand-800 dark:text-sand-100">{label}</span>
-                  </Card>
-                </StaggerItem>
-              ))}
+            <Stagger className="mt-12 grid gap-6 sm:grid-cols-2">
+              <StaggerItem>
+                <AudienceSpotlight
+                  src="/brand/mascots/adam-34.png"
+                  alt={m.mascots.barberAudienceAlt}
+                  width={375}
+                  height={863}
+                  label={m.audiences.spotlight.barber.label}
+                  desc={m.audiences.spotlight.barber.desc}
+                />
+              </StaggerItem>
+              <StaggerItem>
+                <AudienceSpotlight
+                  src="/brand/mascots/maya-34.png"
+                  alt={m.mascots.nailsAudienceAlt}
+                  width={366}
+                  height={936}
+                  label={m.audiences.spotlight.nails.label}
+                  desc={m.audiences.spotlight.nails.desc}
+                />
+              </StaggerItem>
+            </Stagger>
+            <Stagger
+              className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+              gap={0.05}
+            >
+              {gridAudiences.map(([key, label]) => {
+                const Icon = audienceIcons[key] ?? SparkleIcon;
+                return (
+                  <StaggerItem key={key}>
+                    <Card interactive className="flex h-full flex-col items-center justify-center gap-2.5 p-5 text-center">
+                      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-300">
+                        <Icon aria-hidden className="h-5 w-5" />
+                      </span>
+                      <span className="text-sm font-semibold text-sand-800 dark:text-sand-100">{label}</span>
+                    </Card>
+                  </StaggerItem>
+                );
+              })}
             </Stagger>
           </Container>
         </Section>
@@ -152,22 +195,25 @@ export default async function HomePage() {
               <p className="mt-4 text-lg text-sand-600 dark:text-sand-300">{m.features.subtitle}</p>
             </Reveal>
             <Stagger className="mt-12 grid gap-6 sm:grid-cols-2" gap={0.1}>
-              {features.map(([key, feat]) => (
-                <StaggerItem key={key}>
-                  <Card interactive className="flex h-full flex-col gap-4 p-8">
-                    <span
-                      className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-gradient text-2xl shadow-glow-soft"
-                      aria-hidden
-                    >
-                      {featureIcons[key] ?? '✨'}
-                    </span>
-                    <h3 className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
-                      {feat.title}
-                    </h3>
-                    <p className="leading-relaxed text-sand-600 dark:text-sand-300">{feat.desc}</p>
-                  </Card>
-                </StaggerItem>
-              ))}
+              {features.map(([key, feat]) => {
+                const Icon = featureIcons[key] ?? SparkleIcon;
+                return (
+                  <StaggerItem key={key}>
+                    <Card interactive className="flex h-full flex-col gap-4 p-8">
+                      <span
+                        className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-gradient shadow-glow-soft"
+                        aria-hidden
+                      >
+                        <Icon className="h-7 w-7 text-white" />
+                      </span>
+                      <h3 className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
+                        {feat.title}
+                      </h3>
+                      <p className="leading-relaxed text-sand-600 dark:text-sand-300">{feat.desc}</p>
+                    </Card>
+                  </StaggerItem>
+                );
+              })}
             </Stagger>
           </Container>
         </Section>
@@ -197,10 +243,14 @@ export default async function HomePage() {
                 </StaggerItem>
               ))}
             </Stagger>
+            <Reveal delay={0.15}>
+              <MascotTip text={m.howItWorks.tip} className="mt-14" />
+            </Reveal>
           </Container>
         </Section>
 
-        {/* PRICING */}
+        {/* MIGRATE FROM OTHER PLATFORM */}
+        <MigrateSection demoHref={demoHref} />
         <Section id="pricing" className="bg-sand-100/50 dark:bg-sand-900/30">
           <Container>
             <Reveal className="mx-auto max-w-2xl text-center">
@@ -291,6 +341,13 @@ export default async function HomePage() {
             <Reveal>
               <div className="relative overflow-hidden rounded-5xl bg-brand-sheen px-6 py-16 text-center shadow-elevated sm:px-12 sm:py-20">
                 <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid opacity-10" />
+                <Image
+                  src="/brand/mascots/maya-34.png"
+                  alt={m.mascots.ctaAlt}
+                  width={366}
+                  height={936}
+                  className="pointer-events-none absolute -bottom-2 end-3 hidden h-64 w-auto drop-shadow-2xl lg:block xl:h-72"
+                />
                 <div className="relative mx-auto max-w-2xl">
                   <h2 className="font-display text-3xl font-bold text-white sm:text-4xl">
                     {m.finalCta.title}
@@ -317,7 +374,7 @@ export default async function HomePage() {
         </Section>
 
         {/* PWA INSTALL (platform) */}
-        <Section>
+        <Section id="get-app">
           <Container>
             <Reveal>
               <div className="mx-auto max-w-2xl">
