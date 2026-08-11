@@ -15,6 +15,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/team', label: t.admin.nav.team },
   { href: '/admin/working-hours', label: t.admin.nav.workingHours },
   { href: '/admin/clients', label: t.admin.nav.clients },
+  { href: '/admin/pos', label: t.admin.nav.pos },
+  { href: '/admin/documents', label: t.admin.nav.documents },
   { href: '/admin/onboarding', label: t.admin.nav.onboarding },
   { href: '/admin/settings', label: t.admin.nav.settings },
 ];
