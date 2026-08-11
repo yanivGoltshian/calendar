@@ -53,6 +53,24 @@
     "smsProvider": {
       "value": "console"
     },
+    "twilioAccountSid": {
+      "value": ""
+    },
+    "twilioAuthToken": {
+      "value": ""
+    },
+    "smsGatewayToken": {
+      "value": ""
+    },
+    "smsGatewayUsername": {
+      "value": ""
+    },
+    "smsGatewayPassword": {
+      "value": ""
+    },
+    "messagingConfig": {
+      "value": {}
+    },
     "deployStaticWebApp": {
       "value": true
     },

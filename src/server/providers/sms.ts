@@ -1,40 +1,19 @@
-import { BRAND } from '@/config/brand';
-
 /**
- * ממשק ספק SMS. מאפשר החלפה עתידית בספק אמיתי (Twilio, Inforu וכו')
- * מבלי לשנות את שאר הקוד.
+ * שכבת תאימות לאחור לספק ה-SMS.
+ *
+ * המימוש האמיתי חי כעת ב-`messaging.ts` (שכבה אגנוסטית-ערוץ). קובץ זה נשמר
+ * כ-alias דק כדי שקוד קיים (marketing, waitlist, מסלול ה-OTP) ימשיך לעבוד
+ * ללא שינוי. קוד חדש עדיף שייבא ישירות מ-`@/server/providers/messaging`.
  */
-export interface SmsProvider {
-  sendSms(to: string, message: string): Promise<void>;
-  sendOtp(to: string, code: string): Promise<void>;
-}
+import {
+  getMessagingProvider,
+  type MessagingProvider,
+} from '@/server/providers/messaging';
 
-/**
- * מימוש פיתוח: כותב את ההודעה ל-console בלבד.
- * לא מחייב שער SMS בתשלום בשלב זה.
- */
-class ConsoleSmsProvider implements SmsProvider {
-  async sendSms(to: string, message: string): Promise<void> {
-    // eslint-disable-next-line no-console
-    console.log(`\n📱 [SMS → ${to}]\n${message}\n`);
-  }
+/** ממשק ספק ה-SMS ההיסטורי. MessagingProvider הוא על-קבוצה שלו. */
+export type SmsProvider = MessagingProvider;
 
-  async sendOtp(to: string, code: string): Promise<void> {
-    const message = `${BRAND.name}: קוד האימות שלך הוא ${code}`;
-    // eslint-disable-next-line no-console
-    console.log(
-      `\n════════════════════════════════════\n📱 קוד אימות ל-${to}: ${code}\n════════════════════════════════════\n`,
-    );
-    await this.sendSms(to, message);
-  }
-}
-
-let provider: SmsProvider | null = null;
-
-/** בחירת ספק ה-SMS לפי משתנה הסביבה SMS_PROVIDER. */
+/** בחירת ספק ה-SMS לפי משתנה הסביבה SMS_PROVIDER (מאציל ל-messaging). */
 export function getSmsProvider(): SmsProvider {
-  if (provider) return provider;
-  // כרגע יש רק מימוש console; בעתיד אפשר להוסיף כאן ספקים אמיתיים.
-  provider = new ConsoleSmsProvider();
-  return provider;
+  return getMessagingProvider();
 }

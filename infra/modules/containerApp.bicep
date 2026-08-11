@@ -54,6 +54,29 @@ param sessionSecret string
 @secure()
 param otpPepper string
 
+@description('Twilio Account SID (סוד; ריק אם לא בשימוש)')
+@secure()
+param twilioAccountSid string = ''
+
+@description('Twilio Auth Token (סוד; ריק אם לא בשימוש)')
+@secure()
+param twilioAuthToken string = ''
+
+@description('טוקן שער SMS ישראלי (סוד; ריק אם לא בשימוש)')
+@secure()
+param smsGatewayToken string = ''
+
+@description('שם משתמש לשער SMS ישראלי (סוד; ריק אם לא בשימוש)')
+@secure()
+param smsGatewayUsername string = ''
+
+@description('סיסמה לשער SMS ישראלי (סוד; ריק אם לא בשימוש)')
+@secure()
+param smsGatewayPassword string = ''
+
+@description('תצורת הודעות לא-סודית (זוגות שם/ערך של משתני סביבה, למשל TWILIO_FROM, SMS_GATEWAY_ENDPOINT). ריק כברירת מחדל.')
+param messagingConfig object = {}
+
 @description('אזור זמן עסקי (IANA)')
 param businessTimezone string = 'Asia/Jerusalem'
 
@@ -82,6 +105,31 @@ var baseSecrets = [
     value: otpPepper
   }
 ]
+
+// סודות ההודעות מתווספים רק כאשר סופק ערך, כדי לשמור על אפס שינוי כאשר
+// SMS_PROVIDER=console (כל הערכים ריקים → אין סודות ואין env חדשים).
+var messagingSecrets = concat(
+  empty(twilioAccountSid) ? [] : [ { name: 'twilio-account-sid', value: twilioAccountSid } ],
+  empty(twilioAuthToken) ? [] : [ { name: 'twilio-auth-token', value: twilioAuthToken } ],
+  empty(smsGatewayToken) ? [] : [ { name: 'sms-gateway-token', value: smsGatewayToken } ],
+  empty(smsGatewayUsername) ? [] : [ { name: 'sms-gateway-username', value: smsGatewayUsername } ],
+  empty(smsGatewayPassword) ? [] : [ { name: 'sms-gateway-password', value: smsGatewayPassword } ]
+)
+
+// כניסות env של הסודות (secretRef), מותנות באותו אופן.
+var messagingSecretEnv = concat(
+  empty(twilioAccountSid) ? [] : [ { name: 'TWILIO_ACCOUNT_SID', secretRef: 'twilio-account-sid' } ],
+  empty(twilioAuthToken) ? [] : [ { name: 'TWILIO_AUTH_TOKEN', secretRef: 'twilio-auth-token' } ],
+  empty(smsGatewayToken) ? [] : [ { name: 'SMS_GATEWAY_TOKEN', secretRef: 'sms-gateway-token' } ],
+  empty(smsGatewayUsername) ? [] : [ { name: 'SMS_GATEWAY_USERNAME', secretRef: 'sms-gateway-username' } ],
+  empty(smsGatewayPassword) ? [] : [ { name: 'SMS_GATEWAY_PASSWORD', secretRef: 'sms-gateway-password' } ]
+)
+
+// תצורת הודעות לא-סודית → env רגיל. מתועד ב-.env.example ו-docs.
+var messagingConfigEnv = [for item in items(messagingConfig): {
+  name: item.key
+  value: string(item.value)
+}]
 
 var registrySecret = [
   {
@@ -113,7 +161,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           }
         ]
       }
-      secrets: useRegistryAuth ? concat(baseSecrets, registrySecret) : baseSecrets
+      secrets: concat(baseSecrets, messagingSecrets, useRegistryAuth ? registrySecret : [])
       registries: useRegistryAuth ? [
         {
           server: registryServer
@@ -131,7 +179,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
-          env: [
+          env: concat([
             {
               name: 'DATABASE_URL'
               secretRef: 'database-url'
@@ -164,7 +212,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'HOSTNAME'
               value: '0.0.0.0'
             }
-          ]
+          ], messagingSecretEnv, messagingConfigEnv)
         }
       ]
       scale: {
