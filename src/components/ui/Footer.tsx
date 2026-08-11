@@ -17,11 +17,11 @@ export function Footer({ demoSlug }: { demoSlug?: string }) {
           <div className="space-y-3">
             <Link href="/" className="flex items-center gap-2">
               <Image
-                src="/brand/torchick-emblem-navy-256.png"
+                src="/brand/torchick-emblem-mark.png"
                 alt=""
                 width={36}
                 height={36}
-                className="h-9 w-9 rounded-xl object-cover"
+                className="h-9 w-9 object-contain"
               />
               <span className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
                 {BRAND.name}
