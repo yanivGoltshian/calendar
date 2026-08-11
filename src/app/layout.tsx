@@ -12,6 +12,11 @@ import {
 import ServiceWorkerRegistrar from './ServiceWorkerRegistrar';
 import './globals.css';
 
+// כל האפליקציה מוגשת ב-SSR ותלויה במסד הנתונים בזמן ריצה, לכן איננו מבצעים
+// prerender סטטי בזמן build (שאין בו DATABASE_URL). הגדרה זו בפריסת השורש
+// חלה על כל הנתיבים ומונעת גישה למסד בזמן בניית האימג'.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
