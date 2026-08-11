@@ -73,6 +73,19 @@ enum BusinessType {
   OTHER // אחר
 }
 
+// חבילת המנוי של העסק בפלטפורמה (אפוס חיוב/מנוי — אדיטיבי).
+enum BusinessPlan {
+  basic // חבילת בסיס (ברירת מחדל, מתחילה בתקופת ניסיון)
+  premium // חבילת פרימיום (תשלום ידני שסוכם טלפונית)
+}
+
+// מצב המנוי — מחושב על קריאה, ללא תלות ב-cron.
+enum SubscriptionStatus {
+  trialing // בתקופת ניסיון חינם
+  active // מנוי פעיל בתשלום
+  expired // פג תוקף (ניסיון הסתיים / תשלום לא בתוקף)
+}
+
 enum WaitlistStatus {
   WAITING // ממתין
   NOTIFIED // נשלחה הודעה
@@ -168,6 +181,22 @@ model Business {
   // בעלות דרך NextAuth (Google/מייל): מזהה הבעלים לפי כתובת המייל המאומתת.
   // עמודה אדיטיבית בלבד; אינה נוגעת במודל User (שמבוסס טלפון) ואינה דורסת נתונים.
   ownerEmail String?
+
+  // ── מנוי, ניסיון חינם ותשלום ידני (אפוס חיוב) — כל השדות אדיטיביים ──────────
+  // החבילה הנוכחית של העסק (בסיס כברירת מחדל).
+  plan BusinessPlan @default(basic)
+  // מצב המנוי — מחושב מחדש על קריאה מתוך התאריכים למטה.
+  subscriptionStatus SubscriptionStatus @default(trialing)
+  // סוף תקופת הניסיון החינמית (נקבע ביצירה = עכשיו + 14 יום).
+  trialEndsAt DateTime?
+  // עד מתי שולם עבור פרימיום (נקבע ידנית על-ידי סופר-אדמין; nullable).
+  paidUntil DateTime?
+  // הסכום שסוכם טלפונית, נשמר באגורות ₪ (nullable).
+  manualAmountAgorot Int?
+  // הערת אדמין אופציונלית על החבילה/העסקה.
+  planNotes String?
+  // מועד המעבר לפרימיום (אופציונלי, לתיעוד).
+  premiumSince DateTime?
 
   settings        BusinessSettings?
   staff           StaffMember[]

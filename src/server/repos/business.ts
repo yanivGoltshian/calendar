@@ -87,6 +87,13 @@ export async function getBusinessesOwnedByEmail(email: string) {
   });
 }
 
+/** כל העסקים במערכת, מהחדש לישן — לשימוש בקונסולת ניהול-על בלבד. */
+export async function listAllBusinesses() {
+  return prisma.business.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
 /**
  * גזירת slug בטוח-URL משם העסק. שומר לטיניות וספרות, מסיר עברית ותווים אחרים.
  * כשלא נותר בסיס תקין (למשל שם עברי בלבד) — נופל ל-'esek'.
@@ -127,6 +134,8 @@ export async function createBusiness(input: {
   ownerEmail: string;
 }) {
   const slug = await generateUniqueSlug(input.name);
+  // תקופת ניסיון חינם של 14 יום מרגע היצירה (חבילת בסיס, מצב trialing).
+  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   return prisma.business.create({
     data: {
       name: input.name,
@@ -136,6 +145,9 @@ export async function createBusiness(input: {
       slug,
       timezone: process.env.BUSINESS_TIMEZONE || 'Asia/Jerusalem',
       ownerEmail: input.ownerEmail,
+      plan: 'basic',
+      subscriptionStatus: 'trialing',
+      trialEndsAt,
       settings: { create: {} },
     },
     include: { settings: true },

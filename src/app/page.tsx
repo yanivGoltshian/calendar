@@ -10,6 +10,7 @@ import { MigrateSection } from '@/components/landing/MigrateSection';
 import { MascotTip } from '@/components/landing/MascotTip';
 import { AudienceSpotlight } from '@/components/landing/AudienceSpotlight';
 import { audienceIcons, featureIcons, SparkleIcon } from '@/components/landing/icons';
+import { ContactBlock } from '@/components/billing/ContactBlock';
 import Image from 'next/image';
 import InstallApp from '@/components/pwa/InstallApp';
 
@@ -315,6 +316,11 @@ export default async function HomePage() {
             </div>
             <Reveal>
               <p className="mt-8 text-center text-sm text-sand-500">{m.pricing.note}</p>
+            </Reveal>
+            <Reveal direction="up">
+              <div className="mx-auto mt-10 max-w-2xl rounded-3xl border border-sand-200 bg-white/70 p-6 shadow-sm dark:border-sand-800 dark:bg-sand-950/40 sm:p-8">
+                <ContactBlock className="text-center sm:text-start" />
+              </div>
             </Reveal>
           </Container>
         </Section>
