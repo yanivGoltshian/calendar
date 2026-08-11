@@ -21,6 +21,7 @@ import {
   voidSale,
 } from '@/server/repos/sales';
 import { issueDocument } from '@/server/repos/documents';
+import { recordSaleStockDeduction } from '@/server/repos/inventory';
 import { shekelsToAgorot } from '@/lib/money';
 
 /**
@@ -178,7 +179,10 @@ export async function closeSaleAction(formData: FormData): Promise<void> {
 
   const business = await getFirstBusiness();
   if (!business) return;
-  await closeSale(business.id, saleId);
+  const closed = await closeSale(business.id, saleId);
+  // ניכוי מלאי אוטומטי בהשלמת מכירה (מודול המלאי). אידמפוטנטי ולא-זורק —
+  // לעולם לא מפיל את סגירת העסקה. הטביעת-רגל היחידה של המלאי בקוד הקופה.
+  if (closed) await recordSaleStockDeduction(business.id, saleId);
   revalidatePath(salePath(saleId));
   revalidatePath('/admin/pos');
 }
