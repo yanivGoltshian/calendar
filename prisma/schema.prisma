@@ -40,6 +40,13 @@ enum ReminderChannel {
   EMAIL
 }
 
+// סטטוס אישור ההגעה של הלקוח, כפי שנקבע דרך קישור התזכורת (/c/<token>).
+enum ConfirmationStatus {
+  PENDING // טרם הגיב
+  CONFIRMED // אישר הגעה
+  DECLINED // הודיע שלא יגיע
+}
+
 enum ReminderStatus {
   SCHEDULED
   SENT
@@ -355,6 +362,11 @@ model Appointment {
   confirmedAt      DateTime?
   cancelledAt      DateTime?
 
+  // תזכורת 24 שעות ואישור הגעה של הלקוח (מודול תזכורות)
+  reminderSentAt     DateTime? // מתי נשלחה תזכורת ה-24 שעות (ריק = טרם נשלחה)
+  confirmationStatus ConfirmationStatus @default(PENDING) // אישור ההגעה מצד הלקוח
+  confirmToken       String             @unique @default(cuid()) // מזהה ציבורי לקישור האישור /c/<token>
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -366,6 +378,7 @@ model Appointment {
 
   @@index([businessId, startAt])
   @@index([staffId, startAt])
+  @@index([reminderSentAt, startAt]) // סריקת חלון התזכורות ב-cron
 }
 
 // טבלת קישור בין תור לשירותים (תור יכול לכלול כמה שירותים)
