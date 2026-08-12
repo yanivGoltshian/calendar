@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { PaymentMethod, SaleStatus, DocumentType } from '@prisma/client';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
+import { Mascot } from '@/components/brand/Mascot';
 import { getActiveBusiness } from '@/server/repos/business';
 import { getSaleWithDetails } from '@/server/repos/sales';
 import { listActiveProducts } from '@/server/repos/products';
@@ -116,6 +117,21 @@ export default async function SaleEditorPage({ params }: Props) {
           {STATUS_LABEL[sale.status]}
         </span>
       </header>
+
+      {sale.status === 'COMPLETED' && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+          <Mascot
+            pose="wink"
+            circle
+            size={44}
+            alt={t.brand.success.posAlt}
+            className="ring-2 ring-green-200"
+          />
+          <p className="text-sm font-semibold text-green-800">
+            {t.brand.success.posCaption}
+          </p>
+        </div>
+      )}
 
       {/* פריטים */}
       <section className={`${cardClass} mb-5`}>

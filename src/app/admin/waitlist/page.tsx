@@ -12,6 +12,7 @@ import { formatLongDate } from '@/lib/time';
 import type { WaitlistStatus } from '@prisma/client';
 import WaitlistForm from './WaitlistForm';
 import { notifyAction, promoteAction, cancelAction } from './actions';
+import { MascotEmptyState } from '@/components/brand/MascotEmptyState';
 
 export const metadata: Metadata = { title: t.admin.waitlistModule.title };
 
@@ -89,9 +90,10 @@ export default async function AdminWaitlistPage({ searchParams }: Props) {
       <h2 className="mb-3 text-lg font-bold text-slate-900">{w.listTitle}</h2>
 
       {entries.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
-          {w.empty}
-        </p>
+        <MascotEmptyState
+          title={t.brand.empty.waitlist.title}
+          body={t.brand.empty.waitlist.hint}
+        />
       ) : (
         <ul className="space-y-3">
           {entries.map((entry) => (

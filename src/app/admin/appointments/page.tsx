@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
+import { MascotEmptyState } from '@/components/brand/MascotEmptyState';
 import { getActiveBusiness } from '@/server/repos/business';
 import {
   getBusinessAppointments,
@@ -128,9 +129,10 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
 
       {/* רשימת תורים */}
       {appointments.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
-          {m.empty}
-        </p>
+        <MascotEmptyState
+          title={t.brand.empty.appointments.title}
+          body={t.brand.empty.appointments.hint}
+        />
       ) : (
         <ul className="space-y-3">
           {appointments.map((appt) => {

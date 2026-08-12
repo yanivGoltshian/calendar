@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
+import { Mascot } from '@/components/brand/Mascot';
 import { logout } from '@/app/account/actions';
 
 type NavItem = { href: string; label: string; exact?: boolean };
@@ -40,7 +41,10 @@ export default function AdminSidebar() {
       className="flex w-full shrink-0 flex-col gap-4 bg-[#08101C] p-4 md:h-screen md:w-64 md:sticky md:top-0"
     >
       <div className="px-2 pt-1">
-        <p className="text-lg font-bold text-[#F2D695]">{BRAND.name}</p>
+        <div className="flex items-center gap-2">
+          <Mascot pose="head" size={26} className="drop-shadow-sm" />
+          <p className="text-lg font-bold text-[#F2D695]">{BRAND.name}</p>
+        </div>
         <p className="text-xs text-[#9AA7BD]">{t.admin.panelTitle}</p>
       </div>
 

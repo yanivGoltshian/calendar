@@ -8,6 +8,7 @@ import { listProducts, getProductById } from '@/server/repos/products';
 import { formatAgorot, agorotToShekels } from '@/lib/money';
 import ProductForm, { type ProductFormValues } from './ProductForm';
 import { toggleProductActiveAction } from './actions';
+import { MascotEmptyState } from '@/components/brand/MascotEmptyState';
 
 export const metadata: Metadata = { title: t.admin.pos.products.title };
 
@@ -103,9 +104,16 @@ export default async function ProductsPage({ searchParams }: Props) {
           {t.admin.pos.products.listTitle}
         </h2>
         {products.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
-            {isSearching ? t.admin.pos.products.emptySearch : t.admin.pos.products.empty}
-          </p>
+          isSearching ? (
+            <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+              {t.admin.pos.products.emptySearch}
+            </p>
+          ) : (
+            <MascotEmptyState
+              title={t.brand.empty.products.title}
+              body={t.brand.empty.products.hint}
+            />
+          )
         ) : (
           <ul className="space-y-3">
             {products.map((p) => (

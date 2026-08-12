@@ -12,6 +12,7 @@ import { formatAgorot } from '@/lib/money';
 import type { PunchCardStatus } from '@prisma/client';
 import PunchCardForm from './PunchCardForm';
 import { punchAction, completeAction, cancelAction } from './actions';
+import { MascotEmptyState } from '@/components/brand/MascotEmptyState';
 
 export const metadata: Metadata = { title: t.admin.punchCardsModule.title };
 
@@ -87,9 +88,10 @@ export default async function AdminPunchCardsPage({ searchParams }: Props) {
       <h2 className="mb-3 text-lg font-bold text-slate-900">{p.listTitle}</h2>
 
       {cards.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
-          {p.empty}
-        </p>
+        <MascotEmptyState
+          title={t.brand.empty.punchCards.title}
+          body={t.brand.empty.punchCards.hint}
+        />
       ) : (
         <ul className="space-y-3">
           {cards.map((card) => {

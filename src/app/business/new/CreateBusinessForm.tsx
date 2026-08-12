@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { BusinessType } from '@prisma/client';
 import { t } from '@/i18n';
 import { Card, Button } from '@/components/ui';
+import { Mascot } from '@/components/brand/Mascot';
 import { createBusinessAction, type CreateBusinessState } from './actions';
 
 const initialState: CreateBusinessState = {};
@@ -94,6 +95,16 @@ export function CreateBusinessForm() {
             placeholder={f.addressPlaceholder}
             className={inputClass}
           />
+        </div>
+
+        <div className="flex items-start gap-3 rounded-xl border border-sand-200 bg-sand-50 p-3">
+          <Mascot
+            pose="head"
+            size={44}
+            alt={t.brand.onboarding.alt}
+            className="shrink-0"
+          />
+          <p className="text-sm text-sand-700">{t.brand.onboarding.tip}</p>
         </div>
 
         <div>
