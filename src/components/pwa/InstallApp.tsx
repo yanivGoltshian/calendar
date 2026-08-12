@@ -19,16 +19,27 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
-type Variant = 'platform' | 'business';
+type Variant = 'platform' | 'business' | 'admin' | 'superadmin';
 
 type Props = {
   variant: Variant;
   appName?: string;
   logoUrl?: string | null;
   brandColor?: string | null;
+  /** מצב קומפקטי: כפתור בודד המתאים למשטחים כהים (סרגל הניהול / כותרת הפלטפורמה). */
+  compact?: boolean;
+  /** תווית חלופית לכפתור (ברירת המחדל: t.install.button). */
+  label?: string;
 };
 
-export default function InstallApp({ variant, appName, logoUrl, brandColor }: Props) {
+export default function InstallApp({
+  variant,
+  appName,
+  logoUrl,
+  brandColor,
+  compact = false,
+  label,
+}: Props) {
   const [mounted, setMounted] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -69,7 +80,14 @@ export default function InstallApp({ variant, appName, logoUrl, brandColor }: Pr
   const name = variant === 'business' ? appName ?? '' : BRAND.name;
   const accent = variant === 'business' ? resolveBrandColor(brandColor) : BRAND.themeColor;
   const onAccent = readableText(accent);
-  const subtitle = variant === 'business' ? t.install.businessSubtitle : t.install.platformSubtitle;
+  const subtitle =
+    variant === 'business'
+      ? t.install.businessSubtitle
+      : variant === 'admin'
+        ? t.install.adminSubtitle
+        : variant === 'superadmin'
+          ? t.install.superadminSubtitle
+          : t.install.platformSubtitle;
   const title = `${t.install.titlePrefix} ${name}`.trim();
   const initial = name.charAt(0) || BRAND.name.charAt(0);
   const emblem = variant === 'platform' ? '/brand/torchick-emblem-navy-256.png' : logoUrl || null;
@@ -83,6 +101,54 @@ export default function InstallApp({ variant, appName, logoUrl, brandColor }: Pr
       return;
     }
     setShowHelp((v) => !v);
+  }
+
+  if (compact) {
+    return (
+      <div dir="rtl" className="w-full">
+        <button
+          type="button"
+          onClick={handleInstall}
+          aria-expanded={showHelp}
+          aria-label={label ?? subtitle}
+          className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[#82643C] px-3 py-2 text-sm font-semibold text-[#F2D695] transition hover:bg-[#82643C]/20"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" />
+          </svg>
+          {label ?? t.install.button}
+        </button>
+
+        {showHelp ? (
+          <div className="mt-2 rounded-lg border border-[#233047] bg-[#0B1526] p-3 text-xs leading-relaxed text-[#9AA7BD]">
+            {isIOS ? (
+              <>
+                <p className="mb-1 font-semibold text-[#E8ECF3]">{t.install.iosTitle}</p>
+                <ol className="list-inside list-decimal space-y-0.5">
+                  <li>{t.install.iosStep1}</li>
+                  <li>{t.install.iosStep2}</li>
+                  <li>{t.install.iosStep3}</li>
+                </ol>
+              </>
+            ) : (
+              <>
+                <p className="mb-1 font-semibold text-[#E8ECF3]">{t.install.manualTitle}</p>
+                <p>{t.install.manualHint}</p>
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   return (

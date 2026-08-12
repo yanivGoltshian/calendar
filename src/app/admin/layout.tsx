@@ -64,7 +64,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       <div
         className="min-w-0 flex-1"
         style={{
-          paddingInline: 'env(safe-area-inset-right)',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
