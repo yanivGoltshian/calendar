@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getBusinessesOwnedByEmail } from '@/server/repos/business';
@@ -8,6 +9,21 @@ import Paywall from './Paywall';
 import TrialBanner from './TrialBanner';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * מטא-דאטה לאזור הניהול: דורס את המניפסט הגלובלי עבור /admin/* ומצביע
+ * על מניפסט ה-PWA הייעודי, כך שסביבת הניהול ניתנת להתקנה כאפליקציה עצמאית
+ * (שם, id ו-scope נפרדים). ייצוא סטטי מותר לצד רכיב layout אסינכרוני.
+ */
+export const metadata: Metadata = {
+  applicationName: 'תור צ׳יק · ניהול',
+  manifest: '/admin/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'תור צ׳יק ניהול',
+    statusBarStyle: 'default',
+  },
+};
 
 /**
  * שלד אזור הניהול (RTL): סרגל צד בפלטת נייבי-זהב + אזור תוכן.
@@ -45,7 +61,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <div dir="rtl" className="flex min-h-screen flex-col bg-slate-50 md:flex-row">
       <AdminSidebar />
-      <div className="min-w-0 flex-1">
+      <div
+        className="min-w-0 flex-1"
+        style={{
+          paddingInline: 'env(safe-area-inset-right)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+      >
         {access.state === 'trialing' && <TrialBanner daysLeft={access.daysLeft} />}
         {children}
       </div>

@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test src/server/providers/messaging.test.ts src/server/repos/rateLimitPolicy.test.ts src/server/repos/bookRateLimit.test.ts",
     "gen:icons": "node scripts/gen-icons.mjs",
+    "gen:admin-icons": "node scripts/gen-admin-icons.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
