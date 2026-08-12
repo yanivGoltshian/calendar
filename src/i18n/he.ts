@@ -51,6 +51,8 @@ const he = {
     iosStep3: 'אשרו את ההוספה, והאפליקציה תופיע במסך הבית.',
     manualTitle: 'התקנה מהדפדפן',
     manualHint: 'פתחו את תפריט הדפדפן ובחרו הוספה למסך הבית או התקנת אפליקציה.',
+    adminSubtitle: 'ניהול העסק ישירות מהמסך הבית — יומן, לקוחות וקופה בהקשה אחת.',
+    superadminSubtitle: 'קונסולת הפלטפורמה מהמסך הבית — ניהול כל העסקים במקום אחד.',
   },
   booking: {
     title: 'קביעת תור',
@@ -206,6 +208,9 @@ const he = {
     confirmAttendance: 'אישור הגעה',
     panelTitle: 'אזור ניהול',
     logout: 'התנתקות',
+    openMenu: 'פתיחת תפריט הניהול',
+    closeMenu: 'סגירת התפריט',
+    menuLabel: 'תפריט ניהול',
     nav: {
       calendar: 'יומן',
       appointments: 'הזמנות',

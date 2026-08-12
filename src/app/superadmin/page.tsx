@@ -4,12 +4,20 @@ import { listAllBusinesses } from '@/server/repos/business';
 import { getBusinessAccess, describeAccessState, describePlan } from '@/server/subscription';
 import { getPlatformAdminEmail } from '@/server/platformAdmin';
 import { t } from '@/i18n';
+import InstallApp from '@/components/pwa/InstallApp';
 import { extendTrialAction, upgradePremiumAction, revertToBasicAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'ניהול-על',
+  applicationName: 'תור צ׳יק · פלטפורמה',
+  manifest: '/superadmin/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'תור צ׳יק פלטפורמה',
+    statusBarStyle: 'default',
+  },
   robots: { index: false, follow: false },
 };
 
@@ -49,7 +57,7 @@ export default async function SuperadminPage() {
   const businesses = await listAllBusinesses();
 
   const inputClass =
-    'w-full rounded-lg border px-2 py-1 text-sm text-[#E8ECF3] placeholder:text-[#6B7890] focus:outline-none focus:ring-2';
+    'w-full rounded-lg border px-3 py-2 text-sm text-[#E8ECF3] placeholder:text-[#6B7890] focus:outline-none focus:ring-2';
   const inputStyle = {
     backgroundColor: NAVY_EDGE,
     borderColor: NAVY_GLOW,
@@ -59,19 +67,33 @@ export default async function SuperadminPage() {
     <main
       dir="rtl"
       className="min-h-screen px-4 py-8 sm:px-6 lg:px-10"
-      style={{ backgroundColor: NAVY_BASE, color: TEXT_ON_DARK }}
+      style={{
+        backgroundColor: NAVY_BASE,
+        color: TEXT_ON_DARK,
+        paddingTop: 'max(2rem, env(safe-area-inset-top))',
+        paddingInline: 'max(1rem, env(safe-area-inset-right))',
+        paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
+      }}
     >
       <div className="mx-auto max-w-7xl">
-        <header className="mb-6">
-          <h1 className="font-display text-2xl font-bold sm:text-3xl" style={{ color: GOLD_LIGHT }}>
-            {s.title}
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: TEXT_MUTED }}>
-            {s.subtitle}
-          </p>
-          <p className="mt-2 text-xs" style={{ color: TEXT_MUTED }}>
-            {s.countLabel.replace('{count}', String(businesses.length))}
-          </p>
+        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1
+              className="font-display text-2xl font-bold sm:text-3xl"
+              style={{ color: GOLD_LIGHT }}
+            >
+              {s.title}
+            </h1>
+            <p className="mt-1 text-sm" style={{ color: TEXT_MUTED }}>
+              {s.subtitle}
+            </p>
+            <p className="mt-2 text-xs" style={{ color: TEXT_MUTED }}>
+              {s.countLabel.replace('{count}', String(businesses.length))}
+            </p>
+          </div>
+          <div className="shrink-0">
+            <InstallApp variant="superadmin" compact />
+          </div>
         </header>
 
         {businesses.length === 0 ? (
@@ -148,7 +170,7 @@ export default async function SuperadminPage() {
                             </label>
                             <button
                               type="submit"
-                              className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold"
+                              className="min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold"
                               style={{ backgroundColor: NAVY_GLOW, color: GOLD_LIGHT }}
                             >
                               {s.extendTrial.submit}
@@ -196,7 +218,7 @@ export default async function SuperadminPage() {
                             </label>
                             <button
                               type="submit"
-                              className="rounded-lg px-3 py-1.5 text-xs font-bold"
+                              className="min-h-[44px] rounded-lg px-3 py-2 text-xs font-bold"
                               style={{ backgroundColor: GOLD_MID, color: NAVY_EDGE }}
                             >
                               {s.upgrade.submit}
@@ -208,7 +230,7 @@ export default async function SuperadminPage() {
                             <input type="hidden" name="businessId" value={b.id} />
                             <button
                               type="submit"
-                              className="rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                              className="min-h-[44px] rounded-lg border px-3 py-2 text-xs font-semibold"
                               style={{ borderColor: NAVY_GLOW, color: TEXT_MUTED }}
                             >
                               {s.revert.submit}

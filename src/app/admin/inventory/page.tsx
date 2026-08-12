@@ -243,7 +243,7 @@ export default async function InventoryPage({ searchParams }: Props) {
             {movements.length === 0 ? (
               <p className={emptyClass}>{t.admin.inventory.movementsEmpty}</p>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                 <table className="w-full text-right text-sm">
                   <thead className="bg-slate-50 text-xs text-slate-500">
                     <tr>
