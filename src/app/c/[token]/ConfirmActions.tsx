@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { Button } from '@/components/ui/admin';
 import { t } from '@/i18n';
+import { Mascot } from '@/components/brand/Mascot';
 import { submitConfirmation, type ConfirmState } from './actions';
 
 const INITIAL: ConfirmState = { done: false };
@@ -23,6 +24,15 @@ export function ConfirmActions({ token }: { token: string }) {
         role="status"
         aria-live="polite"
       >
+        {confirmed && (
+          <Mascot
+            pose="wink"
+            circle
+            size={56}
+            alt={t.brand.success.reminderAlt}
+            className="mb-2 ring-2 ring-[#2E5A43]/60"
+          />
+        )}
         <p className="text-base font-semibold text-[#9BE3B4]">
           {confirmed
             ? t.reminders.confirm.successConfirmedTitle

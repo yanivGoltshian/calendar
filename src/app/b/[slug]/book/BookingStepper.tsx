@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { t } from '@/i18n';
+import { Mascot } from '@/components/brand/Mascot';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatLongDate, todayDateString, addDaysToDateString } from '@/lib/time';
 
@@ -142,13 +143,19 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
     const isPending = bookedStatus === 'PENDING';
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <div
-          className={`flex h-16 w-16 items-center justify-center rounded-full text-3xl ${
-            isPending ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
-          }`}
-        >
-          {isPending ? '⏳' : '✓'}
-        </div>
+        {isPending ? (
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-3xl text-amber-600">
+            ⏳
+          </div>
+        ) : (
+          <Mascot
+            pose="wink"
+            circle
+            size={72}
+            alt={t.brand.success.bookingAlt}
+            className="bg-green-50 ring-4 ring-green-100"
+          />
+        )}
         <h1 className="text-2xl font-bold text-slate-900">
           {isPending ? t.booking.pendingTitle : t.booking.bookingSuccessTitle}
         </h1>

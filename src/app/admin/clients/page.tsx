@@ -7,6 +7,7 @@ import { getActiveBusiness } from '@/server/repos/business';
 import { listClients, type ClientFilter } from '@/server/repos/clients';
 import { displayPhone } from '@/lib/crypto';
 import ClientForm from './ClientForm';
+import { MascotEmptyState } from '@/components/brand/MascotEmptyState';
 
 export const metadata: Metadata = { title: t.admin.clients.title };
 
@@ -93,9 +94,16 @@ export default async function AdminClientsPage({ searchParams }: Props) {
       </h2>
 
       {clients.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
-          {isSearching ? t.admin.clients.emptySearch : t.admin.clients.empty}
-        </p>
+        isSearching ? (
+          <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
+            {t.admin.clients.emptySearch}
+          </p>
+        ) : (
+          <MascotEmptyState
+            title={t.brand.empty.clients.title}
+            body={t.brand.empty.clients.hint}
+          />
+        )
       ) : (
         <ul className="space-y-3">
           {clients.map((c) => (

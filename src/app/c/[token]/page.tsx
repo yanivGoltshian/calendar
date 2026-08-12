@@ -4,6 +4,7 @@ import { t } from '@/i18n';
 import { getAppointmentByConfirmToken } from '@/server/repos/appointments';
 import { DEFAULT_TZ, formatDateString, formatLongDate, formatTime } from '@/lib/time';
 import { Card, CardBody } from '@/components/ui/admin';
+import { Mascot } from '@/components/brand/Mascot';
 import { ConfirmActions } from './ConfirmActions';
 
 // קישור אישור פרטי — לא לאינדוקס, ותמיד טרי (נקרא מה-DB לפי טוקן).
@@ -120,6 +121,15 @@ export default async function ConfirmPage({ params }: Props) {
           <CardBody className="flex flex-col gap-4">
             <Details appt={appt} />
             <div className="rounded-xl border border-[#16233A] bg-[#08101C] px-4 py-3 text-center">
+              {confirmed && (
+                <Mascot
+                  pose="wink"
+                  circle
+                  size={52}
+                  alt={t.brand.success.reminderAlt}
+                  className="mb-2 ring-2 ring-[#16233A]"
+                />
+              )}
               <p className="text-base font-semibold text-[#E8ECF3]">
                 {confirmed
                   ? t.reminders.confirm.alreadyConfirmedTitle
