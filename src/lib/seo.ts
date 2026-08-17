@@ -35,6 +35,7 @@ type BuildMetadataOptions = {
   path?: string;
   ogTitle?: string;
   ogSubtitle?: string;
+  ogLogo?: boolean;
   noIndex?: boolean;
 };
 
@@ -49,11 +50,14 @@ export function buildMetadata(options: BuildMetadataOptions = {}): Metadata {
     path = '/',
     ogTitle,
     ogSubtitle,
+    ogLogo = false,
     noIndex = false,
   } = options;
 
   const canonical = absoluteUrl(path);
-  const image = ogImageUrl({ title: ogTitle ?? title ?? BRAND.name, subtitle: ogSubtitle });
+  const image = ogLogo
+    ? ogImageUrl()
+    : ogImageUrl({ title: ogTitle ?? title ?? BRAND.name, subtitle: ogSubtitle });
   const resolvedTitle = title ?? BRAND.name;
 
   return {
