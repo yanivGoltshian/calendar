@@ -50,7 +50,7 @@ export default async function HomePage() {
         <section className="relative overflow-hidden">
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-radial-glow" />
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-grid opacity-[0.05]" />
-          <Container className="grid items-center gap-14 py-16 sm:py-24 lg:grid-cols-2 lg:gap-10 lg:py-32">
+          <Container className="grid items-center gap-14 py-8 sm:py-12 lg:grid-cols-2 lg:gap-10 lg:py-16">
             <div className="text-center lg:text-start">
               <FadeIn>
                 <div className="mb-6 flex items-center justify-center">
