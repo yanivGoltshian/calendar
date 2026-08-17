@@ -43,14 +43,89 @@ async function loadHebrewFont(weight: 400 | 700): Promise<ArrayBuffer | null> {
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const title = searchParams.get('title') ?? BRAND.name;
+  const rawTitle = searchParams.get('title');
+  const hasTitle = rawTitle != null && rawTitle.trim().length > 0;
+
+  const emblem = await loadEmblem();
+
+  // מצב לוגו — שיתוף כללי של הפלטפורמה (ללא ?title=). מרנדר את אמבלם המותג
+  // שכבר כולל את שם המותג בעברית כפיקסלים, ולכן אין טקסט חי של Satori ואין
+  // סיכון להיפוך אותיות בכיווניות RTL.
+  if (!hasTitle) {
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            background: 'linear-gradient(135deg, #06101f 0%, #16233a 55%, #24406e 100%)',
+          }}
+        >
+          {emblem ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={emblem}
+              alt=""
+              width={460}
+              height={460}
+              style={{
+                width: '460px',
+                height: '460px',
+                borderRadius: '64px',
+                border: '1px solid rgba(206,162,74,0.35)',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: '460px',
+                height: '460px',
+                borderRadius: '64px',
+                background: 'rgba(206,162,74,0.12)',
+                border: '2px solid rgba(206,162,74,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  width: '240px',
+                  height: '240px',
+                  borderRadius: '9999px',
+                  border: '10px solid #cea24a',
+                }}
+              />
+            </div>
+          )}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: '8px',
+              background: 'linear-gradient(90deg, #9a7635 0%, #cea24a 50%, #f2d695 100%)',
+            }}
+          />
+        </div>
+      ),
+      { ...SIZE },
+    );
+  }
+
+  // מצב כותרת — כרטיסי עמודים עם ?title= (למשל עמודי עסק). נשמר כפי שהיה,
+  // כולל טעינת הגופן העברי לרינדור הכותרת והתת-כותרת.
+  const title = rawTitle;
   const subtitle = searchParams.get('subtitle') ?? SITE_DESCRIPTION;
 
-  const [regular, bold, emblem] = await Promise.all([
-    loadHebrewFont(400),
-    loadHebrewFont(700),
-    loadEmblem(),
-  ]);
+  const [regular, bold] = await Promise.all([loadHebrewFont(400), loadHebrewFont(700)]);
 
   const fonts = [
     ...(regular
