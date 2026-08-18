@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { generateOtpCode, hashOtp, verifyOtp } from '@/lib/crypto';
+import { generateOtpCode, hashOtp, verifyOtp, normalizeEmail } from '@/lib/crypto';
 
 const OTP_TTL_MINUTES = 5;
 const MAX_ATTEMPTS = 5;
@@ -62,5 +62,26 @@ export async function findOrCreateUserByPhone(phone: string, name?: string) {
     where: { phone },
     update: name ? { name } : {},
     create: { phone, name, role: 'CLIENT' },
+  });
+}
+
+/**
+ * מציאת משתמש לפי מייל או יצירתו. המייל מנורמל לאותיות קטנות.
+ * מסמן emailVerified שכן ההגעה לכאן היא רק לאחר אימות OTP מוצלח למייל.
+ */
+export async function findOrCreateUserByEmail(email: string, name?: string) {
+  const normalized = normalizeEmail(email);
+  return prisma.user.upsert({
+    where: { email: normalized },
+    update: {
+      emailVerified: new Date(),
+      ...(name ? { name } : {}),
+    },
+    create: {
+      email: normalized,
+      emailVerified: new Date(),
+      name,
+      role: 'CLIENT',
+    },
   });
 }

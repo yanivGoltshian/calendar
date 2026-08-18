@@ -12,7 +12,10 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 ימים
 
 export type ClientSession = {
   userId: string;
-  phone: string;
+  // לפחות אחד מבין phone/email קיים. phone נשאר לתאימות לאחור עם עוגיות קיימות
+  // (שתמיד כללו phone); email נוסף עבור התחברות לקוח לפי מייל.
+  phone?: string;
+  email?: string;
   name?: string;
   exp: number; // חותמת זמן בשניות
 };

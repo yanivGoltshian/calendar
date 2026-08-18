@@ -3,35 +3,59 @@ import { normalizePhone } from '@/lib/crypto';
 import type { Prisma } from '@prisma/client';
 
 /**
- * מציאת לקוח לפי טלפון בעסק, או יצירתו אוטומטית (upsert).
- * מקשר למשתמש אם התקבל userId.
+ * מציאת לקוח בעסק לפי זהות (userId / טלפון / מייל), או יצירתו אוטומטית.
+ * לפחות אחד מבין phone/email/userId חייב להתקבל. שומר על תאימות לאחור: כאשר
+ * מתקבל טלפון, האיתור מתבצע דרך המפתח הייחודי המורכב businessId_phone כמו קודם.
  */
 export async function findOrCreateClient(params: {
   businessId: string;
-  phone: string;
+  phone?: string | null;
+  email?: string | null;
   name: string;
   userId?: string;
 }) {
-  const existing = await prisma.client.findUnique({
-    where: { businessId_phone: { businessId: params.businessId, phone: params.phone } },
-  });
+  const phone = params.phone ?? undefined;
+  const email = params.email ?? undefined;
+  if (!phone && !email && !params.userId) {
+    throw new Error('findOrCreateClient: requires at least one of phone/email/userId');
+  }
+
+  // איתור לקוח קיים לפי הזהות הזמינה, לפי סדר עדיפויות.
+  let existing = null;
+  if (params.userId) {
+    existing = await prisma.client.findFirst({
+      where: { businessId: params.businessId, userId: params.userId },
+    });
+  }
+  if (!existing && phone) {
+    existing = await prisma.client.findUnique({
+      where: { businessId_phone: { businessId: params.businessId, phone } },
+    });
+  }
+  if (!existing && email) {
+    existing = await prisma.client.findFirst({
+      where: { businessId: params.businessId, email },
+    });
+  }
+
   if (existing) {
-    // עדכון שם/קישור משתמש אם חסרים.
-    if ((!existing.userId && params.userId) || (!existing.name && params.name)) {
-      return prisma.client.update({
-        where: { id: existing.id },
-        data: {
-          userId: existing.userId ?? params.userId,
-          name: existing.name || params.name,
-        },
-      });
+    // השלמת פרטים חסרים (קישור משתמש, שם, טלפון, מייל) אם התקבלו כעת.
+    const patch: Prisma.ClientUpdateInput = {};
+    if (!existing.userId && params.userId) patch.user = { connect: { id: params.userId } };
+    if (!existing.name && params.name) patch.name = params.name;
+    if (!existing.phone && phone) patch.phone = phone;
+    if (!existing.email && email) patch.email = email;
+    if (Object.keys(patch).length > 0) {
+      return prisma.client.update({ where: { id: existing.id }, data: patch });
     }
     return existing;
   }
+
   return prisma.client.create({
     data: {
       businessId: params.businessId,
-      phone: params.phone,
+      phone: phone ?? null,
+      email: email ?? null,
       name: params.name,
       userId: params.userId,
     },

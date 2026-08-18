@@ -99,6 +99,7 @@ export default async function AccountPage() {
   const { upcoming, past } = await getAppointmentsForUser({
     userId: session.userId,
     phone: session.phone,
+    email: session.email,
   });
 
   const bookSlug = upcoming[0]?.business.slug ?? past[0]?.business.slug ?? null;

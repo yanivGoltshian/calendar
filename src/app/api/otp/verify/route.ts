@@ -31,7 +31,11 @@ export async function POST(request: Request) {
   }
 
   const user = await findOrCreateUserByPhone(phone, parsed.data.name);
-  await setClientSession({ userId: user.id, phone: user.phone, name: user.name ?? undefined });
+  await setClientSession({
+    userId: user.id,
+    phone: user.phone ?? undefined,
+    name: user.name ?? undefined,
+  });
 
   return NextResponse.json({
     ok: true,

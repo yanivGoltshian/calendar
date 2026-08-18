@@ -38,7 +38,7 @@ export default async function AdminClientDetailPage({ params }: Props) {
   const initial: ClientFormValues = {
     id: client.id,
     name: client.name,
-    phone: client.phone,
+    phone: client.phone ?? '',
     email: client.email ?? '',
     notes: client.notes ?? '',
   };

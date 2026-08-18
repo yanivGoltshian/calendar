@@ -57,13 +57,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
   }
 
-  // זהות הלקוח: מתוך ההתחברות אם קיימת, אחרת מפרטי הזמנת האורח.
-  let clientPhone: string;
+  // זהות הלקוח: מתוך ההתחברות אם קיימת (טלפון ו/או מייל), אחרת מפרטי הזמנת האורח.
+  let clientPhone: string | undefined;
+  let clientEmail: string | undefined;
   let clientName: string;
   let clientUserId: string | undefined;
   if (session) {
     clientPhone = session.phone;
-    clientName = parsed.name ?? session.name ?? session.phone;
+    clientEmail = session.email;
+    clientName = parsed.name ?? session.name ?? session.phone ?? session.email ?? 'לקוח';
     clientUserId = session.userId;
   } else {
     const guestName = parsed.name?.trim();
@@ -129,6 +131,7 @@ export async function POST(req: Request) {
   const client = await findOrCreateClient({
     businessId: business.id,
     phone: clientPhone,
+    email: clientEmail,
     name: clientName,
     userId: clientUserId,
   });
