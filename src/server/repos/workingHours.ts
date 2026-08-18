@@ -12,6 +12,25 @@ export type WorkingHoursRow = {
   breaks: [number, number][];
 };
 
+/**
+ * שעות ברירת המחדל של עסק חדש: ראשון–חמישי פתוחים 09:00–17:00, שישי ושבת סגורים.
+ * קידוד יום: 0=ראשון ... 6=שבת. דקות מחצות היום: 09:00 = 540, 17:00 = 1020.
+ * ימים סגורים (5,6) אינם מקבלים רשומה — עקבי עם האופן שבו מנוע הזמינות מתייחס
+ * ליום חסר כאל יום סגור. פונקציה טהורה (ללא DB) כדי שתהיה ניתנת לבדיקת יחידה,
+ * ונקראת מ-createBusiness כדי שעסק חדש יהיה זמין להזמנה מיד עם סיום ההקמה.
+ */
+export function defaultBusinessHours(): WorkingHoursRow[] {
+  const OPEN_MINUTE = 9 * 60; // 09:00 → 540
+  const CLOSE_MINUTE = 17 * 60; // 17:00 → 1020
+  // ראשון(0) עד חמישי(4) בלבד; שישי(5) ושבת(6) סגורים ולכן ללא רשומה.
+  return [0, 1, 2, 3, 4].map((weekday) => ({
+    weekday,
+    startMinute: OPEN_MINUTE,
+    endMinute: CLOSE_MINUTE,
+    breaks: [],
+  }));
+}
+
 /** שעות העבודה של העסק (ברירת המחדל). */
 export function getBusinessHours(businessId: string) {
   return prisma.workingHours.findMany({

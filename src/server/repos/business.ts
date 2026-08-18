@@ -1,6 +1,7 @@
 import type { BusinessType } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { auth } from '@/auth';
+import { defaultBusinessHours, setBusinessHours } from './workingHours';
 
 /** שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל. */
 export async function getBusinessBySlug(slug: string) {
@@ -154,6 +155,16 @@ export async function createBusiness(input: {
     },
     include: { settings: true },
   });
+
+  // זריעת שעות ברירת מחדל לעסק (scope BUSINESS): ראשון–חמישי 09:00–17:00, שישי/שבת סגורים.
+  // בלי זריעה זו לעסק חדש אין אף רשומת WorkingHours, ולכן מנוע הזמינות מחזיר אפס משבצות
+  // בכל יום — ולינק ההזמנה נשבר בשקט עד שהבעלים מגדיר שעות ידנית ב-/admin/working-hours.
+  // עמיד לתקלות: כשל בזריעה לא ישבור את יצירת העסק, אך בתנאים רגילים הרשומות נכתבות.
+  try {
+    await setBusinessHours(business.id, defaultBusinessHours());
+  } catch {
+    // זריעת שעות ברירת המחדל נכשלה; יצירת העסק ממשיכה והבעלים יגדיר שעות ידנית.
+  }
 
   // שאלות השיווק (אפיק D2) נשמרות בצורה עמידה: אם המיגרציה האדיטיבית טרם הוחלה
   // בסביבה, יצירת העסק לא תישבר; העדכון נכשל בשקט והשדות פשוט לא נכתבים עד שתרוץ.
