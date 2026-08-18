@@ -11,8 +11,10 @@ const inputClass =
   'focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30';
 
 /**
- * רכיב כניסת בעלים (client). מריץ signIn של NextAuth.
- * Google הוא המסלול הפעיל; טופס המייל מגודר ומוצג רק אם הספק מופעל ב-env.
+ * רכיב כניסת בעלים (client).
+ * Google מריץ signIn רגיל של NextAuth. מסלול המייל הוא דו-שלבי מבוסס OTP:
+ * שליחת קוד ל-POST /api/otp/email/request ואז אימות דרך ספק ה-Credentials
+ * 'owner-email' של NextAuth (JWT, ללא adapter). שני המסלולים מגודרים ב-env.
  */
 export function OwnerSignIn({
   googleEnabled,
@@ -24,8 +26,9 @@ export function OwnerSignIn({
   callbackUrl: string;
 }) {
   const [pending, setPending] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stage, setStage] = useState<'email' | 'code'>('email');
+  const [email, setEmail] = useState('');
 
   async function handleGoogle() {
     setError(null);
@@ -38,16 +41,40 @@ export function OwnerSignIn({
     }
   }
 
-  async function handleEmail(formData: FormData) {
+  async function handleRequest(formData: FormData) {
     setError(null);
     setPending(true);
-    const email = String(formData.get('email') ?? '').trim();
+    const value = String(formData.get('email') ?? '').trim();
     try {
-      const res = await signIn('email', { email, callbackUrl, redirect: false });
-      if (res?.error) {
+      const res = await fetch('/api/otp/email/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value }),
+      });
+      if (!res.ok) {
         setError(t.business.login.error);
+        return;
+      }
+      setEmail(value);
+      setStage('code');
+    } catch {
+      setError(t.business.login.error);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleVerify(formData: FormData) {
+    setError(null);
+    setPending(true);
+    const code = String(formData.get('code') ?? '').trim();
+    try {
+      const res = await signIn('owner-email', { email, code, redirect: false });
+      if (res?.error) {
+        setError(t.business.login.emailInvalidCode);
       } else {
-        setEmailSent(true);
+        window.location.assign(callbackUrl);
+        return;
       }
     } catch {
       setError(t.business.login.error);
@@ -79,10 +106,8 @@ export function OwnerSignIn({
       ) : null}
 
       {emailEnabled ? (
-        emailSent ? (
-          <p className="text-sm text-green-700">{t.business.login.emailSent}</p>
-        ) : (
-          <form action={handleEmail} className="space-y-3">
+        stage === 'email' ? (
+          <form action={handleRequest} className="space-y-3">
             <div>
               <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-sand-800">
                 {t.business.login.emailLabel}
@@ -92,6 +117,7 @@ export function OwnerSignIn({
                 name="email"
                 type="email"
                 required
+                autoComplete="email"
                 placeholder={t.business.login.emailPlaceholder}
                 className={inputClass}
               />
@@ -99,6 +125,38 @@ export function OwnerSignIn({
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? t.business.login.emailSending : t.business.login.emailSubmit}
             </Button>
+          </form>
+        ) : (
+          <form action={handleVerify} className="space-y-3">
+            <p className="text-sm text-green-700">{t.business.login.emailSent}</p>
+            <div>
+              <label htmlFor="code" className="mb-1.5 block text-sm font-medium text-sand-800">
+                {t.business.login.emailCodeLabel}
+              </label>
+              <input
+                id="code"
+                name="code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                required
+                placeholder={t.business.login.emailCodePlaceholder}
+                className={inputClass}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={pending}>
+              {pending ? t.business.login.emailVerifying : t.business.login.emailVerify}
+            </Button>
+            <button
+              type="button"
+              className="w-full text-center text-sm text-sand-500 hover:text-sand-700"
+              onClick={() => {
+                setStage('email');
+                setError(null);
+              }}
+            >
+              {t.business.login.emailBack}
+            </button>
+            <p className="text-center text-xs text-sand-400">{t.business.login.emailDevHint}</p>
           </form>
         )
       ) : null}

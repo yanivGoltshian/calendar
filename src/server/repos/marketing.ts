@@ -115,7 +115,10 @@ export async function sendCampaign(
   if (campaign.status !== 'DRAFT') return { ok: false, reason: 'already_sent' };
 
   const segment = normalizeSegment(campaign.segment);
-  const recipients = await resolveSegmentClients(businessId, segment);
+  // רק לקוחות עם טלפון יכולים לקבל SMS/וואטסאפ; לקוחות מבוססי-מייל בלבד מדולגים.
+  const recipients = (await resolveSegmentClients(businessId, segment)).filter(
+    (c): c is typeof c & { phone: string } => Boolean(c.phone),
+  );
   if (recipients.length === 0) return { ok: false, reason: 'no_recipients' };
 
   await prisma.campaign.update({

@@ -269,7 +269,12 @@ model BusinessSettings {
 
 model User {
   id             String   @id @default(cuid())
-  phone          String   @unique
+  // טלפון ומייל שניהם אופציונליים-ייחודיים: משתמש יכול להיווצר לפי טלפון (OTP/Firebase)
+  // או לפי מייל (email OTP). האכיפה של "לפחות אחד מהם" היא בשכבת האפליקציה, לא ב-DB.
+  // ב-Postgres כמה ערכי NULL מותרים תחת אינדקס ייחודי, ולכן nullable-unique בטוח.
+  phone          String?  @unique
+  email          String?  @unique
+  emailVerified  DateTime?
   name           String?
   role           Role     @default(CLIENT)
   // מזהים רגישים נשמרים כ-hash בלבד (למשל ת"ז) — לא בשימוש ב-MVP אך שמור מראש
@@ -365,7 +370,10 @@ model Client {
   user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   name    String
-  phone   String
+  // טלפון אופציונלי: מאפשר לקוחות שנרשמו/הזמינו לפי מייל בלבד (ללא טלפון).
+  // תואם לאחור — רשומות קיימות עם טלפון נשמרות; אינדקס ה-unique המורכב עדיין
+  // תקף כי ב-Postgres כמה NULL מותרים תחת אינדקס ייחודי.
+  phone   String?
   email   String?
   notes   String?
   blocked Boolean @default(false)

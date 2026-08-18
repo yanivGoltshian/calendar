@@ -43,8 +43,24 @@ export function isValidIsraeliMobile(input: string): boolean {
   return /^\+9725\d{8}$/.test(normalized);
 }
 
+/**
+ * בדיקת תקינות בסיסית של כתובת מייל. לא מנסה לכסות כל מקרה קצה של RFC 5322,
+ * אלא לוודא מבנה סביר של local@domain.tld עם אורך כולל תקין.
+ */
+export function isValidEmail(input: string): boolean {
+  const email = input.trim();
+  if (email.length < 3 || email.length > 254) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/** נרמול כתובת מייל: קיצוץ רווחים והמרה לאותיות קטנות (מייל אינו רגיש לרישיות). */
+export function normalizeEmail(input: string): string {
+  return input.trim().toLowerCase();
+}
+
 /** תצוגה ידידותית של טלפון E.164 ישראלי, למשל "050-1234567". */
-export function displayPhone(e164: string): string {
+export function displayPhone(e164: string | null | undefined): string {
+  if (!e164) return '';
   if (e164.startsWith('+972')) {
     const local = '0' + e164.slice(4);
     return `${local.slice(0, 3)}-${local.slice(3)}`;

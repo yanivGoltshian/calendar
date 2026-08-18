@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { isValidIsraeliMobile, normalizePhone } from '@/lib/crypto';
-import { checkOtp, findOrCreateUserByPhone } from '@/server/repos/otp';
+import { isValidEmail, normalizeEmail } from '@/lib/crypto';
+import { checkOtp, findOrCreateUserByEmail } from '@/server/repos/otp';
 import { setClientSession } from '@/lib/session';
 
 const schema = z.object({
-  phone: z.string().min(6),
+  email: z.string().min(3).max(254),
   code: z.string().min(4).max(8),
   name: z.string().trim().max(80).optional(),
 });
 
-/** אימות קוד OTP: אם תקין — יוצר/מוצא משתמש ומגדיר עוגיית התחברות. */
+/** אימות קוד OTP במייל (מסלול לקוח): אם תקין — יוצר/מוצא משתמש לפי מייל ומגדיר עוגיית התחברות. */
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -20,25 +20,26 @@ export async function POST(request: Request) {
   }
 
   const parsed = schema.safeParse(body);
-  if (!parsed.success || !isValidIsraeliMobile(parsed.data.phone)) {
+  if (!parsed.success || !isValidEmail(parsed.data.email)) {
     return NextResponse.json({ ok: false, error: 'invalid_input' }, { status: 400 });
   }
 
-  const phone = normalizePhone(parsed.data.phone);
-  const result = await checkOtp(phone, parsed.data.code);
+  const email = normalizeEmail(parsed.data.email);
+  const result = await checkOtp(email, parsed.data.code);
   if (!result.ok) {
     return NextResponse.json({ ok: false, error: result.reason }, { status: 401 });
   }
 
-  const user = await findOrCreateUserByPhone(phone, parsed.data.name);
+  const user = await findOrCreateUserByEmail(email, parsed.data.name);
   await setClientSession({
     userId: user.id,
     phone: user.phone ?? undefined,
+    email: user.email ?? undefined,
     name: user.name ?? undefined,
   });
 
   return NextResponse.json({
     ok: true,
-    user: { id: user.id, phone: user.phone, name: user.name },
+    user: { id: user.id, email: user.email, name: user.name },
   });
 }
