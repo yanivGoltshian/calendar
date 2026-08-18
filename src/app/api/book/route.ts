@@ -9,7 +9,7 @@ import {
 import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
 import { getClientSession } from '@/lib/session';
-import { isValidIsraeliMobile, normalizePhone } from '@/lib/crypto';
+import { isValidIsraeliMobile, normalizePhone, isValidEmail, normalizeEmail } from '@/lib/crypto';
 import { checkBookRequestAllowed } from '@/server/repos/bookRateLimit';
 import { t } from '@/i18n';
 
@@ -20,6 +20,7 @@ const bodySchema = z.object({
   startAtUtc: z.string().datetime(),
   name: z.string().trim().min(1).optional(),
   phone: z.string().optional(),
+  email: z.string().optional(),
 });
 
 /** חילוץ כתובת ה-IP של הלקוח מכותרות ה-proxy (best-effort). */
@@ -70,13 +71,23 @@ export async function POST(req: Request) {
   } else {
     const guestName = parsed.name?.trim();
     const guestPhone = parsed.phone?.trim();
-    if (!guestName || !guestPhone) {
+    const guestEmail = parsed.email?.trim();
+    // חוקת זהות: שם + לפחות אחד מבין טלפון/מייל (לעולם לא נכפה את שניהם).
+    if (!guestName || (!guestPhone && !guestEmail)) {
       return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
     }
-    if (!isValidIsraeliMobile(guestPhone)) {
-      return NextResponse.json({ ok: false, error: 'invalid_phone' }, { status: 400 });
+    if (guestPhone) {
+      if (!isValidIsraeliMobile(guestPhone)) {
+        return NextResponse.json({ ok: false, error: 'invalid_phone' }, { status: 400 });
+      }
+      clientPhone = normalizePhone(guestPhone);
     }
-    clientPhone = normalizePhone(guestPhone);
+    if (guestEmail) {
+      if (!isValidEmail(guestEmail)) {
+        return NextResponse.json({ ok: false, error: 'invalid_email' }, { status: 400 });
+      }
+      clientEmail = normalizeEmail(guestEmail);
+    }
     clientName = guestName;
     clientUserId = undefined;
   }

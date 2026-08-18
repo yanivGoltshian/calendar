@@ -39,7 +39,9 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
   // מצב אישור הזמנת אורח (ללא OTP)
+  const [contactMethod, setContactMethod] = useState<'phone' | 'email'>('phone');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -100,7 +102,8 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
           serviceIds: selectedServiceIds,
           startAtUtc: selectedSlot?.startAtUtc,
           name,
-          phone,
+          phone: contactMethod === 'phone' ? phone : undefined,
+          email: contactMethod === 'email' ? email : undefined,
         }),
       });
       const bookData = await bookRes.json();
@@ -123,9 +126,11 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
                 ? t.booking.tooFar
                 : code === 'invalid_phone'
                   ? t.auth.invalidPhone
-                  : code === 'bad_request'
-                    ? t.booking.guestMissingFields
-                    : t.common.error,
+                  : code === 'invalid_email'
+                    ? t.auth.invalidEmail
+                    : code === 'bad_request'
+                      ? t.booking.guestMissingFields
+                      : t.common.error,
         );
         return;
       }
@@ -384,19 +389,56 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-600">{t.booking.guestPhone}</label>
-            <input
-              type="tel"
-              inputMode="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder={t.booking.guestPhonePlaceholder}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3"
-            />
+            <div className="mb-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setContactMethod('phone')}
+                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                  contactMethod === 'phone'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700'
+                    : 'border-slate-300 text-slate-600'
+                }`}
+              >
+                {t.booking.guestPhone}
+              </button>
+              <button
+                type="button"
+                onClick={() => setContactMethod('email')}
+                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                  contactMethod === 'email'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700'
+                    : 'border-slate-300 text-slate-600'
+                }`}
+              >
+                {t.booking.guestEmail}
+              </button>
+            </div>
+            {contactMethod === 'phone' ? (
+              <input
+                type="tel"
+                inputMode="tel"
+                dir="ltr"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t.booking.guestPhonePlaceholder}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3"
+              />
+            ) : (
+              <input
+                type="email"
+                inputMode="email"
+                dir="ltr"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t.booking.guestEmailPlaceholder}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3"
+              />
+            )}
           </div>
           <button
             type="button"
-            disabled={busy || !phone || !name.trim()}
+            disabled={busy || !name.trim() || (contactMethod === 'phone' ? !phone : !email)}
             onClick={submitBooking}
             className="w-full rounded-xl bg-brand-600 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-40"
           >
