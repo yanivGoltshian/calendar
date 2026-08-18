@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "16177774039673764842"
+      "templateHash": "5769510359877834915"
     }
   },
   "parameters": {
@@ -129,11 +129,25 @@
         "description": "אזור זמן עסקי (IANA)"
       }
     },
-    "smsProvider": {
+    "messagingProvider": {
       "type": "string",
       "defaultValue": "console",
       "metadata": {
-        "description": "ספק SMS"
+        "description": "ספק הודעות (console כברירת מחדל; whatsapp-cloud לפרודקשן)"
+      }
+    },
+    "whatsAppAccessToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "WhatsApp Cloud API access token (סוד; ריק אם לא בשימוש)"
+      }
+    },
+    "messagingConfig": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "תצורת הודעות לא-סודית (זוגות שם/ערך של משתני סביבה, למשל WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_OTP_TEMPLATE)"
       }
     },
     "appPublicUrl": {
@@ -182,6 +196,27 @@
       "defaultValue": "",
       "metadata": {
         "description": "כתובת שולח ל-magic-link (אופציונלי)"
+      }
+    },
+    "firebaseProjectId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Firebase Admin — מזהה פרויקט (ריק = אימות טלפון-Firebase מושבת בצד השרת)"
+      }
+    },
+    "firebaseClientEmail": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Firebase Admin — client_email של חשבון השירות (ריק = מושבת)"
+      }
+    },
+    "firebasePrivateKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Firebase Admin — private_key של חשבון השירות (סוד; עשוי לכלול \\n מילוליים)"
       }
     },
     "deployStaticWebApp": {
@@ -521,8 +556,14 @@
           "businessTimezone": {
             "value": "[parameters('businessTimezone')]"
           },
-          "smsProvider": {
-            "value": "[parameters('smsProvider')]"
+          "messagingProvider": {
+            "value": "[parameters('messagingProvider')]"
+          },
+          "whatsAppAccessToken": {
+            "value": "[parameters('whatsAppAccessToken')]"
+          },
+          "messagingConfig": {
+            "value": "[parameters('messagingConfig')]"
           },
           "appPublicUrl": {
             "value": "[parameters('appPublicUrl')]"
@@ -545,6 +586,15 @@
           "emailFrom": {
             "value": "[parameters('emailFrom')]"
           },
+          "firebaseProjectId": {
+            "value": "[parameters('firebaseProjectId')]"
+          },
+          "firebaseClientEmail": {
+            "value": "[parameters('firebaseClientEmail')]"
+          },
+          "firebasePrivateKey": {
+            "value": "[parameters('firebasePrivateKey')]"
+          },
           "tags": {
             "value": "[parameters('tags')]"
           }
@@ -556,7 +606,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "12819295267909844092"
+              "templateHash": "10813355989556300322"
             }
           },
           "parameters": {
@@ -660,6 +710,20 @@
                 "description": "פלפל להצפנת קודי OTP"
               }
             },
+            "whatsAppAccessToken": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "WhatsApp Cloud API access token (סוד; ריק אם לא בשימוש)"
+              }
+            },
+            "messagingConfig": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "תצורת הודעות לא-סודית (זוגות שם/ערך של משתני סביבה, למשל WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_OTP_TEMPLATE). ריק כברירת מחדל."
+              }
+            },
             "businessTimezone": {
               "type": "string",
               "defaultValue": "Asia/Jerusalem",
@@ -667,11 +731,11 @@
                 "description": "אזור זמן עסקי (IANA)"
               }
             },
-            "smsProvider": {
+            "messagingProvider": {
               "type": "string",
               "defaultValue": "console",
               "metadata": {
-                "description": "ספק SMS"
+                "description": "ספק הודעות (console כברירת מחדל; whatsapp-cloud לפרודקשן)"
               }
             },
             "appPublicUrl": {
@@ -722,6 +786,27 @@
                 "description": "כתובת שולח ל-magic-link (אופציונלי)"
               }
             },
+            "firebaseProjectId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Firebase Admin — מזהה פרויקט (ריק = אימות טלפון-Firebase מושבת בצד השרת)"
+              }
+            },
+            "firebaseClientEmail": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Firebase Admin — client_email של חשבון השירות (ריק = מושבת)"
+              }
+            },
+            "firebasePrivateKey": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Firebase Admin — private_key של חשבון השירות (עשוי לכלול \\n מילוליים; קוד האפליקציה ממיר). ריק = מושבת"
+              }
+            },
             "tags": {
               "type": "object",
               "defaultValue": {},
@@ -731,6 +816,16 @@
             }
           },
           "variables": {
+            "copy": [
+              {
+                "name": "messagingConfigEnv",
+                "count": "[length(items(parameters('messagingConfig')))]",
+                "input": {
+                  "name": "[items(parameters('messagingConfig'))[copyIndex('messagingConfigEnv')].key]",
+                  "value": "[string(items(parameters('messagingConfig'))[copyIndex('messagingConfigEnv')].value)]"
+                }
+              }
+            ],
             "useRegistryAuth": "[not(empty(parameters('registryPasswordToken')))]",
             "baseSecrets": [
               {
@@ -746,6 +841,8 @@
                 "value": "[parameters('otpPepper')]"
               }
             ],
+            "messagingSecrets": "[concat(if(empty(parameters('whatsAppAccessToken')), createArray(), createArray(createObject('name', 'whatsapp-access-token', 'value', parameters('whatsAppAccessToken')))))]",
+            "messagingSecretEnv": "[concat(if(empty(parameters('whatsAppAccessToken')), createArray(), createArray(createObject('name', 'WHATSAPP_ACCESS_TOKEN', 'secretRef', 'whatsapp-access-token'))))]",
             "registrySecret": [
               {
                 "name": "registry-token",
@@ -753,7 +850,10 @@
               }
             ],
             "authSecrets": "[concat(if(empty(parameters('nextAuthSecret')), createArray(), createArray(createObject('name', 'nextauth-secret', 'value', parameters('nextAuthSecret')))), if(empty(parameters('googleClientSecret')), createArray(), createArray(createObject('name', 'google-client-secret', 'value', parameters('googleClientSecret')))), if(empty(parameters('emailServer')), createArray(), createArray(createObject('name', 'email-server', 'value', parameters('emailServer')))))]",
-            "authEnv": "[concat(if(empty(parameters('nextAuthSecret')), createArray(), createArray(createObject('name', 'NEXTAUTH_SECRET', 'secretRef', 'nextauth-secret'))), createArray(createObject('name', 'NEXTAUTH_URL', 'value', if(empty(parameters('nextAuthUrl')), parameters('appPublicUrl'), parameters('nextAuthUrl')))), if(empty(parameters('googleClientId')), createArray(), createArray(createObject('name', 'GOOGLE_CLIENT_ID', 'value', parameters('googleClientId')))), if(empty(parameters('googleClientSecret')), createArray(), createArray(createObject('name', 'GOOGLE_CLIENT_SECRET', 'secretRef', 'google-client-secret'))), if(empty(parameters('emailServer')), createArray(), createArray(createObject('name', 'EMAIL_SERVER', 'secretRef', 'email-server'))), if(empty(parameters('emailFrom')), createArray(), createArray(createObject('name', 'EMAIL_FROM', 'value', parameters('emailFrom')))))]"
+            "authEnv": "[concat(if(empty(parameters('nextAuthSecret')), createArray(), createArray(createObject('name', 'NEXTAUTH_SECRET', 'secretRef', 'nextauth-secret'))), createArray(createObject('name', 'NEXTAUTH_URL', 'value', if(empty(parameters('nextAuthUrl')), parameters('appPublicUrl'), parameters('nextAuthUrl')))), if(empty(parameters('googleClientId')), createArray(), createArray(createObject('name', 'GOOGLE_CLIENT_ID', 'value', parameters('googleClientId')))), if(empty(parameters('googleClientSecret')), createArray(), createArray(createObject('name', 'GOOGLE_CLIENT_SECRET', 'secretRef', 'google-client-secret'))), if(empty(parameters('emailServer')), createArray(), createArray(createObject('name', 'EMAIL_SERVER', 'secretRef', 'email-server'))), if(empty(parameters('emailFrom')), createArray(), createArray(createObject('name', 'EMAIL_FROM', 'value', parameters('emailFrom')))))]",
+            "firebaseConfigured": "[and(and(not(empty(parameters('firebaseProjectId'))), not(empty(parameters('firebaseClientEmail')))), not(empty(parameters('firebasePrivateKey'))))]",
+            "firebaseSecrets": "[if(variables('firebaseConfigured'), createArray(createObject('name', 'firebase-private-key', 'value', parameters('firebasePrivateKey'))), createArray())]",
+            "firebaseEnv": "[if(variables('firebaseConfigured'), createArray(createObject('name', 'FIREBASE_PROJECT_ID', 'value', parameters('firebaseProjectId')), createObject('name', 'FIREBASE_CLIENT_EMAIL', 'value', parameters('firebaseClientEmail')), createObject('name', 'FIREBASE_PRIVATE_KEY', 'secretRef', 'firebase-private-key')), createArray())]"
           },
           "resources": [
             {
@@ -781,7 +881,7 @@
                       }
                     ]
                   },
-                  "secrets": "[concat(variables('baseSecrets'), variables('authSecrets'), if(variables('useRegistryAuth'), variables('registrySecret'), createArray()))]",
+                  "secrets": "[concat(variables('baseSecrets'), variables('messagingSecrets'), variables('authSecrets'), variables('firebaseSecrets'), if(variables('useRegistryAuth'), variables('registrySecret'), createArray()))]",
                   "registries": "[if(variables('useRegistryAuth'), createArray(createObject('server', parameters('registryServer'), 'username', parameters('registryUsername'), 'passwordSecretRef', 'registry-token')), createArray())]"
                 },
                 "template": {
@@ -793,7 +893,7 @@
                         "cpu": "[json(parameters('cpu'))]",
                         "memory": "[parameters('memory')]"
                       },
-                      "env": "[concat(createArray(createObject('name', 'DATABASE_URL', 'secretRef', 'database-url'), createObject('name', 'SESSION_SECRET', 'secretRef', 'session-secret'), createObject('name', 'OTP_PEPPER', 'secretRef', 'otp-pepper'), createObject('name', 'BUSINESS_TIMEZONE', 'value', parameters('businessTimezone')), createObject('name', 'SMS_PROVIDER', 'value', parameters('smsProvider')), createObject('name', 'NEXT_PUBLIC_APP_URL', 'value', parameters('appPublicUrl')), createObject('name', 'PORT', 'value', string(parameters('targetPort'))), createObject('name', 'HOSTNAME', 'value', '0.0.0.0')), variables('authEnv'))]"
+                      "env": "[concat(createArray(createObject('name', 'DATABASE_URL', 'secretRef', 'database-url'), createObject('name', 'SESSION_SECRET', 'secretRef', 'session-secret'), createObject('name', 'OTP_PEPPER', 'secretRef', 'otp-pepper'), createObject('name', 'BUSINESS_TIMEZONE', 'value', parameters('businessTimezone')), createObject('name', 'MESSAGING_PROVIDER', 'value', parameters('messagingProvider')), createObject('name', 'NEXT_PUBLIC_APP_URL', 'value', parameters('appPublicUrl')), createObject('name', 'PORT', 'value', string(parameters('targetPort'))), createObject('name', 'HOSTNAME', 'value', '0.0.0.0')), variables('messagingSecretEnv'), variables('messagingConfigEnv'), variables('authEnv'), variables('firebaseEnv'))]"
                     }
                   ],
                   "scale": {

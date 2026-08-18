@@ -91,6 +91,16 @@ param emailServer string = ''
 @description('כתובת שולח ל-magic-link (אופציונלי)')
 param emailFrom string = ''
 
+@description('Firebase Admin — מזהה פרויקט (ריק = אימות טלפון-Firebase מושבת בצד השרת)')
+param firebaseProjectId string = ''
+
+@description('Firebase Admin — client_email של חשבון השירות (ריק = מושבת)')
+param firebaseClientEmail string = ''
+
+@description('Firebase Admin — private_key של חשבון השירות (עשוי לכלול \\n מילוליים; קוד האפליקציה ממיר). ריק = מושבת')
+@secure()
+param firebasePrivateKey string = ''
+
 @description('תגיות משאב')
 param tags object = {}
 
@@ -197,6 +207,33 @@ var authEnv = concat(
   ]
 )
 
+// סודות Firebase Admin — נוספים רק כאשר כל שלושת הערכים קיימים (אדיטיבי, לא שובר
+// פריסות קיימות). רק private_key נחשב סוד; project_id ו-client_email נפלטים כ-env רגיל.
+var firebaseConfigured = !empty(firebaseProjectId) && !empty(firebaseClientEmail) && !empty(firebasePrivateKey)
+
+var firebaseSecrets = firebaseConfigured ? [
+  {
+    name: 'firebase-private-key'
+    value: firebasePrivateKey
+  }
+] : []
+
+// משתני סביבה של Firebase Admin — נפלטים רק כשהתצורה מלאה (degrade gracefully).
+var firebaseEnv = firebaseConfigured ? [
+  {
+    name: 'FIREBASE_PROJECT_ID'
+    value: firebaseProjectId
+  }
+  {
+    name: 'FIREBASE_CLIENT_EMAIL'
+    value: firebaseClientEmail
+  }
+  {
+    name: 'FIREBASE_PRIVATE_KEY'
+    secretRef: 'firebase-private-key'
+  }
+] : []
+
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
@@ -220,7 +257,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           }
         ]
       }
-      secrets: concat(baseSecrets, messagingSecrets, authSecrets, useRegistryAuth ? registrySecret : [])
+      secrets: concat(baseSecrets, messagingSecrets, authSecrets, firebaseSecrets, useRegistryAuth ? registrySecret : [])
       registries: useRegistryAuth ? [
         {
           server: registryServer
@@ -271,7 +308,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'HOSTNAME'
               value: '0.0.0.0'
             }
-          ], messagingSecretEnv, messagingConfigEnv, authEnv)
+          ], messagingSecretEnv, messagingConfigEnv, authEnv, firebaseEnv)
         }
       ]
       scale: {
