@@ -10,7 +10,8 @@
     "lint": "next lint",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/server/providers/messaging.test.ts src/server/repos/rateLimitPolicy.test.ts src/server/repos/bookRateLimit.test.ts src/lib/canonicalHost.test.ts src/lib/authIdentity.test.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "test:e2e": "playwright test",
     "gen:icons": "node scripts/gen-icons.mjs",
     "gen:admin-icons": "node scripts/gen-admin-icons.mjs",
     "prisma:generate": "prisma generate",
@@ -35,6 +36,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.13.1",
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.0.8",

@@ -1,0 +1,82 @@
+# ============================================================================
+# CI — בדיקות ל-Pull Request (typecheck + lint + unit tests).
+# ----------------------------------------------------------------------------
+# תוספת בלבד. אינו נוגע ב-deploy.yml ואינו פורס דבר. רץ על PR ל-main וב-push
+# ל-main. בדיקות היחידה אינן דורשות מסד נתונים חי.
+#
+# job "unit" חוסם מיזוג (typecheck/lint/test). job "e2e" אינו חוסם
+# (continue-on-error) — ה-specs מדלגים על עצמם כשאין שרת/DB, כך שהסוויטה ירוקה
+# כברירת מחדל.
+# ============================================================================
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------- typecheck + lint + unit tests (חוסם) ----------
+  unit:
+    name: Typecheck, lint & unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Node 22: מריץ הרצת בדיקות מובנית עם דפוסי glob (נתמך מ-Node 21+).
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # טיפוסי Prisma Client נדרשים ל-tsc; מייצרים לפני typecheck.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+  # ---------- Playwright E2E (לא חוסם) ----------
+  e2e:
+    name: Playwright E2E (non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (chromium)
+        run: npx playwright install --with-deps chromium
+
+      # ללא E2E_BASE_URL כל spec מדלג על עצמו, כך שהריצה ירוקה ללא שרת/DB.
+      - name: Run E2E specs
+        run: npm run test:e2e

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getBusinessBySlug } from '@/server/repos/business';
 import { getServicesByIds } from '@/server/repos/services';
-import { getStaffWorkingHours } from '@/server/repos/staff';
+import { getEffectiveStaffWorkingHours } from '@/server/repos/workingHours';
 import { getBlockingAppointments } from '@/server/repos/appointments';
 import { computeSlots } from '@/server/availability';
 import { localWallTimeToUtc, addDaysToDateString } from '@/lib/time';
@@ -49,7 +49,8 @@ export async function POST(request: Request) {
   }
   const durationMin = services.reduce((sum, s) => sum + s.durationMin, 0);
 
-  const workingHours = await getStaffWorkingHours(staffId);
+  // שעות אפקטיביות: שעות איש הצוות, ובהיעדרן — נפילה לשעות העסק (ברירת מחדל).
+  const workingHours = await getEffectiveStaffWorkingHours(business.id, staffId);
 
   // טווח UTC ליום המבוקש (מחצות עד חצות מקומי) לשליפת תורים קיימים.
   const [y, m, d] = date.split('-').map(Number);
