@@ -106,6 +106,16 @@ param emailServer string = ''
 @description('כתובת שולח ל-magic-link (אופציונלי)')
 param emailFrom string = ''
 
+@description('Firebase Admin — מזהה פרויקט (ריק = אימות טלפון-Firebase מושבת בצד השרת)')
+param firebaseProjectId string = ''
+
+@description('Firebase Admin — client_email של חשבון השירות (ריק = מושבת)')
+param firebaseClientEmail string = ''
+
+@description('Firebase Admin — private_key של חשבון השירות (סוד; עשוי לכלול \\n מילוליים)')
+@secure()
+param firebasePrivateKey string = ''
+
 // ---------- Static Web App ----------
 @description('האם לפרוס Static Web App')
 param deployStaticWebApp bool = true
@@ -197,6 +207,9 @@ module containerApp 'modules/containerApp.bicep' = {
     googleClientSecret: googleClientSecret
     emailServer: emailServer
     emailFrom: emailFrom
+    firebaseProjectId: firebaseProjectId
+    firebaseClientEmail: firebaseClientEmail
+    firebasePrivateKey: firebasePrivateKey
     tags: tags
   }
 }
