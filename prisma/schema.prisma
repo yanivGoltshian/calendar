@@ -234,10 +234,10 @@ model BusinessSettings {
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   // מדיניות הזמנות
-  minLeadTimeMinutes      Int @default(120) // זמן מינימלי מראש להזמנה
-  cancellationWindowHours Int @default(24) // חלון ביטול לפני התור
-  slotGranularityMinutes  Int @default(15) // רזולוציית משבצות הזמן
-  maxAdvanceBookingDays   Int @default(60) // עד כמה ימים קדימה ניתן להזמין
+  minLeadTimeMinutes      Int @default(0) // זמן מינימלי מראש להזמנה
+  cancellationWindowHours Int @default(0) // חלון ביטול לפני התור
+  slotGranularityMinutes  Int @default(30) // משך ברירת המחדל של כל תור (דקות)
+  maxAdvanceBookingDays   Int @default(30) // עד כמה ימים קדימה ניתן להזמין
 
   // האם תור חדש דורש אישור עסק (נשאר PENDING עד אישור)
   bookingRequiresApproval Boolean @default(true)

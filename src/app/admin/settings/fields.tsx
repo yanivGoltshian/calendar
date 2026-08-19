@@ -202,6 +202,7 @@ export function PolicyFields({ s }: { s: PolicyValues }) {
             defaultValue={s.slotGranularityMinutes}
             className={inputClass}
           />
+          <p className={hintClass}>{c.slotHint}</p>
         </div>
         <div className="flex-1">
           <label className={labelClass}>{c.maxAdvanceLabel}</label>
