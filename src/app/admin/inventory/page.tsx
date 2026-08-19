@@ -97,7 +97,15 @@ export default async function InventoryPage({ searchParams }: Props) {
           {t.admin.inventory.lowStockTitle}
         </h2>
         {alerts.length === 0 ? (
-          <p className={emptyClass}>{t.admin.inventory.lowStockEmpty}</p>
+          <p className={emptyClass}>
+            {t.admin.inventory.lowStockEmpty}{' '}
+            <Link
+              href="/admin/pos/products"
+              className="text-brand-700 underline-offset-2 hover:underline"
+            >
+              {t.admin.inventory.lowStockEmptyCta}
+            </Link>
+          </p>
         ) : (
           <ul className="space-y-2">
             {alerts.map((a) => (
@@ -168,9 +176,19 @@ export default async function InventoryPage({ searchParams }: Props) {
       <section>
         <h2 className="mb-3 text-lg font-semibold text-slate-900">{t.admin.inventory.listTitle}</h2>
         {rows.length === 0 ? (
-          <p className={emptyClass}>
-            {isSearching ? t.admin.inventory.emptySearch : t.admin.inventory.empty}
-          </p>
+          isSearching ? (
+            <p className={emptyClass}>{t.admin.inventory.emptySearch}</p>
+          ) : (
+            <p className={emptyClass}>
+              {t.admin.inventory.empty}{' '}
+              <Link
+                href="/admin/pos/products"
+                className="font-semibold text-brand-700 underline underline-offset-2 hover:text-brand-800"
+              >
+                {t.admin.inventory.emptyCta}
+              </Link>
+            </p>
+          )
         ) : (
           <div className="space-y-6">
             {[...groups.entries()].map(([groupLabel, groupRows]) => (
