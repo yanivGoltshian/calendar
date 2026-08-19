@@ -287,7 +287,15 @@ export default function CalendarBoard({
           })}
         </div>
       ) : (
-        <p className="mb-3 text-sm text-amber-700">{cal.noServices}</p>
+        <p className="mb-3 text-sm text-amber-700">
+          {cal.noServices}{' '}
+          <Link
+            href="/admin/services"
+            className="font-semibold text-amber-900 underline underline-offset-2 transition hover:text-amber-950"
+          >
+            {cal.noServicesCta}
+          </Link>
+        </p>
       )}
 
       {staff.length === 0 ? (

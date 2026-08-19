@@ -1,4 +1,7 @@
+import type { BusinessType } from '@prisma/client';
+
 import { prisma } from '@/lib/db';
+import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
 
 /** שירותים לפי מזהים (לבחירה בזרימת ההזמנה). */
 export function getServicesByIds(businessId: string, ids: string[]) {
@@ -114,6 +117,33 @@ export async function createService(businessId: string, data: ServiceInput) {
   return prisma.service.create({
     data: { businessId, sortOrder, ...data },
   });
+}
+
+/**
+ * זריעת שירותי התחלה מתבנית סוג העסק (אונבורדינג).
+ * אידמפוטנטי: רץ רק כשלעסק אין אף שירות, ולכן קריאה חוזרת לא תיצור כפילויות.
+ * מחזיר את מספר השירותים שנוצרו (0 אם כבר קיימים שירותים או שהתבנית ריקה).
+ */
+export async function seedServicesForBusiness(
+  businessId: string,
+  type: BusinessType | null | undefined,
+): Promise<number> {
+  const existing = await prisma.service.count({ where: { businessId } });
+  if (existing > 0) return 0;
+
+  const template = getServiceTemplate(type);
+  if (template.length === 0) return 0;
+
+  const result = await prisma.service.createMany({
+    data: template.map((svc, index) => ({
+      businessId,
+      name: svc.name,
+      durationMin: svc.durationMin,
+      priceAgorot: svc.priceAgorot,
+      sortOrder: index,
+    })),
+  });
+  return result.count;
 }
 
 /** עדכון שירות קיים (מסונן לפי העסק כדי למנוע גישה חוצה עסקים). */
