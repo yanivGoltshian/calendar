@@ -7,7 +7,7 @@ import {
   SITE_DESCRIPTION,
   organizationJsonLd,
   webSiteJsonLd,
-  ogImageUrl,
+  ogCardUrl,
 } from '@/lib/seo';
 import ServiceWorkerRegistrar from './ServiceWorkerRegistrar';
 import './globals.css';
@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${BRAND.name} — זימון תורים וניהול עסק`,
+    default: `${BRAND.name} · זימון תורים וניהול עסק`,
     template: `%s · ${BRAND.name}`,
   },
   description: SITE_DESCRIPTION,
@@ -38,15 +38,15 @@ export const metadata: Metadata = {
     locale: 'he_IL',
     url: SITE_URL,
     siteName: BRAND.name,
-    title: `${BRAND.name} — זימון תורים וניהול עסק`,
+    title: `${BRAND.name} · זימון תורים וניהול עסק`,
     description: SITE_DESCRIPTION,
-    images: [{ url: ogImageUrl(), width: 1200, height: 630, alt: BRAND.name }],
+    images: [{ url: ogCardUrl(), type: 'image/jpeg', width: 1200, height: 630, alt: BRAND.name }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${BRAND.name} — זימון תורים וניהול עסק`,
+    title: `${BRAND.name} · זימון תורים וניהול עסק`,
     description: SITE_DESCRIPTION,
-    images: [ogImageUrl()],
+    images: [ogCardUrl()],
   },
   formatDetection: { telephone: false },
 };
