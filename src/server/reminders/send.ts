@@ -32,7 +32,13 @@ export type ReminderAppointment = {
   id: string;
   startAt: Date;
   confirmToken: string;
-  business: { name: string; timezone: string | null; reminderChannel: string };
+  business: {
+    name: string;
+    timezone: string | null;
+    // ערוץ התזכורת מגיע מה-relation settings של העסק, שהוא nullable בסכימה. כאשר
+    // אין רשומת settings — ברירת המחדל היא AUTO (נגזר בשכבת השליחה, ראו sendReminder).
+    settings: { reminderChannel: string } | null;
+  };
   client: { name: string; phone?: string | null; email?: string | null };
 };
 
@@ -164,7 +170,10 @@ async function sendViaEmail(
  * כשל חולף => failed (ניסיון חוזר).
  */
 export async function sendReminder(appt: ReminderAppointment): Promise<SendReminderResult> {
-  const resolved = resolveReminderChannel(appt.client, appt.business.reminderChannel);
+  // ה-relation settings הוא nullable; כשאין רשומה מתייחסים לברירת המחדל AUTO (כמו
+  // בסכימה), כך שהערוץ נגזר מזהות הלקוח ואף לקוח לא נשמט בגלל היעדר הגדרות.
+  const channelPref = appt.business.settings?.reminderChannel ?? 'AUTO';
+  const resolved = resolveReminderChannel(appt.client, channelPref);
   if (resolved.kind === 'skip') {
     return { status: 'skipped', reason: resolved.reason };
   }

@@ -38,7 +38,11 @@ const oneDueRow = {
   id: 'appt-1',
   startAt: new Date('2026-01-01T10:00:00.000Z'),
   confirmToken: 'tok-1',
-  business: { name: 'עסק לדוגמה', timezone: 'Asia/Jerusalem', reminderChannel: 'AUTO' },
+  business: {
+    name: 'עסק לדוגמה',
+    timezone: 'Asia/Jerusalem',
+    settings: { reminderChannel: 'AUTO' },
+  },
   client: { name: 'לקוח', phone: '+972500000000', email: null as string | null },
 };
 
