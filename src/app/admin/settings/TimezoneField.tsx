@@ -3,8 +3,9 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_TIMEZONE,
-  filterTimezones,
-  getTimezones,
+  filterTimezoneOptions,
+  getTimezoneOptions,
+  labelForTimezone,
 } from '@/lib/timezones';
 import { inputClass } from './fieldStyles';
 
@@ -25,7 +26,7 @@ export function TimezoneField({
   selectedLabel: string;
   noResultsLabel: string;
 }) {
-  const zones = useMemo(() => getTimezones(), []);
+  const zones = useMemo(() => getTimezoneOptions(), []);
   const [selected, setSelected] = useState<string>(
     defaultValue || DEFAULT_TIMEZONE,
   );
@@ -35,8 +36,13 @@ export function TimezoneField({
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const results = useMemo(
-    () => filterTimezones(zones, query).slice(0, 60),
+    () => filterTimezoneOptions(zones, query).slice(0, 60),
     [zones, query],
+  );
+
+  const selectedLabelText = useMemo(
+    () => labelForTimezone(selected),
+    [selected],
   );
 
   function choose(tz: string) {
@@ -49,7 +55,7 @@ export function TimezoneField({
     <div className="relative">
       <input type="hidden" name={name} value={selected} />
       <input
-        dir="ltr"
+        dir="auto"
         role="combobox"
         aria-expanded={open}
         aria-controls={listId}
@@ -70,7 +76,7 @@ export function TimezoneField({
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
-            if (results[0]) choose(results[0]);
+            if (results[0]) choose(results[0].id);
           } else if (e.key === 'Escape') {
             setOpen(false);
           }
@@ -80,7 +86,8 @@ export function TimezoneField({
 
       <p className="mt-1 text-xs text-slate-500">
         {selectedLabel}{' '}
-        <span dir="ltr" className="font-medium text-slate-700">
+        <span className="font-medium text-slate-700">{selectedLabelText}</span>{' '}
+        <span dir="ltr" className="text-slate-400">
           {selected}
         </span>
       </p>
@@ -97,19 +104,22 @@ export function TimezoneField({
             </li>
           ) : (
             results.map((tz) => (
-              <li key={tz} role="option" aria-selected={tz === selected}>
+              <li key={tz.id} role="option" aria-selected={tz.id === selected}>
                 <button
                   type="button"
-                  dir="ltr"
+                  dir="rtl"
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => choose(tz)}
-                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-brand-50 ${
-                    tz === selected
+                  onClick={() => choose(tz.id)}
+                  className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-right text-sm hover:bg-brand-50 ${
+                    tz.id === selected
                       ? 'bg-brand-50 font-medium text-brand-700'
                       : 'text-slate-700'
                   }`}
                 >
-                  {tz}
+                  <span>{tz.label}</span>
+                  <span dir="ltr" className="text-xs text-slate-400">
+                    {tz.id}
+                  </span>
                 </button>
               </li>
             ))
