@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getActiveBusiness } from '@/server/repos/business';
 import {
@@ -9,7 +10,10 @@ import {
   deleteService,
   setServiceHidden,
   setServiceStaff,
+  listServices,
+  seedServicesForBusiness,
 } from '@/server/repos/services';
+import { shouldSeedServiceTemplates } from '@/server/onboarding/serviceTemplates';
 import { shekelsToAgorot } from '@/lib/money';
 
 const saveSchema = z.object({
@@ -119,4 +123,31 @@ export async function toggleServiceHiddenAction(formData: FormData) {
   if (!business) return;
   await setServiceHidden(business.id, id, hidden);
   revalidatePublic(business.slug);
+}
+
+/**
+ * טעינה חד-פעמית של שירותי תבנית לפי סוג העסק — לעסקים קיימים שנוצרו לפני מנגנון
+ * האונבורדינג ולכן נותרו בלי שירותים. משתמש חוזר בלוגיקת הזריעה הקיימת
+ * (seedServicesForBusiness) בלי לשכפל את מערך התבניות.
+ *
+ * מוגבל לעסק הפעיל של הבעלים המאומת בלבד (getActiveBusiness גוזר בעלות מהמייל).
+ * שומר בטיחות כפול: זורע רק כאשר לעסק אין שירותים כלל (בדיקה עם listServices כאן,
+ * ובדיקה נוספת בתוך seedServicesForBusiness), ולכן לחיצה חוזרת לא תיצור כפילויות.
+ */
+export async function loadServiceTemplatesAction() {
+  const business = await getActiveBusiness();
+  if (!business) return;
+
+  const existing = await listServices(business.id);
+  let created = 0;
+  if (shouldSeedServiceTemplates(existing.length)) {
+    created = await seedServicesForBusiness(business.id, business.type);
+  }
+
+  // רענון היומן ומסך השירותים כדי שהתצוגה תתעדכן מיד לאחר הזריעה.
+  revalidatePath('/admin');
+  revalidatePath('/admin/services');
+
+  // נשארים במסך השירותים כדי שהבעלים יערוך או ימחק את שירותי התבנית מיד.
+  redirect(created > 0 ? '/admin/services?seeded=1' : '/admin/services');
 }

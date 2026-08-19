@@ -9,16 +9,17 @@ import { listStaff } from '@/server/repos/staff';
 import { formatAgorot, agorotToShekels } from '@/lib/money';
 import { formatDuration } from '@/lib/time';
 import ServiceForm, { type ServiceFormValues } from './ServiceForm';
-import { deleteServiceAction, toggleServiceHiddenAction } from './actions';
+import { deleteServiceAction, toggleServiceHiddenAction, loadServiceTemplatesAction } from './actions';
 
 export const metadata: Metadata = { title: t.admin.services.title };
 
 type Props = {
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{ edit?: string; seeded?: string }>;
 };
 
 export default async function AdminServicesPage({ searchParams }: Props) {
   const sp = await searchParams;
+  const seeded = sp.seeded === '1';
   const business = await getActiveBusiness();
   if (!business) notFound();
 
@@ -51,6 +52,12 @@ export default async function AdminServicesPage({ searchParams }: Props) {
           {t.admin.services.title} · {business.name}
         </h1>
       </header>
+
+      {seeded ? (
+        <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+          {t.admin.services.templatesLoaded}
+        </p>
+      ) : null}
 
       <h2 className="mb-3 text-lg font-bold text-slate-900">
         {t.admin.services.listTitle}
@@ -154,6 +161,25 @@ export default async function AdminServicesPage({ searchParams }: Props) {
           })}
         </ul>
       )}
+
+      {services.length === 0 ? (
+        <section className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-5">
+          <h3 className="text-base font-bold text-brand-700">
+            {t.admin.services.loadTemplatesCta}
+          </h3>
+          <p className="mt-1 text-sm text-slate-600">
+            {t.admin.services.loadTemplatesHint}
+          </p>
+          <form action={loadServiceTemplatesAction} className="mt-3">
+            <button
+              type="submit"
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-700"
+            >
+              {t.admin.services.loadTemplatesCta}
+            </button>
+          </form>
+        </section>
+      ) : null}
 
       {/* טופס הוספה/עריכה */}
       <ServiceForm
