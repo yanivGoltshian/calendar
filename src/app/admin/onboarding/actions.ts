@@ -141,7 +141,7 @@ export async function finishOnboarding(
   const rawChannel = str(fd, 'reminderChannel');
   const channel: ReminderChannel = reminderChannelValues.includes(rawChannel)
     ? (rawChannel as ReminderChannel)
-    : ReminderChannel.SMS;
+    : ReminderChannel.AUTO;
 
   const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
