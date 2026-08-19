@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import type { BusinessType } from '@prisma/client';
 import {
   getServiceTemplate,
+  shouldSeedServiceTemplates,
   DEFAULT_SERVICE_TEMPLATE,
   type ServiceTemplateItem,
 } from './serviceTemplates';
@@ -75,4 +76,19 @@ test('getServiceTemplate: שמות השירותים ייחודיים בכל תב
 
 test('DEFAULT_SERVICE_TEMPLATE: תקין ולא ריק', () => {
   assertValidTemplate(DEFAULT_SERVICE_TEMPLATE, 'DEFAULT');
+});
+
+/**
+ * בדיקות ל-shouldSeedServiceTemplates — שומר הבטיחות לטעינה חד-פעמית מהמסך.
+ * מטרה: לוודא שזורעים תבניות רק כשלעסק אין שירותים כלל (0), וכך לחיצה חוזרת
+ * או עסק שכבר יש בו שירותים לא ייצרו כפילויות. בדיקה טהורה ללא DB.
+ */
+test('shouldSeedServiceTemplates: מחזיר true רק כשאין שירותים (0)', () => {
+  assert.equal(shouldSeedServiceTemplates(0), true);
+});
+
+test('shouldSeedServiceTemplates: מחזיר false כשכבר יש שירותים', () => {
+  assert.equal(shouldSeedServiceTemplates(1), false);
+  assert.equal(shouldSeedServiceTemplates(5), false);
+  assert.equal(shouldSeedServiceTemplates(42), false);
 });

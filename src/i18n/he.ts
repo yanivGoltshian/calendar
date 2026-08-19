@@ -389,6 +389,9 @@ const he = {
       staffLinkEmpty: 'אין עדיין אנשי צוות. הוסיפו צוות כדי לשייך לשירות.',
       staffBadgePrefix: 'צוות:',
       staffNoneBadge: 'כל הצוות',
+      loadTemplatesCta: 'טעינת שירותי תבנית לפי סוג העסק',
+      loadTemplatesHint: 'אלה שירותים טיפוסיים לסוג העסק, מוכנים לעריכה או למחיקה לפי הצורך.',
+      templatesLoaded: 'שירותי התבנית נטענו בהצלחה. אפשר לערוך או למחוק אותם למטה.',
     },
     team: {
       title: 'ניהול צוות',

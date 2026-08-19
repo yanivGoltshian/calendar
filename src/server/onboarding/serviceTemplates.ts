@@ -93,3 +93,12 @@ export function getServiceTemplate(
   if (!type) return DEFAULT_SERVICE_TEMPLATE;
   return TEMPLATES_BY_TYPE[type] ?? DEFAULT_SERVICE_TEMPLATE;
 }
+
+/**
+ * שומר בטיחות טהור לטעינה חד-פעמית של תבניות לעסק קיים (מהמסך).
+ * מחזיר true רק כשלעסק אין אף שירות, ולכן לחיצות חוזרות לא ייצרו כפילויות.
+ * טהור וללא DB: הבדיקה מול המסד נעשית בשכבת הזריעה (seedServicesForBusiness).
+ */
+export function shouldSeedServiceTemplates(currentServiceCount: number): boolean {
+  return currentServiceCount === 0;
+}
