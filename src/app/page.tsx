@@ -1,4 +1,5 @@
-import { getFirstBusiness } from '@/server/repos/business';
+import { getFirstBusiness, getBusinessesOwnedByEmail } from '@/server/repos/business';
+import { auth } from '@/auth';
 import { buildMetadata } from '@/lib/seo';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
@@ -13,8 +14,13 @@ import { audienceIcons, featureIcons, SparkleIcon } from '@/components/landing/i
 import { ContactBlock } from '@/components/billing/ContactBlock';
 import Image from 'next/image';
 import InstallApp from '@/components/pwa/InstallApp';
+import { homeHeroCta, ownerPrimaryHref, ownerPrimaryLabel } from './business/ownerRouting';
 
 const m = t.marketing;
+
+// קריאת auth() קוראת עוגיות והופכת את הדף לדינמי. זה מקובל: הדף צריך לדעת אם
+// המבקר הוא בעלים חוזר כדי לכוון אותו לאזור הניהול במקום לטופס ההקמה.
+export const dynamic = 'force-dynamic';
 
 export const metadata = buildMetadata({
   title: `תוכנה לזימון תורים וניהול עסק · ${BRAND.name}`,
@@ -27,6 +33,16 @@ export default async function HomePage() {
   const business = await getFirstBusiness();
   const demoSlug = business?.slug;
   const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
+
+  // זיהוי בעלים חוזר: תמיד לגזור מ-session?.user?.email קודם, ואז לשלוף את העסקים
+  // של אותו email. לא להשתמש ב-getActiveBusiness לזיהוי כי הוא נופל ל-getFirstBusiness
+  // עבור אורחים ומחזיר עסק שרירותי (איתות שגוי של "בעלים חוזר").
+  const session = await auth();
+  const ownerEmail = session?.user?.email;
+  const owned = ownerEmail ? await getBusinessesOwnedByEmail(ownerEmail) : [];
+  const isReturningOwner = owned.length > 0;
+  const heroCta = homeHeroCta(isReturningOwner);
+  const ctaPrimaryHref = ownerPrimaryHref(isReturningOwner);
 
   const spotlightAudiences = ['barber', 'nails'];
   const gridAudiences = Object.entries(m.audiences.items).filter(
@@ -90,11 +106,19 @@ export default async function HomePage() {
               </Reveal>
               <Reveal delay={0.2}>
                 <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
-                  <Button href="/business/new" size="lg" className="w-full sm:w-auto">
-                    {m.hero.primaryCta}
+                  <Button href={heroCta.primaryHref} size="lg" className="w-full sm:w-auto">
+                    {heroCta.primaryLabel}
+                  </Button>
+                  <Button
+                    href={heroCta.secondaryHref}
+                    variant="secondary"
+                    size="lg"
+                    className="w-full sm:w-auto"
+                  >
+                    {heroCta.secondaryLabel}
                   </Button>
                   {demoHref && (
-                    <Button href={demoHref} variant="secondary" size="lg" className="w-full sm:w-auto">
+                    <Button href={demoHref} variant="ghost" size="lg" className="w-full sm:w-auto">
                       {m.hero.secondaryCta}
                     </Button>
                   )}
@@ -301,12 +325,12 @@ export default async function HomePage() {
                     </ul>
                     <div className="mt-auto">
                       <Button
-                        href="/business/new"
+                        href={ctaPrimaryHref}
                         variant={plan.popular ? 'primary' : 'secondary'}
                         size="lg"
                         className="w-full"
                       >
-                        {plan.cta}
+                        {ownerPrimaryLabel(isReturningOwner, plan.cta)}
                       </Button>
                     </div>
                   </Card>
@@ -359,8 +383,8 @@ export default async function HomePage() {
                   </h2>
                   <p className="mx-auto mt-4 max-w-xl text-lg text-white/90">{m.finalCta.subtitle}</p>
                   <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                    <Button href="/business/new" variant="accent" size="lg" className="w-full sm:w-auto">
-                      {m.finalCta.primaryCta}
+                    <Button href={ctaPrimaryHref} variant="accent" size="lg" className="w-full sm:w-auto">
+                      {ownerPrimaryLabel(isReturningOwner, m.finalCta.primaryCta)}
                     </Button>
                     {demoHref && (
                       <Button
