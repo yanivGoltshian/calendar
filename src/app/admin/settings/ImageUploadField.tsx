@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { clamp, computeCropRect, outputSize } from '@/lib/imageCrop';
+import { encodeUnderLimit } from '@/lib/imageEncode';
 
 export interface ImageUploadLabels {
   choose: string;
@@ -9,16 +10,26 @@ export interface ImageUploadLabels {
   remove: string;
   cropTitle: string;
   zoom: string;
-  apply: string;
+  adjust: string;
+  done: string;
   cancel: string;
   dragHint: string;
   empty: string;
+  tooLarge: string;
 }
+
+/** השהיה קצרה לפני קיבוע החיתוך, כדי לא לדחוס בכל פריים של גרירה/זום. */
+const COMMIT_DEBOUNCE_MS = 180;
+
+type BakeResult = { dataUrl: string } | { error: string } | null;
 
 /**
  * העלאת תמונה מהמחשב + חיתוך/התאמה לצורה שמוצגת באתר.
  * לוגו = ריבוע (יחס 1), באנר = רחב (16/9). התוצאה נשמרת כ-data URL
  * בשדה המחרוזת הקיים (ללא אחסון ענן). עובד במגע/נייד ובכיווניות RTL.
+ *
+ * החיתוך חל אוטומטית וללא כפתור אישור: בבחירת קובץ נקבע מיד חיתוך ברירת מחדל,
+ * וכל גרירה/זום מתקבעים אחרי השהיה קצרה. אין שלב 'החלה'.
  */
 export function ImageUploadField({
   name,
@@ -49,6 +60,9 @@ export function ImageUploadField({
   const srcUrlRef = useRef<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const hiddenRef = useRef<HTMLInputElement | null>(null);
+  const prevValueRef = useRef<string>(defaultValue ?? '');
+  const didMountRef = useRef(false);
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(
     null,
   );
@@ -70,9 +84,61 @@ export function ImageUploadField({
     };
   }, []);
 
+  // כל שינוי ערך אחרי הטעינה הראשונית מפעיל אירוע input על השדה הנסתר, כדי
+  // שהטופס העוטף יזהה שינוי (שדות נסתרים ש-React מעדכן אינם משדרים אירוע לבד).
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    hiddenRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
+  }, [value]);
+
+  /** מקבע את החיתוך הנוכחי ל-data URL תחת תקרת הגודל, או מחזיר שגיאה. */
+  function bake(z: number, off: { x: number; y: number }): BakeResult {
+    const img = imgRef.current;
+    if (!img) return null;
+    const out = outputSize({ targetAspect, maxWidth, maxHeight });
+    const canvas = document.createElement('canvas');
+    canvas.width = out.width;
+    canvas.height = out.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const crop = computeCropRect({
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,
+      targetAspect,
+      zoom: z,
+      offsetX: off.x,
+      offsetY: off.y,
+    });
+    if (mime === 'image/jpeg') {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, out.width, out.height);
+    }
+    ctx.drawImage(
+      img,
+      crop.sx,
+      crop.sy,
+      crop.sWidth,
+      crop.sHeight,
+      0,
+      0,
+      out.width,
+      out.height,
+    );
+    const res = encodeUnderLimit({
+      encode: (q) => canvas.toDataURL(mime, q),
+      compressible: mime === 'image/jpeg',
+    });
+    if (!res.ok) return { error: labels.tooLarge };
+    return { dataUrl: res.dataUrl };
+  }
+
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith('image/')) return;
+    prevValueRef.current = value;
     revokeSrc();
     const url = URL.createObjectURL(file);
     srcUrlRef.current = url;
@@ -83,6 +149,10 @@ export function ImageUploadField({
       setOffset({ x: 0, y: 0 });
       setError(null);
       setEditing(true);
+      // קיבוע מיידי של חיתוך ברירת המחדל, כדי שהערך יהיה חי בלי להמתין.
+      const r = bake(1, { x: 0, y: 0 });
+      if (r && 'dataUrl' in r) setValue(r.dataUrl);
+      else if (r && 'error' in r) setError(r.error);
     };
     img.src = url;
     // מאפשר לבחור שוב את אותו קובץ בעתיד
@@ -131,6 +201,24 @@ export function ImageUploadField({
     );
   }, [editing, zoom, offset, targetAspect, maxWidth, maxHeight, mime]);
 
+  // קיבוע מושהה: אחרי שהגרירה/הזום נרגעים, מקבעים את החיתוך פעם אחת.
+  // השגיאה (אם התמונה גדולה מדי) עולה רק אחרי ההרגעה, ולא באמצע הגרירה.
+  useEffect(() => {
+    if (!editing || !imgRef.current) return;
+    const id = setTimeout(() => {
+      const r = bake(zoom, offset);
+      if (!r) return;
+      if ('error' in r) {
+        setError(r.error);
+        return;
+      }
+      setError(null);
+      setValue(r.dataUrl);
+    }, COMMIT_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, zoom, offset]);
+
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y };
@@ -155,67 +243,39 @@ export function ImageUploadField({
     }
   }
 
-  function apply() {
-    const img = imgRef.current;
-    if (!img) return;
-    const out = outputSize({ targetAspect, maxWidth, maxHeight });
-    const canvas = document.createElement('canvas');
-    canvas.width = out.width;
-    canvas.height = out.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const crop = computeCropRect({
-      naturalWidth: img.naturalWidth,
-      naturalHeight: img.naturalHeight,
-      targetAspect,
-      zoom,
-      offsetX: offset.x,
-      offsetY: offset.y,
-    });
-    if (mime === 'image/jpeg') {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, out.width, out.height);
-    }
-    ctx.drawImage(
-      img,
-      crop.sx,
-      crop.sy,
-      crop.sWidth,
-      crop.sHeight,
-      0,
-      0,
-      out.width,
-      out.height,
-    );
-    // תקרה נוחה מתחת למגבלת גוף ה-Server Action (4MB), כדי שגם לוגו וגם
-    // כריכה יחד לא יחצו אותה. גודל משוער של ה-data URL לפי אורך המחרוזת.
-    const MAX_BYTES = 3 * 1024 * 1024;
-    const approxBytes = (s: string) => Math.ceil((s.length * 3) / 4);
+  /** פתיחת מכוון ההתאמה על תמונה קיימת (data URL), בלי כתובת blob. */
+  function adjust() {
+    if (!value) return;
+    prevValueRef.current = value;
+    revokeSrc();
+    const img = new Image();
+    img.onload = () => {
+      imgRef.current = img;
+      setZoom(1);
+      setOffset({ x: 0, y: 0 });
+      setError(null);
+      setEditing(true);
+    };
+    img.src = value;
+  }
 
-    let dataUrl = canvas.toDataURL(
-      mime,
-      mime === 'image/jpeg' ? 0.85 : undefined,
-    );
-    // ל-JPEG מנסים לדחוס יותר לפני שמוותרים, כדי לא להישאר עם כשל שמירה שקט.
-    if (mime === 'image/jpeg') {
-      for (const quality of [0.7, 0.6, 0.5]) {
-        if (approxBytes(dataUrl) <= MAX_BYTES) break;
-        dataUrl = canvas.toDataURL(mime, quality);
-      }
-    }
-    // אם עדיין גדול מדי, מציגים הודעה ברורה במקום שמירה שנכשלת בשקט.
-    if (approxBytes(dataUrl) > MAX_BYTES) {
-      setError('התמונה גדולה מדי, נסו תמונה קטנה יותר');
+  /** סיום ההתאמה: מקבע את המצב הנוכחי (הערך כבר חי) וסוגר את המכוון. */
+  function done() {
+    const r = bake(zoom, offset);
+    if (r && 'error' in r) {
+      setError(r.error);
       return;
     }
+    if (r && 'dataUrl' in r) setValue(r.dataUrl);
     setError(null);
-    setValue(dataUrl);
     setEditing(false);
     revokeSrc();
     imgRef.current = null;
   }
 
+  /** ביטול: החזרת הערך שהיה לפני פתיחת המכוון וסגירתו. */
   function cancel() {
+    setValue(prevValueRef.current);
     setEditing(false);
     setError(null);
     revokeSrc();
@@ -232,7 +292,7 @@ export function ImageUploadField({
 
   return (
     <div>
-      <input type="hidden" name={name} value={value} />
+      <input ref={hiddenRef} type="hidden" name={name} value={value} />
       <input
         ref={fileInputRef}
         type="file"
@@ -273,13 +333,22 @@ export function ImageUploadField({
               {value ? labels.change : labels.choose}
             </button>
             {value && (
-              <button
-                type="button"
-                onClick={remove}
-                className="text-xs font-medium text-red-500 hover:text-red-600"
-              >
-                {labels.remove}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={adjust}
+                  className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                >
+                  {labels.adjust}
+                </button>
+                <button
+                  type="button"
+                  onClick={remove}
+                  className="text-xs font-medium text-red-500 hover:text-red-600"
+                >
+                  {labels.remove}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -333,10 +402,10 @@ export function ImageUploadField({
             </button>
             <button
               type="button"
-              onClick={apply}
+              onClick={done}
               className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
             >
-              {labels.apply}
+              {labels.done}
             </button>
           </div>
         </div>

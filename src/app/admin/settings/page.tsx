@@ -5,21 +5,7 @@ import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
-import SettingsSection from './SettingsSection';
-import {
-  ProfileFields,
-  PolicyFields,
-  TransparencyFields,
-  TextsFields,
-  RemindersFields,
-} from './fields';
-import {
-  saveProfileAction,
-  savePolicyAction,
-  saveTransparencyAction,
-  saveTextsAction,
-  saveRemindersAction,
-} from './actions';
+import SettingsForm from './SettingsForm';
 
 export const metadata: Metadata = { title: t.admin.settings.title };
 
@@ -49,47 +35,11 @@ export default async function AdminSettingsPage() {
         </Link>
       )}
 
-      <div className="space-y-6">
-        <SettingsSection
-          title={t.admin.settings.profile.title}
-          description={t.admin.settings.profile.description}
-          action={saveProfileAction}
-        >
-          <ProfileFields b={business} />
-        </SettingsSection>
-
-        <SettingsSection
-          title={t.admin.settings.policy.title}
-          description={t.admin.settings.policy.description}
-          action={savePolicyAction}
-        >
-          <PolicyFields s={settings} />
-        </SettingsSection>
-
-        <SettingsSection
-          title={t.admin.settings.transparency.title}
-          description={t.admin.settings.transparency.description}
-          action={saveTransparencyAction}
-        >
-          <TransparencyFields s={settings} />
-        </SettingsSection>
-
-        <SettingsSection
-          title={t.admin.settings.texts.title}
-          description={t.admin.settings.texts.description}
-          action={saveTextsAction}
-        >
-          <TextsFields s={settings} />
-        </SettingsSection>
-
-        <SettingsSection
-          title={t.admin.settings.reminders.title}
-          description={t.admin.settings.reminders.description}
-          action={saveRemindersAction}
-        >
-          <RemindersFields s={settings} />
-        </SettingsSection>
-      </div>
+      <SettingsForm
+        business={business}
+        settings={settings}
+        onboardingCompleted={settings.onboardingCompleted}
+      />
     </main>
   );
 }

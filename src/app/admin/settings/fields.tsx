@@ -121,10 +121,12 @@ export function ProfileFields({ b }: { b: ProfileValues }) {
               remove: s.image.remove,
               cropTitle: s.image.cropTitle,
               zoom: s.image.zoom,
-              apply: s.image.apply,
+              adjust: s.image.adjust,
+              done: s.image.done,
               cancel: s.image.cancel,
               dragHint: s.image.logoDragHint,
               empty: s.image.logoEmpty,
+              tooLarge: s.image.tooLarge,
             }}
           />
           <p className={hintClass}>{s.logoHint}</p>
@@ -145,10 +147,12 @@ export function ProfileFields({ b }: { b: ProfileValues }) {
               remove: s.image.remove,
               cropTitle: s.image.cropTitle,
               zoom: s.image.zoom,
-              apply: s.image.apply,
+              adjust: s.image.adjust,
+              done: s.image.done,
               cancel: s.image.cancel,
               dragHint: s.image.coverDragHint,
               empty: s.image.coverEmpty,
+              tooLarge: s.image.tooLarge,
             }}
           />
           <p className={hintClass}>{s.coverHint}</p>
