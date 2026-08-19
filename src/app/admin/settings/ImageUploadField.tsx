@@ -41,6 +41,7 @@ export function ImageUploadField({
 }) {
   const [value, setValue] = useState<string>(defaultValue ?? '');
   const [editing, setEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
@@ -80,6 +81,7 @@ export function ImageUploadField({
       imgRef.current = img;
       setZoom(1);
       setOffset({ x: 0, y: 0 });
+      setError(null);
       setEditing(true);
     };
     img.src = url;
@@ -185,10 +187,28 @@ export function ImageUploadField({
       out.width,
       out.height,
     );
-    const dataUrl = canvas.toDataURL(
+    // תקרה נוחה מתחת למגבלת גוף ה-Server Action (4MB), כדי שגם לוגו וגם
+    // כריכה יחד לא יחצו אותה. גודל משוער של ה-data URL לפי אורך המחרוזת.
+    const MAX_BYTES = 3 * 1024 * 1024;
+    const approxBytes = (s: string) => Math.ceil((s.length * 3) / 4);
+
+    let dataUrl = canvas.toDataURL(
       mime,
       mime === 'image/jpeg' ? 0.85 : undefined,
     );
+    // ל-JPEG מנסים לדחוס יותר לפני שמוותרים, כדי לא להישאר עם כשל שמירה שקט.
+    if (mime === 'image/jpeg') {
+      for (const quality of [0.7, 0.6, 0.5]) {
+        if (approxBytes(dataUrl) <= MAX_BYTES) break;
+        dataUrl = canvas.toDataURL(mime, quality);
+      }
+    }
+    // אם עדיין גדול מדי, מציגים הודעה ברורה במקום שמירה שנכשלת בשקט.
+    if (approxBytes(dataUrl) > MAX_BYTES) {
+      setError('התמונה גדולה מדי, נסו תמונה קטנה יותר');
+      return;
+    }
+    setError(null);
     setValue(dataUrl);
     setEditing(false);
     revokeSrc();
@@ -197,6 +217,7 @@ export function ImageUploadField({
 
   function cancel() {
     setEditing(false);
+    setError(null);
     revokeSrc();
     imgRef.current = null;
   }
@@ -295,6 +316,12 @@ export function ImageUploadField({
               className="w-full"
             />
           </label>
+
+          {error && (
+            <p className="mt-3 text-center text-xs font-medium text-red-600">
+              {error}
+            </p>
+          )}
 
           <div className="mt-3 flex justify-end gap-2">
             <button
