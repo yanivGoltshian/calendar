@@ -1,14 +1,18 @@
 import type { Business, BusinessSettings } from '@prisma/client';
 import { BusinessType, ReminderChannel } from '@prisma/client';
 import { t } from '@/i18n';
+import { BRAND } from '@/config/brand';
+import { inputClass } from './fieldStyles';
+import { BrandColorField } from './BrandColorField';
+import { TimezoneField } from './TimezoneField';
+import { ImageUploadField } from './ImageUploadField';
 
 /**
  * קבוצות שדות משותפות למודול ההגדרות וההקמה.
  * רכיבים פרזנטטיביים בלבד (ללא hooks) — נטענים גם מעמוד השרת וגם מאשף הלקוח.
  */
 
-export const inputClass =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+export { inputClass };
 const labelClass = 'mb-1 block text-sm font-medium text-slate-700';
 const hintClass = 'mt-1 text-xs text-slate-500';
 const checkRowClass = 'flex items-start gap-2 text-sm text-slate-700';
@@ -103,45 +107,74 @@ export function ProfileFields({ b }: { b: ProfileValues }) {
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="flex-1">
           <label className={labelClass}>{s.logoUrlLabel}</label>
-          <input
+          <ImageUploadField
             name="logoUrl"
-            dir="ltr"
             defaultValue={b.logoUrl ?? ''}
-            placeholder="https://…"
-            className={inputClass}
+            targetAspect={1}
+            rounded
+            maxWidth={512}
+            maxHeight={512}
+            mime="image/png"
+            labels={{
+              choose: s.image.choose,
+              change: s.image.change,
+              remove: s.image.remove,
+              cropTitle: s.image.cropTitle,
+              zoom: s.image.zoom,
+              apply: s.image.apply,
+              cancel: s.image.cancel,
+              dragHint: s.image.logoDragHint,
+              empty: s.image.logoEmpty,
+            }}
           />
+          <p className={hintClass}>{s.logoHint}</p>
         </div>
         <div className="flex-1">
           <label className={labelClass}>{s.coverUrlLabel}</label>
-          <input
+          <ImageUploadField
             name="coverImageUrl"
-            dir="ltr"
             defaultValue={b.coverImageUrl ?? ''}
-            placeholder="https://…"
-            className={inputClass}
+            targetAspect={16 / 9}
+            rounded={false}
+            maxWidth={1280}
+            maxHeight={720}
+            mime="image/jpeg"
+            labels={{
+              choose: s.image.choose,
+              change: s.image.change,
+              remove: s.image.remove,
+              cropTitle: s.image.cropTitle,
+              zoom: s.image.zoom,
+              apply: s.image.apply,
+              cancel: s.image.cancel,
+              dragHint: s.image.coverDragHint,
+              empty: s.image.coverEmpty,
+            }}
           />
+          <p className={hintClass}>{s.coverHint}</p>
         </div>
       </div>
 
       <div>
         <label className={labelClass}>{s.brandColorLabel}</label>
-        <input
+        <BrandColorField
           name="brandColor"
-          dir="ltr"
           defaultValue={b.brandColor ?? ''}
-          placeholder="#0A182D"
-          className={inputClass}
+          fallback={BRAND.themeColor}
+          resetLabel={s.brandColorReset}
+          emptyLabel={s.brandColorEmpty}
         />
         <p className={hintClass}>{s.brandColorHint}</p>
       </div>
 
       <div>
         <label className={labelClass}>{s.timezoneLabel}</label>
-        <input
+        <TimezoneField
           name="timezone"
-          dir="ltr"
           defaultValue={b.timezone ?? 'Asia/Jerusalem'}
-          className={inputClass}
+          searchPlaceholder={s.timezoneSearchPlaceholder}
+          selectedLabel={s.timezoneSelected}
+          noResultsLabel={s.timezoneNoResults}
         />
       </div>
     </>
