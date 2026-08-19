@@ -5,6 +5,7 @@ import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
 import { listStaff, ensureOwnerStaffMember } from '@/server/repos/staff';
 import { listServices } from '@/server/repos/services';
+import { getBusinessHours } from '@/server/repos/workingHours';
 import { getAppointmentsForBusinessRange } from '@/server/repos/appointments';
 import {
   todayDateString,
@@ -19,6 +20,8 @@ import {
 import { displayPhone } from '@/lib/crypto';
 import { hashToIndex } from './serviceColors';
 import CalendarBoard from './CalendarBoard';
+import OnboardingChecklist, { type ChecklistItem } from './OnboardingChecklist';
+import { isOnboardingChecklistDismissed } from './onboarding/checklistState';
 import type {
   ApptBlock,
   CalendarColumn,
@@ -192,6 +195,35 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   const granularity = business.settings?.slotGranularityMinutes ?? 15;
   const defaultDurationMin = serviceRows[0]?.durationMin ?? 30;
 
+  // רשימת ההמשך המודרכת של ההקמה: מחשבים בצד השרת אילו אזורים נדרשים כבר הוגדרו,
+  // כדי שהרשימה תהיה ניתנת להמשך מכל מכשיר. כל צעד ניתן לדילוג והשלמה מאוחרת.
+  // הרשימה מוצגת רק כשנותר צעד פתוח והבעלים לא בחר להסתירה.
+  const businessHours = await getBusinessHours(business.id);
+  const checklistDismissed = await isOnboardingChecklistDismissed();
+  const checklistItems: ChecklistItem[] = [
+    { key: 'services', done: serviceRows.length > 0, href: '/admin/services' },
+    { key: 'staff', done: staffRows.length > 0, href: '/admin/team' },
+    {
+      key: 'workingHours',
+      done: businessHours.length > 0,
+      href: '/admin/working-hours',
+    },
+    {
+      key: 'branding',
+      done: Boolean(
+        business.logoUrl || business.brandColor || business.coverImageUrl,
+      ),
+      href: '/admin/settings',
+    },
+    {
+      key: 'details',
+      done: business.settings?.onboardingCompleted === true,
+      href: '/admin/onboarding',
+    },
+  ];
+  const showChecklist =
+    !checklistDismissed && checklistItems.some((i) => !i.done);
+
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
       <header className="mb-5">
@@ -200,6 +232,8 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
           {t.admin.calendarTitle} · {business.name}
         </h1>
       </header>
+
+      {showChecklist ? <OnboardingChecklist items={checklistItems} /> : null}
 
       <CalendarBoard
         view={view}

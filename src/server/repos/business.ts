@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { auth } from '@/auth';
 import { defaultBusinessHours, setBusinessHours } from './workingHours';
 import { ensureOwnerStaffMember } from './staff';
+import { seedServicesForBusiness } from './services';
 
 /** שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל. */
 export async function getBusinessBySlug(slug: string) {
@@ -180,6 +181,16 @@ export async function createBusiness(input: {
     });
   } catch {
     // זריעת איש הצוות הדיפולטי נכשלה; יצירת העסק ממשיכה והבעלים יוסיף צוות ידנית ב-/admin/team.
+  }
+
+  // זריעת שירותי התחלה מתבנית סוג העסק: מיד אחרי היצירה אין אף Service, ולכן היומן ב-/admin
+  // מוצג ריק עם ההודעה "לא הוגדרו שירותים" והבעלים תקוע בלי דרך ליצור תורים. זורעים שירותים
+  // טיפוסיים לפי סוג העסק (או תבנית ברירת מחדל) כדי שהיומן יהיה שמיש מיד; הבעלים עורך/מוחק אחריהם.
+  // אידמפוטנטי (רץ רק כשאין שירותים) ועמיד לתקלות: כשל בזריעה לא ישבור את יצירת העסק.
+  try {
+    await seedServicesForBusiness(business.id, input.type ?? null);
+  } catch {
+    // זריעת שירותי ההתחלה נכשלה; יצירת העסק ממשיכה והבעלים יוסיף שירותים ידנית ב-/admin/services.
   }
 
   // שאלות השיווק (אפיק D2) נשמרות בצורה עמידה: אם המיגרציה האדיטיבית טרם הוחלה

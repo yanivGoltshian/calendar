@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { BusinessType } from '@prisma/client';
 import { auth } from '@/auth';
 import { createBusiness } from '@/server/repos/business';
+import { listServices } from '@/server/repos/services';
 import { t } from '@/i18n';
 
 export type CreateBusinessState = {
@@ -25,8 +26,10 @@ const REFERRAL_KEYS = new Set(['google', 'instagram', 'facebook', 'tiktok', 'fri
 
 /**
  * פעולת יצירת עסק אמיתית (אפיק D1).
- * מאמתת בעלים מחובר, מוודאת שם וסוג, יוצרת עסק חדש בבעלות המייל,
- * וממשיכה לאשף ההקמה הקיים (שעות/שירות/מיתוג) שפועל על העסק הפעיל החדש.
+ * מאמתת בעלים מחובר, מוודאת שם וסוג, ויוצרת עסק חדש בבעלות המייל.
+ * נחיתה חכמה אחרי היצירה (אונבורדינג): אם לעסק אין אף שירות (למשל אם זריעת
+ * תבנית השירותים נכשלה) שולחים אותו למסך יצירת השירותים, אחרת ליומן הניהול
+ * שבו מופיעה רשימת ההמשך המודרכת. כך הבעלים לעולם לא נוחת על יומן ריק וללא מוצא.
  */
 export async function createBusinessAction(
   _prev: CreateBusinessState,
@@ -58,8 +61,9 @@ export async function createBusinessAction(
   const referralRaw = String(formData.get('referralSource') ?? '').trim();
   const referralSource = REFERRAL_KEYS.has(referralRaw) ? referralRaw : null;
 
+  let created: Awaited<ReturnType<typeof createBusiness>>;
   try {
-    await createBusiness({
+    created = await createBusiness({
       name,
       type,
       phone,
@@ -73,6 +77,17 @@ export async function createBusinessAction(
     return { error: t.business.create.errorGeneric };
   }
 
+  // נחיתה חכמה: עסק ללא שירותים נשלח למסך יצירת השירותים כדי שלא ינחת על יומן ריק;
+  // עסק עם שירותים (המצב הרגיל אחרי זריעת התבנית) נוחת ביומן הניהול עם רשימת ההמשך.
+  // הקריאה עמידה לתקלות: כשל בספירת השירותים לא ישבור את הזרימה ויפול חזרה למסך השירותים.
+  let hasServices = false;
+  try {
+    const services = await listServices(created.id);
+    hasServices = services.length > 0;
+  } catch {
+    hasServices = false;
+  }
+
   // redirect זורק NEXT_REDIRECT ולכן חייב להיות מחוץ ל-try/catch.
-  redirect('/admin/onboarding');
+  redirect(hasServices ? '/admin' : '/admin/services');
 }

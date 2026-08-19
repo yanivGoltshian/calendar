@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { BusinessType, ReminderChannel } from '@prisma/client';
 import { getActiveBusiness } from '@/server/repos/business';
@@ -13,6 +14,7 @@ import {
   setOnboardingCompleted,
 } from '@/server/repos/settings';
 import type { SaveState } from '../settings/actions';
+import { ONBOARDING_CHECKLIST_DISMISS_COOKIE } from './checklistState';
 
 /**
  * פעולות אשף ההקמה. כל צעד שומר את סעיפו דרך אותו repo של ההגדרות,
@@ -156,4 +158,21 @@ export async function finishOnboarding(
 
   revalidateAll(business.slug);
   return { ok: true };
+}
+
+/**
+ * הסתרת רשימת ההמשך של ההקמה בלוח הניהול.
+ * שומר עוגייה ייעודית (לא נוגע ב-onboardingCompleted) ומרענן את הלוח.
+ * הרשימה ניתנת להסתרה ידנית ומוסתרת אוטומטית כשכל הצעדים הושלמו.
+ */
+export async function dismissOnboardingChecklistAction(): Promise<void> {
+  const store = await cookies();
+  store.set(ONBOARDING_CHECKLIST_DISMISS_COOKIE, '1', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  });
+  revalidatePath('/admin');
 }
