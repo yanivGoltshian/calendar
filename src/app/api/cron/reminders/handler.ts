@@ -176,7 +176,7 @@ export async function handleReminderCron(
         business: {
           name: appt.business.name,
           timezone: appt.business.timezone,
-          reminderChannel: appt.business.reminderChannel,
+          reminderChannel: appt.business.settings?.reminderChannel ?? 'AUTO',
         },
         client: {
           name: appt.client.name,

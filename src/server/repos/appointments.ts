@@ -195,7 +195,7 @@ const REMINDABLE_STATUSES: AppointmentStatus[] = ['PENDING', 'CONFIRMED'];
 // בחירת שדות אחידה לתצוגת קישור האישור וההודעה — שם עסק, זהות לקוח (טלפון ומייל),
 // ערוץ התזכורת המוגדר לעסק, צוות ושירותים. המייל וערוץ התזכורת דרושים לגזירת הערוץ
 // בפועל בשכבת השליחה (resolveReminderChannel).
-const reminderInclude = {
+export const reminderInclude = {
   business: {
     select: {
       id: true,
@@ -203,7 +203,10 @@ const reminderInclude = {
       slug: true,
       phone: true,
       timezone: true,
-      reminderChannel: true,
+      // reminderChannel חי על BusinessSettings (לא על Business), ולכן נבחר מקונן
+      // תחת settings — כמו cancellationWindowHours ב-getAppointmentForOwner. בחירה
+      // ישירה על Business זורקת PrismaClientValidationError ומשתיקה את התזכורות.
+      settings: { select: { reminderChannel: true } },
     },
   },
   client: { select: { id: true, name: true, phone: true, email: true } },
