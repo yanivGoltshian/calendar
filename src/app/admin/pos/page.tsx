@@ -5,7 +5,14 @@ import type { PaymentMethod } from '@prisma/client';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
-import { listSales, getRegisterSummary, type SaleFilter } from '@/server/repos/sales';
+import {
+  listSales,
+  getRegisterSummary,
+  buildSaleDateRange,
+  type SaleFilter,
+  type SaleDateRange,
+  type SaleTimeBounds,
+} from '@/server/repos/sales';
 import { formatAgorot } from '@/lib/money';
 import {
   DEFAULT_TZ,
@@ -19,7 +26,7 @@ import { createSaleAction } from './actions';
 export const metadata: Metadata = { title: t.admin.pos.title };
 
 type Props = {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; from?: string; to?: string }>;
 };
 
 const TABS: { value: SaleFilter; label: string }[] = [
@@ -50,26 +57,99 @@ const STATUS_CLASS: Record<string, string> = {
   REFUNDED: 'bg-red-100 text-red-700',
 };
 
+/** בונה קישור לעמוד הקופה עם שמירת הלשונית וטווח התאריכים הפעיל. */
+function buildPosHref(params: {
+  tab: SaleFilter;
+  from: string | null;
+  to: string | null;
+}): string {
+  const qs = new URLSearchParams();
+  if (params.tab !== 'open') qs.set('tab', params.tab);
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  const query = qs.toString();
+  return query ? `/admin/pos?${query}` : '/admin/pos';
+}
+
+/** תצוגת יום קצרה dd.mm.yyyy ממחרוזת "YYYY-MM-DD" ללא תלות באזור זמן. */
+function fmtDay(dateStr: string): string {
+  const [yy, mm, dd] = dateStr.split('-');
+  return `${dd}.${mm}.${yy}`;
+}
+
+/** מילוי תבנית i18n עם מצייני מקום פשוטים בסוגריים מסולסלים. */
+function fillTemplate(tpl: string, vars: Record<string, string>): string {
+  return tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`);
+}
+
+/** תווית תיאור הטווח המוצג לפי מצב הסינון הפעיל. */
+function scopeLabel(
+  range: SaleDateRange,
+  labels: { all: string; day: string; from: string; to: string; range: string },
+): string {
+  if (!range.from && !range.to) return labels.all;
+  if (range.from && range.to) {
+    return range.from === range.to
+      ? fillTemplate(labels.day, { date: fmtDay(range.from) })
+      : fillTemplate(labels.range, { from: fmtDay(range.from), to: fmtDay(range.to) });
+  }
+  if (range.from) return fillTemplate(labels.from, { date: fmtDay(range.from) });
+  return fillTemplate(labels.to, { date: fmtDay(range.to as string) });
+}
+
 export default async function AdminPosPage({ searchParams }: Props) {
   const sp = await searchParams;
   const business = await getActiveBusiness();
   if (!business) notFound();
 
+  const tz = DEFAULT_TZ;
+  const today = todayDateString(tz);
+
   const tab: SaleFilter =
     sp.tab === 'completed' || sp.tab === 'all' ? sp.tab : 'open';
 
-  const tz = DEFAULT_TZ;
-  const today = todayDateString(tz);
-  const [y, m, d] = today.split('-').map(Number);
-  const tomorrow = addDaysToDateString(today, 1);
-  const [ty, tm, td] = tomorrow.split('-').map(Number);
-  const startUtc = localWallTimeToUtc(y, m, d, 0, tz);
-  const endUtc = localWallTimeToUtc(ty, tm, td, 0, tz);
+  // טווח התאריכים מפרמטרי החיפוש, מנוקה ומנורמל בשרת לפי שעון העסק.
+  const range = buildSaleDateRange(sp.from, sp.to, tz);
+  const hasDateFilter = Boolean(range.from || range.to);
+
+  const listBounds: SaleTimeBounds = { fromUtc: range.fromUtc, toUtc: range.toUtc };
+
+  // גבולות סיכום הקופה: לפי הסינון כשהוא פעיל, אחרת היום הנוכחי כברירת מחדל.
+  let registerBounds: SaleTimeBounds;
+  if (hasDateFilter) {
+    registerBounds = { fromUtc: range.fromUtc, toUtc: range.toUtc };
+  } else {
+    const [ty, tm, tdd] = today.split('-').map(Number);
+    const tomorrow = addDaysToDateString(today, 1);
+    const [ny, nm, nd] = tomorrow.split('-').map(Number);
+    registerBounds = {
+      fromUtc: localWallTimeToUtc(ty, tm, tdd, 0, tz),
+      toUtc: localWallTimeToUtc(ny, nm, nd, 0, tz),
+    };
+  }
 
   const [sales, register] = await Promise.all([
-    listSales(business.id, tab),
-    getRegisterSummary(business.id, startUtc, endUtc),
+    listSales(business.id, tab, listBounds),
+    getRegisterSummary(business.id, registerBounds),
   ]);
+
+  const listScope = scopeLabel(range, {
+    all: t.admin.pos.dateShowingAll,
+    day: t.admin.pos.dateShowingDay,
+    from: t.admin.pos.dateShowingFrom,
+    to: t.admin.pos.dateShowingTo,
+    range: t.admin.pos.dateShowingRange,
+  });
+
+  const registerScope = hasDateFilter
+    ? scopeLabel(range, {
+        all: t.admin.pos.registerToday,
+        day: t.admin.pos.registerScopeDay,
+        from: t.admin.pos.registerScopeFrom,
+        to: t.admin.pos.registerScopeTo,
+        range: t.admin.pos.registerScopeRange,
+      })
+    : t.admin.pos.registerToday;
 
   const emptyText =
     tab === 'open'
@@ -88,11 +168,12 @@ export default async function AdminPosPage({ searchParams }: Props) {
         <p className="mt-1 text-sm text-slate-500">{t.admin.pos.subtitle}</p>
       </header>
 
-      {/* סיכום קופה של היום */}
+      {/* סיכום קופה */}
       <section className="mb-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-lg font-bold text-slate-900">
+        <h2 className="mb-1 text-lg font-bold text-slate-900">
           {t.admin.pos.registerTitle}
         </h2>
+        <p className="mb-3 text-xs text-slate-500">{registerScope}</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg bg-slate-50 p-3">
             <p className="text-xs text-slate-500">{t.admin.pos.registerSalesCount}</p>
@@ -150,7 +231,7 @@ export default async function AdminPosPage({ searchParams }: Props) {
       <div className="mb-5 flex flex-wrap gap-2">
         {TABS.map((f) => {
           const active = f.value === tab;
-          const href = f.value === 'open' ? '/admin/pos' : `/admin/pos?tab=${f.value}`;
+          const href = buildPosHref({ tab: f.value, from: range.from, to: range.to });
           return (
             <Link
               key={f.value}
@@ -166,6 +247,55 @@ export default async function AdminPosPage({ searchParams }: Props) {
           );
         })}
       </div>
+
+      {/* סינון לפי תאריך */}
+      <section className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-sm font-bold text-slate-900">
+          {t.admin.pos.dateFilterTitle}
+        </h2>
+        <form method="get" className="flex flex-wrap items-end gap-3">
+          {tab !== 'open' ? <input type="hidden" name="tab" value={tab} /> : null}
+          <label className="flex flex-col gap-1 text-xs text-slate-500">
+            {t.admin.pos.dateFrom}
+            <input
+              type="date"
+              name="from"
+              defaultValue={range.from ?? ''}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-slate-500">
+            {t.admin.pos.dateTo}
+            <input
+              type="date"
+              name="to"
+              defaultValue={range.to ?? ''}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900"
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+          >
+            {t.admin.pos.dateApply}
+          </button>
+          <Link
+            href={buildPosHref({ tab, from: today, to: today })}
+            className="rounded-lg border border-slate-200 px-4 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            {t.admin.pos.dateToday}
+          </Link>
+          {hasDateFilter ? (
+            <Link
+              href={buildPosHref({ tab, from: null, to: null })}
+              className="rounded-lg border border-slate-200 px-4 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            >
+              {t.admin.pos.dateClear}
+            </Link>
+          ) : null}
+        </form>
+        <p className="mt-3 text-xs text-slate-500">{listScope}</p>
+      </section>
 
       {sales.length === 0 ? (
         <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">

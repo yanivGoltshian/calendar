@@ -587,6 +587,22 @@ const he = {
       registerSalesCount: 'עסקאות שנסגרו',
       registerTotal: 'סך המכירות',
       registerByMethod: 'פילוח לפי אמצעי תשלום',
+      // סינון לפי תאריך
+      dateFilterTitle: 'סינון לפי תאריך',
+      dateFrom: 'מתאריך',
+      dateTo: 'עד תאריך',
+      dateToday: 'היום',
+      dateApply: 'החלה',
+      dateClear: 'נקוי',
+      dateShowingAll: 'מציג עסקאות מכל התאריכים',
+      dateShowingDay: 'מציג עסקאות בתאריך {date}',
+      dateShowingFrom: 'מציג עסקאות מתאריך {date}',
+      dateShowingTo: 'מציג עסקאות עד תאריך {date}',
+      dateShowingRange: 'מציג עסקאות מתאריך {from} עד תאריך {to}',
+      registerScopeDay: 'סיכום לתאריך {date}',
+      registerScopeFrom: 'סיכום מתאריך {date}',
+      registerScopeTo: 'סיכום עד תאריך {date}',
+      registerScopeRange: 'סיכום מתאריך {from} עד תאריך {to}',
       // מוצרים
       products: {
         title: 'ניהול מוצרים',
