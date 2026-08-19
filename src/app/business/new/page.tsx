@@ -22,7 +22,8 @@ export default async function NewBusinessPage() {
   const email = session?.user?.email;
 
   if (!email) {
-    const anyProvider = authProviderStatus.google || authProviderStatus.email;
+    const anyProvider =
+      authProviderStatus.google || authProviderStatus.email || authProviderStatus.firebasePhone;
     return (
       <Section spacing="lg">
         <Container className="max-w-md">
@@ -52,6 +53,7 @@ export default async function NewBusinessPage() {
                 <OwnerSignIn
                   googleEnabled={authProviderStatus.google}
                   emailEnabled={authProviderStatus.email}
+                  phoneEnabled={authProviderStatus.firebasePhone}
                   callbackUrl="/business/new"
                 />
               </Suspense>

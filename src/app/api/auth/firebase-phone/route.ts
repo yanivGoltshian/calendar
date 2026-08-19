@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { isValidIsraeliMobile, normalizePhone } from '@/lib/crypto';
 import { findOrCreateUserByPhone } from '@/server/repos/otp';
 import { setClientSession } from '@/lib/session';
-import { firebaseAdminConfigured, verifyFirebaseIdToken } from '@/lib/firebase/admin';
+import { firebaseAdminConfigured } from '@/lib/firebase/admin';
+import { verifyFirebasePhoneIdToken } from '@/server/auth/firebasePhone';
 
 const schema = z.object({
   idToken: z.string().min(20),
@@ -33,17 +33,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'invalid_input' }, { status: 400 });
   }
 
-  const claims = await verifyFirebaseIdToken(parsed.data.idToken);
-  if (!claims) {
-    return NextResponse.json({ ok: false, error: 'invalid_token' }, { status: 401 });
+  const verified = await verifyFirebasePhoneIdToken(parsed.data.idToken);
+  if (!verified.ok) {
+    const status = verified.reason === 'invalid_token' ? 401 : 400;
+    return NextResponse.json({ ok: false, error: verified.reason }, { status });
   }
 
-  const phone = normalizePhone(claims.phoneNumber);
-  if (!isValidIsraeliMobile(phone)) {
-    return NextResponse.json({ ok: false, error: 'unsupported_phone' }, { status: 400 });
-  }
-
-  const user = await findOrCreateUserByPhone(phone, parsed.data.name);
+  const user = await findOrCreateUserByPhone(verified.phone, parsed.data.name);
   await setClientSession({
     userId: user.id,
     phone: user.phone ?? undefined,
