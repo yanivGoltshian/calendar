@@ -22,6 +22,10 @@ import { hashToIndex } from './serviceColors';
 import CalendarBoard from './CalendarBoard';
 import OnboardingChecklist, { type ChecklistItem } from './OnboardingChecklist';
 import { isOnboardingChecklistDismissed } from './onboarding/checklistState';
+import ShareBanner from './ShareBanner';
+import GoLivePanel from './GoLivePanel';
+import { bookingUrl, bookingPath, isBusinessLive } from '@/lib/booking-link';
+import { bookingQrSvg } from '@/lib/qr-svg';
 import type {
   ApptBlock,
   CalendarColumn,
@@ -224,6 +228,24 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   const showChecklist =
     !checklistDismissed && checklistItems.some((i) => !i.done);
 
+  // אותות "העסק חי" ו"כל הצעדים הושלמו" נגזרים מאותם נתונים של רשימת ההקמה.
+  // הקישור וקוד ה-QR נבנים בשרת ומועברים לרכיבי הלקוח, כדי לא לטעון ספריית QR בדפדפן.
+  const isLive = isBusinessLive({
+    serviceCount: serviceRows.length,
+    workingHoursCount: businessHours.length,
+  });
+  const allStepsComplete = checklistItems.every((i) => i.done);
+  const bookingLink = bookingUrl(business.slug);
+  const bookingPagePath = bookingPath(business.slug);
+  const bookingQr = isLive
+    ? bookingQrSvg(bookingLink, {
+        label: t.admin.onboarding.goLive.share.qrAlt.replace(
+          '{name}',
+          business.name,
+        ),
+      })
+    : '';
+
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
       <header className="mb-5">
@@ -233,7 +255,25 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
         </h1>
       </header>
 
+      {isLive ? (
+        <ShareBanner
+          url={bookingLink}
+          qrSvg={bookingQr}
+          businessName={business.name}
+        />
+      ) : null}
+
       {showChecklist ? <OnboardingChecklist items={checklistItems} /> : null}
+
+      {allStepsComplete ? (
+        <GoLivePanel
+          url={bookingLink}
+          qrSvg={bookingQr}
+          businessName={business.name}
+          bookingPath={bookingPagePath}
+          businessId={business.id}
+        />
+      ) : null}
 
       <CalendarBoard
         view={view}
