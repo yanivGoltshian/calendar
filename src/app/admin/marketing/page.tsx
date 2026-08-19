@@ -9,6 +9,8 @@ import {
   countSegment,
   type CampaignSegment,
 } from '@/server/repos/marketing';
+import { parseCampaignChannels } from '@/server/campaigns/channels';
+import { getCampaignDeliveryStatus } from '@/server/campaigns/delivery';
 import { displayPhone } from '@/lib/crypto';
 import { formatDateString, formatTime } from '@/lib/time';
 import type { CampaignStatus } from '@prisma/client';
@@ -23,6 +25,7 @@ function formatWhen(instant: Date): string {
 
 const STATUS_STYLE: Record<CampaignStatus, string> = {
   DRAFT: 'bg-slate-100 text-slate-600',
+  SCHEDULED: 'bg-blue-100 text-blue-700',
   SENDING: 'bg-amber-100 text-amber-700',
   SENT: 'bg-green-100 text-green-700',
   FAILED: 'bg-red-100 text-red-700',
@@ -33,6 +36,7 @@ export default async function AdminMarketingPage() {
   if (!business) notFound();
 
   const m = t.admin.marketingModule;
+  const delivery = getCampaignDeliveryStatus();
 
   const [campaigns, messageLog, allCount, activeCount, apptCount] = await Promise.all([
     listCampaigns(business.id),
@@ -58,9 +62,15 @@ export default async function AdminMarketingPage() {
         <p className="mt-1 text-sm text-slate-500">{m.subtitle}</p>
       </header>
 
-      <p className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-        {m.devNote}
-      </p>
+      {delivery.anyLive ? (
+        <p className="mb-5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          {m.liveNote}
+        </p>
+      ) : (
+        <p className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {m.devNote}
+        </p>
+      )}
 
       <h2 className="mb-3 text-lg font-bold text-slate-900">{m.listTitle}</h2>
 
@@ -91,6 +101,18 @@ export default async function AdminMarketingPage() {
                 {c.body}
               </p>
 
+              <div className="mt-2 flex flex-wrap items-center gap-1">
+                <span className="text-xs text-slate-400">{m.channelsLabel}:</span>
+                {parseCampaignChannels(c.channels).map((ch) => (
+                  <span
+                    key={ch}
+                    className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                  >
+                    {m.channels[ch]}
+                  </span>
+                ))}
+              </div>
+
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
                 <span>
                   {m.recipients}: <span className="font-semibold text-slate-700">{c.recipientCount}</span>
@@ -101,6 +123,11 @@ export default async function AdminMarketingPage() {
                 {c.failedCount > 0 ? (
                   <span>
                     {m.failed}: <span className="font-semibold text-red-700">{c.failedCount}</span>
+                  </span>
+                ) : null}
+                {c.status === 'SCHEDULED' && c.scheduledAt ? (
+                  <span>
+                    {m.scheduledForLabel}: <span dir="ltr">{formatWhen(c.scheduledAt)}</span>
                   </span>
                 ) : null}
                 {c.sentAt ? <span dir="ltr">{formatWhen(c.sentAt)}</span> : null}
@@ -143,7 +170,7 @@ export default async function AdminMarketingPage() {
                     {log.client?.name ?? log.campaign?.name ?? m.logUnknown}
                   </p>
                   <p className="text-slate-400" dir="ltr">
-                    {displayPhone(log.phone)} · {formatWhen(log.createdAt)}
+                    {(log.channel === 'email' ? log.address : displayPhone(log.phone)) || log.address || ''} · {formatWhen(log.createdAt)}
                   </p>
                 </div>
                 <span
