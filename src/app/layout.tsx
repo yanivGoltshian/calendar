@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     siteName: BRAND.name,
     title: `${BRAND.name} · זימון תורים וניהול עסק`,
     description: SITE_DESCRIPTION,
-    images: [{ url: ogCardUrl(), type: 'image/jpeg', width: 1200, height: 630, alt: BRAND.name }],
+    images: [{ url: ogCardUrl(), type: 'image/png', width: 1200, height: 630, alt: BRAND.name }],
   },
   twitter: {
     card: 'summary_large_image',
