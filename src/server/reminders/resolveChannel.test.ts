@@ -18,6 +18,11 @@ test('AUTO: לקוח עם מייל וטלפון — נשלח במייל (עדי�
   assert.deepEqual(r, { kind: 'send', channel: 'EMAIL', to: 'a@b.com' });
 });
 
+test('AUTO: לקוח עם מייל בלבד וללא טלפון — נשלח במייל (מסלול מייל בלבד)', () => {
+  const r = resolveReminderChannel({ email: 'only@mail.co', phone: null }, 'AUTO');
+  assert.deepEqual(r, { kind: 'send', channel: 'EMAIL', to: 'only@mail.co' });
+});
+
 test('AUTO: לקוח עם טלפון בלבד — נשלח במסרון', () => {
   const r = resolveReminderChannel({ email: null, phone: '0501234567' }, 'AUTO');
   assert.deepEqual(r, { kind: 'send', channel: 'SMS', to: '0501234567' });

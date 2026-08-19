@@ -1,12 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { z } from 'zod';
-import {
-  isValidIsraeliMobile,
-  normalizePhone,
-  isValidEmail,
-  normalizeEmail,
-} from '@/lib/crypto';
+import { resolveGuestIdentity } from '@/server/booking/guestIdentity';
 
 /**
  * מבחני חוזה + מדיניות עבור מסלול ההזמנה POST `src/app/api/book/route.ts`.
@@ -19,8 +14,9 @@ import {
  * (`e2e/booking-stepper.spec.ts`, `e2e/booking-happy-path.spec.ts`).
  *
  * ולידטורי הזהות (טלפון/מייל) הם הפונקציות האמיתיות מ-`@/lib/crypto` שהמסלול משתמש
- * בהן — כך שהרכבת הכללים נבדקת מול קוד אמיתי. הסכימה והמדיניות משוכפלות במדויק
- * מ-route.ts וחייבות להישמר מסונכרנות עם:
+ * בהן, וחוקת הזהות עצמה מיובאת כפונקציה האמיתית `resolveGuestIdentity`
+ * מ-`@/server/booking/guestIdentity` (אותה פונקציה שהמסלול קורא לה, ללא שכפול). הסכימה
+ * ושאר החלטות המדיניות משוכפלות במדויק מ-route.ts וחייבות להישמר מסונכרנות עם:
  *   - bodySchema            → route.ts:16-24
  *   - חוקת זהות אורח        → route.ts:72-92
  *   - שיוך staff לעסק       → route.ts:100-104
@@ -78,30 +74,7 @@ test('חוזה הבקשה: startAtUtc חייב להיות ISO 8601 עם זמן',
   assert.equal(bookRequestContract.safeParse(validBody({ startAtUtc: '2025-01-01T09:00:00.000Z' })).success, true);
 });
 
-// --- חוקת זהות אורח (מראה של route.ts:72-92, מפעיל ולידטורים אמיתיים) ---
-type GuestIdentity =
-  | { ok: true; name: string; phone?: string; email?: string }
-  | { ok: false; error: 'bad_request' | 'invalid_phone' | 'invalid_email' };
-
-/** מראה מדויק של הלוגיקה ב-route.ts:72-92 מעל הולידטורים האמיתיים מ-crypto. */
-function resolveGuestIdentity(name?: string, phone?: string, email?: string): GuestIdentity {
-  const guestName = name?.trim();
-  const guestPhone = phone?.trim();
-  const guestEmail = email?.trim();
-  // שם + לפחות אחד מבין טלפון/מייל (לעולם לא שניהם כפויים).
-  if (!guestName || (!guestPhone && !guestEmail)) return { ok: false, error: 'bad_request' };
-  let outPhone: string | undefined;
-  let outEmail: string | undefined;
-  if (guestPhone) {
-    if (!isValidIsraeliMobile(guestPhone)) return { ok: false, error: 'invalid_phone' };
-    outPhone = normalizePhone(guestPhone);
-  }
-  if (guestEmail) {
-    if (!isValidEmail(guestEmail)) return { ok: false, error: 'invalid_email' };
-    outEmail = normalizeEmail(guestEmail);
-  }
-  return { ok: true, name: guestName, phone: outPhone, email: outEmail };
-}
+// --- חוקת זהות אורח: הפונקציה האמיתית `resolveGuestIdentity` (route.ts משתמש בה ישירות) ---
 
 test('זהות אורח: שם + טלפון תקין מתקבל ומנורמל ל-E.164', () => {
   const r = resolveGuestIdentity('דנה', '050-123-4567');

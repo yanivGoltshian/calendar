@@ -1,28 +1,15 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { BusinessType } from '@prisma/client';
 import { auth } from '@/auth';
 import { createBusiness } from '@/server/repos/business';
 import { listServices } from '@/server/repos/services';
+import { parseCreateBusinessInput } from './parseInput';
 import { t } from '@/i18n';
 
 export type CreateBusinessState = {
   error?: string;
 };
-
-const VALID_TYPES = new Set(Object.values(BusinessType) as string[]);
-
-// מפתחות תשובה חוקיים לשאלות השיווק (אפיק D2). ערך שאינו ברשימה מנוקה ל-null.
-const PRIOR_CALENDAR_KEYS = new Set([
-  'none',
-  'paper',
-  'google',
-  'spreadsheet',
-  'otherSystem',
-  'other',
-]);
-const REFERRAL_KEYS = new Set(['google', 'instagram', 'facebook', 'tiktok', 'friend', 'other']);
 
 /**
  * פעולת יצירת עסק אמיתית (אפיק D1).
@@ -41,25 +28,18 @@ export async function createBusinessAction(
     return { error: t.business.create.errorAuth };
   }
 
-  const name = String(formData.get('name') ?? '').trim();
-  if (!name) {
-    return { error: t.business.create.errorName };
+  // פענוח וולידציה חולצו לפונקציה טהורה `parseCreateBusinessInput` (ניתנת לבדיקה).
+  // המרת FormData: get מחזיר string או null (ערכי File אינם רלוונטיים לטופס זה).
+  const parsed = parseCreateBusinessInput((key) => {
+    const value = formData.get(key);
+    return typeof value === 'string' ? value : null;
+  });
+  if (!parsed.ok) {
+    return {
+      error: parsed.error === 'name' ? t.business.create.errorName : t.business.create.errorType,
+    };
   }
-
-  const rawType = String(formData.get('type') ?? '').trim();
-  if (rawType && !VALID_TYPES.has(rawType)) {
-    return { error: t.business.create.errorType };
-  }
-  const type = rawType ? (rawType as BusinessType) : null;
-
-  const phone = String(formData.get('phone') ?? '').trim() || null;
-  const address = String(formData.get('address') ?? '').trim() || null;
-
-  // שאלות שיווק (אפיק D2): נאספות באונבורדינג בדומה ל-calmark; אופציונליות.
-  const priorCalendarRaw = String(formData.get('priorCalendar') ?? '').trim();
-  const priorCalendar = PRIOR_CALENDAR_KEYS.has(priorCalendarRaw) ? priorCalendarRaw : null;
-  const referralRaw = String(formData.get('referralSource') ?? '').trim();
-  const referralSource = REFERRAL_KEYS.has(referralRaw) ? referralRaw : null;
+  const { name, type, phone, address, priorCalendar, referralSource } = parsed.value;
 
   let created: Awaited<ReturnType<typeof createBusiness>>;
   try {
