@@ -93,6 +93,80 @@ export async function createStaffMember(
   return { ok: true, id: created.id };
 }
 
+/**
+ * שם התצוגה של הבעלים לפי סדר נפילה־לאחור (fallback), עם trim לכל מקור ודילוג על ריקים:
+ * 1) שם מה-session, 2) שם משתמש קיים לפי המייל, 3) שם העסק, 4) החלק שלפני '@' במייל.
+ * טהורה וללא DB — זו הליבה הניתנת לבדיקת יחידה. לעולם לא מחזירה מחרוזת ריקה.
+ */
+export function resolveOwnerDisplayName(input: {
+  ownerName?: string | null;
+  ownerUserName?: string | null;
+  businessName?: string | null;
+  ownerEmail?: string | null;
+}): string {
+  const candidates = [
+    input.ownerName,
+    input.ownerUserName,
+    input.businessName,
+    input.ownerEmail?.split('@')[0],
+  ];
+  for (const candidate of candidates) {
+    const value = candidate?.trim();
+    if (value) return value;
+  }
+  // רשת ביטחון אחרונה: תווית תפקיד גנרית (לא שם אמיתי) כדי שלעולם לא נחזיר מחרוזת ריקה.
+  return 'בעל/ת העסק';
+}
+
+/**
+ * הבטחת איש צוות דיפולטי לבעלים — מזוהה במייל (ownerEmail) ולא בטלפון! אידמפוטנטי ובטוח
+ * לקריאה חוזרת. מאתרים/יוצרים User לפי email (email הוא nullable-unique; phone נשאר null).
+ * לא מורידים role של משתמש קיים — role מוגדר רק ביצירה (create). אם כבר קיים StaffMember
+ * (לפי האילוץ @@unique[businessId,userId]) מחזירים אותו. אחרת יוצרים MANAGER פעיל ללא טלפון.
+ */
+export async function ensureOwnerStaffMember(
+  businessId: string,
+  owner: {
+    ownerEmail: string;
+    ownerName?: string | null;
+    businessName?: string | null;
+  },
+): Promise<{ id: string; created: boolean }> {
+  const email = owner.ownerEmail.trim();
+
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: {},
+    create: { email, role: 'OWNER' },
+    select: { id: true, name: true },
+  });
+
+  const existing = await prisma.staffMember.findUnique({
+    where: { businessId_userId: { businessId, userId: user.id } },
+    select: { id: true },
+  });
+  if (existing) return { id: existing.id, created: false };
+
+  const displayName = resolveOwnerDisplayName({
+    ownerName: owner.ownerName,
+    ownerUserName: user.name,
+    businessName: owner.businessName,
+    ownerEmail: email,
+  });
+
+  const created = await prisma.staffMember.create({
+    data: {
+      businessId,
+      userId: user.id,
+      displayName,
+      permissionLevel: 'MANAGER',
+      active: true,
+    },
+    select: { id: true },
+  });
+  return { id: created.id, created: true };
+}
+
 /** עדכון פרטי איש צוות (מסונן לפי העסק). מעדכן גם את שם המשתמש המקושר. */
 export async function updateStaffMember(
   businessId: string,

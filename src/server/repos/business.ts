@@ -2,6 +2,7 @@ import type { BusinessType } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { auth } from '@/auth';
 import { defaultBusinessHours, setBusinessHours } from './workingHours';
+import { ensureOwnerStaffMember } from './staff';
 
 /** שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל. */
 export async function getBusinessBySlug(slug: string) {
@@ -133,6 +134,7 @@ export async function createBusiness(input: {
   phone?: string | null;
   address?: string | null;
   ownerEmail: string;
+  ownerName?: string | null;
   priorCalendar?: string | null;
   referralSource?: string | null;
 }) {
@@ -164,6 +166,20 @@ export async function createBusiness(input: {
     await setBusinessHours(business.id, defaultBusinessHours());
   } catch {
     // זריעת שעות ברירת המחדל נכשלה; יצירת העסק ממשיכה והבעלים יגדיר שעות ידנית.
+  }
+
+  // זריעת איש צוות דיפולטי לבעלים: מיד אחרי יצירת העסק אין אף StaffMember, ולכן היומן
+  // ב-/admin מוצג ריק עם ההודעה "לא הוגדרו אנשי צוות" והבעלים תקוע בלי דרך לפעול מהמסך.
+  // זורעים איש צוות אחד על שם הבעלים (מזוהה במייל, לא בטלפון) כדי שהיומן יעבוד מיד.
+  // עמיד לתקלות: כשל בזריעה לא ישבור את יצירת העסק, בדיוק כמו זריעת השעות למעלה.
+  try {
+    await ensureOwnerStaffMember(business.id, {
+      ownerEmail: input.ownerEmail,
+      ownerName: input.ownerName,
+      businessName: input.name,
+    });
+  } catch {
+    // זריעת איש הצוות הדיפולטי נכשלה; יצירת העסק ממשיכה והבעלים יוסיף צוות ידנית ב-/admin/team.
   }
 
   // שאלות השיווק (אפיק D2) נשמרות בצורה עמידה: אם המיגרציה האדיטיבית טרם הוחלה

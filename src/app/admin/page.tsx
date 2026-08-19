@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
-import { listStaff } from '@/server/repos/staff';
+import { listStaff, ensureOwnerStaffMember } from '@/server/repos/staff';
 import { listServices } from '@/server/repos/services';
 import { getAppointmentsForBusinessRange } from '@/server/repos/appointments';
 import {
@@ -58,7 +58,21 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
 
   const tz = business.timezone;
   const cal = t.admin.calendar;
-  const staffRows = await listStaff(business.id);
+  let staffRows = await listStaff(business.id);
+  // ריפוי־עצמי לעסקים קיימים ללא צוות: הבאג המקורי השאיר עסקים עם אפס אנשי צוות, ולכן
+  // הבעלים רואה יומן ריק בלי דרך לפעול. getActiveBusiness כבר מסונן לעסק הפעיל של הבעלים
+  // המאומת בלבד — ולכן זה בטוח ומוגבל לבעלים. אידמפוטנטי: רץ רק כשאין צוות. עמיד לתקלות.
+  if (staffRows.length === 0 && business.ownerEmail) {
+    try {
+      await ensureOwnerStaffMember(business.id, {
+        ownerEmail: business.ownerEmail,
+        businessName: business.name,
+      });
+      staffRows = await listStaff(business.id);
+    } catch {
+      // זריעת איש הצוות הדיפולטי נכשלה; העמוד ממשיך להיטען עם מצב ריק (כולל כפתור הוספה).
+    }
+  }
   const serviceRows = await listServices(business.id);
 
   const view: CalendarView = sp.view === 'week' ? 'week' : 'day';

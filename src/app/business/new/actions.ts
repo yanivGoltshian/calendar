@@ -65,6 +65,7 @@ export async function createBusinessAction(
       phone,
       address,
       ownerEmail: email,
+      ownerName: session.user?.name ?? null,
       priorCalendar,
       referralSource,
     });
