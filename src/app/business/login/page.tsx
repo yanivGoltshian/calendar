@@ -29,7 +29,8 @@ export default async function BusinessLoginPage({
     redirect(callbackUrl);
   }
 
-  const anyProvider = authProviderStatus.google || authProviderStatus.email;
+  const anyProvider =
+    authProviderStatus.google || authProviderStatus.email || authProviderStatus.firebasePhone;
 
   return (
     <Section spacing="lg">
@@ -47,6 +48,7 @@ export default async function BusinessLoginPage({
               <OwnerSignIn
                 googleEnabled={authProviderStatus.google}
                 emailEnabled={authProviderStatus.email}
+                phoneEnabled={authProviderStatus.firebasePhone}
                 callbackUrl={callbackUrl}
               />
             </Suspense>

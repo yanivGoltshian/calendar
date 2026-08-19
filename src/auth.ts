@@ -3,6 +3,8 @@ import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import { isValidEmail, normalizeEmail } from '@/lib/crypto';
 import { checkOtp, findOrCreateUserByEmail } from '@/server/repos/otp';
+import { verifyFirebasePhoneIdToken } from '@/server/auth/firebasePhone';
+import { ownerEmailForPhone } from '@/lib/ownerPhoneIdentity';
 
 /**
  * הגדרת NextAuth (Auth.js v5) לכניסת בעלי עסק.
@@ -34,8 +36,9 @@ const emailEnabled = true;
 /**
  * דגל Firebase Phone (אופציונלי): מוצג ב-UI רק כשמוגדר מפתח הלקוח
  * NEXT_PUBLIC_FIREBASE_API_KEY. אחרת הפיצ׳ר מוסתר לחלוטין וההתנהגות הקיימת נשמרת.
- * הערה: זהות בעלים נשמרת לפי מייל (Business.ownerEmail); מסלול Firebase-טלפון
- * ממומש עבור לקוחות קצה (client session), ולכן דגל זה משמש בעיקר את ה-UI של הלקוח.
+ * הדגל משמש גם את כניסת הלקוח (client session) וגם את ספק 'owner-phone' של הבעלים:
+ * בעל שנרשם בטלפון מקבל כתובת מייל סינתטית דטרמיניסטית (ownerEmailForPhone), כך
+ * שזהות הבעלים נשארת מבוססת מייל (Business.ownerEmail) ללא שינוי בשכבת הבעלות.
  */
 const firebasePhoneEnabled = !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
@@ -83,6 +86,42 @@ providers.push(
     },
   })
 );
+
+// ספק Credentials לכניסת טלפון של בעלים, מגובה אימות Firebase-טלפון (מגודר ב-env).
+// authorize מאמת Firebase ID token (אותו אימות שמשמש את גשר הלקוח), גוזר מהמספר
+// כתובת מייל סינתטית דטרמיניסטית, ומחזיר משתמש מזוהה-מייל — כך הבעלים מקבל session
+// רגיל של NextAuth (JWT, כמו Google/מייל) וזהות הבעלים נשמרת מבוססת-מייל ללא שינוי
+// בשכבת הבעלות (יצירת עסק, חזרה לעסק, שער הכניסה).
+if (firebasePhoneEnabled) {
+  providers.push(
+    Credentials({
+      id: 'owner-phone',
+      name: 'Phone code',
+      credentials: {
+        idToken: { label: 'Firebase ID token', type: 'text' },
+        name: { label: 'Name', type: 'text' },
+      },
+      async authorize(raw) {
+        const idToken = String(raw?.idToken ?? '').trim();
+        if (idToken.length < 20) return null;
+
+        const verified = await verifyFirebasePhoneIdToken(idToken);
+        if (!verified.ok) return null;
+
+        const ownerEmail = ownerEmailForPhone(verified.phone);
+        if (!ownerEmail || !isValidEmail(ownerEmail)) return null;
+
+        const name = String(raw?.name ?? '').trim() || undefined;
+        const user = await findOrCreateUserByEmail(ownerEmail, name);
+        return {
+          id: user.id,
+          email: user.email ?? ownerEmail,
+          name: user.name ?? undefined,
+        };
+      },
+    })
+  );
+}
 
 export const authConfig: NextAuthConfig = {
   providers,
