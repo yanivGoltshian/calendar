@@ -29,6 +29,18 @@ export function ogImageUrl(params: { title?: string; subtitle?: string } = {}): 
   return absoluteUrl(`/og${qs ? `?${qs}` : ''}`);
 }
 
+/**
+ * נתיב כרטיס השיתוף הסטטי של הפלטפורמה (לוגו תור צ׳יק, 1200x630).
+ * קובץ JPEG קל (כ-70KB) המוגש מיידית, כדי שתצוגות הקישור יעבדו גם ב-WhatsApp
+ * ובפייסבוק, שמוותרים על תמונת OG כשהיא כבדה או איטית מדי לטעינה.
+ */
+export const OG_CARD_PATH = '/brand/og-card.jpg';
+
+/** כתובת מוחלטת לכרטיס השיתוף הסטטי של הפלטפורמה. */
+export function ogCardUrl(): string {
+  return absoluteUrl(OG_CARD_PATH);
+}
+
 type BuildMetadataOptions = {
   title?: string;
   description?: string;
@@ -56,8 +68,9 @@ export function buildMetadata(options: BuildMetadataOptions = {}): Metadata {
 
   const canonical = absoluteUrl(path);
   const image = ogLogo
-    ? ogImageUrl()
+    ? ogCardUrl()
     : ogImageUrl({ title: ogTitle ?? title ?? BRAND.name, subtitle: ogSubtitle });
+  const imageType = ogLogo ? 'image/jpeg' : 'image/png';
   const resolvedTitle = title ?? BRAND.name;
 
   return {
@@ -74,7 +87,7 @@ export function buildMetadata(options: BuildMetadataOptions = {}): Metadata {
       siteName: BRAND.name,
       title: resolvedTitle,
       description,
-      images: [{ url: image, width: 1200, height: 630, alt: resolvedTitle }],
+      images: [{ url: image, type: imageType, width: 1200, height: 630, alt: resolvedTitle }],
     },
     twitter: {
       card: 'summary_large_image',
