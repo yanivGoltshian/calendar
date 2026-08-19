@@ -11,7 +11,7 @@ import {
   LEGAL_LINKS,
 } from '@/content/legal/links';
 import {
-  LEGAL_TEMPLATE_NOTICE,
+  LEGAL_DISCLAIMER_NOTICE,
   LEGAL_UPDATED_ISO,
   LEGAL_UPDATED_LABEL,
 } from '@/content/legal/meta';
@@ -99,20 +99,20 @@ function Breadcrumbs({ trail, current }: { trail: Crumb[]; current: string }) {
   );
 }
 
-/** הערת התבנית המוצגת בראש כל עמוד. */
-function TemplateNotice() {
+/** הערת אי־ייעוץ משפטי המוצגת בראש כל עמוד. */
+function DisclaimerNotice() {
   return (
     <p
       role="note"
       className="mt-6 rounded-2xl border border-sand-200 bg-sand-100/70 px-4 py-3 text-sm leading-relaxed text-sand-600 dark:border-sand-800 dark:bg-sand-900/60 dark:text-sand-300"
     >
-      {LEGAL_TEMPLATE_NOTICE}
+      {LEGAL_DISCLAIMER_NOTICE}
     </p>
   );
 }
 
 /**
- * מעטפת מאמר משפטי: פירורי לחם, כותרת ראשית, תאריך עדכון, הערת תבנית,
+ * מעטפת מאמר משפטי: פירורי לחם, כותרת ראשית, תאריך עדכון, הערת אי־ייעוץ,
  * גוף התוכן, וקישור חזרה לעמוד האינדקס. כוללת JSON-LD של פירורי הלחם.
  */
 export function LegalArticle({
@@ -161,7 +161,7 @@ export function LegalArticle({
         {lead ? (
           <p className="mt-6 text-lg leading-relaxed text-sand-600 dark:text-sand-300">{lead}</p>
         ) : null}
-        <TemplateNotice />
+        <DisclaimerNotice />
         <div className="mt-8">{children}</div>
         {!isIndex ? (
           <div className="mt-12 border-t border-sand-200 pt-6 dark:border-sand-800">
