@@ -58,23 +58,26 @@ async function handle(req: Request) {
 
     let sent = 0;
     let failed = 0;
-    let skippedNoPhone = 0;
-    let notConfigured = 0;
+    let skipped = 0;
     let alreadyMarked = 0;
 
     for (const appt of due) {
-      const phone = appt.client?.phone?.trim();
-      if (!phone) {
-        skippedNoPhone += 1;
-        continue;
-      }
-
+      // הערוץ והיעד נגזרים בשכבת השליחה (resolveReminderChannel) לפי העדפת העסק
+      // וזהות הלקוח; אין עוד שער טלפון מקדים כאן, כדי שגם לקוח עם מייל בלבד יטופל.
       const result = await sendReminder({
         id: appt.id,
         startAt: appt.startAt,
         confirmToken: appt.confirmToken,
-        business: { name: appt.business.name, timezone: appt.business.timezone },
-        client: { name: appt.client.name, phone },
+        business: {
+          name: appt.business.name,
+          timezone: appt.business.timezone,
+          reminderChannel: appt.business.reminderChannel,
+        },
+        client: {
+          name: appt.client.name,
+          phone: appt.client.phone,
+          email: appt.client.email,
+        },
       });
 
       // כשל שליחה חולף — לא מסמנים, כדי שהריצה הבאה תנסה שוב.
@@ -86,9 +89,9 @@ async function handle(req: Request) {
         continue;
       }
 
-      // status === 'sent' או 'skipped' (ספק לא כשיר): בשני המקרים מסמנים
-      // באופן אטומי ואידמפוטנטי. 'skipped' עונה על שער הקרדנשלס — מחושב
-      // ומסומן אך לא נשלח בפועל (למשל SMS_PROVIDER=console בפרודקשן).
+      // status === 'sent' או 'skipped': בשני המקרים מסמנים באופן אטומי ואידמפוטנטי.
+      // 'skipped' מכסה יעד חסר, ערוץ ידני ללא כתובת, או ספק לא כשיר — מחושב ומסומן
+      // אך לא נשלח בפועל (no-op-אבל-מסומן), כדי שהריצה לא תיתקע ולא תחזור על עצמה.
       const marked = await markReminderSent(appt.id, new Date());
       if (marked === 0) {
         // שורה כבר סומנה במקביל — לא נספור פעמיים.
@@ -99,9 +102,11 @@ async function handle(req: Request) {
       if (result.status === 'sent') {
         sent += 1;
       } else {
-        notConfigured += 1;
+        // 'skipped': מסומן בלי שליחה בפועל — יעד חסר, ערוץ ידני ללא כתובת, או ספק
+        // לא כשיר (console בפרודקשן / מייל לא מוגדר). הריצה נשארת אידמפוטנטית.
+        skipped += 1;
         console.warn(
-          `[cron/reminders] provider not configured — marked without sending appt=${appt.id} reason=${result.reason}`,
+          `[cron/reminders] skipped — marked without sending appt=${appt.id} reason=${result.reason}`,
         );
       }
     }
@@ -110,17 +115,15 @@ async function handle(req: Request) {
       found: due.length,
       sent,
       failed,
-      notConfigured,
-      skippedNoPhone,
+      skipped,
       alreadyMarked,
     };
-    // כאשר הספק הוא console בפרודקשן, ההודעות מחושבות ומסומנות (notConfigured)
-    // אך אינן נשלחות בפועל. ה-endpoint אינו קורס ורושם זאת בבירור.
+    // כאשר הספק אינו כשיר (console בפרודקשן / מייל לא מוגדר) או שאין ליעד כתובת,
+    // ההודעות מחושבות ומסומנות (skipped) אך אינן נשלחות בפועל. ה-endpoint אינו קורס.
     console.log(
       `[cron/reminders] provider=${provider} window=${windowStart.toISOString()}..${windowEnd.toISOString()} ` +
         `found=${counts.found} sent=${counts.sent} failed=${counts.failed} ` +
-        `notConfigured=${counts.notConfigured} skippedNoPhone=${counts.skippedNoPhone} ` +
-        `alreadyMarked=${counts.alreadyMarked}`,
+        `skipped=${counts.skipped} alreadyMarked=${counts.alreadyMarked}`,
     );
 
     return NextResponse.json({

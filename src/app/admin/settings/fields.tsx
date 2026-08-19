@@ -346,12 +346,18 @@ export function RemindersFields({ s }: { s: RemindersValues }) {
             defaultValue={s.reminderChannel}
             className={inputClass}
           >
-            {Object.values(ReminderChannel).map((value) => (
-              <option key={value} value={value}>
-                {t.admin.settings.channels[value]}
-              </option>
-            ))}
+            {/* אוטומטי כברירת מחדל; מייל ומסרון נשארים כעקיפה ידנית מתחת. */}
+            <option value={ReminderChannel.AUTO}>
+              {t.admin.settings.channels.AUTO}
+            </option>
+            <option value={ReminderChannel.EMAIL}>
+              {t.admin.settings.channels.EMAIL}
+            </option>
+            <option value={ReminderChannel.SMS}>
+              {t.admin.settings.channels.SMS}
+            </option>
           </select>
+          <p className={hintClass}>{c.channelAutoHint}</p>
         </div>
         <div className="flex-1">
           <label className={labelClass}>{c.leadHoursLabel}</label>

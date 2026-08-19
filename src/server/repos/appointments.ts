@@ -192,12 +192,21 @@ export function getBusinessAppointments(
 // סטטוסים פעילים שרלוונטיים לתזכורת (תור שעדיין אמור להתקיים).
 const REMINDABLE_STATUSES: AppointmentStatus[] = ['PENDING', 'CONFIRMED'];
 
-// בחירת שדות אחידה לתצוגת קישור האישור וההודעה — שם עסק, טלפון לקוח, צוות ושירותים.
+// בחירת שדות אחידה לתצוגת קישור האישור וההודעה — שם עסק, זהות לקוח (טלפון ומייל),
+// ערוץ התזכורת המוגדר לעסק, צוות ושירותים. המייל וערוץ התזכורת דרושים לגזירת הערוץ
+// בפועל בשכבת השליחה (resolveReminderChannel).
 const reminderInclude = {
   business: {
-    select: { id: true, name: true, slug: true, phone: true, timezone: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      phone: true,
+      timezone: true,
+      reminderChannel: true,
+    },
   },
-  client: { select: { id: true, name: true, phone: true } },
+  client: { select: { id: true, name: true, phone: true, email: true } },
   staff: { select: { id: true, displayName: true, title: true } },
   services: { select: { nameSnapshot: true } },
 } as const;

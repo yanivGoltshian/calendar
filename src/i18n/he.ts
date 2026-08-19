@@ -728,11 +728,14 @@ const he = {
         description: 'שליחת תזכורת ובקשת אישור הגעה.',
         enabledLabel: 'שליחת תזכורות ללקוחות',
         channelLabel: 'ערוץ שליחה',
+        channelAutoHint:
+          'במצב אוטומטי, אם הלקוח נרשם עם מייל התזכורת תישלח במייל, ואם נרשם עם טלפון היא תישלח במסרון.',
         leadHoursLabel: 'שליחה כמה שעות לפני התור',
         confirmationRequiredLabel: 'בקשת אישור הגעה בתזכורת',
         confirmationRequiredHint: 'הלקוח יתבקש לאשר הגעה דרך התזכורת.',
       },
       channels: {
+        AUTO: 'אוטומטי (לפי אופן ההרשמה של הלקוח)',
         SMS: 'מסרון (SMS)',
         PUSH: 'התראת דחיפה',
         EMAIL: 'דוא״ל',
@@ -1219,6 +1222,7 @@ const he = {
     message: {
       body: 'שלום {name}, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. לאישור ההגעה או ביטול: {url}',
       bodyNoName: 'שלום, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. לאישור ההגעה או ביטול: {url}',
+      emailSubject: 'תזכורת לתור ב{business}',
     },
     confirm: {
       title: 'אישור הגעה לתור',

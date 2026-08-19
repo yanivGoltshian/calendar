@@ -56,3 +56,27 @@ export async function sendEmailOtp(to: string, code: string): Promise<void> {
   const transport = nodemailer.createTransport(EMAIL_SERVER as string);
   await transport.sendMail({ from: EMAIL_FROM, to, subject, text, html });
 }
+
+/**
+ * שליחת מייל תזכורת כללי (נושא + גוף טקסט + HTML) דרך אותה תשתית SMTP.
+ * מיועד לשכבת התזכורות (send.ts). כמו sendEmailOtp: כשאין SMTP מוגדר — נפילת
+ * console בטוחה שאינה זורקת. שכבת השליחה בודקת את emailConfigured לפני הקריאה
+ * ומדלגת בחן כשאין תצורה, כדי שלא נדווח "נשלח" כשרק נכתב ללוג.
+ */
+export async function sendReminderEmail(
+  to: string,
+  subject: string,
+  text: string,
+  html: string,
+): Promise<void> {
+  if (!emailConfigured) {
+    // נפילת פיתוח בטוחה: תיעוד ללוג בלבד, ללא כשל.
+    console.info(`[email:console] reminder to=${to} subject=${subject}`);
+    return;
+  }
+
+  // ייבוא דינמי — ראו ההערה ב-sendEmailOtp.
+  const nodemailer = await import('nodemailer');
+  const transport = nodemailer.createTransport(EMAIL_SERVER as string);
+  await transport.sendMail({ from: EMAIL_FROM, to, subject, text, html });
+}
