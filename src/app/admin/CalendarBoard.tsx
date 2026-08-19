@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { t } from '@/i18n';
 import { addDaysToDateString, formatMinutes } from '@/lib/time';
 import { serviceColor } from './serviceColors';
@@ -291,7 +292,13 @@ export default function CalendarBoard({
 
       {staff.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
-          {cal.noStaff}
+          <p>{cal.noStaff}</p>
+          <Link
+            href="/admin/team"
+            className="mt-4 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+          >
+            {cal.noStaffCta}
+          </Link>
         </div>
       ) : (
         <>
