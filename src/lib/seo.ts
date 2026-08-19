@@ -20,15 +20,6 @@ export function absoluteUrl(path = '/'): string {
   return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-/** בניית כתובת לתמונת OG דינמית. */
-export function ogImageUrl(params: { title?: string; subtitle?: string } = {}): string {
-  const search = new URLSearchParams();
-  if (params.title) search.set('title', params.title);
-  if (params.subtitle) search.set('subtitle', params.subtitle);
-  const qs = search.toString();
-  return absoluteUrl(`/og${qs ? `?${qs}` : ''}`);
-}
-
 /**
  * נתיב כרטיס השיתוף הסטטי של הפלטפורמה (לוגו תור צ׳יק, 1200x630).
  * קובץ JPEG קל (כ-70KB) המוגש מיידית, כדי שתצוגות הקישור יעבדו גם ב-WhatsApp
@@ -45,9 +36,6 @@ type BuildMetadataOptions = {
   title?: string;
   description?: string;
   path?: string;
-  ogTitle?: string;
-  ogSubtitle?: string;
-  ogLogo?: boolean;
   noIndex?: boolean;
 };
 
@@ -60,17 +48,12 @@ export function buildMetadata(options: BuildMetadataOptions = {}): Metadata {
     title,
     description = SITE_DESCRIPTION,
     path = '/',
-    ogTitle,
-    ogSubtitle,
-    ogLogo = false,
     noIndex = false,
   } = options;
 
   const canonical = absoluteUrl(path);
-  const image = ogLogo
-    ? ogCardUrl()
-    : ogImageUrl({ title: ogTitle ?? title ?? BRAND.name, subtitle: ogSubtitle });
-  const imageType = ogLogo ? 'image/jpeg' : 'image/png';
+  const image = ogCardUrl();
+  const imageType = 'image/jpeg';
   const resolvedTitle = title ?? BRAND.name;
 
   return {
