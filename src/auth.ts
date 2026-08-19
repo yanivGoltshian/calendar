@@ -1,10 +1,12 @@
 import NextAuth, { type NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
-import { isValidEmail, normalizeEmail } from '@/lib/crypto';
+import { isValidEmail } from '@/lib/crypto';
 import { checkOtp, findOrCreateUserByEmail } from '@/server/repos/otp';
 import { verifyFirebasePhoneIdToken } from '@/server/auth/firebasePhone';
 import { ownerEmailForPhone } from '@/lib/ownerPhoneIdentity';
+import { computeAuthProviderStatus } from '@/server/auth/providerStatus';
+import { authorizeOwnerEmail } from '@/server/auth/ownerEmailAuthorize';
 
 /**
  * הגדרת NextAuth (Auth.js v5) לכניסת בעלי עסק.
@@ -22,32 +24,20 @@ import { ownerEmailForPhone } from '@/lib/ownerPhoneIdentity';
  *   על Business.ownerEmail (עמודה אדיטיבית).
  */
 
-const googleEnabled = !!(
-  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-);
-
 /**
- * כניסת מייל לבעלים פעילה תמיד: ספק המייל כולל נפילת console בטוחה (רישום הקוד
- * ללוג) כשאין EMAIL_SERVER, כך שהמסלול עובד מקצה-לקצה גם בלי SMTP אמיתי, ובפרודקשן
- * נשלח מייל אמיתי כשמוגדרים EMAIL_SERVER + EMAIL_FROM.
+ * סטטוס ספקים לגזירת UI (הצגה/הסתרה של כפתורים), נגזר ממשתני הסביבה.
+ * הלוגיקה חולצה לפונקציה טהורה `computeAuthProviderStatus` (ניתנת לבדיקת יחידה):
+ * - google: פעיל רק כשקיימים GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET.
+ * - email: פעיל תמיד (ספק ה-OTP במייל כולל נפילת console כשאין EMAIL_SERVER; בפרודקשן
+ *   נשלח מייל אמיתי כשמוגדרים EMAIL_SERVER + EMAIL_FROM).
+ * - firebasePhone: פעיל רק כשמוגדר NEXT_PUBLIC_FIREBASE_API_KEY. הדגל משמש גם את כניסת
+ *   הלקוח וגם את ספק 'owner-phone'; בעל שנרשם בטלפון מקבל מייל סינתטי דטרמיניסטי
+ *   (ownerEmailForPhone) כך שזהות הבעלים נשארת מבוססת מייל ללא שינוי בשכבת הבעלות.
  */
-const emailEnabled = true;
+export const authProviderStatus = computeAuthProviderStatus(process.env);
 
-/**
- * דגל Firebase Phone (אופציונלי): מוצג ב-UI רק כשמוגדר מפתח הלקוח
- * NEXT_PUBLIC_FIREBASE_API_KEY. אחרת הפיצ׳ר מוסתר לחלוטין וההתנהגות הקיימת נשמרת.
- * הדגל משמש גם את כניסת הלקוח (client session) וגם את ספק 'owner-phone' של הבעלים:
- * בעל שנרשם בטלפון מקבל כתובת מייל סינתטית דטרמיניסטית (ownerEmailForPhone), כך
- * שזהות הבעלים נשארת מבוססת מייל (Business.ownerEmail) ללא שינוי בשכבת הבעלות.
- */
-const firebasePhoneEnabled = !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-
-/** סטטוס ספקים לגזירת UI (הצגה/הסתרה של כפתורים). */
-export const authProviderStatus = {
-  google: googleEnabled,
-  email: emailEnabled,
-  firebasePhone: firebasePhoneEnabled,
-};
+const googleEnabled = authProviderStatus.google;
+const firebasePhoneEnabled = authProviderStatus.firebasePhone;
 
 const providers: NextAuthConfig['providers'] = [];
 
@@ -70,19 +60,8 @@ providers.push(
       code: { label: 'Code', type: 'text' },
     },
     async authorize(raw) {
-      const email = normalizeEmail(String(raw?.email ?? ''));
-      const code = String(raw?.code ?? '').trim();
-      if (!isValidEmail(email) || code.length < 4) return null;
-
-      const result = await checkOtp(email, code);
-      if (!result.ok) return null;
-
-      const user = await findOrCreateUserByEmail(email);
-      return {
-        id: user.id,
-        email: user.email ?? email,
-        name: user.name ?? undefined,
-      };
+      // לוגיקת האימות חולצה לפונקציה טהורה עם הזרקת תלויות (ניתנת לבדיקת יחידה).
+      return authorizeOwnerEmail(raw, { checkOtp, findOrCreateUserByEmail });
     },
   })
 );
@@ -131,6 +110,10 @@ export const authConfig: NextAuthConfig = {
   trustHost: true,
   pages: {
     signIn: '/business/login',
+    // שגיאות אימות (למשל Configuration בחזרה מ-Google) מופנות לעמוד הכניסה עצמו,
+    // שנשלט ע"י ה-middleware הקנוני — כך המשתמש רואה הודעה ברורה בעברית ומנסה שוב
+    // מהמקור הקנוני (ריפוי-עצמי לפיצול origin), במקום עמוד השגיאה הכללי של Auth.js.
+    error: '/business/login',
   },
   callbacks: {
     async jwt({ token, user }) {

@@ -9,7 +9,7 @@ import {
 import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
 import { getClientSession } from '@/lib/session';
-import { isValidIsraeliMobile, normalizePhone, isValidEmail, normalizeEmail } from '@/lib/crypto';
+import { resolveGuestIdentity } from '@/server/booking/guestIdentity';
 import { checkBookRequestAllowed } from '@/server/repos/bookRateLimit';
 import { t } from '@/i18n';
 
@@ -69,26 +69,14 @@ export async function POST(req: Request) {
     clientName = parsed.name ?? session.name ?? session.phone ?? session.email ?? 'לקוח';
     clientUserId = session.userId;
   } else {
-    const guestName = parsed.name?.trim();
-    const guestPhone = parsed.phone?.trim();
-    const guestEmail = parsed.email?.trim();
-    // חוקת זהות: שם + לפחות אחד מבין טלפון/מייל (לעולם לא נכפה את שניהם).
-    if (!guestName || (!guestPhone && !guestEmail)) {
-      return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
+    // חוקת זהות אורח חולצה לפונקציה טהורה `resolveGuestIdentity` (משותפת עם המבחן).
+    const guest = resolveGuestIdentity(parsed.name, parsed.phone, parsed.email);
+    if (!guest.ok) {
+      return NextResponse.json({ ok: false, error: guest.error }, { status: 400 });
     }
-    if (guestPhone) {
-      if (!isValidIsraeliMobile(guestPhone)) {
-        return NextResponse.json({ ok: false, error: 'invalid_phone' }, { status: 400 });
-      }
-      clientPhone = normalizePhone(guestPhone);
-    }
-    if (guestEmail) {
-      if (!isValidEmail(guestEmail)) {
-        return NextResponse.json({ ok: false, error: 'invalid_email' }, { status: 400 });
-      }
-      clientEmail = normalizeEmail(guestEmail);
-    }
-    clientName = guestName;
+    clientPhone = guest.phone;
+    clientEmail = guest.email;
+    clientName = guest.name;
     clientUserId = undefined;
   }
 

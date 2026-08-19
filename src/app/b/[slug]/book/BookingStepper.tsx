@@ -39,7 +39,7 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
   // מצב אישור הזמנת אורח (ללא OTP)
-  const [contactMethod, setContactMethod] = useState<'phone' | 'email'>('phone');
+  const [contactMethod, setContactMethod] = useState<'email' | 'phone'>('email');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -392,17 +392,6 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
             <div className="mb-2 flex gap-2">
               <button
                 type="button"
-                onClick={() => setContactMethod('phone')}
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
-                  contactMethod === 'phone'
-                    ? 'border-brand-600 bg-brand-50 text-brand-700'
-                    : 'border-slate-300 text-slate-600'
-                }`}
-              >
-                {t.booking.guestPhone}
-              </button>
-              <button
-                type="button"
                 onClick={() => setContactMethod('email')}
                 className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
                   contactMethod === 'email'
@@ -412,18 +401,19 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
               >
                 {t.booking.guestEmail}
               </button>
+              <button
+                type="button"
+                onClick={() => setContactMethod('phone')}
+                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
+                  contactMethod === 'phone'
+                    ? 'border-brand-600 bg-brand-50 text-brand-700'
+                    : 'border-slate-300 text-slate-600'
+                }`}
+              >
+                {t.booking.guestPhone}
+              </button>
             </div>
-            {contactMethod === 'phone' ? (
-              <input
-                type="tel"
-                inputMode="tel"
-                dir="ltr"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder={t.booking.guestPhonePlaceholder}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3"
-              />
-            ) : (
+            {contactMethod === 'email' ? (
               <input
                 type="email"
                 inputMode="email"
@@ -432,6 +422,16 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.booking.guestEmailPlaceholder}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3"
+              />
+            ) : (
+              <input
+                type="tel"
+                inputMode="tel"
+                dir="ltr"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t.booking.guestPhonePlaceholder}
                 className="w-full rounded-xl border border-slate-300 px-4 py-3"
               />
             )}
