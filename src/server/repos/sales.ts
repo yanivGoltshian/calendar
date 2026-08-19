@@ -1,5 +1,64 @@
 import { prisma } from '@/lib/db';
 import type { Prisma, PaymentMethod, SaleStatus } from '@prisma/client';
+import { DEFAULT_TZ, addDaysToDateString, localWallTimeToUtc } from '@/lib/time';
+
+const DATE_STRING_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** בדיקה שמחרוזת היא תאריך "YYYY-MM-DD" תקין ואמיתי בלוח השנה. */
+function isValidDateString(value: string): boolean {
+  if (!DATE_STRING_RE.test(value)) return false;
+  const [y, m, d] = value.split('-').map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
+  );
+}
+
+/** חצות מקומי (תחילת היום) של תאריך "YYYY-MM-DD" כרגע UTC. */
+function startOfLocalDayUtc(dateStr: string, timeZone: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return localWallTimeToUtc(y, m, d, 0, timeZone);
+}
+
+/** טווח תאריכים מנורמל לסינון עסקאות: מחרוזות היום וגבולות UTC למחצה-פתוחים. */
+export type SaleDateRange = {
+  from: string | null;
+  to: string | null;
+  fromUtc: Date | null;
+  toUtc: Date | null;
+};
+
+/**
+ * בונה טווח תאריכים לסינון עסקאות מתוך קלט גולמי (בדרך כלל מפרמטרי חיפוש).
+ * טהור וללא DB, כך שאפשר לבדוק אותו ביחידה. הגבולות נגזרים לפי שעון הקיר של
+ * העסק (ברירת מחדל Asia/Jerusalem) ומטופלים כמחצה-פתוחים [fromUtc, toUtc):
+ * fromUtc הוא חצות היום הפותח, ו-toUtc הוא חצות היום שאחרי היום הסוגר, כדי
+ * לכלול את יום הסיום כולו. קלט לא תקין מנוקה בשקט, וטווח הפוך מתוקן בהחלפה.
+ */
+export function buildSaleDateRange(
+  fromInput?: string | null,
+  toInput?: string | null,
+  timeZone: string = DEFAULT_TZ,
+): SaleDateRange {
+  let from = fromInput && isValidDateString(fromInput) ? fromInput : null;
+  let to = toInput && isValidDateString(toInput) ? toInput : null;
+
+  // טווח הפוך (מתאריך מאוחר מעד תאריך) — מחליפים כדי לשמור על גבולות תקינים.
+  if (from && to && from > to) {
+    const swap = from;
+    from = to;
+    to = swap;
+  }
+
+  const fromUtc = from ? startOfLocalDayUtc(from, timeZone) : null;
+  const toUtc = to ? startOfLocalDayUtc(addDaysToDateString(to, 1), timeZone) : null;
+
+  return { from, to, fromUtc, toUtc };
+}
+
+/** גבולות זמן מחצה-פתוחים [fromUtc, toUtc) לשאילתות סינון. */
+export type SaleTimeBounds = { fromUtc?: Date | null; toUtc?: Date | null };
 
 /**
  * ניהול עסקאות קופה. עסקה במצב OPEN משמשת כ"סל" מתמשך בצד השרת (static-first,
@@ -39,11 +98,23 @@ async function getEditableSale(businessId: string, saleId: string) {
 
 export type SaleFilter = 'open' | 'completed' | 'all';
 
-/** רשימת עסקאות של העסק לפי מצב, מהחדשה לישנה. */
-export function listSales(businessId: string, filter: SaleFilter = 'open') {
+/** רשימת עסקאות של העסק לפי מצב וטווח תאריכים, מהחדשה לישנה. */
+export function listSales(
+  businessId: string,
+  filter: SaleFilter = 'open',
+  bounds?: SaleTimeBounds,
+) {
   const where: Prisma.SaleWhereInput = { businessId };
   if (filter === 'open') where.status = 'OPEN';
   else if (filter === 'completed') where.status = { in: ['COMPLETED', 'REFUNDED'] };
+
+  // סינון לפי מועד פתיחת העסקה (createdAt) — התאריך המוצג והממוין ברשימה.
+  if (bounds && (bounds.fromUtc || bounds.toUtc)) {
+    const createdAt: Prisma.DateTimeFilter = {};
+    if (bounds.fromUtc) createdAt.gte = bounds.fromUtc;
+    if (bounds.toUtc) createdAt.lt = bounds.toUtc;
+    where.createdAt = createdAt;
+  }
 
   return prisma.sale.findMany({
     where,
@@ -329,12 +400,18 @@ export async function markSaleRefunded(businessId: string, saleId: string): Prom
 export type SaleStatusValue = SaleStatus;
 
 /** סיכום סגירת קופה: ספירת עסקאות וסכומים לפי אמצעי תשלום בטווח זמן. */
-export async function getRegisterSummary(businessId: string, fromUtc: Date, toUtc: Date) {
+export async function getRegisterSummary(businessId: string, bounds: SaleTimeBounds) {
+  // סינון לפי מועד סגירת העסקה (closedAt) בטווח שנבחר. ללא גבולות מסכמים את כל
+  // העסקאות הסגורות, אך הקוראים מספקים תמיד טווח (היום כברירת מחדל).
+  const closedAt: Prisma.DateTimeFilter = {};
+  if (bounds.fromUtc) closedAt.gte = bounds.fromUtc;
+  if (bounds.toUtc) closedAt.lt = bounds.toUtc;
+
   const sales = await prisma.sale.findMany({
     where: {
       businessId,
       status: { in: ['COMPLETED', 'REFUNDED'] },
-      closedAt: { gte: fromUtc, lt: toUtc },
+      ...(bounds.fromUtc || bounds.toUtc ? { closedAt } : {}),
     },
     select: { id: true, totalAgorot: true },
   });
