@@ -19,7 +19,6 @@ const m = t.marketing;
 export const metadata = buildMetadata({
   title: `תוכנה לזימון תורים וניהול עסק · ${BRAND.name}`,
   path: '/',
-  ogLogo: true,
 });
 
 const trustStats = Object.values(m.trust.stats);

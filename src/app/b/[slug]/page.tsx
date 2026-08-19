@@ -80,8 +80,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       business.description?.slice(0, 160) ??
       `קביעת תור אונליין אצל ${business.name}. בחירת שירות, בחירת מועד ואישור מיידי.`,
     path: `/b/${business.slug}`,
-    ogTitle: business.name,
-    ogSubtitle: business.address ?? undefined,
   });
 }
 
