@@ -4,6 +4,10 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { t } from '@/i18n';
 import { createCampaignAction, type CreateCampaignState } from './actions';
 import type { CampaignSegment } from '@/server/repos/marketing';
+import {
+  ALL_CAMPAIGN_CHANNELS,
+  type CampaignChannel,
+} from '@/server/campaigns/channels';
 
 type Props = {
   /** ספירת נמענים לכל פילוח — לתצוגה מקדימה. */
@@ -17,27 +21,50 @@ const inputClass =
 
 const SEGMENTS: CampaignSegment[] = ['all', 'active', 'with_appointments'];
 
+/** ברירת מחדל: כל הערוצים מסומנים (יישלח רק בערוצים שיש ללקוח כתובת עבורם). */
+const defaultChannels = (): Set<CampaignChannel> =>
+  new Set<CampaignChannel>(ALL_CAMPAIGN_CHANNELS);
+
 export default function CampaignForm({ counts }: Props) {
   const m = t.admin.marketingModule;
   const [state, formAction, pending] = useActionState(createCampaignAction, initialState);
   const [segment, setSegment] = useState<CampaignSegment>('all');
+  const [channels, setChannels] = useState<Set<CampaignChannel>>(defaultChannels);
+  const [scheduleMode, setScheduleMode] = useState<'now' | 'later'>('now');
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (state.ok) {
       formRef.current?.reset();
       setSegment('all');
+      setChannels(defaultChannels());
+      setScheduleMode('now');
     }
   }, [state]);
+
+  const toggleChannel = (channel: CampaignChannel) => {
+    setChannels((prev) => {
+      const next = new Set(prev);
+      if (next.has(channel)) next.delete(channel);
+      else next.add(channel);
+      return next;
+    });
+  };
 
   const errorText =
     state.error === 'name'
       ? m.errorName
       : state.error === 'body'
         ? m.errorBody
-        : state.error
-          ? m.errorGeneric
-          : null;
+        : state.error === 'channel'
+          ? m.errorChannel
+          : state.error === 'schedule'
+            ? m.errorSchedule
+            : state.error
+              ? m.errorGeneric
+              : null;
+
+  const successText = state.ok ? (state.scheduled ? m.successScheduled : m.successCreated) : null;
 
   return (
     <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -86,8 +113,68 @@ export default function CampaignForm({ counts }: Props) {
           </p>
         </div>
 
+        <fieldset>
+          <legend className="mb-1 block text-sm font-medium text-slate-700">{m.channelsFieldLabel}</legend>
+          <div className="flex flex-wrap gap-4">
+            {ALL_CAMPAIGN_CHANNELS.map((channel) => (
+              <label key={channel} className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  name="channels"
+                  value={channel}
+                  checked={channels.has(channel)}
+                  onChange={() => toggleChannel(channel)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                {m.channels[channel]}
+              </label>
+            ))}
+          </div>
+          <p className="mt-1 text-sm text-slate-500">{m.channelsHint}</p>
+        </fieldset>
+
+        <fieldset>
+          <legend className="mb-1 block text-sm font-medium text-slate-700">{m.scheduleLabel}</legend>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="radio"
+                name="scheduleMode"
+                value="now"
+                checked={scheduleMode === 'now'}
+                onChange={() => setScheduleMode('now')}
+                className="h-4 w-4 border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              {m.scheduleNow}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="radio"
+                name="scheduleMode"
+                value="later"
+                checked={scheduleMode === 'later'}
+                onChange={() => setScheduleMode('later')}
+                className="h-4 w-4 border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              {m.scheduleLater}
+            </label>
+          </div>
+          {scheduleMode === 'later' ? (
+            <div className="mt-2">
+              <label className="mb-1 block text-sm font-medium text-slate-700">{m.scheduleAtLabel}</label>
+              <input
+                type="datetime-local"
+                name="scheduledAt"
+                required
+                className={inputClass}
+              />
+              <p className="mt-1 text-sm text-slate-500">{m.scheduleTzHint}</p>
+            </div>
+          ) : null}
+        </fieldset>
+
         {errorText ? <p className="text-sm text-red-600">{errorText}</p> : null}
-        {state.ok ? <p className="text-sm text-green-600">{m.successCreated}</p> : null}
+        {successText ? <p className="text-sm text-green-600">{successText}</p> : null}
 
         <button
           type="submit"

@@ -1,0 +1,226 @@
+import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
+import {
+  getDueScheduledCampaigns,
+  sendCampaign,
+} from '@/server/repos/marketing';
+
+/**
+ * הלוגיקה של נקודת הקצה המתוזמנת לשליחת קמפיינים מתוזמנים, מופרדת מ-route.ts
+ * כדי לאפשר בדיקות יחידה עם הזרקת תלויות (dependency injection) ללא DB אמיתי.
+ *
+ * מוגנת בסוד CRON_SECRET (כותרת x-cron-secret או Authorization: Bearer).
+ * מוצאת קמפיינים במצב SCHEDULED שהגיע זמנם (scheduledAt <= now), ושולחת כל אחד
+ * דרך sendCampaign — שמבצע "תפיסה" אטומית (SCHEDULED => SENDING) כדי שריצות cron
+ * מקבילות לא ישלחו את אותו קמפיין פעמיים. בטוחה לריצה חוזרת (אידמפוטנטית).
+ *
+ * ממודל בדיוק על פי ה-cron של התזכורות: אותו דפוס אימות CRON_SECRET, ניסיון חוזר
+ * בודד על כשל חיבור חולף, ותשובת 200 "מנוונת" (degraded) במקום 500 על כשל DB —
+ * כדי שהטריגר המתוזמן (שמכשיל על כל דבר שאינו 200) לא ישלח מייל תקלה על blip חולף.
+ */
+
+// השהיה קצרה לפני ניסיון חוזר בודד על כשל חיבור חולף (חיבור קר ב-Container App).
+const RETRY_DELAY_MS = 500;
+
+// קודי שגיאה של Prisma שמעידים על כשל חיבור/מאגר חולף — שווה לנסות שוב פעם אחת.
+// P2024 = timeout במאגר החיבורים, P1001 = אין גישה לשרת ה-DB,
+// P1008 = timeout על פעולה, P1017 = השרת סגר את החיבור.
+const TRANSIENT_DB_CODES = new Set(['P2024', 'P1001', 'P1008', 'P1017']);
+
+/**
+ * הזרקת התלויות של המטפל — מאפשרת בדיקות יחידה בלי לגעת ב-DB אמיתי.
+ * ברירת המחדל (defaultCampaignCronDeps) מחווטת למימושים האמיתיים.
+ */
+export type CampaignCronDeps = {
+  getDueScheduledCampaigns: typeof getDueScheduledCampaigns;
+  sendCampaign: typeof sendCampaign;
+};
+
+export const defaultCampaignCronDeps: CampaignCronDeps = {
+  getDueScheduledCampaigns,
+  sendCampaign,
+};
+
+function extractSecret(req: Request): string | null {
+  const headerSecret = req.headers.get('x-cron-secret');
+  if (headerSecret) return headerSecret.trim();
+  const auth = req.headers.get('authorization');
+  if (auth && auth.toLowerCase().startsWith('bearer ')) {
+    return auth.slice(7).trim();
+  }
+  return null;
+}
+
+/**
+ * חילוץ בטוח של קוד שגיאת Prisma לצורך דיווח בגוף התשובה. מחזיר קוד קצר בלבד
+ * (למשל P2024/P1001/P2022) או שם המחלקה — לעולם לא הודעת השגיאה המלאה, כתובת
+ * ה-DB, מחרוזת החיבור או כל PII. מאפשר לאבחן את שורש הבעיה בלי לחשוף סודות.
+ */
+export function extractPrismaErrorCode(err: unknown): string {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) return err.code;
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    return err.errorCode ?? err.name;
+  }
+  if (err instanceof Prisma.PrismaClientRustPanicError) return err.name;
+  if (err instanceof Prisma.PrismaClientUnknownRequestError) return err.name;
+  if (err instanceof Prisma.PrismaClientValidationError) {
+    return 'PrismaClientValidationError';
+  }
+  if (err instanceof Error && err.name) return err.name;
+  return 'unknown';
+}
+
+/** האם מדובר בכשל חיבור/מאגר חולף שכדאי לנסות שובו פעם אחת. */
+function isTransientDbError(err: unknown): boolean {
+  if (err instanceof Prisma.PrismaClientInitializationError) return true;
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    return TRANSIENT_DB_CODES.has(err.code);
+  }
+  return false;
+}
+
+/** הודעה גנרית וקצרה לפי קוד — ללא כל פרט תשתית/סוד/PII. */
+function safeDegradedMessage(code: string): string {
+  switch (code) {
+    case 'P2024':
+      return 'database connection pool timeout';
+    case 'P1001':
+      return 'cannot reach database server';
+    case 'P1008':
+      return 'database operation timed out';
+    case 'P1017':
+      return 'database connection closed';
+    case 'P2021':
+    case 'P2022':
+      return 'database schema mismatch';
+    default:
+      return 'campaign run degraded';
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * שליפת הקמפיינים המתוזמנים עם ניסיון חוזר בודד ותחום על כשל חיבור חולף בלבד,
+ * כדי שחיבור "קר" ראשון לא יפיל את כל הריצה. כשל שאינו חולף (למשל סחף סכימה
+ * P2022) נזרק מיד ללא המתנה — כדי שהמטפל ידווח עליו מהר ולא יבזבז זמן על ניסיון חוזר.
+ */
+async function loadDueWithRetry(deps: CampaignCronDeps, now: Date) {
+  try {
+    return await deps.getDueScheduledCampaigns(now);
+  } catch (err) {
+    if (!isTransientDbError(err)) throw err;
+    console.warn(
+      `[cron/campaigns] transient DB error on first attempt (code=${extractPrismaErrorCode(err)}); retrying once`,
+    );
+    await sleep(RETRY_DELAY_MS);
+    return deps.getDueScheduledCampaigns(now);
+  }
+}
+
+export async function handleCampaignCron(
+  req: Request,
+  deps: CampaignCronDeps = defaultCampaignCronDeps,
+): Promise<Response> {
+  const expected = process.env.CRON_SECRET;
+  // תצורה חסרה בצד השרת — מחזיר 500 מפורש (לא 401) כדי להבחין מכשל אימות.
+  // זו תקלת תצורה אמיתית, לא כשל חולף, ולכן נשארת 500.
+  if (!expected) {
+    console.error('[cron/campaigns] CRON_SECRET is not set — refusing to run.');
+    return NextResponse.json(
+      { ok: false, error: 'cron_secret_unset' },
+      { status: 500 },
+    );
+  }
+
+  const provided = extractSecret(req);
+  if (provided !== expected) {
+    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  }
+
+  const now = new Date();
+  const provider =
+    process.env.MESSAGING_PROVIDER ?? process.env.SMS_PROVIDER ?? 'console';
+
+  // המונים מוגדרים בטווח החיצוני כדי שגם כשל באמצע הלולאה (למשל sendCampaign)
+  // עדיין יאפשר לדווח על ההתקדמות החלקית בגוף התשובה המנוונת (degraded).
+  let found = 0;
+  let sent = 0;
+  let skipped = 0;
+  let alreadyClaimed = 0;
+  let recipients = 0;
+  let messagesSent = 0;
+  let messagesFailed = 0;
+
+  try {
+    const due = await loadDueWithRetry(deps, now);
+    found = due.length;
+
+    for (const campaign of due) {
+      const result = await deps.sendCampaign(campaign.businessId, campaign.id);
+
+      if (result.ok) {
+        sent += 1;
+        recipients += result.recipientCount;
+        messagesSent += result.sentCount;
+        messagesFailed += result.failedCount;
+        continue;
+      }
+
+      // already_sent = נתפס על ידי ריצה מקבילה / כבר טופל (התפיסה האטומית מנעה כפילות).
+      if (result.reason === 'already_sent') {
+        alreadyClaimed += 1;
+      } else {
+        // no_recipients / not_found — אין מה לשלוח, מדלגים בלי להיכשל.
+        skipped += 1;
+        console.warn(
+          `[cron/campaigns] skipped campaign=${campaign.id} reason=${result.reason}`,
+        );
+      }
+    }
+
+    const counts = {
+      found,
+      sent,
+      skipped,
+      alreadyClaimed,
+      recipients,
+      messagesSent,
+      messagesFailed,
+    };
+    console.log(
+      `[cron/campaigns] provider=${provider} now=${now.toISOString()} ` +
+        `found=${counts.found} sent=${counts.sent} skipped=${counts.skipped} ` +
+        `alreadyClaimed=${counts.alreadyClaimed} recipients=${counts.recipients} ` +
+        `messagesSent=${counts.messagesSent} messagesFailed=${counts.messagesFailed}`,
+    );
+
+    return NextResponse.json({ ok: true, provider, counts });
+  } catch (err) {
+    // כשל DB/ריצה ברמה העליונה (למשל timeout חיבור חולף, או סחף סכימה): מתעדים
+    // ומחזירים 200 עם גוף "מנוון" (degraded) במקום 500. הטריגר המתוזמן בודק רק
+    // סטטוס 200 ומכשיל את הריצה (ושולח מייל תקלה) על כל דבר אחר — ולכן blip חולף
+    // ב-DB לא צריך להפיל את המתזמן. הקוד (code) בגוף מאפשר למפעיל לאבחן את השורש
+    // (curl עם הסוד) בלי לחשוף סודות/כתובת DB/PII. שים לב: אין כאן secret/PII.
+    console.error('[cron/campaigns] unexpected error', err);
+    const code = extractPrismaErrorCode(err);
+    return NextResponse.json({
+      ok: false,
+      degraded: true,
+      code,
+      message: safeDegradedMessage(code),
+      provider,
+      counts: {
+        found,
+        sent,
+        skipped,
+        alreadyClaimed,
+        recipients,
+        messagesSent,
+        messagesFailed,
+      },
+    });
+  }
+}

@@ -80,3 +80,27 @@ export async function sendReminderEmail(
   const transport = nodemailer.createTransport(EMAIL_SERVER as string);
   await transport.sendMail({ from: EMAIL_FROM, to, subject, text, html });
 }
+
+/**
+ * שליחת מייל דיוור כללי (קמפיינים) דרך אותה תשתית SMTP.
+ * בניגוד ל-sendReminderEmail — כאן נפילת ה-console *כן* נחשבת נשלחה, כי בקמפיינים
+ * מצב ה-console הוא מתאם הפיתוח המכוון (ברירת המחדל כשאין תצורת ספק חי). אם SMTP
+ * מוגדר והשליחה נכשלת — השגיאה מתפשטת לקורא (שכבת המסירה) שמסמן את הנמען ככשל.
+ */
+export async function sendEmail(
+  to: string,
+  subject: string,
+  text: string,
+  html?: string,
+): Promise<void> {
+  if (!emailConfigured) {
+    // מתאם פיתוח: כתיבה ללוג בלבד (ברירת המחדל של מצב ה-console לקמפיינים).
+    console.info(`[email:console] campaign to=${to} subject=${subject}`);
+    return;
+  }
+
+  // ייבוא דינמי — ראו ההערה ב-sendEmailOtp.
+  const nodemailer = await import('nodemailer');
+  const transport = nodemailer.createTransport(EMAIL_SERVER as string);
+  await transport.sendMail({ from: EMAIL_FROM, to, subject, text, html: html ?? text });
+}

@@ -136,9 +136,10 @@ enum DocumentType {
   CREDIT_NOTE // חשבונית זיכוי
 }
 
-// סטטוס קמפיין דיוור SMS.
+// סטטוס קמפיין דיוור.
 enum CampaignStatus {
   DRAFT // טיוטה
+  SCHEDULED // מתוזמן לשליחה עתידית
   SENDING // בשליחה
   SENT // נשלח
   FAILED // נכשל
@@ -720,13 +721,17 @@ model Campaign {
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   name    String // שם הקמפיין (לזיהוי פנימי)
-  body    String // תוכן הודעת ה-SMS
+  body    String // תוכן ההודעה
   segment String @default("all") // מפתח סגמנט: all / active / with_appointments
+
+  // ערוצי המסירה של הקמפיין: email / sms / whatsapp. ריק = ברירת המחדל ההיסטורית (whatsapp/sms).
+  channels String[] @default([])
 
   status         CampaignStatus @default(DRAFT)
   recipientCount Int            @default(0) // כמות נמענים בפילוח בזמן השליחה
   sentCount      Int            @default(0)
   failedCount    Int            @default(0)
+  scheduledAt    DateTime? // מועד שליחה מתוזמן (UTC); כשמוגדר והסטטוס SCHEDULED — נאסף על ידי ה-cron
   sentAt         DateTime? // מתי בוצעה השליחה
 
   createdAt DateTime @default(now())
@@ -748,10 +753,15 @@ model MessageLog {
   clientId   String?
   client     Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
-  phone  String
-  body   String
-  status MessageStatus @default(SENT)
-  error  String? // הודעת שגיאה אם השליחה נכשלה
+  // יעד ההודעה: טלפון עבור SMS/וואטסאפ (nullable — נמען מבוסס-מייל בלבד אין לו טלפון).
+  phone   String?
+  // ערוץ המסירה בפועל: sms / whatsapp / email. ברירת מחדל sms לתאימות לאחור.
+  channel String        @default("sms")
+  // כתובת היעד הכללית (טלפון או מייל) לתצוגה ולוג; משלים את phone עבור ערוץ מייל.
+  address String?
+  body    String
+  status  MessageStatus @default(SENT)
+  error   String? // הודעת שגיאה אם השליחה נכשלה
 
   createdAt DateTime @default(now())
 
