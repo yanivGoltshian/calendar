@@ -15,6 +15,13 @@ export const metadata = buildMetadata({
 });
 
 export default function PrivacyPage() {
+  const contactDetails = [
+    { label: 'שם בעל המאגר', value: LEGAL_COMPANY.legalName },
+    { label: 'דוא״ל', value: LEGAL_COMPANY.contactEmail },
+    { label: 'טלפון', value: LEGAL_COMPANY.contactPhone },
+    { label: 'כתובת', value: LEGAL_COMPANY.address },
+  ].filter((detail) => detail.value.trim().length > 0);
+
   return (
     <LegalArticle
       title="מדיניות פרטיות"
@@ -34,9 +41,10 @@ export default function PrivacyPage() {
 
       <LegalSection id="controller" title="2. בעל מאגר המידע">
         <LegalText>
-          בעל מאגר המידע והאחראי לעיבודו הוא {LEGAL_COMPANY.legalName}, ח״פ{' '}
-          {LEGAL_COMPANY.registrationNumber}, מכתובת {LEGAL_COMPANY.address}. לפניות בנושאי פרטיות ניתן
-          ליצור קשר בדוא״ל {LEGAL_COMPANY.contactEmail}.
+          בעל מאגר המידע והאחראי לעיבודו הוא {LEGAL_COMPANY.legalName}
+          {LEGAL_COMPANY.registrationNumber ? <>, ח״פ {LEGAL_COMPANY.registrationNumber}</> : null}
+          {LEGAL_COMPANY.address ? <>, מכתובת {LEGAL_COMPANY.address}</> : null}. לפניות בנושאי פרטיות
+          ניתן ליצור קשר בדוא״ל {LEGAL_COMPANY.contactEmail}.
         </LegalText>
       </LegalSection>
 
@@ -174,10 +182,11 @@ export default function PrivacyPage() {
       <LegalSection id="contact" title="15. יצירת קשר">
         <LegalText>בכל שאלה או בקשה בנוגע לפרטיות ולמידע המוחזק אודותיכם, ניתן לפנות אלינו:</LegalText>
         <LegalList>
-          <LegalItem>שם בעל המאגר: {LEGAL_COMPANY.legalName}</LegalItem>
-          <LegalItem>דוא״ל: {LEGAL_COMPANY.contactEmail}</LegalItem>
-          <LegalItem>טלפון: {LEGAL_COMPANY.contactPhone}</LegalItem>
-          <LegalItem>כתובת: {LEGAL_COMPANY.address}</LegalItem>
+          {contactDetails.map((detail) => (
+            <LegalItem key={detail.label}>
+              {detail.label}: {detail.value}
+            </LegalItem>
+          ))}
         </LegalList>
       </LegalSection>
     </LegalArticle>

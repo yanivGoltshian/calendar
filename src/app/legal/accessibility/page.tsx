@@ -15,6 +15,13 @@ export const metadata = buildMetadata({
 });
 
 export default function AccessibilityPage() {
+  const coordinatorDetails = [
+    { label: 'שם', value: LEGAL_ACCESSIBILITY.coordinatorName },
+    { label: 'דוא״ל', value: LEGAL_ACCESSIBILITY.coordinatorEmail },
+    { label: 'טלפון', value: LEGAL_ACCESSIBILITY.coordinatorPhone },
+    { label: 'כתובת', value: LEGAL_ACCESSIBILITY.coordinatorAddress },
+  ].filter((detail) => detail.value.trim().length > 0);
+
   return (
     <LegalArticle
       title="הצהרת נגישות"
@@ -68,10 +75,11 @@ export default function AccessibilityPage() {
           לפניות בנושאי נגישות, לרבות דיווח על תקלה או בקשה לקבלת סיוע, ניתן לפנות לרכז או רכזת הנגישות:
         </LegalText>
         <LegalList>
-          <LegalItem>שם: {LEGAL_ACCESSIBILITY.coordinatorName}</LegalItem>
-          <LegalItem>דוא״ל: {LEGAL_ACCESSIBILITY.coordinatorEmail}</LegalItem>
-          <LegalItem>טלפון: {LEGAL_ACCESSIBILITY.coordinatorPhone}</LegalItem>
-          <LegalItem>כתובת: {LEGAL_ACCESSIBILITY.coordinatorAddress}</LegalItem>
+          {coordinatorDetails.map((detail) => (
+            <LegalItem key={detail.label}>
+              {detail.label}: {detail.value}
+            </LegalItem>
+          ))}
         </LegalList>
       </LegalSection>
 

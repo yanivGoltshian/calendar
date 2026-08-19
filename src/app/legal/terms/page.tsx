@@ -15,6 +15,13 @@ export const metadata = buildMetadata({
 });
 
 export default function TermsPage() {
+  const contactDetails = [
+    { label: 'שם', value: LEGAL_COMPANY.legalName },
+    { label: 'דוא״ל', value: LEGAL_COMPANY.contactEmail },
+    { label: 'טלפון', value: LEGAL_COMPANY.contactPhone },
+    { label: 'כתובת', value: LEGAL_COMPANY.address },
+  ].filter((detail) => detail.value.trim().length > 0);
+
   return (
     <LegalArticle
       title="תקנון ותנאי שימוש"
@@ -24,10 +31,10 @@ export default function TermsPage() {
       <LegalSection id="general" title="1. כללי">
         <LegalText>
           תנאי שימוש אלה (להלן: &rdquo;התנאים&rdquo; או &rdquo;התקנון&rdquo;) מהווים הסכם משפטי מחייב בינכם
-          (להלן: &rdquo;המשתמש&rdquo; או &rdquo;אתם&rdquo;) לבין {LEGAL_COMPANY.legalName}, ח״פ{' '}
-          {LEGAL_COMPANY.registrationNumber} (להלן: &rdquo;החברה&rdquo;, &rdquo;אנחנו&rdquo; או
-          &rdquo;{BRAND.name}&rdquo;), המפעילה את פלטפורמת זימון התורים וניהול העסק (להלן:
-          &rdquo;השירות&rdquo; או &rdquo;הפלטפורמה&rdquo;).
+          (להלן: &rdquo;המשתמש&rdquo; או &rdquo;אתם&rdquo;) לבין {LEGAL_COMPANY.legalName}
+          {LEGAL_COMPANY.registrationNumber ? <>, ח״פ {LEGAL_COMPANY.registrationNumber}</> : null} (להלן:
+          &rdquo;החברה&rdquo;, &rdquo;אנחנו&rdquo; או &rdquo;{BRAND.name}&rdquo;), המפעילה את פלטפורמת זימון
+          התורים וניהול העסק (להלן: &rdquo;השירות&rdquo; או &rdquo;הפלטפורמה&rdquo;).
         </LegalText>
         <LegalText>
           יש לקרוא את התנאים בעיון לפני השימוש בשירות. אם אינכם מסכימים לתנאי כלשהו מתנאים אלה, אינכם
@@ -199,10 +206,11 @@ export default function TermsPage() {
       <LegalSection id="contact" title="16. יצירת קשר">
         <LegalText>בכל שאלה בנוגע לתנאים אלה ניתן לפנות אלינו:</LegalText>
         <LegalList>
-          <LegalItem>שם: {LEGAL_COMPANY.legalName}</LegalItem>
-          <LegalItem>דוא״ל: {LEGAL_COMPANY.contactEmail}</LegalItem>
-          <LegalItem>טלפון: {LEGAL_COMPANY.contactPhone}</LegalItem>
-          <LegalItem>כתובת: {LEGAL_COMPANY.address}</LegalItem>
+          {contactDetails.map((detail) => (
+            <LegalItem key={detail.label}>
+              {detail.label}: {detail.value}
+            </LegalItem>
+          ))}
         </LegalList>
       </LegalSection>
     </LegalArticle>
