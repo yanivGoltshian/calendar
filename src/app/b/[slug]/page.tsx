@@ -6,7 +6,8 @@ import { getBusinessBySlug } from '@/server/repos/business';
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatMinutes } from '@/lib/time';
-import { buildMetadata, localBusinessJsonLd } from '@/lib/seo';
+import { localBusinessJsonLd } from '@/lib/seo';
+import { buildBusinessPageMetadata } from './metadata';
 import { JsonLd } from '@/components/JsonLd';
 import InstallApp from '@/components/pwa/InstallApp';
 import { resolveBrandColor, readableText } from '@/lib/brandColor';
@@ -33,15 +34,7 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const business = await getBusinessBySlug(slug);
-  if (!business) return { title: 'עסק' };
-
-  return buildMetadata({
-    title: business.name,
-    description:
-      business.description?.slice(0, 160) ??
-      `קביעת תור אונליין אצל ${business.name}. בחירת שירות, בחירת מועד ואישור מיידי.`,
-    path: `/b/${business.slug}`,
-  });
+  return buildBusinessPageMetadata(business);
 }
 
 export default async function BusinessPublicPage({ params }: Props) {

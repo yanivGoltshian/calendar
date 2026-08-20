@@ -37,6 +37,13 @@ type BuildMetadataOptions = {
   description?: string;
   path?: string;
   noIndex?: boolean;
+  /**
+   * שליטה בתמונת השיתוף (Open Graph/Twitter):
+   * - undefined (ברירת מחדל): כרטיס הפלטפורמה הסטטי — התנהגות קיימת לעמוד הבית ושאר העמודים.
+   * - string: כתובת תמונה מותאמת שדורסת את כרטיס הפלטפורמה.
+   * - null: השמטת תגיות התמונה לגמרי, כדי לאפשר ל-opengraph-image (file-convention) לספק אותן.
+   */
+  image?: string | null;
 };
 
 /**
@@ -49,12 +56,20 @@ export function buildMetadata(options: BuildMetadataOptions = {}): Metadata {
     description = SITE_DESCRIPTION,
     path = '/',
     noIndex = false,
+    image,
   } = options;
 
   const canonical = absoluteUrl(path);
-  const image = ogCardUrl();
-  const imageType = 'image/jpeg';
   const resolvedTitle = title ?? BRAND.name;
+
+  // undefined => כרטיס הפלטפורמה (JPEG); string => דריסה; null => השמטת תמונות.
+  const cardImage = image === undefined ? ogCardUrl() : image;
+  const ogImages =
+    cardImage === null
+      ? undefined
+      : image === undefined
+        ? [{ url: cardImage, type: 'image/jpeg', width: 1200, height: 630, alt: resolvedTitle }]
+        : [{ url: cardImage, alt: resolvedTitle }];
 
   return {
     title,
@@ -70,13 +85,13 @@ export function buildMetadata(options: BuildMetadataOptions = {}): Metadata {
       siteName: BRAND.name,
       title: resolvedTitle,
       description,
-      images: [{ url: image, type: imageType, width: 1200, height: 630, alt: resolvedTitle }],
+      ...(ogImages ? { images: ogImages } : {}),
     },
     twitter: {
       card: 'summary_large_image',
       title: resolvedTitle,
       description,
-      images: [image],
+      ...(ogImages ? { images: ogImages.map((img) => img.url) } : {}),
     },
   };
 }
