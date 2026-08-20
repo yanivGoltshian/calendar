@@ -4,7 +4,10 @@ import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
-import OnboardingWizard from './OnboardingWizard';
+import { listServices } from '@/server/repos/services';
+import { bookingUrl } from '@/lib/booking-link';
+import { bookingQrSvg } from '@/lib/qr-svg';
+import OnboardingWizard, { type WizardService } from './OnboardingWizard';
 
 export const metadata: Metadata = { title: t.admin.onboarding.title };
 
@@ -13,6 +16,20 @@ export default async function AdminOnboardingPage() {
   if (!business) notFound();
 
   const settings = await getOrCreateSettings(business.id);
+  const services = await listServices(business.id);
+
+  const link = bookingUrl(business.slug);
+  const qr = bookingQrSvg(link, {
+    label: t.admin.onboarding.goLive.share.qrAlt.replace('{name}', business.name),
+  });
+
+  const wizardServices: WizardService[] = services.map((s) => ({
+    id: s.id,
+    name: s.name,
+    durationMin: s.durationMin,
+    priceAgorot: s.priceAgorot,
+    hidden: s.hidden,
+  }));
 
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
@@ -28,7 +45,14 @@ export default async function AdminOnboardingPage() {
         </p>
       ) : null}
 
-      <OnboardingWizard business={business} settings={settings} />
+      <OnboardingWizard
+        businessName={business.name}
+        brandColor={business.brandColor ?? ''}
+        logoUrl={business.logoUrl ?? ''}
+        services={wizardServices}
+        bookingUrl={link}
+        bookingQr={qr}
+      />
     </main>
   );
 }
