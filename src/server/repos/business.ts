@@ -140,8 +140,8 @@ export async function createBusiness(input: {
   referralSource?: string | null;
 }) {
   const slug = await generateUniqueSlug(input.name);
-  // תקופת ניסיון חינם של 14 יום מרגע היצירה (חבילת בסיס, מצב trialing).
-  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  // תקופת ניסיון חינם של 30 יום מרגע היצירה (חבילת בסיס, מצב trialing).
+  const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const business = await prisma.business.create({
     data: {
       name: input.name,

@@ -50,11 +50,13 @@ export default async function HomePage() {
   );
   const features = Object.entries(m.features.items);
   const steps = Object.values(m.howItWorks.steps);
-  const plans = [
-    { ...m.pricing.plans.free, popular: false },
-    { ...m.pricing.plans.pro, popular: true },
-  ];
   const faqItems = Object.values(m.faq.items);
+
+  // תמחור חדש (D5): חודש ניסיון חינם ואז שתי חבילות ללא מחיר מספרי, עם פנייה אישית.
+  const q = t.quote.home;
+  const upgradeHref = (plan: 'STANDARD' | 'PREMIUM') =>
+    isReturningOwner ? `/admin/upgrade?plan=${plan}` : ctaPrimaryHref;
+  const upgradeLabel = isReturningOwner ? q.ctaLoggedIn : q.ctaGuest;
 
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
@@ -280,65 +282,86 @@ export default async function HomePage() {
             <Reveal className="mx-auto max-w-2xl text-center">
               <Badge tone="brand" className="mb-4">{m.nav.pricing}</Badge>
               <h2 className="font-display text-3xl font-bold text-sand-900 dark:text-sand-50 sm:text-4xl">
-                {m.pricing.title}
+                {q.title}
               </h2>
-              <p className="mt-4 text-lg text-sand-600 dark:text-sand-300">{m.pricing.subtitle}</p>
+              <p className="mt-4 text-lg text-sand-600 dark:text-sand-300">{q.subtitle}</p>
             </Reveal>
-            <div className="mx-auto mt-12 grid max-w-4xl gap-6 sm:grid-cols-2">
-              {plans.map((plan) => (
-                <Reveal key={plan.name} direction="up">
-                  <Card
-                    className={
-                      plan.popular
-                        ? 'relative flex h-full flex-col border-brand-300 shadow-elevated ring-2 ring-brand-500/40 dark:border-brand-700'
-                        : 'relative flex h-full flex-col'
-                    }
-                  >
-                    {plan.popular && (
-                      <span className="absolute -top-3 start-8 rounded-full bg-brand-gradient px-4 py-1 text-xs font-bold text-white shadow-glow-soft">
-                        {m.pricing.popular}
-                      </span>
-                    )}
-                    <div className="mb-1 font-display text-lg font-bold text-sand-900 dark:text-sand-50">
-                      {plan.name}
-                    </div>
-                    <div className="mb-3 flex items-baseline gap-1">
-                      <span className="font-display text-4xl font-bold text-sand-900 dark:text-sand-50">
-                        {plan.price}
-                      </span>
-                      {plan.price.includes('₪') && (
-                        <span className="text-sm text-sand-500">{m.pricing.monthlySuffix}</span>
-                      )}
-                    </div>
-                    <p className="mb-6 text-sm leading-relaxed text-sand-600 dark:text-sand-300">
-                      {plan.desc}
-                    </p>
-                    <ul className="mb-8 space-y-3 text-sm">
-                      {plan.features.map((feat) => (
-                        <li key={feat} className="flex items-start gap-2.5 text-sand-700 dark:text-sand-200">
-                          <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-100 text-xs text-brand-700 dark:bg-brand-950/60 dark:text-brand-200" aria-hidden>
-                            ✓
-                          </span>
-                          {feat}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="mt-auto">
-                      <Button
-                        href={ctaPrimaryHref}
-                        variant={plan.popular ? 'primary' : 'secondary'}
-                        size="lg"
-                        className="w-full"
-                      >
-                        {ownerPrimaryLabel(isReturningOwner, plan.cta)}
-                      </Button>
-                    </div>
-                  </Card>
-                </Reveal>
-              ))}
+            <div className="mx-auto mt-12 grid max-w-5xl gap-6 lg:grid-cols-3">
+              {/* חודש ניסיון חינם עם כל היכולות */}
+              <Reveal direction="up">
+                <Card className="relative flex h-full flex-col border-brand-300 shadow-elevated ring-2 ring-brand-500/40 dark:border-brand-700">
+                  <span className="absolute -top-3 start-8 rounded-full bg-brand-gradient px-4 py-1 text-xs font-bold text-white shadow-glow-soft">
+                    {q.trial.badge}
+                  </span>
+                  <div className="mb-1 font-display text-lg font-bold text-sand-900 dark:text-sand-50">
+                    {q.trial.name}
+                  </div>
+                  <p className="mb-6 text-sm leading-relaxed text-sand-600 dark:text-sand-300">
+                    {q.trial.tagline}
+                  </p>
+                  <ul className="mb-8 space-y-3 text-sm">
+                    {q.trial.features.map((feat) => (
+                      <li key={feat} className="flex items-start gap-2.5 text-sand-700 dark:text-sand-200">
+                        <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-100 text-xs text-brand-700 dark:bg-brand-950/60 dark:text-brand-200" aria-hidden>
+                          ✓
+                        </span>
+                        {feat}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-auto">
+                    <Button href={ctaPrimaryHref} variant="primary" size="lg" className="w-full">
+                      {ownerPrimaryLabel(isReturningOwner, q.ctaGuest)}
+                    </Button>
+                  </div>
+                </Card>
+              </Reveal>
+
+              {/* שתי החבילות המתקדמות — ללא מחיר מספרי, פנייה אישית */}
+              {(['standard', 'premium'] as const).map((key) => {
+                const plan = q[key];
+                const planCode = key === 'premium' ? 'PREMIUM' : 'STANDARD';
+                return (
+                  <Reveal key={key} direction="up">
+                    <Card className="relative flex h-full flex-col">
+                      <div className="mb-1 font-display text-lg font-bold text-sand-900 dark:text-sand-50">
+                        {plan.name}
+                      </div>
+                      <div className="mb-3">
+                        <span className="inline-block rounded-full bg-sand-900 px-3 py-1 text-xs font-semibold text-brand-100 dark:bg-sand-100 dark:text-sand-900">
+                          {plan.price}
+                        </span>
+                      </div>
+                      <p className="mb-6 text-sm leading-relaxed text-sand-600 dark:text-sand-300">
+                        {plan.tagline}
+                      </p>
+                      <ul className="mb-8 space-y-3 text-sm">
+                        {plan.features.map((feat) => (
+                          <li key={feat} className="flex items-start gap-2.5 text-sand-700 dark:text-sand-200">
+                            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-100 text-xs text-brand-700 dark:bg-brand-950/60 dark:text-brand-200" aria-hidden>
+                              ✓
+                            </span>
+                            {feat}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-auto">
+                        <Button
+                          href={upgradeHref(planCode)}
+                          variant="secondary"
+                          size="lg"
+                          className="w-full"
+                        >
+                          {upgradeLabel}
+                        </Button>
+                      </div>
+                    </Card>
+                  </Reveal>
+                );
+              })}
             </div>
             <Reveal>
-              <p className="mt-8 text-center text-sm text-sand-500">{m.pricing.note}</p>
+              <p className="mt-8 text-center text-sm text-sand-500">{q.footnote}</p>
             </Reveal>
             <Reveal direction="up">
               <div className="mx-auto mt-10 max-w-2xl rounded-3xl border border-sand-200 bg-white/70 p-6 shadow-sm dark:border-sand-800 dark:bg-sand-950/40 sm:p-8">

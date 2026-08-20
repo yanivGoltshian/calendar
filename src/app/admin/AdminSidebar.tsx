@@ -26,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/punch-cards', label: t.admin.nav.punchCards },
   { href: '/admin/waitlist', label: t.admin.nav.waitlist },
   { href: '/admin/onboarding', label: t.admin.nav.onboarding },
+  { href: '/admin/upgrade', label: t.quote.nav },
   { href: '/admin/settings', label: t.admin.nav.settings },
 ];
 
