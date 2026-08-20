@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getBusinessesOwnedByEmail } from '@/server/repos/business';
+import { countPendingAppointments } from '@/server/repos/appointments';
 import { getBusinessAccess } from '@/server/subscription';
 import { isPlatformAdminEmail } from '@/server/platformAdmin';
 import AdminSidebar from './AdminSidebar';
@@ -68,9 +69,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     return <Paywall />;
   }
 
+  // ספירת תורים הממתינים לאישור לחיווי (תג) על פריט "הזמנות" בסרגל הצד.
+  const pendingCount = await countPendingAppointments(owned[0].id);
+
   return (
     <div dir="rtl" className="flex min-h-screen flex-col bg-slate-50 md:flex-row">
-      <AdminSidebar />
+      <AdminSidebar pendingCount={pendingCount} />
       <div
         className="min-w-0 flex-1"
         style={{

@@ -12,6 +12,7 @@ export async function getBusinessBySlug(slug: string) {
     where: { slug },
     include: {
       settings: true,
+      owner: { select: { email: true } },
       services: {
         where: { hidden: false },
         orderBy: { sortOrder: 'asc' },

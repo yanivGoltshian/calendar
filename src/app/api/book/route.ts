@@ -8,6 +8,8 @@ import {
 } from '@/server/repos/appointments';
 import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
+import { notifyOwnerOfBooking } from '@/server/notifications/ownerBooking';
+import { absoluteUrl } from '@/lib/seo';
 import { getClientSession } from '@/lib/session';
 import { resolveGuestIdentity } from '@/server/booking/guestIdentity';
 import { checkBookRequestAllowed } from '@/server/repos/bookRateLimit';
@@ -158,6 +160,28 @@ export async function POST(req: Request) {
   const reminderLeadMs = reminderLeadHours * 60 * 60 * 1000;
   const sendAt = new Date(Math.max(startAt.getTime() - reminderLeadMs, Date.now() + 60_000));
   await createReminder(appointment.id, sendAt);
+
+  // התראת בעל העסק על הזמנה הממתינה לאישור (best-effort, לעולם לא חוסמת).
+  // היעד הוא מייל העסק עצמו (ownerEmail / owner.email) — לא מייל הפלטפורמה.
+  if (status === 'PENDING') {
+    try {
+      await notifyOwnerOfBooking({
+        appointmentId: appointment.id,
+        businessName: business.name,
+        ownerEmail: business.ownerEmail,
+        ownerUserEmail: business.owner?.email ?? null,
+        clientName,
+        clientPhone: clientPhone ?? null,
+        services: services.map((s) => ({ name: s.name, priceAgorot: s.priceAgorot })),
+        startAt,
+        timezone: business.timezone,
+        totalPriceAgorot: totalPrice,
+        approvalsUrl: absoluteUrl('/admin/appointments?tab=pending'),
+      });
+    } catch {
+      // ההזמנה כבר נוצרה והוחזרה בהצלחה; כשל התראה אינו משפיע על התשובה.
+    }
+  }
 
   return NextResponse.json({ ok: true, appointmentId: appointment.id, status });
 }
