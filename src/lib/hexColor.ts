@@ -39,3 +39,51 @@ export function normalizeHex(input: string): string | null {
 export function toColorInputValue(input: string, fallback: string): string {
   return normalizeHex(input) ?? fallback;
 }
+
+/** מפרק hex תקין לשלושה ערוצי צבע (0–255). קלט לא תקין נופל לשחור. */
+export function toRgb(hex: string): [number, number, number] {
+  const value = normalizeHex(hex) ?? '#000000';
+  return [
+    parseInt(value.slice(1, 3), 16),
+    parseInt(value.slice(3, 5), 16),
+    parseInt(value.slice(5, 7), 16),
+  ];
+}
+
+function clampChannel(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function channelToHex(value: number): string {
+  return clampChannel(value).toString(16).padStart(2, '0');
+}
+
+/** מרכיב צבע hex משלושה ערוצי RGB (עם קיטום לתחום 0–255). */
+export function rgbToHex(r: number, g: number, b: number): string {
+  return `#${channelToHex(r)}${channelToHex(g)}${channelToHex(b)}`;
+}
+
+/** מערבב שני צבעים לפי משקל 0–1 (0 = הצבע הראשון, 1 = הצבע השני). */
+export function mix(from: string, to: string, weight: number): string {
+  const w = Math.max(0, Math.min(1, weight));
+  const [r1, g1, b1] = toRgb(from);
+  const [r2, g2, b2] = toRgb(to);
+  return rgbToHex(r1 + (r2 - r1) * w, g1 + (g2 - g1) * w, b1 + (b2 - b1) * w);
+}
+
+/** מבהיר צבע על ידי ערבוב עם לבן (amount 0–1). שימושי לגוונים בהירים. */
+export function lighten(hex: string, amount: number): string {
+  return mix(hex, '#ffffff', amount);
+}
+
+/** מכהה צבע על ידי ערבוב עם שחור (amount 0–1). שימושי לגוונים כהים. */
+export function darken(hex: string, amount: number): string {
+  return mix(hex, '#000000', amount);
+}
+
+/** מחזיר rgba() עם שקיפות (alpha 0–1) — שימושי לרקעים רכים ולמסגרות. */
+export function withAlpha(hex: string, alpha: number): string {
+  const a = Math.max(0, Math.min(1, alpha));
+  const [r, g, b] = toRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${Number(a.toFixed(3))})`;
+}

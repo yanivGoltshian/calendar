@@ -74,6 +74,12 @@ enum BusinessType {
   OTHER // אחר
 }
 
+// סגנון העמוד הציבורי של העסק (אדיטיבי): עמוד הזמנות ממוקד או עמוד נחיתה עשיר.
+enum PublicPageStyle {
+  BOOKING // עמוד הזמנות ממוקד (ברירת מחדל)
+  LANDING // עמוד נחיתה עשיר עם כותרת ראשית, יתרונות, גלריה והמלצות
+}
+
 // חבילת המנוי של העסק בפלטפורמה (אפוס חיוב/מנוי — אדיטיבי).
 enum BusinessPlan {
   basic // חבילת בסיס (ברירת מחדל, מתחילה בתקופת ניסיון)
@@ -174,6 +180,11 @@ model Business {
   coverImageUrl String?
   timezone      String        @default("Asia/Jerusalem")
   type          BusinessType?
+  // בחירת סגנון העמוד הציבורי (אדיטיבי, ברירת מחדל = עמוד הזמנות).
+  publicPageStyle PublicPageStyle @default(BOOKING)
+  // תוכן עמוד הנחיתה (אופציונלי): { heroHeadline?, heroSubtext?, benefits?:[{title,text}],
+  // galleryImageUrls?:string[], testimonials?:[{name,quote}] }. nullable ולכן בטוח לפרודקשן.
+  landingContent  Json?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
