@@ -894,10 +894,11 @@ const he = {
         free: 'ללא תשלום',
         addOwn: 'הוספת שירות משלך',
         newNameLabel: 'שם השירות',
-        newNamePlaceholder: 'למשל: תספורת גברים',
+        newNamePlaceholder: 'למשל: {example}',
         newDurationLabel: 'משך (דקות)',
         newPriceLabel: 'מחיר (₪)',
         addCta: 'הוספה',
+        removeAdded: 'הסרה',
         cancelAdd: 'ביטול',
         emptyWarning: 'צריך להשאיר לפחות שירות אחד פעיל כדי להמשיך.',
         continueCta: 'המשך עם {n} שירותים',
@@ -911,8 +912,15 @@ const he = {
         presets: {
           'sun-thu': { label: 'א׳–ה׳ · 09:00–18:00', hint: 'ימי חול, סוף שבוע סגור' },
           'every-day': { label: 'א׳–ש׳ · 09:00–20:00', hint: 'כל השבוע, שעות ארוכות' },
-          custom: { label: 'מותאם אישית', hint: 'שמירה על מה שכבר מוגדר, לעריכה ידנית' },
+          custom: { label: 'מותאם אישית', hint: 'בחירת ימים ושעות באופן ידני' },
         },
+        custom: {
+          title: 'בחרו ימים ושעות',
+          closed: 'סגור',
+          days: ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'],
+        },
+        staffNote:
+          'רוצים ימים ושעות שונים לכל עובד? בהמשך אפשר להוסיף נותני שירות, ולכל אחד לקבוע ימים ושעות משלו.',
         continueCta: 'המשך',
       },
       branding: {
