@@ -6,9 +6,14 @@ import {
   normalizeLandingContent,
   normalizePublicPageStyle,
   isLandingContentEmpty,
+  resolveLandingSections,
+  LANDING_SECTION_ORDER,
+  TOGGLEABLE_LANDING_SECTIONS,
   MAX_BENEFITS,
   MAX_TESTIMONIALS,
   MAX_GALLERY_IMAGES,
+  MAX_FAQ,
+  MAX_BEFORE_AFTER,
 } from './publicPageStyle';
 
 test('sectionIconKey: ממפה כל סוג עסק לאייקון הנכון', () => {
@@ -120,4 +125,123 @@ test('isLandingContentEmpty: מזהה תוכן ריק מול תוכן ממשי',
   assert.equal(isLandingContentEmpty({}), true);
   assert.equal(isLandingContentEmpty({ benefits: [] }), true);
   assert.equal(isLandingContentEmpty({ heroHeadline: 'יש' }), false);
+});
+
+test('normalizeLandingContent: מנרמל שדות עשירים (faq, לפני/אחרי, אודות, רשתות, CTA)', () => {
+  const res = normalizeLandingContent({
+    heroEyebrow: ' סטודיו יופי ',
+    about: '  קצת עלינו  ',
+    ctaLabel: ' לקביעת תור ',
+    faq: [
+      { question: ' שאלה ', answer: ' תשובה ' },
+      { question: 'רק שאלה', answer: '' }, // חסר תשובה — יורד
+    ],
+    beforeAfter: [
+      { beforeUrl: ' https://x/b.jpg ', afterUrl: ' https://x/a.jpg ', label: ' טיפול ' },
+      { beforeUrl: 'https://x/b2.jpg', afterUrl: '' }, // חסר after — יורד
+    ],
+    socialLinks: { whatsapp: ' https://wa.me/1 ', instagram: '', tiktok: 'https://tt/x' },
+  });
+  assert.ok(res);
+  if (!res) return;
+  assert.equal(res.heroEyebrow, 'סטודיו יופי');
+  assert.equal(res.about, 'קצת עלינו');
+  assert.equal(res.ctaLabel, 'לקביעת תור');
+  assert.deepEqual(res.faq, [{ question: 'שאלה', answer: 'תשובה' }]);
+  assert.deepEqual(res.beforeAfter, [
+    { beforeUrl: 'https://x/b.jpg', afterUrl: 'https://x/a.jpg', label: 'טיפול' },
+  ]);
+  assert.deepEqual(res.socialLinks, { whatsapp: 'https://wa.me/1', tiktok: 'https://tt/x' });
+});
+
+test('normalizeLandingContent: מגביל כמויות של faq ולפני/אחרי', () => {
+  const res = normalizeLandingContent({
+    faq: Array.from({ length: MAX_FAQ + 2 }, (_, i) => ({ question: `ש${i}`, answer: `ת${i}` })),
+    beforeAfter: Array.from({ length: MAX_BEFORE_AFTER + 2 }, (_, i) => ({
+      beforeUrl: `https://x/b${i}.jpg`,
+      afterUrl: `https://x/a${i}.jpg`,
+      label: `${i}`,
+    })),
+  });
+  assert.ok(res);
+  if (!res) return;
+  assert.equal(res.faq?.length, MAX_FAQ);
+  assert.equal(res.beforeAfter?.length, MAX_BEFORE_AFTER);
+});
+
+test('normalizeLandingContent: שומר רק מתגי מקטע מוכרים עם ערך בוליאני', () => {
+  const res = normalizeLandingContent({
+    heroHeadline: 'יש',
+    sections: { faq: true, gallery: false, bogus: true, about: 'notbool' },
+  });
+  assert.ok(res);
+  if (!res) return;
+  assert.deepEqual(res.sections, { gallery: false, faq: true });
+});
+
+test('resolveLandingSections: ברירת מחדל — hero תמיד, faq כבוי, לפני/אחרי לפי סוג', () => {
+  // סוג ויזואלי (NAILS): beforeAfter דלוק כברירת מחדל, אבל דורש תוכן ⇒ מוסתר בלי תוכן
+  const nails = resolveLandingSections({ type: 'NAILS', content: null });
+  assert.ok(nails.includes('hero'));
+  assert.ok(nails.includes('services'));
+  assert.ok(nails.includes('location'));
+  assert.ok(!nails.includes('faq')); // אופט-אין
+  assert.ok(!nails.includes('beforeAfter')); // דלוק אך חסר תוכן
+  assert.ok(!nails.includes('gallery')); // חסר תוכן
+
+  // סוג לא-ויזואלי (CLINIC): beforeAfter כבוי כברירת מחדל
+  const clinicToggles = resolveLandingSections({
+    type: 'CLINIC',
+    content: {
+      beforeAfter: [{ beforeUrl: 'https://x/b.jpg', afterUrl: 'https://x/a.jpg', label: '' }],
+    },
+  });
+  assert.ok(!clinicToggles.includes('beforeAfter')); // כבוי כברירת מחדל למרות שיש תוכן
+});
+
+test('resolveLandingSections: בחירות הבעלים גוברות על ברירת המחדל', () => {
+  // הדלקת faq עם תוכן ⇒ מוצג
+  const withFaq = resolveLandingSections({
+    type: 'OTHER',
+    content: { sections: { faq: true }, faq: [{ question: 'ש', answer: 'ת' }] },
+  });
+  assert.ok(withFaq.includes('faq'));
+
+  // כיבוי services ידנית ⇒ מוסתר
+  const noServices = resolveLandingSections({
+    type: 'OTHER',
+    content: { sections: { services: false } },
+  });
+  assert.ok(!noServices.includes('services'));
+
+  // כיבוי hero לא אפשרי — תמיד מוצג
+  const noHero = resolveLandingSections({
+    type: 'OTHER',
+    content: { sections: { hero: false } },
+  });
+  assert.ok(noHero.includes('hero'));
+});
+
+test('resolveLandingSections: שומר על הסדר הקבוע של LANDING_SECTION_ORDER', () => {
+  const res = resolveLandingSections({
+    type: 'BEAUTY_COSMETICS',
+    content: {
+      sections: { faq: true },
+      galleryImageUrls: ['https://x/1.jpg'],
+      beforeAfter: [{ beforeUrl: 'https://x/b.jpg', afterUrl: 'https://x/a.jpg', label: '' }],
+      testimonials: [{ name: '', quote: 'מעולה' }],
+      faq: [{ question: 'ש', answer: 'ת' }],
+      about: 'עלינו',
+    },
+  });
+  const indices = res.map((s) => LANDING_SECTION_ORDER.indexOf(s));
+  const sorted = [...indices].sort((a, b) => a - b);
+  assert.deepEqual(indices, sorted);
+  // כל המקטעים העשירים מודלקים לסוג ויזואלי עם תוכן מלא
+  assert.deepEqual(res, LANDING_SECTION_ORDER);
+});
+
+test('TOGGLEABLE_LANDING_SECTIONS: כולל את כל המקטעים פרט ל-hero', () => {
+  assert.ok(!TOGGLEABLE_LANDING_SECTIONS.includes('hero'));
+  assert.equal(TOGGLEABLE_LANDING_SECTIONS.length, LANDING_SECTION_ORDER.length - 1);
 });
