@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
 import { getPlatformAdminEmail } from '@/server/platformAdmin';
+import { isSlugConfirmed, parseEditBusinessInput } from './logic';
 
 /**
  * פעולות שרת לקונסולת ניהול-העל. כל פעולה בודקת מחדש את שער האדמין בצד השרת
@@ -107,6 +108,61 @@ export async function revertToBasicAction(formData: FormData): Promise<void> {
       subscriptionStatus: stillTrialing ? 'trialing' : 'expired',
     },
   });
+
+  revalidatePath('/superadmin');
+}
+
+/** עריכת פרטי עסק: שם (חובה), טלפון, מייל בעלים והערת חבילה. אימות/ניקוי בלוגיקה טהורה. */
+export async function editBusinessDetailsAction(formData: FormData): Promise<void> {
+  await assertPlatformAdmin();
+  const businessId = readBusinessId(formData);
+
+  const parsed = parseEditBusinessInput({
+    name: String(formData.get('name') ?? ''),
+    phone: String(formData.get('phone') ?? ''),
+    ownerEmail: String(formData.get('ownerEmail') ?? ''),
+    planNotes: String(formData.get('planNotes') ?? ''),
+  });
+  // קלט לא תקין (שם ריק / מייל פגום) — לא משנים דבר.
+  if (!parsed.ok) return;
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: {
+      name: parsed.data.name,
+      phone: parsed.data.phone,
+      ownerEmail: parsed.data.ownerEmail,
+      planNotes: parsed.data.planNotes,
+    },
+  });
+
+  revalidatePath('/superadmin');
+}
+
+/**
+ * מחיקת חשבון עסק לצמיתות — דורש הקלדת ה-slug המדויק כאישור.
+ * מוחק תחילה את התורים (מפיל בכך את AppointmentService המקושר, שעליו יש onDelete: Restrict)
+ * ואז את העסק, שמפעיל cascade על שאר הילדים (לקוחות, מכירות, מוצרים, מסמכים ועוד).
+ * שני הצעדים ב-$transaction כדי לשמור על אטומיות.
+ */
+export async function deleteBusinessAction(formData: FormData): Promise<void> {
+  await assertPlatformAdmin();
+  const businessId = readBusinessId(formData);
+  const confirmSlug = String(formData.get('confirmSlug') ?? '');
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { slug: true },
+  });
+  if (!business) notFound();
+
+  // שער אישור: ה-slug שהוקלד חייב להתאים במדויק. אי-התאמה ⇒ ביטול שקט.
+  if (!isSlugConfirmed(confirmSlug, business.slug)) return;
+
+  await prisma.$transaction([
+    prisma.appointment.deleteMany({ where: { businessId } }),
+    prisma.business.delete({ where: { id: businessId } }),
+  ]);
 
   revalidatePath('/superadmin');
 }

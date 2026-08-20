@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { defaultBusinessHours, setBusinessHours } from './workingHours';
 import { ensureOwnerStaffMember } from './staff';
 import { seedServicesForBusiness } from './services';
+import { shapeBusinessMetrics, type BusinessMetrics } from '@/app/superadmin/logic';
 
 /** שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל. */
 export async function getBusinessBySlug(slug: string) {
@@ -94,6 +95,43 @@ export async function getBusinessesOwnedByEmail(email: string) {
 export async function listAllBusinesses() {
   return prisma.business.findMany({
     orderBy: { createdAt: 'desc' },
+  });
+}
+
+/**
+ * מטריקות תפעוליות לרשימת עסקים — אגרגציה יעילה ב-groupBy יחיד לכל מדד (ללא N+1).
+ * מחזיר מפה לפי מזהה עסק: לקוחות, תורים, שווי תורים (לא-מבוטלים) ותקבולים בקופה.
+ * לשימוש בקונסולת ניהול-על בלבד.
+ */
+export async function getBusinessMetricsMap(
+  businessIds: string[],
+): Promise<Map<string, BusinessMetrics>> {
+  if (businessIds.length === 0) return new Map();
+  const where = { businessId: { in: businessIds } };
+  const [clientRows, appointmentCountRows, appointmentValueRows, saleRows] = await Promise.all([
+    prisma.client.groupBy({ by: ['businessId'], where, _count: { _all: true } }),
+    prisma.appointment.groupBy({ by: ['businessId'], where, _count: { _all: true } }),
+    prisma.appointment.groupBy({
+      by: ['businessId'],
+      where: { ...where, status: { not: 'CANCELLED' } },
+      _sum: { totalPriceAgorot: true },
+    }),
+    prisma.sale.groupBy({ by: ['businessId'], where, _sum: { paidAgorot: true } }),
+  ]);
+  return shapeBusinessMetrics({
+    clientCounts: clientRows.map((row) => ({ businessId: row.businessId, count: row._count._all })),
+    appointmentCounts: appointmentCountRows.map((row) => ({
+      businessId: row.businessId,
+      count: row._count._all,
+    })),
+    appointmentValues: appointmentValueRows.map((row) => ({
+      businessId: row.businessId,
+      sumAgorot: row._sum.totalPriceAgorot ?? 0,
+    })),
+    cashReceipts: saleRows.map((row) => ({
+      businessId: row.businessId,
+      sumAgorot: row._sum.paidAgorot ?? 0,
+    })),
   });
 }
 
