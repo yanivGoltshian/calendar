@@ -8,6 +8,7 @@ import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
 import InstallApp from '@/components/pwa/InstallApp';
 import { logout } from '@/app/account/actions';
+import MenuHintCoachmark from './MenuHintCoachmark';
 
 type NavItem = { href: string; label: string; exact?: boolean };
 
@@ -112,26 +113,29 @@ export default function AdminSidebar() {
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
       >
         {brand}
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-expanded={open}
-          aria-controls="admin-mobile-drawer"
-          aria-label={t.admin.openMenu}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#233047] text-[#F2D695] transition hover:bg-[#16233A]"
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            className="h-6 w-6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-expanded={open}
+            aria-controls="admin-mobile-drawer"
+            aria-label={t.admin.openMenu}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#233047] text-[#F2D695] transition hover:bg-[#16233A]"
           >
-            <path d="M4 7h16M4 12h16M4 17h16" />
-          </svg>
-        </button>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-6 w-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+          <MenuHintCoachmark variant="mobile" open={open} />
+        </div>
       </div>
 
       {/* מגירת ניווט (< md) */}
@@ -185,7 +189,7 @@ export default function AdminSidebar() {
       {/* סרגל צד קבוע (md+) — ללא שינוי מהתצוגה הקיימת */}
       <aside
         dir="rtl"
-        className="hidden shrink-0 flex-col gap-4 bg-[#08101C] p-4 md:flex md:sticky md:top-0 md:h-screen md:w-64 md:overflow-y-auto"
+        className="relative hidden shrink-0 flex-col gap-4 bg-[#08101C] p-4 md:flex md:sticky md:top-0 md:h-screen md:w-64 md:overflow-y-auto"
         style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
       >
         <div className="px-2 pt-1">
@@ -194,6 +198,7 @@ export default function AdminSidebar() {
         </div>
         {nav}
         {footer}
+        <MenuHintCoachmark variant="desktop" />
       </aside>
     </>
   );
