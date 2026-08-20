@@ -5,6 +5,7 @@ import {
   type LandingContent,
   type SectionIconKey,
 } from '@/lib/publicPageStyle';
+import { socialHref } from '@/lib/socialLinks';
 import LandingHighlights from './LandingHighlights';
 import LandingServices, { type LandingService } from './LandingServices';
 import LandingGallery from './LandingGallery';
@@ -14,6 +15,7 @@ import LandingFaq from './LandingFaq';
 import LandingAbout from './LandingAbout';
 import LandingLocation from './LandingLocation';
 import LandingSocialCta from './LandingSocialCta';
+import WhatsAppFab from './WhatsAppFab';
 
 type WorkingHour = { weekday: number; startMinute: number; endMinute: number };
 
@@ -45,20 +47,26 @@ export default function LandingSections({
   const sections = resolveLandingSections({ content, type }).filter((s) => s !== 'hero');
   const defaults = landingDefaults(type);
   const l = t.publicPage.landing;
+  const eyebrows = t.premiumLanding.sectionEyebrow;
 
   const benefits = content?.benefits?.length ? content.benefits : defaults.benefits;
+  const whatsapp = content?.socialLinks?.whatsapp?.trim();
 
   return (
     <>
       {sections.map((section) => {
         switch (section) {
           case 'highlights':
-            return <LandingHighlights key={section} title={l.highlightsTitle} benefits={benefits} />;
+            return (
+              <LandingHighlights key={section} eyebrow={eyebrows.highlights} title={l.highlightsTitle} benefits={benefits} />
+            );
           case 'services':
             if (services.length === 0) return null;
             return (
               <LandingServices
                 key={section}
+                eyebrow={eyebrows.services}
+                lede={t.premiumLanding.servicesLede}
                 title={t.publicPage.servicesTitle}
                 services={services}
                 bookHref={bookHref}
@@ -67,11 +75,19 @@ export default function LandingSections({
               />
             );
           case 'gallery':
-            return <LandingGallery key={section} title={l.galleryTitle} images={content?.galleryImageUrls ?? []} />;
+            return (
+              <LandingGallery
+                key={section}
+                eyebrow={eyebrows.gallery}
+                title={l.galleryTitle}
+                images={content?.galleryImageUrls ?? []}
+              />
+            );
           case 'beforeAfter':
             return (
               <LandingBeforeAfter
                 key={section}
+                eyebrow={eyebrows.beforeAfter}
                 title={l.beforeAfterTitle}
                 items={content?.beforeAfter ?? []}
                 beforeLabel={l.beforeLabel}
@@ -80,15 +96,23 @@ export default function LandingSections({
               />
             );
           case 'testimonials':
-            return <LandingTestimonials key={section} title={l.testimonialsTitle} items={content?.testimonials ?? []} />;
+            return (
+              <LandingTestimonials
+                key={section}
+                eyebrow={eyebrows.testimonials}
+                title={l.testimonialsTitle}
+                items={content?.testimonials ?? []}
+              />
+            );
           case 'faq':
-            return <LandingFaq key={section} title={l.faqTitle} items={content?.faq ?? []} />;
+            return <LandingFaq key={section} eyebrow={eyebrows.faq} title={l.faqTitle} items={content?.faq ?? []} />;
           case 'about':
-            return <LandingAbout key={section} title={l.aboutTitle} text={content?.about ?? ''} />;
+            return <LandingAbout key={section} eyebrow={eyebrows.about} title={l.aboutTitle} text={content?.about ?? ''} />;
           case 'location':
             return (
               <LandingLocation
                 key={section}
+                eyebrow={eyebrows.location}
                 title={l.locationTitle}
                 workingHours={workingHours}
                 weekdays={t.publicPage.weekdays}
@@ -117,6 +141,9 @@ export default function LandingSections({
             return null;
         }
       })}
+      {whatsapp ? (
+        <WhatsAppFab href={socialHref('whatsapp', whatsapp)} ariaLabel={t.premiumLanding.whatsappAria} />
+      ) : null}
     </>
   );
 }

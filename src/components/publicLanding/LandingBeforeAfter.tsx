@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import SectionHeading from './SectionHeading';
 
 export type BeforeAfterItem = { beforeUrl: string; afterUrl: string; label?: string };
 
@@ -10,6 +11,7 @@ type Props = {
   beforeLabel: string;
   afterLabel: string;
   hint: string;
+  eyebrow?: string;
 };
 
 function Slider({ item, beforeLabel, afterLabel }: { item: BeforeAfterItem; beforeLabel: string; afterLabel: string }) {
@@ -28,7 +30,7 @@ function Slider({ item, beforeLabel, afterLabel }: { item: BeforeAfterItem; befo
   return (
     <div
       ref={ref}
-      className="relative aspect-[4/3] w-full select-none overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-[var(--biz-soft)] shadow-sm"
+      className="relative aspect-[4/3] w-full select-none overflow-hidden rounded-3xl border border-[color:var(--biz-border)] bg-[var(--biz-soft)] shadow-soft"
       onPointerDown={(e) => {
         dragging.current = true;
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -81,18 +83,17 @@ function Slider({ item, beforeLabel, afterLabel }: { item: BeforeAfterItem; befo
 }
 
 // מקטע לפני/אחרי — מחוון הזזה אינטראקטיבי לחשיפת התוצאה.
-export default function LandingBeforeAfter({ title, items, beforeLabel, afterLabel, hint }: Props) {
+export default function LandingBeforeAfter({ title, items, beforeLabel, afterLabel, hint, eyebrow }: Props) {
   if (items.length === 0) return null;
   return (
-    <section className="mt-12">
-      <h2 className="mb-1 text-xl font-bold text-slate-900">{title}</h2>
-      <p className="mb-5 text-sm text-slate-500">{hint}</p>
-      <div className="grid gap-4 sm:grid-cols-2">
+    <section className="mt-16 sm:mt-24">
+      <SectionHeading eyebrow={eyebrow} title={title} lede={hint} />
+      <div className="mt-10 grid gap-4 sm:grid-cols-2">
         {items.map((item, i) => (
           <figure key={i}>
             <Slider item={item} beforeLabel={beforeLabel} afterLabel={afterLabel} />
             {item.label ? (
-              <figcaption className="mt-2 text-center text-sm font-medium text-slate-600">{item.label}</figcaption>
+              <figcaption className="mt-3 text-center text-sm font-medium text-slate-600">{item.label}</figcaption>
             ) : null}
           </figure>
         ))}

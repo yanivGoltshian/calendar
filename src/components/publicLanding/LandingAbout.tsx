@@ -1,13 +1,15 @@
-type Props = { title: string; text: string };
+import SectionHeading from './SectionHeading';
+
+type Props = { title: string; text: string; eyebrow?: string };
 
 // מקטע "עלינו" — טקסט חופשי שהעסק כותב על עצמו.
-export default function LandingAbout({ title, text }: Props) {
+export default function LandingAbout({ title, text, eyebrow }: Props) {
   if (!text.trim()) return null;
   return (
-    <section className="mt-12">
-      <div className="rounded-3xl border border-[color:var(--biz-border)] bg-white p-6 shadow-sm sm:p-8">
-        <h2 className="mb-3 text-xl font-bold text-slate-900">{title}</h2>
-        <p className="whitespace-pre-line leading-relaxed text-slate-700">{text}</p>
+    <section className="mt-16 sm:mt-24">
+      <SectionHeading eyebrow={eyebrow} title={title} />
+      <div className="mx-auto mt-10 max-w-2xl rounded-3xl border border-[color:var(--biz-border)] bg-white p-7 shadow-soft sm:p-10">
+        <p className="whitespace-pre-line text-center leading-relaxed text-slate-700 sm:text-lg">{text}</p>
       </div>
     </section>
   );
