@@ -93,6 +93,20 @@ enum SubscriptionStatus {
   expired // פג תוקף (ניסיון הסתיים / תשלום לא בתוקף)
 }
 
+// החבילה שהבעלים ביקש בטופס בקשת הצעת מחיר (שדרוג). נפרד מ-BusinessPlan הפנימי:
+// STANDARD = עמוד ההזמנות הציבורי; PREMIUM = עמוד נחיתה עשיר. שתיהן מתומחרות בפנייה.
+enum RequestedPlan {
+  STANDARD // עמוד עסק ציבורי + מערכת קביעת תורים
+  PREMIUM // עמוד נחיתה עשיר ומלא
+}
+
+// מצב עיבוד בקשת הצעת המחיר. נשמר תמיד ראשון (NEW) כדי שלא תאבד גם אם ההתראה נכשלת.
+enum InquiryStatus {
+  NEW // נשמרה, טרם נשלחה התראה לבעל האתר
+  NOTIFIED // נשלחה התראה (לפחות מייל) לבעל האתר
+  FAILED // כל ערוצי ההתראה נכשלו (הבקשה עדיין שמורה)
+}
+
 enum WaitlistStatus {
   WAITING // ממתין
   NOTIFIED // נשלחה הודעה
@@ -200,7 +214,7 @@ model Business {
   plan BusinessPlan @default(basic)
   // מצב המנוי — מחושב מחדש על קריאה מתוך התאריכים למטה.
   subscriptionStatus SubscriptionStatus @default(trialing)
-  // סוף תקופת הניסיון החינמית (נקבע ביצירה = עכשיו + 14 יום).
+  // סוף תקופת הניסיון החינמית (נקבע ביצירה = עכשיו + 30 יום).
   trialEndsAt DateTime?
   // עד מתי שולם עבור פרימיום (נקבע ידנית על-ידי סופר-אדמין; nullable).
   paidUntil DateTime?
@@ -236,6 +250,9 @@ model Business {
   stockLevels    StockLevel[]
   stockMovements StockMovement[]
   lowStockAlerts LowStockAlert[]
+
+  // בקשות שדרוג / הצעת מחיר (Standard / Premium) — קשר אדיטיבי בלבד
+  planInquiries PlanInquiry[]
 
   @@index([slug])
   @@index([ownerEmail])
@@ -840,4 +857,29 @@ model LowStockAlert {
 
   @@index([businessId, resolvedAt])
   @@index([productId])
+}
+
+// בקשת הצעת מחיר לשדרוג חבילה (Standard / Premium). נשמרת תמיד ראשונה כדי שלא
+// תאבד גם אם ערוץ התראה (מייל / וואטסאפ) נכשל. אדיטיבי בלבד, לא נוגע בטבלאות קיימות.
+model PlanInquiry {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  publicPageUrl String // כתובת העמוד הציבורי של העסק (נגזרת מה-slug)
+  ownerName     String // שם בעל העסק ליצירת קשר
+  email         String // מייל לחזרה עם הצעה
+  phone         String // טלפון לשיחת חזרה
+
+  requestedPlan RequestedPlan // החבילה המבוקשת
+  status        InquiryStatus @default(NEW)
+
+  emailedAt    DateTime? // מולא כאשר נשלח מייל לבעל האתר
+  whatsappedAt DateTime? // מולא כאשר נשלחה הודעת וואטסאפ לבעל האתר
+  notifyError  String? // תקציר שגיאה אחרון (אם היה), לצרכי דיבוג בלבד
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([status])
 }

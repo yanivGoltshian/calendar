@@ -2,10 +2,12 @@ import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { ContactBlock } from '@/components/billing/ContactBlock';
 import { signOutOwner } from './billing-actions';
+import UpgradeQuote from './upgrade/UpgradeQuote';
 
 /**
  * מסך חסימה (paywall) לבעל העסק כשתוקף הניסיון/המנוי פג.
- * RTL, נייבי-זהב, עם בלוק פרטי קשר לשדרוג והתנתקות נגישה.
+ * RTL, נייבי-זהב, עם טופס בקשת הצעת מחיר מוטמע (כדי שגם כשהניהול חסום אפשר לשדרג),
+ * בלוק פרטי קשר והתנתקות נגישה.
  * עמוד ההזמנות הציבורי (/b/[slug]) אינו מושפע וממשיך לפעול ללקוחות.
  */
 export default function Paywall() {
@@ -16,7 +18,7 @@ export default function Paywall() {
       dir="rtl"
       className="flex min-h-screen w-full items-center justify-center bg-[#0B1526] p-6"
     >
-      <div className="w-full max-w-lg rounded-3xl border border-[#16233A] bg-[#0E1B2E] p-8 shadow-2xl">
+      <div className="w-full max-w-xl rounded-3xl border border-[#16233A] bg-[#0E1B2E] p-8 shadow-2xl">
         <p className="text-sm font-semibold text-[#C59D5F]">{BRAND.name}</p>
 
         <h1 className="mt-2 text-2xl font-extrabold text-[#F2D695]">
@@ -24,6 +26,10 @@ export default function Paywall() {
         </h1>
 
         <p className="mt-4 text-[#E8ECF3]">{p.body}</p>
+
+        <div className="mt-6 rounded-2xl bg-white p-5 shadow-inner">
+          <UpgradeQuote variant="paywall" />
+        </div>
 
         <div className="mt-6 rounded-2xl border border-[#16233A] bg-[#0B1526] p-5">
           <ContactBlock tone="dark" showHeading={false} />
