@@ -321,6 +321,13 @@ const he = {
       workingHours: 'שעות עבודה',
       inventory: 'מלאי',
     },
+    pendingApprovals: {
+      bannerPrefix: 'יש',
+      bannerSuffixOne: 'תור הממתין לאישור',
+      bannerSuffixMany: 'תורים הממתינים לאישור',
+      cta: 'מעבר לאישור התורים',
+      badgeAria: 'תורים הממתינים לאישור',
+    },
     stub: {
       badge: 'בקרוב',
       title: 'המודול בהכנה',

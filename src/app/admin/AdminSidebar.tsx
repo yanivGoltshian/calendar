@@ -36,7 +36,7 @@ function isActive(pathname: string, item: NavItem): boolean {
   return pathname === item.href || pathname.startsWith(item.href + '/');
 }
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ pendingCount = 0 }: { pendingCount?: number }) {
   const pathname = usePathname() ?? '/admin';
   const [open, setOpen] = useState(false);
 
@@ -71,6 +71,7 @@ export default function AdminSidebar() {
     <nav className="flex flex-1 flex-col gap-1" aria-label={t.admin.menuLabel}>
       {NAV_ITEMS.map((item) => {
         const active = isActive(pathname, item);
+        const showBadge = item.href === '/admin/appointments' && pendingCount > 0;
         return (
           <Link
             key={item.href}
@@ -84,6 +85,14 @@ export default function AdminSidebar() {
             ].join(' ')}
           >
             {item.label}
+            {showBadge ? (
+              <span
+                aria-label={t.admin.pendingApprovals.badgeAria}
+                className="ms-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-400 px-1.5 py-0.5 text-xs font-bold text-[#0A182D]"
+              >
+                {pendingCount}
+              </span>
+            ) : null}
           </Link>
         );
       })}

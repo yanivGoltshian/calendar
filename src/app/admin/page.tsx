@@ -6,7 +6,7 @@ import { getActiveBusiness } from '@/server/repos/business';
 import { listStaff, ensureOwnerStaffMember } from '@/server/repos/staff';
 import { listServices } from '@/server/repos/services';
 import { getBusinessHours } from '@/server/repos/workingHours';
-import { getAppointmentsForBusinessRange } from '@/server/repos/appointments';
+import { getAppointmentsForBusinessRange, countPendingAppointments } from '@/server/repos/appointments';
 import {
   todayDateString,
   addDaysToDateString,
@@ -203,6 +203,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   // כדי שהרשימה תהיה ניתנת להמשך מכל מכשיר. כל צעד ניתן לדילוג והשלמה מאוחרת.
   // הרשימה מוצגת רק כשנותר צעד פתוח והבעלים לא בחר להסתירה.
   const businessHours = await getBusinessHours(business.id);
+  const pendingCount = await countPendingAppointments(business.id);
   const checklistDismissed = await isOnboardingChecklistDismissed();
   const checklistItems: ChecklistItem[] = [
     { key: 'services', done: serviceRows.length > 0, href: '/admin/services' },
@@ -254,6 +255,23 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
           {t.admin.calendarTitle} · {business.name}
         </h1>
       </header>
+
+      {pendingCount > 0 ? (
+        <a
+          href="/admin/appointments?tab=pending"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 transition hover:bg-amber-100"
+        >
+          <span className="text-sm font-semibold">
+            {t.admin.pendingApprovals.bannerPrefix} {pendingCount}{' '}
+            {pendingCount === 1
+              ? t.admin.pendingApprovals.bannerSuffixOne
+              : t.admin.pendingApprovals.bannerSuffixMany}
+          </span>
+          <span className="whitespace-nowrap text-sm font-medium underline">
+            {t.admin.pendingApprovals.cta}
+          </span>
+        </a>
+      ) : null}
 
       {isLive ? (
         <ShareBanner

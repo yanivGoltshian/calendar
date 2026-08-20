@@ -73,6 +73,13 @@ export async function hasConflict(
   return count > 0;
 }
 
+/** ספירת תורים הממתינים לאישור (PENDING) לעסק — לחיווי ההתראה באזור הניהול. */
+export async function countPendingAppointments(businessId: string): Promise<number> {
+  return prisma.appointment.count({
+    where: { businessId, status: 'PENDING' },
+  });
+}
+
 export type CreateAppointmentInput = {
   businessId: string;
   clientId: string;
