@@ -1,5 +1,12 @@
 import { z } from 'zod';
 import { BusinessType, ReminderChannel } from '@prisma/client';
+import {
+  normalizePublicPageStyle,
+  normalizeLandingContent,
+  MAX_BENEFITS,
+  MAX_TESTIMONIALS,
+  MAX_GALLERY_IMAGES,
+} from '@/lib/publicPageStyle';
 import type {
   BusinessProfileInput,
   BookingPolicyInput,
@@ -42,6 +49,38 @@ export function checkbox(fd: FormData, key: string): boolean {
 const businessTypeValues = Object.values(BusinessType) as string[];
 const reminderChannelValues = Object.values(ReminderChannel) as string[];
 
+/**
+ * מרכיב את תוכן עמוד הנחיתה משדות הטופס ומעביר לנרמול (סינון ריקים + מגבלות).
+ * מחזיר null כשאין תוכן ממשי, כדי לשמור NULL במסד הנתונים.
+ */
+export function parseLandingContent(fd: FormData) {
+  const benefits = [];
+  for (let i = 0; i < MAX_BENEFITS; i++) {
+    benefits.push({
+      title: str(fd, `landingBenefit${i}Title`),
+      text: str(fd, `landingBenefit${i}Text`),
+    });
+  }
+  const testimonials = [];
+  for (let i = 0; i < MAX_TESTIMONIALS; i++) {
+    testimonials.push({
+      name: str(fd, `landingTestimonial${i}Name`),
+      quote: str(fd, `landingTestimonial${i}Quote`),
+    });
+  }
+  const galleryImageUrls = [];
+  for (let i = 0; i < MAX_GALLERY_IMAGES; i++) {
+    galleryImageUrls.push(str(fd, `landingGallery${i}`));
+  }
+  return normalizeLandingContent({
+    heroHeadline: str(fd, 'landingHeroHeadline'),
+    heroSubtext: str(fd, 'landingHeroSubtext'),
+    benefits,
+    galleryImageUrls,
+    testimonials,
+  });
+}
+
 /** ניתוח פרופיל העסק. שם חובה; סוג לא חוקי ⇐ שגיאה. */
 export function parseProfile(fd: FormData): ParseResult<BusinessProfileInput> {
   const name = str(fd, 'name');
@@ -67,6 +106,8 @@ export function parseProfile(fd: FormData): ParseResult<BusinessProfileInput> {
       coverImageUrl: nullableStr(fd, 'coverImageUrl'),
       brandColor: nullableStr(fd, 'brandColor'),
       timezone: str(fd, 'timezone') || 'Asia/Jerusalem',
+      publicPageStyle: normalizePublicPageStyle(str(fd, 'publicPageStyle')),
+      landingContent: parseLandingContent(fd),
     },
   };
 }

@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db';
-import type { BusinessType, ReminderChannel } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import type { BusinessType, PublicPageStyle, ReminderChannel } from '@prisma/client';
+import type { LandingContent } from '@/lib/publicPageStyle';
 
 /**
  * Repo של מודול ההקמה וההגדרות.
@@ -26,11 +28,30 @@ export type BusinessProfileInput = {
   coverImageUrl: string | null;
   brandColor: string | null;
   timezone: string;
+  publicPageStyle?: PublicPageStyle;
+  landingContent?: LandingContent | null;
 };
 
 /** עדכון פרופיל העסק (טבלת Business). */
 export async function updateBusinessProfile(businessId: string, data: BusinessProfileInput) {
-  return prisma.business.update({ where: { id: businessId }, data });
+  const { publicPageStyle, landingContent, ...rest } = data;
+  return prisma.business.update({
+    where: { id: businessId },
+    data: {
+      ...rest,
+      // סגנון העמוד נכתב רק כשנשלח (מסך ההגדרות), כדי לא לדרוס בזמן ההקמה.
+      ...(publicPageStyle !== undefined ? { publicPageStyle } : {}),
+      // Json אופציונלי: ריק ⇐ DbNull במפורש, אחרת נשמר האובייקט המנורמל.
+      ...(landingContent !== undefined
+        ? {
+            landingContent:
+              landingContent === null
+                ? Prisma.DbNull
+                : (landingContent as unknown as Prisma.InputJsonValue),
+          }
+        : {}),
+    },
+  });
 }
 
 export type BookingPolicyInput = {

@@ -6,6 +6,14 @@ import { inputClass } from './fieldStyles';
 import { BrandColorField } from './BrandColorField';
 import { TimezoneField } from './TimezoneField';
 import { ImageUploadField } from './ImageUploadField';
+import {
+  normalizePublicPageStyle,
+  normalizeLandingContent,
+  landingDefaults,
+  MAX_BENEFITS,
+  MAX_TESTIMONIALS,
+  MAX_GALLERY_IMAGES,
+} from '@/lib/publicPageStyle';
 
 /**
  * קבוצות שדות משותפות למודול ההגדרות וההקמה.
@@ -182,6 +190,168 @@ export function ProfileFields({ b }: { b: ProfileValues }) {
         />
       </div>
     </>
+  );
+}
+
+export type PublicPageValues = Pick<Business, 'type' | 'publicPageStyle' | 'landingContent'>;
+
+/**
+ * בחירת סגנון העמוד הציבורי (הזמנה מול נחיתה) ועורך תוכן עמוד הנחיתה.
+ * רכיב פרזנטטיבי בלבד; עורך הנחיתה מוצג תמיד ורלוונטי כשנבחר "עמוד נחיתה".
+ * שדות ריקים נופלים לברירת מחדל לפי סוג העסק בעת ההצגה בפועל.
+ */
+export function PublicPageFields({ b }: { b: PublicPageValues }) {
+  const s = t.admin.settings.pageStyle;
+  const img = t.admin.settings.profile.image;
+  const style = normalizePublicPageStyle(b.publicPageStyle);
+  const lc = normalizeLandingContent(b.landingContent) ?? {};
+  const defaults = landingDefaults(b.type);
+  const galleryLabels = {
+    choose: img.choose,
+    change: img.change,
+    remove: img.remove,
+    cropTitle: img.cropTitle,
+    zoom: img.zoom,
+    adjust: img.adjust,
+    done: img.done,
+    cancel: img.cancel,
+    dragHint: img.coverDragHint,
+    empty: img.coverEmpty,
+    tooLarge: img.tooLarge,
+  };
+
+  const styleOption = (
+    value: 'BOOKING' | 'LANDING',
+    label: string,
+    hint: string,
+  ) => (
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/60">
+      <input
+        type="radio"
+        name="publicPageStyle"
+        value={value}
+        defaultChecked={style === value}
+        className="mt-1 h-4 w-4 border-slate-300 text-brand-600 focus:ring-brand-500"
+      />
+      <span className="block">
+        <span className="block text-sm font-semibold text-slate-800">{label}</span>
+        <span className="mt-0.5 block text-xs text-slate-500">{hint}</span>
+      </span>
+    </label>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {styleOption('BOOKING', s.bookingLabel, s.bookingHint)}
+        {styleOption('LANDING', s.landingLabel, s.landingHint)}
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-800">{s.landingSectionTitle}</h3>
+          <p className={hintClass}>{s.landingSectionHint}</p>
+        </div>
+
+        <div>
+          <label className={labelClass}>{s.heroHeadlineLabel}</label>
+          <input
+            name="landingHeroHeadline"
+            defaultValue={lc.heroHeadline ?? ''}
+            placeholder={defaults.heroHeadline}
+            maxLength={140}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>{s.heroSubtextLabel}</label>
+          <textarea
+            name="landingHeroSubtext"
+            defaultValue={lc.heroSubtext ?? ''}
+            placeholder={defaults.heroSubtext}
+            rows={2}
+            maxLength={400}
+            className={inputClass}
+          />
+        </div>
+
+        <div className="space-y-3">
+          <label className={labelClass}>{s.benefitsLabel}</label>
+          {Array.from({ length: MAX_BENEFITS }).map((_, i) => {
+            const cur = lc.benefits?.[i];
+            const def = defaults.benefits[i];
+            return (
+              <div key={i} className="grid gap-2 sm:grid-cols-2">
+                <input
+                  name={`landingBenefit${i}Title`}
+                  defaultValue={cur?.title ?? ''}
+                  placeholder={def?.title ?? s.benefitTitlePlaceholder}
+                  maxLength={60}
+                  className={inputClass}
+                />
+                <input
+                  name={`landingBenefit${i}Text`}
+                  defaultValue={cur?.text ?? ''}
+                  placeholder={def?.text ?? s.benefitTextPlaceholder}
+                  maxLength={140}
+                  className={inputClass}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="space-y-3">
+          <label className={labelClass}>{s.galleryLabel}</label>
+          <p className={hintClass}>{s.galleryHint}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {Array.from({ length: MAX_GALLERY_IMAGES }).map((_, i) => (
+              <ImageUploadField
+                key={i}
+                name={`landingGallery${i}`}
+                defaultValue={lc.galleryImageUrls?.[i] ?? ''}
+                targetAspect={4 / 3}
+                rounded={false}
+                maxWidth={1024}
+                maxHeight={768}
+                mime="image/jpeg"
+                labels={galleryLabels}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <label className={labelClass}>{s.testimonialsLabel}</label>
+          {Array.from({ length: MAX_TESTIMONIALS }).map((_, i) => {
+            const cur = lc.testimonials?.[i];
+            return (
+              <div
+                key={i}
+                className="space-y-2 rounded-lg border border-slate-200 bg-white p-3"
+              >
+                <input
+                  name={`landingTestimonial${i}Name`}
+                  defaultValue={cur?.name ?? ''}
+                  placeholder={s.testimonialNamePlaceholder}
+                  maxLength={60}
+                  className={inputClass}
+                />
+                <textarea
+                  name={`landingTestimonial${i}Quote`}
+                  defaultValue={cur?.quote ?? ''}
+                  placeholder={s.testimonialQuotePlaceholder}
+                  rows={2}
+                  maxLength={280}
+                  className={inputClass}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
