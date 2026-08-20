@@ -29,7 +29,12 @@ import {
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  // אפשרות תצוגה מקדימה בלבד לאורחים (בוחר ה-/demo): 'landing' או 'booking'.
+  // לעולם לא נשמר ולא נכתב ל-DB, רק משפיע על הרינדור של הבקשה הנוכחית.
+  searchParams?: Promise<{ style?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -37,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return buildBusinessPageMetadata(business);
 }
 
-export default async function BusinessPublicPage({ params }: Props) {
+export default async function BusinessPublicPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const business = await getBusinessBySlug(slug);
   if (!business) notFound();
@@ -64,7 +69,15 @@ export default async function BusinessPublicPage({ params }: Props) {
   } as unknown as CSSProperties;
 
   // מצב העמוד (באג 3): הזמנת תורים ממוקדת מול עמוד נחיתה עשיר, נשלט מהניהול.
-  const pageStyle = normalizePublicPageStyle(business.publicPageStyle);
+  // תצוגה מקדימה בלבד: פרמטר ?style=landing|booking מאפשר לאורח לצפות בשני הסגנונות
+  // (משמש את בוחר ה-/demo). זו עקיפה מקומית לרינדור בלבד, לא נשמרת ולא נכתבת ל-DB.
+  const styleParam = ((await searchParams) ?? {}).style?.toLowerCase();
+  const pageStyle =
+    styleParam === 'landing'
+      ? 'LANDING'
+      : styleParam === 'booking'
+        ? 'BOOKING'
+        : normalizePublicPageStyle(business.publicPageStyle);
   const isLanding = pageStyle === 'LANDING';
   const iconKey = sectionIconKey(business.type);
 

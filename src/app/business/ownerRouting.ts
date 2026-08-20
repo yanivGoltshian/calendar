@@ -59,7 +59,7 @@ export function ownerPrimaryLabel(isReturningOwner: boolean, guestLabel: string)
 export type HomeHeroCta = {
   primaryHref: string;
   primaryLabel: string;
-  /** פעולה משנית: לבעלים חוזר "פתיחת עסק נוסף", לאורח כניסת בעלי עסקים. */
+  /** פעולה משנית: לבעלים חוזר "פתיחת עסק נוסף", לאורח "התחברות לעסק קיים". */
   secondaryHref: string;
   secondaryLabel: string;
 };
@@ -67,7 +67,7 @@ export type HomeHeroCta = {
 /**
  * תצורת שורת ה-CTA הראשית ב-hero של דף הבית, מודעת למצב ההתחברות.
  * - בעלים חוזר: ראשי "לאזור הניהול שלי" -> /admin, משני "פתיחת עסק נוסף" -> ?another=1.
- * - אורח/מחובר-בלי-עסק: ראשי "התחילו עכשיו" -> /business/new, משני כניסת בעלי עסקים -> /business/resume.
+ * - אורח/מחובר-בלי-עסק: ראשי "הרשמה" -> /business/new, משני "התחברות לעסק קיים" -> /business/resume.
  */
 export function homeHeroCta(isReturningOwner: boolean): HomeHeroCta {
   const m = t.marketing;
@@ -83,6 +83,7 @@ export function homeHeroCta(isReturningOwner: boolean): HomeHeroCta {
     primaryHref: NEW_BUSINESS_HREF,
     primaryLabel: m.hero.primaryCta,
     secondaryHref: OWNER_LOGIN_HREF,
-    secondaryLabel: m.nav.login,
+    // תווית ייעודית ל-hero. לא m.nav.login כדי לא לשנות את קישור ההתחברות בניווט העליון.
+    secondaryLabel: m.hero.guestSecondaryCta,
   };
 }

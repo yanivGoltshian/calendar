@@ -59,9 +59,9 @@ test('ה-href הראשי של בעלים חוזר הוא /admin, ושל אורח
 });
 
 test('התווית הראשית: בעלים חוזר רואה "לאזור הניהול שלי", אורח שומר את התווית המקורית', () => {
-  assert.equal(ownerPrimaryLabel(true, 'התחילו עכשיו'), 'לאזור הניהול שלי');
-  assert.equal(ownerPrimaryLabel(true, 'התחילו עכשיו'), t.marketing.hero.ownerCta);
-  assert.equal(ownerPrimaryLabel(false, 'התחילו עכשיו'), 'התחילו עכשיו');
+  assert.equal(ownerPrimaryLabel(true, 'הרשמה'), 'לאזור הניהול שלי');
+  assert.equal(ownerPrimaryLabel(true, 'הרשמה'), t.marketing.hero.ownerCta);
+  assert.equal(ownerPrimaryLabel(false, 'הרשמה'), 'הרשמה');
   assert.equal(ownerPrimaryLabel(false, 'מסלול בחינם'), 'מסלול בחינם');
 });
 
@@ -76,12 +76,16 @@ test('בעלים חוזר: ראשי לאזור הניהול, משני פתיחת
   assert.equal(cta.secondaryLabel, t.marketing.hero.ownerSecondaryCta);
 });
 
-test('אורח: ראשי התחילו עכשיו, ומשני כניסת בעלי עסקים לראוטר החכם /business/resume', () => {
+test('אורח: ראשי הרשמה, ומשני התחברות לעסק קיים לראוטר החכם /business/resume', () => {
   const cta = homeHeroCta(false);
   assert.equal(cta.primaryHref, '/business/new');
+  assert.equal(cta.primaryLabel, 'הרשמה');
   assert.equal(cta.primaryLabel, t.marketing.hero.primaryCta);
   assert.equal(cta.secondaryHref, '/business/resume');
   assert.equal(cta.secondaryHref, OWNER_LOGIN_HREF);
-  assert.equal(cta.secondaryLabel, 'כניסת בעלי עסקים');
-  assert.equal(cta.secondaryLabel, t.marketing.nav.login);
+  assert.equal(cta.secondaryLabel, 'התחברות לעסק קיים');
+  assert.equal(cta.secondaryLabel, t.marketing.hero.guestSecondaryCta);
+  // התווית המשנית ב-hero אינה נגזרת מ-nav.login, כדי לא לשנות את קישור ההתחברות בניווט.
+  assert.notEqual(cta.secondaryLabel, t.marketing.nav.login);
+  assert.equal(t.marketing.nav.login, 'כניסת בעלי עסקים');
 });

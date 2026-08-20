@@ -33,6 +33,9 @@ export default async function HomePage() {
   const business = await getFirstBusiness();
   const demoSlug = business?.slug;
   const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
+  // כפתורי ההדגמה בדף הבית מפנים לבוחר /demo (סטנדרט מול פרימיום) במקום לעמוד יחיד.
+  // ה-gate על demoHref נשמר: הבוחר מוצג רק כשקיים עסק הדגמה.
+  const chooserHref = '/demo';
 
   // זיהוי בעלים חוזר: תמיד לגזור מ-session?.user?.email קודם, ואז לשלוף את העסקים
   // של אותו email. לא להשתמש ב-getActiveBusiness לזיהוי כי הוא נופל ל-getFirstBusiness
@@ -122,7 +125,7 @@ export default async function HomePage() {
                     {heroCta.secondaryLabel}
                   </Button>
                   {demoHref && (
-                    <Button href={demoHref} variant="ghost" size="lg" className="w-full sm:w-auto">
+                    <Button href={chooserHref} variant="ghost" size="lg" className="w-full sm:w-auto">
                       {m.hero.secondaryCta}
                     </Button>
                   )}
@@ -413,7 +416,7 @@ export default async function HomePage() {
                     </Button>
                     {demoHref && (
                       <Button
-                        href={demoHref}
+                        href={chooserHref}
                         size="lg"
                         className="w-full bg-white/10 text-white ring-1 ring-inset ring-white/40 hover:bg-white/20 sm:w-auto"
                       >
