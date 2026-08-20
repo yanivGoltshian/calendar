@@ -4,14 +4,17 @@ import { useEffect, useState } from 'react';
 import { t } from '@/i18n';
 import { BRAND } from '@/config/brand';
 import { resolveBrandColor, readableText } from '@/lib/brandColor';
+import { detectInstallEnv, type InstallEnv } from '@/lib/pwa/detectInstallEnv';
 
 /**
  * כרטיס התקנת אפליקציה (PWA) עצמאי, ממותג לפי הקשר:
  * variant='platform' — מיתוג תור צ׳יק לעמוד הבית של הפלטפורמה.
  * variant='business' — לוגו, שם וצבע של עסק ספציפי לעמוד ההזמנות שלו.
  *
- * לוכד beforeinstallprompt להתקנה בהקשה אחת; ב-iOS Safari (שאין בו אירוע כזה)
- * מציג הנחיה עברית קצרה. מסתתר לגמרי כשהאפליקציה כבר מותקנת (מצב standalone).
+ * לוכד beforeinstallprompt להתקנה בהקשה אחת (אנדרואיד/דסקטופ כרום). בשאר הסביבות
+ * מזהה את הפלטפורמה והדפדפן דרך detectInstallEnv ומציג הנחיה מדויקת: הוספה למסך
+ * הבית ב-iOS Safari, פתיחה בדפדפן חיצוני מתוך דפדפן מובנה (וואטסאפ/אינסטגרם/פייסבוק),
+ * או הנחיית תפריט באנדרואיד. מסתתר לגמרי כשהאפליקציה כבר מותקנת (מצב standalone).
  */
 
 type BeforeInstallPromptEvent = Event & {
@@ -32,6 +35,52 @@ type Props = {
   label?: string;
 };
 
+/** תוכן ההנחיה שנגזר מזיהוי הפלטפורמה והדפדפן. */
+type HelpContent = { title: string; steps?: readonly string[]; hint?: string };
+
+/**
+ * בוחר את הנחיית ההתקנה הנכונה לפי הסביבה שזוהתה:
+ * דפדפן מובנה מפנה לפתיחה בדפדפן, iOS Safari מקבל שלבי הוספה למסך הבית,
+ * אנדרואיד מקבל הנחיית תפריט, וברירת המחדל היא הנחיית הדפדפן הידנית.
+ */
+function helpContentFor(env: InstallEnv | null): HelpContent {
+  if (env?.mustOpenInBrowser) {
+    return {
+      title: t.install.inAppTitle,
+      hint: env.platform === 'android' ? t.install.inAppHintAndroid : t.install.inAppHintIos,
+    };
+  }
+  if (env?.canAddToHomeScreen) {
+    return {
+      title: t.install.iosTitle,
+      steps: [t.install.iosStep1, t.install.iosStep2, t.install.iosStep3],
+    };
+  }
+  if (env?.platform === 'android') {
+    return { title: t.install.androidTitle, hint: t.install.androidHint };
+  }
+  return { title: t.install.manualTitle, hint: t.install.manualHint };
+}
+
+/** גוף ההנחיה המשותף לשני המשטחים (כהה/בהיר), נבדל רק בצבע הכותרת. */
+function InstallHelp({ content, tone }: { content: HelpContent; tone: 'dark' | 'light' }) {
+  const titleClass = tone === 'dark' ? 'text-[#E8ECF3]' : 'text-slate-800';
+  return (
+    <>
+      <p className={`mb-1 font-semibold ${titleClass}`}>{content.title}</p>
+      {content.steps ? (
+        <ol className="list-inside list-decimal space-y-1">
+          {content.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      ) : (
+        <p>{content.hint}</p>
+      )}
+    </>
+  );
+}
+
 export default function InstallApp({
   variant,
   appName,
@@ -42,21 +91,24 @@ export default function InstallApp({
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [installed, setInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [env, setEnv] = useState<InstallEnv | null>(null);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     setMounted(true);
 
+    const nav = window.navigator as Navigator & { standalone?: boolean };
     const standalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
     if (standalone) setInstalled(true);
 
-    const ua = window.navigator.userAgent.toLowerCase();
-    const iOS = /iphone|ipad|ipod/.test(ua) && !/crios|fxios/.test(ua);
-    setIsIOS(iOS);
+    setEnv(
+      detectInstallEnv(nav.userAgent, {
+        standalone,
+        maxTouchPoints: nav.maxTouchPoints,
+      }),
+    );
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
@@ -91,6 +143,7 @@ export default function InstallApp({
   const title = `${t.install.titlePrefix} ${name}`.trim();
   const initial = name.charAt(0) || BRAND.name.charAt(0);
   const emblem = variant === 'platform' ? '/brand/torchick-emblem-navy-256.png' : logoUrl || null;
+  const help = helpContentFor(env);
 
   async function handleInstall() {
     if (deferred) {
@@ -130,21 +183,7 @@ export default function InstallApp({
 
         {showHelp ? (
           <div className="mt-2 rounded-lg border border-[#233047] bg-[#0B1526] p-3 text-xs leading-relaxed text-[#9AA7BD]">
-            {isIOS ? (
-              <>
-                <p className="mb-1 font-semibold text-[#E8ECF3]">{t.install.iosTitle}</p>
-                <ol className="list-inside list-decimal space-y-0.5">
-                  <li>{t.install.iosStep1}</li>
-                  <li>{t.install.iosStep2}</li>
-                  <li>{t.install.iosStep3}</li>
-                </ol>
-              </>
-            ) : (
-              <>
-                <p className="mb-1 font-semibold text-[#E8ECF3]">{t.install.manualTitle}</p>
-                <p>{t.install.manualHint}</p>
-              </>
-            )}
+            <InstallHelp content={help} tone="dark" />
           </div>
         ) : null}
       </div>
@@ -208,21 +247,7 @@ export default function InstallApp({
 
       {showHelp ? (
         <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-          {isIOS ? (
-            <>
-              <p className="mb-2 font-semibold text-slate-800">{t.install.iosTitle}</p>
-              <ol className="list-inside list-decimal space-y-1">
-                <li>{t.install.iosStep1}</li>
-                <li>{t.install.iosStep2}</li>
-                <li>{t.install.iosStep3}</li>
-              </ol>
-            </>
-          ) : (
-            <>
-              <p className="mb-1 font-semibold text-slate-800">{t.install.manualTitle}</p>
-              <p>{t.install.manualHint}</p>
-            </>
-          )}
+          <InstallHelp content={help} tone="light" />
         </div>
       ) : null}
     </div>
