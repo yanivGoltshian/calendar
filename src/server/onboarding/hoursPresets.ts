@@ -33,3 +33,40 @@ export function workingHoursPreset(key: HoursPresetKey): WorkingHoursRow[] {
       return rows(SUN_THU, 9 * 60, 18 * 60);
   }
 }
+
+/** קלט יום בבחירה הידנית: יום בשבוע, האם פתוח, ושעות פתיחה/סגירה בפורמט "HH:MM". */
+export type CustomHoursInput = {
+  weekday: number;
+  open: boolean;
+  start: string;
+  end: string;
+};
+
+/** "HH:MM" → דקות מחצות היום; מחזיר null לקלט לא-תקין. */
+function hhmmToMinutes(value: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+/**
+ * ממיר בחירת ימים ושעות ידנית לשורות שעות תקינות עבור setBusinessHours.
+ * מדלג על ימים סגורים, על ימים מחוץ לטווח 0–6, ועל שעות לא-תקינות או כאלה
+ * שבהן שעת הסיום אינה מאוחרת משעת ההתחלה. מחזיר מערך ממוין לפי יום, ללא הפסקות.
+ */
+export function parseCustomHours(input: CustomHoursInput[]): WorkingHoursRow[] {
+  const result: WorkingHoursRow[] = [];
+  for (const day of input) {
+    if (!day || day.open !== true) continue;
+    if (!Number.isInteger(day.weekday) || day.weekday < 0 || day.weekday > 6) continue;
+    const startMinute = hhmmToMinutes(String(day.start ?? ''));
+    const endMinute = hhmmToMinutes(String(day.end ?? ''));
+    if (startMinute === null || endMinute === null || endMinute <= startMinute) continue;
+    result.push({ weekday: day.weekday, startMinute, endMinute, breaks: [] });
+  }
+  result.sort((a, b) => a.weekday - b.weekday);
+  return result;
+}

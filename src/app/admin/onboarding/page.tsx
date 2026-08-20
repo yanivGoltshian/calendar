@@ -5,6 +5,7 @@ import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
 import { listServices } from '@/server/repos/services';
+import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
 import { bookingUrl } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
 import OnboardingWizard, { type WizardService } from './OnboardingWizard';
@@ -31,6 +32,9 @@ export default async function AdminOnboardingPage() {
     hidden: s.hidden,
   }));
 
+  // דוגמת פלייסהולדר מותאמת לסוג העסק (למשל "אימון אישי" לעסק כושר).
+  const serviceExample = getServiceTemplate(business.type)[0]?.name ?? '';
+
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-6">
@@ -50,6 +54,7 @@ export default async function AdminOnboardingPage() {
         brandColor={business.brandColor ?? ''}
         logoUrl={business.logoUrl ?? ''}
         services={wizardServices}
+        serviceExample={serviceExample}
         bookingUrl={link}
         bookingQr={qr}
       />

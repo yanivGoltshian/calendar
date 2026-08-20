@@ -24,6 +24,7 @@ type Props = {
   brandColor: string;
   logoUrl: string;
   services: WizardService[];
+  serviceExample: string;
   bookingUrl: string;
   bookingQr: string;
 };
@@ -50,6 +51,7 @@ export default function OnboardingWizard({
   brandColor,
   logoUrl,
   services,
+  serviceExample,
   bookingUrl,
   bookingQr,
 }: Props) {
@@ -63,9 +65,26 @@ export default function OnboardingWizard({
   );
   const [addingService, setAddingService] = useState(false);
 
+  // טיוטת שירות חדש + רשימת השירותים שהבעלים כבר הוסיף (אפשר להוסיף כמה).
+  const [draftName, setDraftName] = useState('');
+  const [draftDuration, setDraftDuration] = useState('30');
+  const [draftPrice, setDraftPrice] = useState('');
+  const [newServices, setNewServices] = useState<
+    { name: string; durationMin: number; priceAgorot: number }[]
+  >([]);
+
   // מצב מקומי לצעד המיתוג: צבע חי לתצוגה המקדימה + בחירת תבנית שעות.
   const [color, setColor] = useState(brandColor || '#0a182d');
   const [preset, setPreset] = useState<HoursPresetKey>('sun-thu');
+  // בחירת ימים ושעות ידנית, מוצגת כשנבחר "מותאם אישית" (ראשון–חמישי פתוחים כברירת מחדל).
+  const [customDays, setCustomDays] = useState(() =>
+    [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
+      weekday,
+      open: weekday <= 4,
+      start: '09:00',
+      end: '17:00',
+    })),
+  );
 
   const [servicesState, servicesFormAction, servicesPending] = useActionState(
     saveServices,
@@ -88,6 +107,36 @@ export default function OnboardingWizard({
   }, [brandingState]);
 
   const activeCount = Object.values(active).filter(Boolean).length;
+  const draftPending = draftName.trim() !== '' ? 1 : 0;
+  const totalSelected = activeCount + newServices.length + draftPending;
+
+  function addDraftService() {
+    const name = draftName.trim();
+    if (name === '') return;
+    const parsedDuration = Number.parseInt(draftDuration, 10);
+    setNewServices((prev) => [
+      ...prev,
+      {
+        name,
+        durationMin: Number.isFinite(parsedDuration) && parsedDuration > 0 ? parsedDuration : 30,
+        priceAgorot: shekelToAgorot(draftPrice),
+      },
+    ]);
+    setDraftName('');
+    setDraftDuration('30');
+    setDraftPrice('');
+  }
+
+  function removeNewService(idx: number) {
+    setNewServices((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function updateCustomDay(
+    weekday: number,
+    patch: Partial<{ open: boolean; start: string; end: string }>,
+  ) {
+    setCustomDays((prev) => prev.map((d) => (d.weekday === weekday ? { ...d, ...patch } : d)));
+  }
 
   const imageLabels: ImageUploadLabels = {
     choose: t.admin.settings.profile.image.choose,
@@ -228,6 +277,37 @@ export default function OnboardingWizard({
               })}
             </ul>
 
+            {newServices.length > 0 ? (
+              <ul className="space-y-2">
+                {newServices.map((svc, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-3.5"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-slate-800">{svc.name}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">
+                        {svc.durationMin} {o.services.minutesSuffix} ·{' '}
+                        {svc.priceAgorot > 0
+                          ? `₪${(svc.priceAgorot / 100).toLocaleString('he-IL')}`
+                          : o.services.free}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeNewService(idx)}
+                      className="shrink-0 text-sm font-medium text-slate-500 hover:text-red-600"
+                    >
+                      {o.services.removeAdded}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {/* רשימת השירותים החדשים נשלחת לשרת כ-JSON */}
+            <input type="hidden" name="newServices" value={JSON.stringify(newServices)} />
+
             {addingService ? (
               <div className="space-y-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
                 <div>
@@ -237,7 +317,9 @@ export default function OnboardingWizard({
                   <input
                     name="newName"
                     type="text"
-                    placeholder={o.services.newNamePlaceholder}
+                    value={draftName}
+                    onChange={(e) => setDraftName(e.target.value)}
+                    placeholder={o.services.newNamePlaceholder.replace('{example}', serviceExample)}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
                   />
                 </div>
@@ -252,7 +334,8 @@ export default function OnboardingWizard({
                       inputMode="numeric"
                       min={5}
                       step={5}
-                      defaultValue={30}
+                      value={draftDuration}
+                      onChange={(e) => setDraftDuration(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
                     />
                   </div>
@@ -267,17 +350,34 @@ export default function OnboardingWizard({
                       min={0}
                       step={1}
                       placeholder="0"
+                      value={draftPrice}
+                      onChange={(e) => setDraftPrice(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
                     />
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setAddingService(false)}
-                  className="text-sm font-medium text-slate-500 hover:text-slate-700"
-                >
-                  {o.services.cancelAdd}
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={addDraftService}
+                    disabled={draftName.trim() === ''}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {o.services.addCta}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddingService(false);
+                      setDraftName('');
+                      setDraftDuration('30');
+                      setDraftPrice('');
+                    }}
+                    className="text-sm font-medium text-slate-500 hover:text-slate-700"
+                  >
+                    {o.services.cancelAdd}
+                  </button>
+                </div>
               </div>
             ) : (
               <button
@@ -289,7 +389,7 @@ export default function OnboardingWizard({
               </button>
             )}
 
-            {activeCount === 0 && !addingService ? (
+            {totalSelected === 0 && !addingService ? (
               <p className="text-sm text-amber-600">{o.services.emptyWarning}</p>
             ) : null}
             {errorText(servicesState) ? (
@@ -299,14 +399,14 @@ export default function OnboardingWizard({
             <div className="flex items-center justify-end pt-1">
               <button
                 type="submit"
-                disabled={servicesPending || (activeCount === 0 && !addingService)}
+                disabled={servicesPending || totalSelected === 0}
                 className="rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
               >
                 {servicesPending
                   ? o.saving
-                  : activeCount === 1
+                  : totalSelected === 1
                     ? o.services.continueCtaSingle
-                    : o.services.continueCta.replace('{n}', String(activeCount))}
+                    : o.services.continueCta.replace('{n}', String(totalSelected))}
               </button>
             </div>
           </form>
@@ -345,6 +445,51 @@ export default function OnboardingWizard({
                 );
               })}
             </div>
+
+            {preset === 'custom' ? (
+              <div className="space-y-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                <p className="text-sm font-medium text-slate-700">{o.hours.custom.title}</p>
+                {customDays.map((day) => (
+                  <div key={day.weekday} className="flex flex-wrap items-center gap-3">
+                    <label className="flex min-w-[4.5rem] items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={day.open}
+                        onChange={(e) => updateCustomDay(day.weekday, { open: e.target.checked })}
+                        className="h-4 w-4 accent-emerald-500"
+                      />
+                      <span className="text-sm font-medium text-slate-700">
+                        {o.hours.custom.days[day.weekday]}
+                      </span>
+                    </label>
+                    {day.open ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="time"
+                          value={day.start}
+                          onChange={(e) => updateCustomDay(day.weekday, { start: e.target.value })}
+                          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                        />
+                        <span className="text-slate-400">–</span>
+                        <input
+                          type="time"
+                          value={day.end}
+                          onChange={(e) => updateCustomDay(day.weekday, { end: e.target.value })}
+                          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-400">{o.hours.custom.closed}</span>
+                    )}
+                  </div>
+                ))}
+                <input type="hidden" name="customHours" value={JSON.stringify(customDays)} />
+              </div>
+            ) : null}
+
+            <p className="rounded-2xl bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-500">
+              {o.hours.staffNote}
+            </p>
             <p className="text-xs text-slate-400">{o.hours.tuneLater}</p>
             {errorText(hoursState) ? (
               <p className="text-sm text-red-600">{errorText(hoursState)}</p>

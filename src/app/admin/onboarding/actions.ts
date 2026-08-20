@@ -9,8 +9,12 @@ import {
   type BusinessProfileInput,
 } from '@/server/repos/settings';
 import { createService, setServiceHidden } from '@/server/repos/services';
-import { setBusinessHours } from '@/server/repos/workingHours';
-import { workingHoursPreset, type HoursPresetKey } from '@/server/onboarding/hoursPresets';
+import { setBusinessHours, type WorkingHoursRow } from '@/server/repos/workingHours';
+import {
+  workingHoursPreset,
+  parseCustomHours,
+  type HoursPresetKey,
+} from '@/server/onboarding/hoursPresets';
 import type { SaveState } from '../settings/parse';
 import { ONBOARDING_CHECKLIST_DISMISS_COOKIE } from './checklistState';
 
@@ -35,7 +39,49 @@ function shekelToAgorot(raw: string): number {
 
 const HOURS_PRESET_KEYS: readonly HoursPresetKey[] = ['sun-thu', 'every-day', 'custom'];
 
-/** צעד 1 — אישור השירותים שנזרעו לפי סוג העסק (החלפת הצגה + הוספת שירות משלך). */
+type PendingService = { name: string; durationMin: number; priceAgorot: number };
+
+/** מנתח את רשימת השירותים החדשים שנשלחה כ-JSON מהאשף, עם הגנה מלאה מפני קלט פגום. */
+function parsePendingServices(raw: FormDataEntryValue | null): PendingService[] {
+  if (typeof raw !== 'string' || raw.trim() === '') return [];
+  let arr: unknown;
+  try {
+    arr = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(arr)) return [];
+  const out: PendingService[] = [];
+  for (const item of arr) {
+    if (!item || typeof item !== 'object') continue;
+    const rec = item as Record<string, unknown>;
+    const name = typeof rec.name === 'string' ? rec.name.trim() : '';
+    if (name === '') continue;
+    const durationMin =
+      typeof rec.durationMin === 'number' && Number.isFinite(rec.durationMin) && rec.durationMin > 0
+        ? Math.round(rec.durationMin)
+        : 30;
+    const priceAgorot =
+      typeof rec.priceAgorot === 'number' && Number.isFinite(rec.priceAgorot) && rec.priceAgorot >= 0
+        ? Math.round(rec.priceAgorot)
+        : 0;
+    out.push({ name, durationMin, priceAgorot });
+  }
+  return out;
+}
+
+/** מנתח את שדה השעות המותאמות (JSON) לשורות תקינות; מחזיר [] לקלט פגום. */
+function parseCustomHoursField(raw: FormDataEntryValue | null): WorkingHoursRow[] {
+  if (typeof raw !== 'string' || raw.trim() === '') return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? parseCustomHours(arr) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** צעד 1 — אישור השירותים שנזרעו לפי סוג העסק (החלפת הצגה + הוספת שירותים משלך). */
 export async function saveServices(_prev: SaveState, fd: FormData): Promise<SaveState> {
   const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
@@ -50,20 +96,30 @@ export async function saveServices(_prev: SaveState, fd: FormData): Promise<Save
     toggles.push({ id, hidden: !on });
   }
 
-  const newName = (fd.get('newName') as string | null)?.trim() ?? '';
-  if (activeCount === 0 && newName === '') return { ok: false, error: 'generic' };
+  // שירותים חדשים שהבעלים הוסיף: רשימת JSON (כפתור "הוספה") + טיוטה אחרונה שלא נוספה עדיין.
+  const pending = parsePendingServices(fd.get('newServices'));
+  const draftName = (fd.get('newName') as string | null)?.trim() ?? '';
+  if (draftName !== '') {
+    const draftDuration = Number.parseInt((fd.get('newDuration') as string | null) ?? '', 10);
+    pending.push({
+      name: draftName,
+      durationMin: Number.isFinite(draftDuration) && draftDuration > 0 ? draftDuration : 30,
+      priceAgorot: shekelToAgorot((fd.get('newPrice') as string | null) ?? ''),
+    });
+  }
+
+  if (activeCount === 0 && pending.length === 0) return { ok: false, error: 'generic' };
 
   for (const tog of toggles) {
     await setServiceHidden(business.id, tog.id, tog.hidden);
   }
 
-  if (newName !== '') {
-    const durationMin = Number.parseInt((fd.get('newDuration') as string | null) ?? '', 10);
+  for (const svc of pending) {
     await createService(business.id, {
-      name: newName,
+      name: svc.name,
       description: null,
-      durationMin: Number.isFinite(durationMin) && durationMin > 0 ? durationMin : 30,
-      priceAgorot: shekelToAgorot((fd.get('newPrice') as string | null) ?? ''),
+      durationMin: svc.durationMin,
+      priceAgorot: svc.priceAgorot,
       hidePrice: false,
       hideDuration: false,
       hidden: false,
@@ -74,7 +130,7 @@ export async function saveServices(_prev: SaveState, fd: FormData): Promise<Save
   return { ok: true };
 }
 
-/** צעד 2 — שעות פעילות מתבנית בלחיצה אחת. */
+/** צעד 2 — שעות פעילות מתבנית בלחיצה אחת, או בחירת ימים ושעות ידנית ("מותאם אישית"). */
 export async function saveHours(_prev: SaveState, fd: FormData): Promise<SaveState> {
   const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
@@ -84,7 +140,16 @@ export async function saveHours(_prev: SaveState, fd: FormData): Promise<SaveSta
     ? (raw as HoursPresetKey)
     : 'sun-thu';
 
-  await setBusinessHours(business.id, workingHoursPreset(preset));
+  let hours: WorkingHoursRow[];
+  if (preset === 'custom') {
+    hours = parseCustomHoursField(fd.get('customHours'));
+    // אם לא נבחר אף יום פתוח תקין — נופלים לברירת מחדל שמרנית כדי שהעסק לא יישאר ללא זמינות.
+    if (hours.length === 0) hours = workingHoursPreset('custom');
+  } else {
+    hours = workingHoursPreset(preset);
+  }
+
+  await setBusinessHours(business.id, hours);
   revalidateAll(business.slug);
   return { ok: true };
 }
