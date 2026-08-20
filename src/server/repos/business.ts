@@ -53,13 +53,14 @@ export async function getAllBusinessSlugs(): Promise<{ slug: string; updatedAt: 
 }
 
 /**
- * שליפת שדות המיתוג בלבד של עסק לפי slug — לשימוש במניפסט ובאייקון של ה-PWA.
- * שולף מעט שדות כדי לא להעמיס, ומחזיר null כשהעסק לא קיים.
+ * שליפת שדות המיתוג בלבד של עסק לפי slug — לשימוש במניפסט, באייקון של ה-PWA
+ * ובכרטיס השיתוף (OG). כולל coverImageUrl (תמונת העסק) שכרטיס השיתוף מעדיף
+ * על הלוגו. שולף מעט שדות כדי לא להעמיס, ומחזיר null כשהעסק לא קיים.
  */
 export async function getBusinessBranding(slug: string) {
   return prisma.business.findUnique({
     where: { slug },
-    select: { slug: true, name: true, logoUrl: true, brandColor: true },
+    select: { slug: true, name: true, logoUrl: true, brandColor: true, coverImageUrl: true },
   });
 }
 

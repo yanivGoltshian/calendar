@@ -13,6 +13,47 @@ test('כשיש לוגו — mode הוא logo', () => {
   assert.equal(model.mode, 'logo');
 });
 
+test('כשיש תמונת עסק — mode הוא cover (גובר גם על לוגו)', () => {
+  const model = buildBusinessOgModel({
+    name: 'מספרת יוסי',
+    coverUrl: 'data:image/jpeg;base64,BBBB',
+    logoUrl: 'data:image/png;base64,AAAA',
+    brandColor: '#3366cc',
+  });
+  assert.equal(model.mode, 'cover');
+});
+
+test('אין תמונת עסק אך יש לוגו — mode הוא logo', () => {
+  const model = buildBusinessOgModel({
+    name: 'מספרת יוסי',
+    coverUrl: null,
+    logoUrl: 'data:image/png;base64,AAAA',
+    brandColor: '#3366cc',
+  });
+  assert.equal(model.mode, 'logo');
+});
+
+test('אין תמונת עסק ואין לוגו — mode הוא initial', () => {
+  const model = buildBusinessOgModel({
+    name: 'מספרת יוסי',
+    coverUrl: null,
+    logoUrl: null,
+    brandColor: '#3366cc',
+  });
+  assert.equal(model.mode, 'initial');
+  assert.equal(model.initial, 'מ');
+});
+
+test('תמונת עסק ריקה (מחרוזת ריקה) נחשבת כהיעדר — נפילה ללוגו', () => {
+  const model = buildBusinessOgModel({
+    name: 'Bella',
+    coverUrl: '',
+    logoUrl: 'data:image/png;base64,AAAA',
+    brandColor: null,
+  });
+  assert.equal(model.mode, 'logo');
+});
+
 test('כשאין לוגו — mode הוא initial והאות היא התו הראשון של השם', () => {
   const model = buildBusinessOgModel({
     name: 'מספרת יוסי',

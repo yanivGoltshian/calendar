@@ -1,12 +1,13 @@
 import { ImageResponse } from 'next/og';
 import { getBusinessBranding } from '@/server/repos/business';
-import { loadHebrewFont, loadLogo } from '@/lib/og/assets';
+import { loadHebrewFont, loadImage, loadLogo } from '@/lib/og/assets';
 import { buildBusinessOgModel } from '@/lib/og/model';
 
 /**
  * כרטיס שיתוף (Open Graph) דינמי לכל עסק — 1200x630, נחיתה (landscape).
  * מתקן את הבאג שבו שיתוף לינק עסק ב-WhatsApp/רשתות הראה את לוגו הפלטפורמה:
- * כאן מרונדרים הלוגו של העסק (או אות ראשונה על רקע צבע המותג) ושם העסק.
+ * כאן מרונדרת תמונת העסק (coverImageUrl) במילוי מלא כשקיימת, אחרת הלוגו של
+ * העסק, ואחרת אות ראשונה על רקע צבע המותג — ותמיד שם העסק מעל.
  *
  * זהו קובץ file-convention של Next: כשעמוד העסק אינו קובע openGraph.images
  * במפורש, Next מזריק אוטומטית את התגית המצביעה לתמונה זו (וגם ל-Twitter).
@@ -25,11 +26,14 @@ export default async function BusinessOpengraphImage({ params }: Props) {
   const { slug } = await params;
   const business = await getBusinessBranding(slug);
 
-  // טעינת הלוגו לפני בניית המודל: אם הטעינה נכשלה (או אין לוגו/עסק),
-  // המודל נופל אוטומטית לאות ראשונה על רקע צבע המותג — ללא קריסה.
+  // טעינת תמונת העסק והלוגו לפני בניית המודל: כשתמונת העסק נטענת בהצלחה
+  // המודל בוחר mode='cover'; אחרת נופל ללוגו, ואם גם הוא חסר — לאות ראשונה
+  // על רקע צבע המותג. כל טעינה שנכשלת מחזירה null ומורידה מדרגה בבטחה.
+  const cover = await loadImage(business?.coverImageUrl ?? null);
   const logo = await loadLogo(business?.logoUrl ?? null);
   const model = buildBusinessOgModel({
     name: business?.name ?? null,
+    coverUrl: cover,
     logoUrl: logo,
     brandColor: business?.brandColor ?? null,
   });
@@ -40,8 +44,103 @@ export default async function BusinessOpengraphImage({ params }: Props) {
     ? [{ name: 'Assistant', data: bold, weight: 700 as const, style: 'normal' as const }]
     : [];
 
-  return new ImageResponse(
-    (
+  const element =
+    model.mode === 'cover' ? (
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          fontFamily: 'Assistant, sans-serif',
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={cover ?? ''}
+          alt=""
+          width={1200}
+          height={630}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '1200px',
+            height: '630px',
+            objectFit: 'cover',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '1200px',
+            height: '360px',
+            display: 'flex',
+            background:
+              'linear-gradient(to top, rgba(0,0,0,0.82), rgba(0,0,0,0.10) 60%, rgba(0,0,0,0))',
+          }}
+        />
+        {logo ? (
+          <div
+            style={{
+              position: 'absolute',
+              top: '48px',
+              right: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '132px',
+              height: '132px',
+              background: '#ffffff',
+              borderRadius: '28px',
+              boxShadow: '0 12px 36px rgba(0,0,0,0.30)',
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logo}
+              alt=""
+              width={104}
+              height={104}
+              style={{ width: '104px', height: '104px', objectFit: 'contain' }}
+            />
+          </div>
+        ) : null}
+        {name ? (
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              bottom: 0,
+              width: '1200px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              justifyContent: 'flex-end',
+              padding: '64px',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                maxWidth: '1000px',
+                color: '#ffffff',
+                fontSize: '72px',
+                fontWeight: 700,
+                lineHeight: 1.1,
+                textAlign: 'right',
+                textShadow: '0 3px 18px rgba(0,0,0,0.55)',
+              }}
+            >
+              {name}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    ) : (
       <div
         style={{
           width: '100%',
@@ -112,10 +211,10 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           </div>
         ) : null}
       </div>
-    ),
-    {
-      ...size,
-      ...(fonts.length ? { fonts } : {}),
-    },
-  );
+    );
+
+  return new ImageResponse(element, {
+    ...size,
+    ...(fonts.length ? { fonts } : {}),
+  });
 }

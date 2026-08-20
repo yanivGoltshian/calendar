@@ -39,3 +39,9 @@ export async function loadLogo(url: string | null): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * כינוי סמנטי דק ל-loadLogo לטעינת תמונת העסק (cover) לכרטיס השיתוף —
+ * אותה לוגיקה בדיוק (מאמת image/*, מחזיר null בכשל), רק שם קריא יותר בהקשר.
+ */
+export const loadImage = loadLogo;
