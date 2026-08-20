@@ -53,10 +53,12 @@ export default async function HomePage() {
   const faqItems = Object.values(m.faq.items);
 
   // תמחור חדש (D5): חודש ניסיון חינם ואז שתי חבילות ללא מחיר מספרי, עם פנייה אישית.
+  // קבלת הצעת מחיר זמינה לכולם דרך המסלול הציבורי /quote, כדי שגם מנהל הפלטפורמה
+  // (שהוא גם בעל עסק חוזר) לא ינותב אל /admin/upgrade ומשם אל /superadmin ולעולם
+  // לא יגיע לטופס. הכרטיסים של Standard/Premium מפנים תמיד אל /quote?plan=X.
   const q = t.quote.home;
-  const upgradeHref = (plan: 'STANDARD' | 'PREMIUM') =>
-    isReturningOwner ? `/admin/upgrade?plan=${plan}` : ctaPrimaryHref;
-  const upgradeLabel = isReturningOwner ? q.ctaLoggedIn : q.ctaGuest;
+  const upgradeHref = (plan: 'STANDARD' | 'PREMIUM') => `/quote?plan=${plan}`;
+  const upgradeLabel = q.ctaLoggedIn;
 
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
