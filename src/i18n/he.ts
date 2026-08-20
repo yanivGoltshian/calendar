@@ -1555,6 +1555,13 @@ const he = {
         createdAt: 'נוצר',
         actions: 'פעולות',
       },
+      // קישור לאתר הציבורי של העסק (/b/[slug]) מתוך שורת העסק.
+      publicSite: {
+        view: 'לאתר העסק',
+        copy: 'העתקת קישור',
+        copied: 'הקישור הועתק',
+        copyAria: 'העתקת הקישור לאתר העסק',
+      },
       extendTrial: {
         title: 'הארכת ניסיון',
         daysLabel: 'ימים להוספה',

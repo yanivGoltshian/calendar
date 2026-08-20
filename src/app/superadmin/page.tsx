@@ -6,6 +6,7 @@ import { getPlatformAdminEmail } from '@/server/platformAdmin';
 import { t } from '@/i18n';
 import InstallApp from '@/components/pwa/InstallApp';
 import { extendTrialAction, upgradePremiumAction, revertToBasicAction } from './actions';
+import PublicSiteLink from './PublicSiteLink';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,6 +140,7 @@ export default async function SuperadminPage() {
                         <div className="text-xs" style={{ color: TEXT_MUTED }}>
                           {b.slug}
                         </div>
+                        <PublicSiteLink slug={b.slug} />
                       </td>
                       <td className="px-3 py-3 text-xs" style={{ color: TEXT_MUTED }}>
                         {b.ownerEmail ?? s.none}
