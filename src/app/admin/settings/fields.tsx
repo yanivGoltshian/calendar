@@ -204,7 +204,17 @@ export type PublicPageValues = Pick<Business, 'type' | 'publicPageStyle' | 'land
  * רכיב פרזנטטיבי בלבד; עורך הנחיתה מוצג תמיד ורלוונטי כשנבחר "עמוד נחיתה".
  * שדות ריקים נופלים לברירת מחדל לפי סוג העסק בעת ההצגה בפועל.
  */
-export function PublicPageFields({ b }: { b: PublicPageValues }) {
+export function PublicPageFields({
+  b,
+  hideStyleChoice = false,
+  hideHero = false,
+  hideSections = false,
+}: {
+  b: PublicPageValues;
+  hideStyleChoice?: boolean;
+  hideHero?: boolean;
+  hideSections?: boolean;
+}) {
   const s = t.admin.settings.pageStyle;
   const img = t.admin.settings.profile.image;
   const style = normalizePublicPageStyle(b.publicPageStyle);
@@ -246,68 +256,80 @@ export function PublicPageFields({ b }: { b: PublicPageValues }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {styleOption('BOOKING', s.bookingLabel, s.bookingHint)}
-        {styleOption('LANDING', s.landingLabel, s.landingHint)}
-      </div>
+      {!hideStyleChoice && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {styleOption('BOOKING', s.bookingLabel, s.bookingHint)}
+          {styleOption('LANDING', s.landingLabel, s.landingHint)}
+        </div>
+      )}
 
       <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-800">{s.landingSectionTitle}</h3>
-          <p className={hintClass}>{s.landingSectionHint}</p>
-        </div>
+        {!hideSections && (
+          <>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800">{s.landingSectionTitle}</h3>
+              <p className={hintClass}>{s.landingSectionHint}</p>
+            </div>
 
-        <div className="space-y-2">
-          <label className={labelClass}>{s.sectionsTitle}</label>
-          <p className={hintClass}>{s.sectionsHint}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {TOGGLEABLE_LANDING_SECTIONS.map((key) => (
-              <label key={key} className={checkRowClass}>
-                <input
-                  type="checkbox"
-                  name={`landingSection_${key}`}
-                  defaultChecked={lc.sections?.[key] ?? landingSectionEnabledByDefault(key, b.type)}
-                  className={checkboxClass}
-                />
-                <span>{s.sectionNames[key]}</span>
-              </label>
-            ))}
-          </div>
-        </div>
+            <div className="space-y-2">
+              <label className={labelClass}>{s.sectionsTitle}</label>
+              <p className={hintClass}>{s.sectionsHint}</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {TOGGLEABLE_LANDING_SECTIONS.map((key) => (
+                  <label key={key} className={checkRowClass}>
+                    <input
+                      type="checkbox"
+                      name={`landingSection_${key}`}
+                      defaultChecked={
+                        lc.sections?.[key] ?? landingSectionEnabledByDefault(key, b.type)
+                      }
+                      className={checkboxClass}
+                    />
+                    <span>{s.sectionNames[key]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
-        <div>
-          <label className={labelClass}>{s.heroEyebrowLabel}</label>
-          <input
-            name="landingHeroEyebrow"
-            defaultValue={lc.heroEyebrow ?? ''}
-            placeholder={s.heroEyebrowPlaceholder}
-            maxLength={60}
-            className={inputClass}
-          />
-        </div>
+        {!hideHero && (
+          <>
+            <div>
+              <label className={labelClass}>{s.heroEyebrowLabel}</label>
+              <input
+                name="landingHeroEyebrow"
+                defaultValue={lc.heroEyebrow ?? ''}
+                placeholder={s.heroEyebrowPlaceholder}
+                maxLength={60}
+                className={inputClass}
+              />
+            </div>
 
-        <div>
-          <label className={labelClass}>{s.heroHeadlineLabel}</label>
-          <input
-            name="landingHeroHeadline"
-            defaultValue={lc.heroHeadline ?? ''}
-            placeholder={defaults.heroHeadline}
-            maxLength={140}
-            className={inputClass}
-          />
-        </div>
+            <div>
+              <label className={labelClass}>{s.heroHeadlineLabel}</label>
+              <input
+                name="landingHeroHeadline"
+                defaultValue={lc.heroHeadline ?? ''}
+                placeholder={defaults.heroHeadline}
+                maxLength={140}
+                className={inputClass}
+              />
+            </div>
 
-        <div>
-          <label className={labelClass}>{s.heroSubtextLabel}</label>
-          <textarea
-            name="landingHeroSubtext"
-            defaultValue={lc.heroSubtext ?? ''}
-            placeholder={defaults.heroSubtext}
-            rows={2}
-            maxLength={400}
-            className={inputClass}
-          />
-        </div>
+            <div>
+              <label className={labelClass}>{s.heroSubtextLabel}</label>
+              <textarea
+                name="landingHeroSubtext"
+                defaultValue={lc.heroSubtext ?? ''}
+                placeholder={defaults.heroSubtext}
+                rows={2}
+                maxLength={400}
+                className={inputClass}
+              />
+            </div>
+          </>
+        )}
 
         <div className="space-y-3">
           <label className={labelClass}>{s.benefitsLabel}</label>
