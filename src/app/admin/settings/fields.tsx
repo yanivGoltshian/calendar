@@ -10,9 +10,13 @@ import {
   normalizePublicPageStyle,
   normalizeLandingContent,
   landingDefaults,
+  landingSectionEnabledByDefault,
+  TOGGLEABLE_LANDING_SECTIONS,
   MAX_BENEFITS,
   MAX_TESTIMONIALS,
   MAX_GALLERY_IMAGES,
+  MAX_FAQ,
+  MAX_BEFORE_AFTER,
 } from '@/lib/publicPageStyle';
 
 /**
@@ -253,6 +257,35 @@ export function PublicPageFields({ b }: { b: PublicPageValues }) {
           <p className={hintClass}>{s.landingSectionHint}</p>
         </div>
 
+        <div className="space-y-2">
+          <label className={labelClass}>{s.sectionsTitle}</label>
+          <p className={hintClass}>{s.sectionsHint}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {TOGGLEABLE_LANDING_SECTIONS.map((key) => (
+              <label key={key} className={checkRowClass}>
+                <input
+                  type="checkbox"
+                  name={`landingSection_${key}`}
+                  defaultChecked={lc.sections?.[key] ?? landingSectionEnabledByDefault(key, b.type)}
+                  className={checkboxClass}
+                />
+                <span>{s.sectionNames[key]}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>{s.heroEyebrowLabel}</label>
+          <input
+            name="landingHeroEyebrow"
+            defaultValue={lc.heroEyebrow ?? ''}
+            placeholder={s.heroEyebrowPlaceholder}
+            maxLength={60}
+            className={inputClass}
+          />
+        </div>
+
         <div>
           <label className={labelClass}>{s.heroHeadlineLabel}</label>
           <input
@@ -323,6 +356,56 @@ export function PublicPageFields({ b }: { b: PublicPageValues }) {
         </div>
 
         <div className="space-y-3">
+          <label className={labelClass}>{s.beforeAfterLabel}</label>
+          <p className={hintClass}>{s.beforeAfterHint}</p>
+          {Array.from({ length: MAX_BEFORE_AFTER }).map((_, i) => {
+            const cur = lc.beforeAfter?.[i];
+            return (
+              <div
+                key={i}
+                className="space-y-2 rounded-lg border border-slate-200 bg-white p-3"
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <span className={hintClass}>{s.beforeAfterBeforeLabel}</span>
+                    <ImageUploadField
+                      name={`landingBefore${i}Url`}
+                      defaultValue={cur?.beforeUrl ?? ''}
+                      targetAspect={1}
+                      rounded={false}
+                      maxWidth={800}
+                      maxHeight={800}
+                      mime="image/jpeg"
+                      labels={galleryLabels}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className={hintClass}>{s.beforeAfterAfterLabel}</span>
+                    <ImageUploadField
+                      name={`landingAfter${i}Url`}
+                      defaultValue={cur?.afterUrl ?? ''}
+                      targetAspect={1}
+                      rounded={false}
+                      maxWidth={800}
+                      maxHeight={800}
+                      mime="image/jpeg"
+                      labels={galleryLabels}
+                    />
+                  </div>
+                </div>
+                <input
+                  name={`landingBeforeAfter${i}Label`}
+                  defaultValue={cur?.label ?? ''}
+                  placeholder={s.beforeAfterCaptionPlaceholder}
+                  maxLength={80}
+                  className={inputClass}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="space-y-3">
           <label className={labelClass}>{s.testimonialsLabel}</label>
           {Array.from({ length: MAX_TESTIMONIALS }).map((_, i) => {
             const cur = lc.testimonials?.[i];
@@ -349,6 +432,94 @@ export function PublicPageFields({ b }: { b: PublicPageValues }) {
               </div>
             );
           })}
+        </div>
+
+        <div className="space-y-3">
+          <label className={labelClass}>{s.faqLabel}</label>
+          <p className={hintClass}>{s.faqHint}</p>
+          {Array.from({ length: MAX_FAQ }).map((_, i) => {
+            const cur = lc.faq?.[i];
+            return (
+              <div
+                key={i}
+                className="space-y-2 rounded-lg border border-slate-200 bg-white p-3"
+              >
+                <input
+                  name={`landingFaq${i}Question`}
+                  defaultValue={cur?.question ?? ''}
+                  placeholder={s.faqQuestionPlaceholder}
+                  maxLength={160}
+                  className={inputClass}
+                />
+                <textarea
+                  name={`landingFaq${i}Answer`}
+                  defaultValue={cur?.answer ?? ''}
+                  placeholder={s.faqAnswerPlaceholder}
+                  rows={2}
+                  maxLength={500}
+                  className={inputClass}
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        <div>
+          <label className={labelClass}>{s.aboutLabel}</label>
+          <textarea
+            name="landingAbout"
+            defaultValue={lc.about ?? ''}
+            placeholder={s.aboutPlaceholder}
+            rows={4}
+            maxLength={900}
+            className={inputClass}
+          />
+        </div>
+
+        <div className="space-y-3">
+          <label className={labelClass}>{s.socialTitle}</label>
+          <p className={hintClass}>{s.socialHint}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input
+              name="landingSocialWhatsapp"
+              defaultValue={lc.socialLinks?.whatsapp ?? ''}
+              placeholder={s.socialWhatsappPlaceholder}
+              maxLength={2048}
+              className={inputClass}
+            />
+            <input
+              name="landingSocialInstagram"
+              defaultValue={lc.socialLinks?.instagram ?? ''}
+              placeholder={s.socialInstagramPlaceholder}
+              maxLength={2048}
+              className={inputClass}
+            />
+            <input
+              name="landingSocialFacebook"
+              defaultValue={lc.socialLinks?.facebook ?? ''}
+              placeholder={s.socialFacebookPlaceholder}
+              maxLength={2048}
+              className={inputClass}
+            />
+            <input
+              name="landingSocialTiktok"
+              defaultValue={lc.socialLinks?.tiktok ?? ''}
+              placeholder={s.socialTiktokPlaceholder}
+              maxLength={2048}
+              className={inputClass}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>{s.ctaLabelLabel}</label>
+          <input
+            name="landingCtaLabel"
+            defaultValue={lc.ctaLabel ?? ''}
+            placeholder={s.ctaLabelPlaceholder}
+            maxLength={40}
+            className={inputClass}
+          />
         </div>
       </div>
     </div>

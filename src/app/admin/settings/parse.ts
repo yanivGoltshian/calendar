@@ -3,10 +3,15 @@ import { BusinessType, ReminderChannel } from '@prisma/client';
 import {
   normalizePublicPageStyle,
   normalizeLandingContent,
+  landingSectionEnabledByDefault,
+  TOGGLEABLE_LANDING_SECTIONS,
   MAX_BENEFITS,
   MAX_TESTIMONIALS,
   MAX_GALLERY_IMAGES,
+  MAX_FAQ,
+  MAX_BEFORE_AFTER,
 } from '@/lib/publicPageStyle';
+import type { LandingSectionToggles } from '@/lib/publicPageStyle';
 import type {
   BusinessProfileInput,
   BookingPolicyInput,
@@ -72,12 +77,49 @@ export function parseLandingContent(fd: FormData) {
   for (let i = 0; i < MAX_GALLERY_IMAGES; i++) {
     galleryImageUrls.push(str(fd, `landingGallery${i}`));
   }
+  const faq = [];
+  for (let i = 0; i < MAX_FAQ; i++) {
+    faq.push({
+      question: str(fd, `landingFaq${i}Question`),
+      answer: str(fd, `landingFaq${i}Answer`),
+    });
+  }
+  const beforeAfter = [];
+  for (let i = 0; i < MAX_BEFORE_AFTER; i++) {
+    beforeAfter.push({
+      beforeUrl: str(fd, `landingBefore${i}Url`),
+      afterUrl: str(fd, `landingAfter${i}Url`),
+      label: str(fd, `landingBeforeAfter${i}Label`),
+    });
+  }
+
+  // מתגי המקטעים: שומרים רק בחירות שסוטות מברירת המחדל לפי סוג העסק,
+  // כדי שעסק שלא נגע בעמוד הנחיתה יישאר עם landingContent ריק (NULL).
+  const type = str(fd, 'type') || null;
+  const sections: LandingSectionToggles = {};
+  for (const key of TOGGLEABLE_LANDING_SECTIONS) {
+    const checked = checkbox(fd, `landingSection_${key}`);
+    if (checked !== landingSectionEnabledByDefault(key, type)) sections[key] = checked;
+  }
+
   return normalizeLandingContent({
+    heroEyebrow: str(fd, 'landingHeroEyebrow'),
     heroHeadline: str(fd, 'landingHeroHeadline'),
     heroSubtext: str(fd, 'landingHeroSubtext'),
     benefits,
     galleryImageUrls,
+    beforeAfter,
     testimonials,
+    faq,
+    about: str(fd, 'landingAbout'),
+    socialLinks: {
+      whatsapp: str(fd, 'landingSocialWhatsapp'),
+      instagram: str(fd, 'landingSocialInstagram'),
+      facebook: str(fd, 'landingSocialFacebook'),
+      tiktok: str(fd, 'landingSocialTiktok'),
+    },
+    ctaLabel: str(fd, 'landingCtaLabel'),
+    sections,
   });
 }
 
