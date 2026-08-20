@@ -5,23 +5,38 @@
  * על Meta WhatsApp Cloud API): התראת הבעלים היא ערוץ פנימי, ולכן היא ממומשת
  * כמתאם עצמאי בעל ממשק אחיד (sendOwnerWhatsApp) שקל להחליף בעתיד.
  *
- * מימוש ברירת המחדל הוא Twilio WhatsApp, המופעל רק כאשר כל ארבעת המשתנים קיימים:
+ * מימוש ברירת המחדל הוא Twilio WhatsApp, המופעל כאשר שלושת סודות Twilio קיימים:
  *   TWILIO_ACCOUNT_SID   מזהה החשבון ב-Twilio
  *   TWILIO_AUTH_TOKEN    אסימון האימות ב-Twilio
  *   TWILIO_WHATSAPP_FROM מספר השולח המאושר (עם או בלי הקידומת "whatsapp:")
- *   OWNER_WHATSAPP_TO    מספר הוואטסאפ האישי של בעל האתר (יעד ההתראה)
  *
- * כשחסר ולו משתנה אחד — המתאם *מדלג בחן*: מחזיר { sent:false, configured:false }
+ * יעד ההתראה נקבע דרך OWNER_WHATSAPP_TO, ובהיעדרו נופל לברירת המחדל בקוד
+ * (CONTACT.PHONE_E164, מספר הוואטסאפ האישי של בעל האתר) — כך שדי בהגדרת שלושת
+ * הסודות כדי שההתראה תגיע ליעד הנכון, בלי צורך לחזור על המספר בכל סביבה.
+ *
+ * כשחסר אחד מסודות Twilio — המתאם *מדלג בחן*: מחזיר { sent:false, configured:false }
  * ומתעד ללוג, בלי לזרוק שגיאה. שליחת המייל וההתמדה במסד לעולם אינן תלויות בו.
  */
 
-/** האם מתאם הוואטסאפ של הבעלים מוגדר במלואו (כל ארבעת משתני Twilio קיימים). */
+import { CONTACT } from '@/config/contact';
+
+/**
+ * יעד הוואטסאפ של בעל האתר: OWNER_WHATSAPP_TO, ובהיעדרו מספר הקשר בברירת המחדל
+ * (CONTACT.PHONE_E164). ניתן להזין עם או בלי הקידומת "whatsapp:".
+ */
+export function ownerWhatsAppTo(): string {
+  return process.env.OWNER_WHATSAPP_TO?.trim() || CONTACT.PHONE_E164;
+}
+
+/**
+ * האם מתאם הוואטסאפ של הבעלים מוגדר: די בשלושת סודות Twilio, שכן יעד ההתראה
+ * תמיד קיים (OWNER_WHATSAPP_TO או ברירת המחדל בקוד).
+ */
 export function whatsappOwnerConfigured(): boolean {
   return Boolean(
     process.env.TWILIO_ACCOUNT_SID?.trim() &&
       process.env.TWILIO_AUTH_TOKEN?.trim() &&
-      process.env.TWILIO_WHATSAPP_FROM?.trim() &&
-      process.env.OWNER_WHATSAPP_TO?.trim(),
+      process.env.TWILIO_WHATSAPP_FROM?.trim(),
   );
 }
 
@@ -48,9 +63,9 @@ export async function sendOwnerWhatsApp(message: string): Promise<OwnerWhatsAppR
   const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
   const token = process.env.TWILIO_AUTH_TOKEN?.trim();
   const from = process.env.TWILIO_WHATSAPP_FROM?.trim();
-  const to = process.env.OWNER_WHATSAPP_TO?.trim();
+  const to = ownerWhatsAppTo();
 
-  if (!sid || !token || !from || !to) {
+  if (!sid || !token || !from) {
     console.info('[whatsapp:owner] skipped — Twilio env not configured');
     return { sent: false, configured: false };
   }
