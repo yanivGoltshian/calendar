@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getBusinessesOwnedByEmail } from '@/server/repos/business';
 import { getBusinessAccess } from '@/server/subscription';
+import { isPlatformAdminEmail } from '@/server/platformAdmin';
 import AdminSidebar from './AdminSidebar';
 import Paywall from './Paywall';
 import TrialBanner from './TrialBanner';
@@ -31,7 +32,8 @@ export const metadata: Metadata = {
  * כדי למנוע קינון של <main> בתוך <main>.
  *
  * שער בעלות: אזור הניהול פתוח רק לבעל עסק מאומת (NextAuth).
- * לא מאומת -> כניסת בעלים; מאומת בלי עסק -> זרימת הקמת עסק.
+ * לא מאומת -> כניסת בעלים; מנהל פלטפורמה -> קונסולת ניהול-העל (/superadmin);
+ * מאומת בלי עסק -> זרימת הקמת עסק.
  *
  * שער תשלום (paywall): הגישה נגזרת מחדש בכל טעינה (getBusinessAccess).
  * כשאין גישה פעילה -> מסך חסימה במקום התוכן (חוסם פעולות ניהול).
@@ -44,6 +46,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   if (!email) {
     redirect('/business/login?redirect=/admin');
+  }
+
+  // כתובת הבסיס /admin היא קונסולת הפלטפורמה של יניב: מנהל פלטפורמה מנותב
+  // לניהול-העל (/superadmin) לפני בדיקת הבעלות, כדי שלא ייחסם לזרימת "הקמת עסק"
+  // כשאינו בעלים של אף עסק. אין סכנת לולאת הפניה: /superadmin הוא עץ ניתוב נפרד
+  // שאינו עטוף ב-layout זה ואינו מפנה בחזרה ל-/admin.
+  if (isPlatformAdminEmail(email)) {
+    redirect('/superadmin');
   }
 
   const owned = await getBusinessesOwnedByEmail(email);
