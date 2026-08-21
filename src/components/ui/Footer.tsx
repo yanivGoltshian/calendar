@@ -56,7 +56,7 @@ export function Footer({ demoSlug, absoluteLinks = false }: { demoSlug?: string;
               {demoSlug && (
                 <li>
                   <Link
-                    href={`/b/${demoSlug}`}
+                    href="/demo"
                     className="transition-colors hover:text-brand-700 dark:hover:text-brand-200"
                   >
                     {f.links.demo}
