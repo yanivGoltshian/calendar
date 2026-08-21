@@ -13,6 +13,7 @@ import { AudienceSpotlight } from '@/components/landing/AudienceSpotlight';
 import { audienceIcons, featureIcons, SparkleIcon } from '@/components/landing/icons';
 import { ContactBlock } from '@/components/billing/ContactBlock';
 import Image from 'next/image';
+import Link from 'next/link';
 import InstallApp from '@/components/pwa/InstallApp';
 import { homeHeroCta, ownerPrimaryHref, ownerPrimaryLabel } from './business/ownerRouting';
 
@@ -387,6 +388,28 @@ export default async function HomePage() {
             <div className="mt-12">
               <FaqAccordion items={faqItems} />
             </div>
+          </Container>
+        </Section>
+
+        {/* קישורים משניים בגוף העמוד — מפנים למסלול המעבר וללוח הדרכים בלי להעמיס על דף הבית */}
+        <Section spacing="sm">
+          <Container>
+            <p className="text-center text-sm text-sand-600 dark:text-sand-300">
+              {m.pageLinks.intro}{' '}
+              <Link
+                href="/migrate"
+                className="font-medium text-brand-600 underline-offset-4 hover:underline dark:text-brand-300"
+              >
+                {m.pageLinks.migrate} <span aria-hidden>←</span>
+              </Link>
+              <span aria-hidden className="mx-2 text-sand-300 dark:text-sand-600">·</span>
+              <Link
+                href="/roadmap"
+                className="font-medium text-brand-600 underline-offset-4 hover:underline dark:text-brand-300"
+              >
+                {m.pageLinks.roadmap} <span aria-hidden>←</span>
+              </Link>
+            </p>
           </Container>
         </Section>
 
