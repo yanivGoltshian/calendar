@@ -109,11 +109,23 @@ const config: Config = {
           '0%': { opacity: '0', transform: 'translateY(12px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        // סיבוב קוביית "מבצעים חמים" — עובר בין שש פאות הקובייה בלולאה חלקה.
+        // מכובד prefers-reduced-motion דרך motion-reduce:animate-none ברכיב.
+        'cube-spin': {
+          '0%': { transform: 'rotateX(-14deg) rotateY(0deg)' },
+          '16%': { transform: 'rotateX(-14deg) rotateY(-90deg)' },
+          '33%': { transform: 'rotateX(-14deg) rotateY(-180deg)' },
+          '50%': { transform: 'rotateX(-14deg) rotateY(-270deg)' },
+          '66%': { transform: 'rotateX(-104deg) rotateY(-270deg)' },
+          '83%': { transform: 'rotateX(76deg) rotateY(-270deg)' },
+          '100%': { transform: 'rotateX(-14deg) rotateY(-360deg)' },
+        },
       },
       animation: {
         float: 'float 6s ease-in-out infinite',
         shimmer: 'shimmer 2.5s linear infinite',
         'fade-up': 'fade-up 0.6s ease-out both',
+        'cube-spin': 'cube-spin 24s ease-in-out infinite',
       },
       transitionTimingFunction: {
         emphasized: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
