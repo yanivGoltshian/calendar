@@ -7,14 +7,11 @@ import { Button } from '@/components/ui';
 import BookingLinkShare from '@/components/booking/BookingLinkShare';
 import { ImageUploadField, type ImageUploadLabels } from '../settings/ImageUploadField';
 import { saveServices, saveHours, saveBranding, savePremiumLanding } from './actions';
-import { buildDefaultSectionToggles } from './premium';
+import { buildDefaultSectionToggles, BRAND_PRESETS, type BrandPreset } from './premium';
 import {
-  TOGGLEABLE_LANDING_SECTIONS,
   type LandingContent,
-  type LandingBenefit,
-  type LandingTestimonial,
-  type LandingFaqItem,
-  type LandingBeforeAfter,
+  type LandingHotDeals,
+  type LandingLaunchOffer,
   type LandingSocialLinks,
   type LandingSectionKey,
 } from '@/lib/publicPageStyle';
@@ -32,22 +29,15 @@ type HoursPresetKey = 'sun-thu' | 'every-day' | 'custom';
 
 /**
  * שלב הפרימיום האופציונלי (אחרי המיתוג):
- * 'gate' שער הבחירה, מספר 0..8 תת-שלב פעיל, 'summary' מסך הסיכום.
+ * 'gate' שער הבחירה, מספר 0..2 תת-שלב פעיל, 'summary' מסך הסיכום.
  */
 type PremiumPhase = 'gate' | number | 'summary';
 
-/** מפתחות תתי-השלבים של הפרימיום, לפי סדר ההצגה (0..8). */
-const PREMIUM_SUB_KEYS = [
-  'hero',
-  'about',
-  'benefits',
-  'gallery',
-  'beforeAfter',
-  'testimonials',
-  'faq',
-  'social',
-  'closing',
-] as const;
+/**
+ * שלושת תתי-השלבים של הפרימיום, כל אחד ממופה למקטע בעמוד הנחיתה הציבורי:
+ * hero (הירו + תמונות), hotDeals (מבצעים חמים), location (מיקום + וואטסאפ).
+ */
+const PREMIUM_SUB_KEYS = ['hero', 'hotDeals', 'location'] as const;
 
 type Props = {
   businessName: string;
@@ -67,7 +57,11 @@ type Props = {
 const initialSaveState: SaveState = { ok: false };
 
 /** ששת גווני המותג המוצעים (תואם למוקאפ המאושר). */
-const BRAND_SWATCHES = ['#0a182d', '#12b886', '#7c3aed', '#e11d48', '#f59e0b', '#0ea5e9'];
+/** גווני מותג ראשיים אצורים (פיקס) — קובעים brandColor בלבד; שאר גווני --biz-* נגזרים אוטומטית. */
+const PRIMARY_SWATCHES = [
+  '#0a182d', '#12b886', '#7c3aed', '#e11d48', '#f59e0b', '#0ea5e9',
+  '#b0855f', '#d98ca3', '#3f9d8a', '#3b82c4', '#9b3b57', '#2fa9a2',
+];
 
 function errorText(state: SaveState): string | null {
   if (!state.error) return null;
@@ -270,7 +264,7 @@ export default function OnboardingWizard({
   if (premiumPhase !== null) return renderPremium();
 
   /**
-   * רינדור שער הפרימיום, תשעת תתי-השלבים הדילוגיים, ומסך הסיכום.
+   * רינדור שער הפרימיום, שלושת תתי-השלבים הדילוגיים, ומסך הסיכום.
    * הפונקציה מוגדרת כ-declaration ולכן זמינה בעת הקריאה בשמירה למעלה.
    */
   function renderPremium() {
@@ -416,7 +410,7 @@ export default function OnboardingWizard({
       );
     }
 
-    // מכאן ואילך: תת-שלב ממוספר בלבד (0..8). שמירת טיפוסים מפני null.
+    // מכאן ואילך: תת-שלב ממוספר בלבד (0..2). שמירת טיפוסים מפני null.
     if (typeof premiumPhase !== 'number') return null;
     const sub = premiumPhase;
     const subKey = PREMIUM_SUB_KEYS[sub];
@@ -427,97 +421,52 @@ export default function OnboardingWizard({
       .replace('{total}', String(PREMIUM_SUB_KEYS.length));
 
     // אוספים נגזרים לרינדור (תמונת-מצב לקריאה בלבד).
-    const benefits = premiumDraft.benefits ?? [];
-    const testimonials = premiumDraft.testimonials ?? [];
-    const faq = premiumDraft.faq ?? [];
-    const beforeAfter = premiumDraft.beforeAfter ?? [];
-    const galleryUrls = premiumDraft.galleryImageUrls ?? [];
+    const heroImages = premiumDraft.heroImages ?? [];
+    const hotDeals: LandingHotDeals = premiumDraft.hotDeals ?? { images: [] };
+    const hotDealsImages = hotDeals.images ?? [];
+    const launchOffer: LandingLaunchOffer | undefined = premiumDraft.launchOffer;
     const social: LandingSocialLinks = premiumDraft.socialLinks ?? {};
     const sections = premiumDraft.sections ?? buildDefaultSectionToggles(businessType);
 
-    // ── עוזרי עריכה של אוספים (פונקציונליים, בטוחים לעדכונים עוקבים) ──
-    const updateBenefit = (i: number, patch: Partial<LandingBenefit>) =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        benefits: (prev.benefits ?? []).map((b, idx) => (idx === i ? { ...b, ...patch } : b)),
-      }));
-    const addBenefit = () =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        benefits: [...(prev.benefits ?? []), { title: '', text: '' }],
-      }));
-    const removeBenefit = (i: number) =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        benefits: (prev.benefits ?? []).filter((_, idx) => idx !== i),
-      }));
+    // ── עוזרי עריכה (פונקציונליים, בטוחים לעדכונים עוקבים) ──
 
-    const updateTestimonial = (i: number, patch: Partial<LandingTestimonial>) =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        testimonials: (prev.testimonials ?? []).map((x, idx) =>
-          idx === i ? { ...x, ...patch } : x,
-        ),
-      }));
-    const addTestimonial = () =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        testimonials: [...(prev.testimonials ?? []), { name: '', quote: '' }],
-      }));
-    const removeTestimonial = (i: number) =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        testimonials: (prev.testimonials ?? []).filter((_, idx) => idx !== i),
-      }));
-
-    const updateFaq = (i: number, patch: Partial<LandingFaqItem>) =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        faq: (prev.faq ?? []).map((x, idx) => (idx === i ? { ...x, ...patch } : x)),
-      }));
-    const addFaq = () =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        faq: [...(prev.faq ?? []), { question: '', answer: '' }],
-      }));
-    const removeFaq = (i: number) =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        faq: (prev.faq ?? []).filter((_, idx) => idx !== i),
-      }));
-
-    const updateBeforeAfter = (i: number, patch: Partial<LandingBeforeAfter>) =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        beforeAfter: (prev.beforeAfter ?? []).map((x, idx) =>
-          idx === i ? { ...x, ...patch } : x,
-        ),
-      }));
-    const addBeforeAfter = () =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        beforeAfter: [...(prev.beforeAfter ?? []), { beforeUrl: '', afterUrl: '', label: '' }],
-      }));
-    const removeBeforeAfter = (i: number) =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        beforeAfter: (prev.beforeAfter ?? []).filter((_, idx) => idx !== i),
-      }));
-
-    const setGalleryUrl = (i: number, url: string) =>
+    // הירו: עד שתי תמונות רקע (heroImages, נשמר כמערך כתובות).
+    const setHeroImage = (i: number, url: string) =>
       setPremiumDraft((prev) => {
-        const next = [...(prev.galleryImageUrls ?? [])];
+        const next = [...(prev.heroImages ?? [])];
         while (next.length <= i) next.push('');
         next[i] = url;
-        return { ...prev, galleryImageUrls: next };
+        return { ...prev, heroImages: next };
       });
 
+    // מבצעים חמים: שדות טקסט + עד שש תמונות טיפולים.
+    const patchHotDeals = (patch: Partial<LandingHotDeals>) =>
+      setPremiumDraft((prev) => {
+        const cur = prev.hotDeals ?? { images: [] };
+        return { ...prev, hotDeals: { ...cur, ...patch } };
+      });
+    const setHotDealImage = (i: number, url: string) =>
+      setPremiumDraft((prev) => {
+        const cur = prev.hotDeals ?? { images: [] };
+        const next = [...(cur.images ?? [])];
+        while (next.length <= i) next.push('');
+        next[i] = url;
+        return { ...prev, hotDeals: { ...cur, images: next } };
+      });
+
+    // מבצע השקה אופציונלי בתוך המבצעים החמים (טקסט + מקומות שנותרו + מועד סיום).
+    const patchLaunchOffer = (patch: Partial<LandingLaunchOffer>) =>
+      setPremiumDraft((prev) => {
+        const cur = prev.launchOffer ?? { text: '', endsAt: '' };
+        return { ...prev, launchOffer: { ...cur, ...patch } };
+      });
+
+    // מיקום: עריכת וואטסאפ + הדלקת/כיבוי מקטע המיקום בעמוד הציבורי.
     const setSocial = (key: keyof LandingSocialLinks, v: string) =>
       setPremiumDraft((prev) => ({
         ...prev,
         socialLinks: { ...(prev.socialLinks ?? {}), [key]: v },
       }));
-
     const setSection = (key: LandingSectionKey, on: boolean) =>
       setPremiumDraft((prev) => ({
         ...prev,
@@ -533,13 +482,10 @@ export default function OnboardingWizard({
       const name = el.name || '';
       if (!name.startsWith('premImg:')) return;
       const parts = name.split(':');
-      if (parts[1] === 'gallery') {
-        setGalleryUrl(Number(parts[2]), el.value);
-      } else if (parts[1] === 'ba') {
-        updateBeforeAfter(
-          Number(parts[2]),
-          parts[3] === 'before' ? { beforeUrl: el.value } : { afterUrl: el.value },
-        );
+      if (parts[1] === 'hero') {
+        setHeroImage(Number(parts[2]), el.value);
+      } else if (parts[1] === 'deal') {
+        setHotDealImage(Number(parts[2]), el.value);
       }
     };
 
@@ -580,297 +526,169 @@ export default function OnboardingWizard({
                   textarea: true,
                   rows: 2,
                 })}
-              </>
-            )}
-
-            {/* ── (1) אודות ── */}
-            {subKey === 'about' &&
-              textField({
-                id: 'prem-about',
-                label: p.steps.about.label,
-                value: premiumDraft.about ?? '',
-                placeholder: p.steps.about.placeholder,
-                onChange: (v) => patchDraft({ about: v }),
-                textarea: true,
-                rows: 5,
-              })}
-
-            {/* ── (2) יתרונות ── */}
-            {subKey === 'benefits' && (
-              <>
-                {benefits.map((b, i) => (
-                  <div key={i} className="space-y-3 rounded-2xl border border-slate-200 p-4">
-                    {textField({
-                      id: `prem-benefit-title-${i}`,
-                      label: p.steps.benefits.titleLabel,
-                      value: b.title,
-                      placeholder: p.steps.benefits.titlePlaceholder,
-                      onChange: (v) => updateBenefit(i, { title: v }),
-                    })}
-                    {textField({
-                      id: `prem-benefit-text-${i}`,
-                      label: p.steps.benefits.textLabel,
-                      value: b.text,
-                      placeholder: p.steps.benefits.textPlaceholder,
-                      onChange: (v) => updateBenefit(i, { text: v }),
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => removeBenefit(i)}
-                      className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
-                    >
-                      {p.steps.benefits.remove}
-                    </button>
-                  </div>
-                ))}
-                {benefits.length < 3 && (
-                  <button
-                    type="button"
-                    onClick={addBenefit}
-                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                  >
-                    + {p.steps.benefits.add}
-                  </button>
-                )}
-              </>
-            )}
-
-            {/* ── (3) גלריה ── */}
-            {subKey === 'gallery' && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i}>
-                      <span className="mb-1 block text-sm font-medium text-slate-700">
-                        {p.steps.gallery.imageLabel.replace('{n}', String(i + 1))}
-                      </span>
-                      <ImageUploadField
-                        name={`premImg:gallery:${i}`}
-                        defaultValue={galleryUrls[i] ?? ''}
-                        targetAspect={4 / 3}
-                        rounded={false}
-                        maxWidth={1280}
-                        maxHeight={960}
-                        mime="image/jpeg"
-                        labels={imageLabels}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-slate-400">{p.steps.gallery.hint}</p>
-              </>
-            )}
-
-            {/* ── (4) לפני ואחרי ── */}
-            {subKey === 'beforeAfter' && (
-              <>
-                {beforeAfter.map((pair, i) => (
-                  <div key={i} className="space-y-3 rounded-2xl border border-slate-200 p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="mb-1 block text-sm font-medium text-slate-700">
-                          {p.steps.beforeAfter.before}
-                        </span>
-                        <ImageUploadField
-                          name={`premImg:ba:${i}:before`}
-                          defaultValue={pair.beforeUrl}
-                          targetAspect={4 / 3}
-                          rounded={false}
-                          maxWidth={1280}
-                          maxHeight={960}
-                          mime="image/jpeg"
-                          labels={imageLabels}
-                        />
-                      </div>
-                      <div>
-                        <span className="mb-1 block text-sm font-medium text-slate-700">
-                          {p.steps.beforeAfter.after}
-                        </span>
-                        <ImageUploadField
-                          name={`premImg:ba:${i}:after`}
-                          defaultValue={pair.afterUrl}
-                          targetAspect={4 / 3}
-                          rounded={false}
-                          maxWidth={1280}
-                          maxHeight={960}
-                          mime="image/jpeg"
-                          labels={imageLabels}
-                        />
-                      </div>
-                    </div>
-                    {textField({
-                      id: `prem-ba-label-${i}`,
-                      label: p.steps.beforeAfter.labelLabel,
-                      value: pair.label ?? '',
-                      placeholder: p.steps.beforeAfter.labelPlaceholder,
-                      onChange: (v) => updateBeforeAfter(i, { label: v }),
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => removeBeforeAfter(i)}
-                      className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
-                    >
-                      {p.steps.beforeAfter.removePair}
-                    </button>
-                  </div>
-                ))}
-                {beforeAfter.length < 3 && (
-                  <button
-                    type="button"
-                    onClick={addBeforeAfter}
-                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                  >
-                    + {p.steps.beforeAfter.addPair}
-                  </button>
-                )}
-              </>
-            )}
-
-            {/* ── (5) המלצות ── */}
-            {subKey === 'testimonials' && (
-              <>
-                {testimonials.map((x, i) => (
-                  <div key={i} className="space-y-3 rounded-2xl border border-slate-200 p-4">
-                    {textField({
-                      id: `prem-testi-name-${i}`,
-                      label: p.steps.testimonials.nameLabel,
-                      value: x.name ?? '',
-                      placeholder: p.steps.testimonials.namePlaceholder,
-                      onChange: (v) => updateTestimonial(i, { name: v }),
-                    })}
-                    {textField({
-                      id: `prem-testi-quote-${i}`,
-                      label: p.steps.testimonials.quoteLabel,
-                      value: x.quote,
-                      placeholder: p.steps.testimonials.quotePlaceholder,
-                      onChange: (v) => updateTestimonial(i, { quote: v }),
-                      textarea: true,
-                      rows: 2,
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => removeTestimonial(i)}
-                      className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
-                    >
-                      {p.steps.testimonials.remove}
-                    </button>
-                  </div>
-                ))}
-                {testimonials.length < 3 && (
-                  <button
-                    type="button"
-                    onClick={addTestimonial}
-                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                  >
-                    + {p.steps.testimonials.add}
-                  </button>
-                )}
-              </>
-            )}
-
-            {/* ── (6) שאלות נפוצות ── */}
-            {subKey === 'faq' && (
-              <>
-                {faq.map((x, i) => (
-                  <div key={i} className="space-y-3 rounded-2xl border border-slate-200 p-4">
-                    {textField({
-                      id: `prem-faq-q-${i}`,
-                      label: p.steps.faq.questionLabel,
-                      value: x.question,
-                      placeholder: p.steps.faq.questionPlaceholder,
-                      onChange: (v) => updateFaq(i, { question: v }),
-                    })}
-                    {textField({
-                      id: `prem-faq-a-${i}`,
-                      label: p.steps.faq.answerLabel,
-                      value: x.answer,
-                      placeholder: p.steps.faq.answerPlaceholder,
-                      onChange: (v) => updateFaq(i, { answer: v }),
-                      textarea: true,
-                      rows: 2,
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => removeFaq(i)}
-                      className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
-                    >
-                      {p.steps.faq.remove}
-                    </button>
-                  </div>
-                ))}
-                {faq.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={addFaq}
-                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                  >
-                    + {p.steps.faq.add}
-                  </button>
-                )}
-              </>
-            )}
-
-            {/* ── (7) רשתות ומיקום ── */}
-            {subKey === 'social' && (
-              <>
-                {(['whatsapp', 'instagram', 'facebook', 'tiktok'] as const).map((key) =>
-                  textField({
-                    id: `prem-social-${key}`,
-                    label: p.steps.social[key],
-                    value: social[key] ?? '',
-                    placeholder: p.steps.social.urlPlaceholder,
-                    onChange: (v) => setSocial(key, v),
-                    type: 'url',
-                    dir: 'ltr',
-                  }),
-                )}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-700">
-                    {p.steps.social.locationTitle}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {businessAddress.trim() !== '' ? businessAddress : p.steps.social.noAddress}
-                  </p>
-                  <p className="mt-2 text-xs text-slate-400">{p.steps.social.locationHint}</p>
-                </div>
-              </>
-            )}
-
-            {/* ── (8) כפתור סוגר + טוגלים של מקטעים ── */}
-            {subKey === 'closing' && (
-              <>
                 {textField({
-                  id: 'prem-cta-label',
-                  label: p.steps.closing.ctaLabelLabel,
+                  id: 'prem-hero-cta',
+                  label: p.steps.hero.ctaLabelLabel,
                   value: premiumDraft.ctaLabel ?? '',
-                  placeholder: p.steps.closing.ctaLabelPlaceholder,
+                  placeholder: p.steps.hero.ctaLabelPlaceholder,
                   onChange: (v) => patchDraft({ ctaLabel: v }),
                 })}
                 <div>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    {p.steps.hero.imagesTitle}
+                  </span>
+                  <div className="grid grid-cols-2 gap-4">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div key={i}>
+                        <span className="mb-1 block text-xs font-medium text-slate-500">
+                          {p.steps.hero.imageLabel.replace('{n}', String(i + 1))}
+                        </span>
+                        <ImageUploadField
+                          name={`premImg:hero:${i}`}
+                          defaultValue={heroImages[i] ?? ''}
+                          targetAspect={16 / 9}
+                          rounded={false}
+                          maxWidth={1600}
+                          maxHeight={900}
+                          mime="image/jpeg"
+                          labels={imageLabels}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">{p.steps.hero.imagesHint}</p>
+                </div>
+              </>
+            )}
+
+            {/* ── (1) מבצעים חמים ── */}
+            {subKey === 'hotDeals' && (
+              <>
+                {textField({
+                  id: 'prem-deals-eyebrow',
+                  label: p.steps.hotDeals.eyebrowLabel,
+                  value: hotDeals.eyebrow ?? '',
+                  placeholder: p.steps.hotDeals.eyebrowPlaceholder,
+                  onChange: (v) => patchHotDeals({ eyebrow: v }),
+                })}
+                {textField({
+                  id: 'prem-deals-title',
+                  label: p.steps.hotDeals.titleLabel,
+                  value: hotDeals.title ?? '',
+                  placeholder: p.steps.hotDeals.titlePlaceholder,
+                  onChange: (v) => patchHotDeals({ title: v }),
+                })}
+                {textField({
+                  id: 'prem-deals-text',
+                  label: p.steps.hotDeals.textLabel,
+                  value: hotDeals.text ?? '',
+                  placeholder: p.steps.hotDeals.textPlaceholder,
+                  onChange: (v) => patchHotDeals({ text: v }),
+                  textarea: true,
+                  rows: 2,
+                })}
+                {textField({
+                  id: 'prem-deals-cta',
+                  label: p.steps.hotDeals.ctaLabelLabel,
+                  value: hotDeals.ctaLabel ?? '',
+                  placeholder: p.steps.hotDeals.ctaLabelPlaceholder,
+                  onChange: (v) => patchHotDeals({ ctaLabel: v }),
+                })}
+                <div>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    {p.steps.hotDeals.imagesTitle}
+                  </span>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i}>
+                        <span className="mb-1 block text-xs font-medium text-slate-500">
+                          {p.steps.hotDeals.imageLabel.replace('{n}', String(i + 1))}
+                        </span>
+                        <ImageUploadField
+                          name={`premImg:deal:${i}`}
+                          defaultValue={hotDealsImages[i] ?? ''}
+                          targetAspect={1}
+                          rounded={false}
+                          maxWidth={1080}
+                          maxHeight={1080}
+                          mime="image/jpeg"
+                          labels={imageLabels}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">{p.steps.hotDeals.imagesHint}</p>
+                </div>
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm font-semibold text-slate-700">
-                    {p.steps.closing.sectionsTitle}
+                    {p.steps.hotDeals.offerTitle}
                   </p>
-                  <p className="mb-2 mt-1 text-xs text-slate-400">{p.steps.closing.sectionsHint}</p>
-                  <div className="space-y-2">
-                    {TOGGLEABLE_LANDING_SECTIONS.map((key) => {
-                      const labels = p.steps.closing.sections as Record<string, string>;
-                      return (
-                        <label
-                          key={key}
-                          className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={sections[key] ?? false}
-                            onChange={(e) => setSection(key, e.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 text-emerald-600"
-                          />
-                          {labels[key]}
-                        </label>
-                      );
+                  <p className="text-xs text-slate-400">{p.steps.hotDeals.offerHint}</p>
+                  {textField({
+                    id: 'prem-offer-text',
+                    label: p.steps.hotDeals.offerTextLabel,
+                    value: launchOffer?.text ?? '',
+                    placeholder: p.steps.hotDeals.offerTextPlaceholder,
+                    onChange: (v) => patchLaunchOffer({ text: v }),
+                  })}
+                  <div className="grid grid-cols-2 gap-4">
+                    {textField({
+                      id: 'prem-offer-spots',
+                      label: p.steps.hotDeals.spotsLeftLabel,
+                      value: launchOffer?.spotsLeft != null ? String(launchOffer.spotsLeft) : '',
+                      placeholder: p.steps.hotDeals.spotsLeftPlaceholder,
+                      onChange: (v) => {
+                        const n = Number(v);
+                        patchLaunchOffer({
+                          spotsLeft: v.trim() !== '' && Number.isFinite(n) ? n : undefined,
+                        });
+                      },
+                      type: 'number',
+                      dir: 'ltr',
+                    })}
+                    {textField({
+                      id: 'prem-offer-ends',
+                      label: p.steps.hotDeals.endsAtLabel,
+                      value: launchOffer?.endsAt ?? '',
+                      placeholder: p.steps.hotDeals.endsAtPlaceholder,
+                      onChange: (v) => patchLaunchOffer({ endsAt: v }),
+                      type: 'date',
+                      dir: 'ltr',
                     })}
                   </div>
                 </div>
+              </>
+            )}
+
+            {/* ── (2) מיקום + מפה ── */}
+            {subKey === 'location' && (
+              <>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-700">
+                    {p.steps.location.addressTitle}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {businessAddress.trim() !== '' ? businessAddress : p.steps.location.noAddress}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-400">{p.steps.location.addressHint}</p>
+                </div>
+                {textField({
+                  id: 'prem-location-whatsapp',
+                  label: p.steps.location.whatsappLabel,
+                  value: social.whatsapp ?? '',
+                  placeholder: p.steps.location.whatsappPlaceholder,
+                  onChange: (v) => setSocial('whatsapp', v),
+                  dir: 'ltr',
+                })}
+                <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={sections.location ?? false}
+                    onChange={(e) => setSection('location', e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600"
+                  />
+                  {p.steps.location.showToggle}
+                </label>
               </>
             )}
 
@@ -1244,38 +1062,84 @@ export default function OnboardingWizard({
               />
             </div>
 
-            <div>
-              <span className="mb-1.5 block text-sm font-medium text-slate-700">
-                {o.branding.colorLabel}
-              </span>
-              <div className="flex flex-wrap gap-2.5">
-                {BRAND_SWATCHES.map((swatch) => {
-                  const on = color.toLowerCase() === swatch.toLowerCase();
-                  return (
-                    <button
-                      key={swatch}
-                      type="button"
-                      aria-label={swatch}
-                      aria-pressed={on}
-                      onClick={() => setColor(swatch)}
-                      style={{ backgroundColor: swatch }}
-                      className={
-                        'h-10 w-10 rounded-full ring-offset-2 transition ' +
-                        (on ? 'ring-2 ring-slate-900' : 'ring-1 ring-slate-200 hover:ring-slate-400')
-                      }
-                    />
-                  );
-                })}
-                <label className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5">
-                  <span className="text-xs text-slate-500">HEX</span>
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="h-6 w-8 cursor-pointer border-0 bg-transparent p-0"
-                    aria-label={o.branding.colorLabel}
-                  />
-                </label>
+            <div className="space-y-4">
+              {/* גלריית פלטות מותג אצורות: כרטיס קובע brandColor + theme לעמוד הפרימיום */}
+              <div>
+                <span className="mb-1.5 block text-sm font-medium text-slate-700">
+                  {o.premium.palette.presetsTitle}
+                </span>
+                <p className="mb-2 text-xs text-slate-400">{o.premium.palette.presetsHint}</p>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                  {BRAND_PRESETS.map((preset) => {
+                    const on =
+                      (premiumDraft.theme?.brand ?? '').toLowerCase() ===
+                      preset.theme.brand.toLowerCase();
+                    const dots = [
+                      preset.theme.brand,
+                      preset.theme.brandDark,
+                      preset.theme.gold,
+                      preset.theme.accent,
+                      preset.theme.cream,
+                    ];
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => {
+                          setColor(preset.theme.brand);
+                          setPremiumDraft((prev) => ({ ...prev, theme: preset.theme }));
+                        }}
+                        className={
+                          'flex flex-col gap-2 rounded-2xl border p-3 text-right transition ' +
+                          (on
+                            ? 'border-slate-900 ring-2 ring-slate-900 ring-offset-1'
+                            : 'border-slate-200 hover:border-slate-400')
+                        }
+                      >
+                        <span className="flex gap-1" aria-hidden="true">
+                          {dots.map((c, di) => (
+                            <span
+                              key={di}
+                              className="h-5 w-5 rounded-full ring-1 ring-black/5"
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+                        </span>
+                        <span className="text-xs font-medium text-slate-700">{preset.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* מסלול "צבע ראשי": גוונים קבועים אצורים; שאר --biz-* נגזרים אוטומטית */}
+              <div>
+                <span className="mb-1.5 block text-sm font-medium text-slate-700">
+                  {o.premium.palette.primaryTitle}
+                </span>
+                <p className="mb-2 text-xs text-slate-400">{o.premium.palette.primaryHint}</p>
+                <div className="flex flex-wrap gap-2.5">
+                  {PRIMARY_SWATCHES.map((swatch) => {
+                    const on = color.toLowerCase() === swatch.toLowerCase();
+                    return (
+                      <button
+                        key={swatch}
+                        type="button"
+                        aria-label={swatch}
+                        aria-pressed={on}
+                        onClick={() => setColor(swatch)}
+                        style={{ backgroundColor: swatch }}
+                        className={
+                          'h-10 w-10 rounded-full ring-offset-2 transition ' +
+                          (on
+                            ? 'ring-2 ring-slate-900'
+                            : 'ring-1 ring-slate-200 hover:ring-slate-400')
+                        }
+                      />
+                    );
+                  })}
+                </div>
               </div>
               <input type="hidden" name="brandColor" value={color} />
             </div>

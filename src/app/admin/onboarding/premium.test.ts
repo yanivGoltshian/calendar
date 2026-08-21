@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePremiumDraft, buildDefaultSectionToggles } from './premium';
+import { parsePremiumDraft, buildDefaultSectionToggles, BRAND_PRESETS } from './premium';
 
 /**
  * בדיקות יחידה טהורות ללוגיקת תתי-שלבי הפרימיום.
@@ -92,4 +92,123 @@ test('buildDefaultSectionToggles: סוג לא ידוע נופל להתנהגות
   const unknown = buildDefaultSectionToggles('NOT_A_TYPE');
   const other = buildDefaultSectionToggles('OTHER');
   assert.deepEqual(unknown, other);
+});
+
+/* ── פלטת המותג (theme) ── */
+
+test('theme: פלטה שכל שמונת הגוונים תקינים נשמרת כמו שהיא', () => {
+  const theme = {
+    brand: '#b0855f',
+    brandDark: '#8c6748',
+    gold: '#c6a86a',
+    goldStrong: '#a6863f',
+    goldText: '#8c6748',
+    cream: '#faf6ef',
+    ink: '#1b1715',
+    accent: '#c08f86',
+  };
+  const result = parsePremiumDraft(JSON.stringify({ heroHeadline: 'שלום', theme }));
+  assert.ok(result);
+  assert.deepEqual(result?.theme, theme);
+});
+
+test('theme: ערך גוון אחד לא-תקין משמיט את כל הפלטה', () => {
+  const theme = {
+    brand: 'red', // לא hex בן שש ספרות — כל הפלטה מושמטת
+    brandDark: '#8c6748',
+    gold: '#c6a86a',
+    goldStrong: '#a6863f',
+    goldText: '#8c6748',
+    cream: '#faf6ef',
+    ink: '#1b1715',
+    accent: '#c08f86',
+  };
+  const result = parsePremiumDraft(JSON.stringify({ heroHeadline: 'שלום', theme }));
+  assert.ok(result);
+  assert.equal(result?.theme, undefined);
+});
+
+test('theme: פלטה חלקית (שדה חסר) מושמטת לגמרי', () => {
+  const theme = { brand: '#b0855f', brandDark: '#8c6748' }; // חסרים שישה תפקידים
+  const result = parsePremiumDraft(JSON.stringify({ heroHeadline: 'שלום', theme }));
+  assert.ok(result);
+  assert.equal(result?.theme, undefined);
+});
+
+test('BRAND_PRESETS: קיימות שתים-עשרה פלטות עם מזהים ייחודיים', () => {
+  assert.equal(BRAND_PRESETS.length, 12);
+  const ids = new Set(BRAND_PRESETS.map((p) => p.id));
+  assert.equal(ids.size, 12);
+});
+
+test('BRAND_PRESETS: כל פלטה אצורה שורדת את הנרמול עם theme זהה', () => {
+  const hex = /^#[0-9a-fA-F]{6}$/;
+  for (const preset of BRAND_PRESETS) {
+    // כל שמונת התפקידים חייבים להיות hex תקין כדי לשרוד את normalizeLandingTheme
+    for (const value of Object.values(preset.theme)) {
+      assert.match(value, hex, `${preset.id}: גוון לא תקין ${value}`);
+    }
+    const result = parsePremiumDraft(JSON.stringify({ heroHeadline: 'x', theme: preset.theme }));
+    assert.ok(result, `${preset.id}: הנרמול החזיר null`);
+    assert.deepEqual(result?.theme, preset.theme, `${preset.id}: theme השתנה בנרמול`);
+  }
+});
+
+/* ── מבצע השקה (launchOffer) ── */
+
+test('launchOffer: text + endsAt תקינים נשמרים, spotsLeft נגזר', () => {
+  const raw = JSON.stringify({
+    heroHeadline: 'x',
+    launchOffer: { text: '20% הנחה', endsAt: '2099-12-31', spotsLeft: 5.7 },
+  });
+  const result = parsePremiumDraft(raw);
+  assert.ok(result?.launchOffer);
+  assert.equal(result?.launchOffer?.text, '20% הנחה');
+  assert.equal(result?.launchOffer?.endsAt, '2099-12-31');
+  assert.equal(result?.launchOffer?.spotsLeft, 5); // Math.floor
+});
+
+test('launchOffer: חסר endsAt או מועד פגום משמיט את המבצע', () => {
+  const missing = parsePremiumDraft(JSON.stringify({ heroHeadline: 'x', launchOffer: { text: 'מבצע' } }));
+  assert.ok(missing);
+  assert.equal(missing?.launchOffer, undefined);
+  const bad = parsePremiumDraft(
+    JSON.stringify({ heroHeadline: 'x', launchOffer: { text: 'מבצע', endsAt: 'לא-תאריך' } }),
+  );
+  assert.ok(bad);
+  assert.equal(bad?.launchOffer, undefined);
+});
+
+/* ── מבצעים חמים (hotDeals) ── */
+
+test('hotDeals: דורש לפחות תמונה אחת, אחרת מושמט', () => {
+  const empty = parsePremiumDraft(
+    JSON.stringify({ heroHeadline: 'x', hotDeals: { title: 'מבצעים', images: [] } }),
+  );
+  assert.ok(empty);
+  assert.equal(empty?.hotDeals, undefined);
+});
+
+test('hotDeals: עם תמונה נשמר עם שדות הטקסט האופציונליים', () => {
+  const raw = JSON.stringify({
+    heroHeadline: 'x',
+    hotDeals: { eyebrow: 'לזמן מוגבל', title: 'המבצעים שלנו', images: ['https://a/1.jpg'] },
+  });
+  const result = parsePremiumDraft(raw);
+  assert.ok(result?.hotDeals);
+  assert.equal(result?.hotDeals?.images.length, 1);
+  assert.equal(result?.hotDeals?.title, 'המבצעים שלנו');
+  assert.equal(result?.hotDeals?.eyebrow, 'לזמן מוגבל');
+});
+
+/* ── תמונות הירו (heroImages) ── */
+
+test('heroImages: נחתך לשתי תמונות לכל היותר', () => {
+  const raw = JSON.stringify({
+    heroHeadline: 'x',
+    heroImages: ['https://a/1.jpg', 'https://a/2.jpg', 'https://a/3.jpg'],
+  });
+  const result = parsePremiumDraft(raw);
+  assert.ok(result?.heroImages);
+  assert.equal(result?.heroImages?.length, 2);
 });
