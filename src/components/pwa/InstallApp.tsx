@@ -1,20 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '@/i18n';
 import { BRAND } from '@/config/brand';
 import { resolveBrandColor, readableText } from '@/lib/brandColor';
-import { detectInstallEnv, type InstallEnv } from '@/lib/pwa/detectInstallEnv';
+import {
+  detectInstallEnv,
+  installGuideFor,
+  type InstallEnv,
+  type InstallGuide,
+} from '@/lib/pwa/detectInstallEnv';
 
 /**
  * כרטיס התקנת אפליקציה (PWA) עצמאי, ממותג לפי הקשר:
  * variant='platform' — מיתוג תור צ׳יק לעמוד הבית של הפלטפורמה.
  * variant='business' — לוגו, שם וצבע של עסק ספציפי לעמוד ההזמנות שלו.
+ * variant='admin' / 'superadmin' — כפתור קומפקטי לסרגלי הניהול.
  *
- * לוכד beforeinstallprompt להתקנה בהקשה אחת (אנדרואיד/דסקטופ כרום). בשאר הסביבות
- * מזהה את הפלטפורמה והדפדפן דרך detectInstallEnv ומציג הנחיה מדויקת: הוספה למסך
- * הבית ב-iOS Safari, פתיחה בדפדפן חיצוני מתוך דפדפן מובנה (וואטסאפ/אינסטגרם/פייסבוק),
- * או הנחיית תפריט באנדרואיד. מסתתר לגמרי כשהאפליקציה כבר מותקנת (מצב standalone).
+ * לוכד beforeinstallprompt כדי לאפשר התקנה בהקשה אחת (אנדרואיד/דסקטופ כרום/אדג׳):
+ * הקשה על הכפתור מפעילה מיד את חלון ההתקנה של הדפדפן. כשההתקנה בהקשה אחת אינה
+ * זמינה (iOS Safari, דפדפן מובנה, דפדפן מחשב אחר) נפתח חלון הנחיה מודרך עם איור
+ * וצעדים מדויקים לפי הפלטפורמה — כולל כפתור העתקת קישור לפתיחה בדפדפן אמיתי.
+ * מסתתר לגמרי כשהאפליקציה כבר מותקנת (מצב standalone).
  */
 
 type BeforeInstallPromptEvent = Event & {
@@ -35,49 +42,292 @@ type Props = {
   label?: string;
 };
 
-/** תוכן ההנחיה שנגזר מזיהוי הפלטפורמה והדפדפן. */
-type HelpContent = { title: string; steps?: readonly string[]; hint?: string };
+type GlyphName = 'share' | 'menu' | 'desktop' | 'browser';
+
+/** תוכן חלון ההנחיה, נגזר מהפלטפורמה והדפדפן שזוהו. */
+type SheetContent = {
+  title: string;
+  intro: string;
+  steps: readonly string[];
+  hint?: string;
+  /** האם להציג כפתור "העתקת הקישור" והקישור עצמו (דפדפן מובנה / iOS ללא ספארי). */
+  showCopy?: boolean;
+  glyph: GlyphName;
+};
 
 /**
- * בוחר את הנחיית ההתקנה הנכונה לפי הסביבה שזוהתה:
- * דפדפן מובנה מפנה לפתיחה בדפדפן, iOS Safari מקבל שלבי הוספה למסך הבית,
- * אנדרואיד מקבל הנחיית תפריט, וברירת המחדל היא הנחיית הדפדפן הידנית.
+ * בוחר את תוכן ההנחיה המדויק לפי הסביבה שזוהתה. משתמש ב-installGuideFor הטהור
+ * כדי למפות סביבה → סוג הנחיה, ואז שולף את המחרוזות המתאימות מ-he.ts.
  */
-function helpContentFor(env: InstallEnv | null): HelpContent {
-  if (env?.mustOpenInBrowser) {
-    return {
-      title: t.install.inAppTitle,
-      hint: env.platform === 'android' ? t.install.inAppHintAndroid : t.install.inAppHintIos,
-    };
+function sheetContentFor(env: InstallEnv | null): SheetContent {
+  const guide: InstallGuide = env ? installGuideFor(env) : 'manual';
+  switch (guide) {
+    case 'ios':
+      return {
+        title: t.install.iosTitle,
+        intro: t.install.iosIntro,
+        steps: [t.install.iosStep1, t.install.iosStep2, t.install.iosStep3],
+        glyph: 'share',
+      };
+    case 'iosOtherBrowser':
+      return {
+        title: t.install.iosOtherTitle,
+        intro: t.install.iosOtherIntro,
+        steps: [t.install.iosOtherStep1, t.install.iosOtherStep2, t.install.iosOtherStep3],
+        showCopy: true,
+        glyph: 'browser',
+      };
+    case 'android':
+      return {
+        title: t.install.androidTitle,
+        intro: t.install.androidIntro,
+        steps: [t.install.androidStep1, t.install.androidStep2, t.install.androidStep3],
+        glyph: 'menu',
+      };
+    case 'desktop':
+      return {
+        title: t.install.desktopTitle,
+        intro: t.install.desktopIntro,
+        steps: [t.install.desktopStep1, t.install.desktopStep2, t.install.desktopStep3],
+        glyph: 'desktop',
+      };
+    case 'inApp': {
+      const ios = env?.platform === 'ios';
+      return {
+        title: t.install.inAppTitle,
+        intro: t.install.inAppIntro,
+        steps: ios
+          ? [t.install.inAppStep1Ios, t.install.inAppStep2Ios, t.install.inAppStep3Ios]
+          : [t.install.inAppStep1Android, t.install.inAppStep2Android, t.install.inAppStep3Android],
+        hint: t.install.inAppCopyHint,
+        showCopy: true,
+        glyph: 'browser',
+      };
+    }
+    case 'manual':
+    default:
+      return {
+        title: t.install.manualTitle,
+        intro: t.install.manualIntro,
+        steps: [t.install.manualStep1, t.install.manualStep2, t.install.manualStep3],
+        glyph: 'menu',
+      };
   }
-  if (env?.canAddToHomeScreen) {
-    return {
-      title: t.install.iosTitle,
-      steps: [t.install.iosStep1, t.install.iosStep2, t.install.iosStep3],
-    };
-  }
-  if (env?.platform === 'android') {
-    return { title: t.install.androidTitle, hint: t.install.androidHint };
-  }
-  return { title: t.install.manualTitle, hint: t.install.manualHint };
 }
 
-/** גוף ההנחיה המשותף לשני המשטחים (כהה/בהיר), נבדל רק בצבע הכותרת. */
-function InstallHelp({ content, tone }: { content: HelpContent; tone: 'dark' | 'light' }) {
-  const titleClass = tone === 'dark' ? 'text-[#E8ECF3]' : 'text-slate-800';
+/** איור פשוט (SVG מוטבע) הממחיש את הפעולה המרכזית של כל פלטפורמה. */
+function GuideGlyph({
+  glyph,
+  accent,
+  onAccent,
+}: {
+  glyph: GlyphName;
+  accent: string;
+  onAccent: string;
+}) {
   return (
-    <>
-      <p className={`mb-1 font-semibold ${titleClass}`}>{content.title}</p>
-      {content.steps ? (
-        <ol className="list-inside list-decimal space-y-1">
-          {content.steps.map((step) => (
-            <li key={step}>{step}</li>
+    <div
+      aria-hidden="true"
+      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
+      style={{ background: accent, color: onAccent }}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="h-7 w-7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.9}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {glyph === 'share' ? (
+          // סמל השיתוף של iOS: ריבוע עם חץ כלפי מעלה
+          <>
+            <path d="M12 3v11" />
+            <path d="M8.5 6.5 12 3l3.5 3.5" />
+            <path d="M6 12H5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1h-1" />
+          </>
+        ) : glyph === 'menu' ? (
+          // תפריט שלוש הנקודות (אנכי)
+          <>
+            <circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none" />
+          </>
+        ) : glyph === 'desktop' ? (
+          // מסך מחשב עם חץ התקנה כלפי מטה
+          <>
+            <rect x="3" y="4" width="18" height="12" rx="1.5" />
+            <path d="M9 20h6M12 16v4" />
+            <path d="M12 7v5m0 0-2-2m2 2 2-2" />
+          </>
+        ) : (
+          // גלובוס: פתיחה בדפדפן אמיתי
+          <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18" />
+          </>
+        )}
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * חלון ההנחיה המודרך (Sheet). RTL, נגיש (role=dialog, aria-modal), נסגר ב-Escape,
+ * בלחיצה על הרקע או על כפתור הסגירה. קל משקל: overlay קבוע ללא תלות חיצונית.
+ */
+function InstallSheet({
+  content,
+  accent,
+  onAccent,
+  onClose,
+}: {
+  content: SheetContent;
+  accent: string;
+  onAccent: string;
+  onClose: () => void;
+}) {
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const url = typeof window !== 'undefined' ? window.location.href : '';
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div
+      dir="rtl"
+      role="presentation"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="install-sheet-title"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6"
+      >
+        <div className="flex items-start gap-3">
+          <GuideGlyph glyph={content.glyph} accent={accent} onAccent={onAccent} />
+          <div className="min-w-0 flex-1">
+            <h2 id="install-sheet-title" className="text-lg font-bold text-slate-900">
+              {content.title}
+            </h2>
+            <p className="mt-0.5 text-sm leading-relaxed text-slate-500">{content.intro}</p>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label={t.install.close}
+            className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <ol className="mt-4 space-y-3">
+          {content.steps.map((step, i) => (
+            <li key={step} className="flex items-start gap-3">
+              <span
+                aria-hidden="true"
+                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                style={{ background: `${accent}1a`, color: accent }}
+              >
+                {i + 1}
+              </span>
+              <span className="text-sm leading-relaxed text-slate-700">{step}</span>
+            </li>
           ))}
         </ol>
-      ) : (
-        <p>{content.hint}</p>
-      )}
-    </>
+
+        {content.showCopy ? (
+          <div className="mt-4 rounded-xl bg-slate-50 p-3">
+            <button
+              type="button"
+              onClick={copyLink}
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+              style={{ background: accent, color: onAccent }}
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {copied ? (
+                  <path d="M20 6 9 17l-5-5" />
+                ) : (
+                  <>
+                    <rect x="9" y="9" width="11" height="11" rx="2" />
+                    <path d="M5 15V5a2 2 0 0 1 2-2h8" />
+                  </>
+                )}
+              </svg>
+              {copied ? t.install.copied : t.install.copyLink}
+            </button>
+            <p dir="ltr" className="mt-2 truncate text-center text-xs text-slate-400">
+              {url}
+            </p>
+            {content.hint ? (
+              <p className="mt-2 text-center text-xs leading-relaxed text-slate-500">
+                {content.hint}
+              </p>
+            ) : null}
+          </div>
+        ) : content.hint ? (
+          <p className="mt-3 text-sm leading-relaxed text-slate-500">{content.hint}</p>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-5 min-h-[44px] w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+        >
+          {t.install.gotIt}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -93,7 +343,7 @@ export default function InstallApp({
   const [installed, setInstalled] = useState(false);
   const [env, setEnv] = useState<InstallEnv | null>(null);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -117,6 +367,7 @@ export default function InstallApp({
     const onInstalled = () => {
       setInstalled(true);
       setDeferred(null);
+      setSheetOpen(false);
     };
 
     window.addEventListener('beforeinstallprompt', onPrompt);
@@ -126,6 +377,8 @@ export default function InstallApp({
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
+
+  const closeSheet = useCallback(() => setSheetOpen(false), []);
 
   if (!mounted || installed) return null;
 
@@ -143,9 +396,13 @@ export default function InstallApp({
   const title = `${t.install.titlePrefix} ${name}`.trim();
   const initial = name.charAt(0) || BRAND.name.charAt(0);
   const emblem = variant === 'platform' ? '/brand/torchick-emblem-navy-256.png' : logoUrl || null;
-  const help = helpContentFor(env);
+  const content = sheetContentFor(env);
 
-  async function handleInstall() {
+  /**
+   * הפעולה המרכזית: אם נלכד אירוע התקנה (אנדרואיד/דסקטופ כרום/אדג׳) — מפעילים
+   * מיד את חלון ההתקנה של הדפדפן (התקנה בהקשה אחת). אחרת פותחים את חלון ההנחיה.
+   */
+  async function handlePrimary() {
     if (deferred) {
       await deferred.prompt();
       const choice = await deferred.userChoice;
@@ -153,16 +410,20 @@ export default function InstallApp({
       if (choice.outcome === 'accepted') setInstalled(true);
       return;
     }
-    setShowHelp((v) => !v);
+    setSheetOpen(true);
   }
+
+  const sheet = sheetOpen ? (
+    <InstallSheet content={content} accent={accent} onAccent={onAccent} onClose={closeSheet} />
+  ) : null;
 
   if (compact) {
     return (
       <div dir="rtl" className="w-full">
         <button
           type="button"
-          onClick={handleInstall}
-          aria-expanded={showHelp}
+          onClick={handlePrimary}
+          aria-haspopup={deferred ? undefined : 'dialog'}
           aria-label={label ?? subtitle}
           className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[#82643C] px-3 py-2 text-sm font-semibold text-[#F2D695] transition hover:bg-[#82643C]/20"
         >
@@ -180,12 +441,7 @@ export default function InstallApp({
           </svg>
           {label ?? t.install.button}
         </button>
-
-        {showHelp ? (
-          <div className="mt-2 rounded-lg border border-[#233047] bg-[#0B1526] p-3 text-xs leading-relaxed text-[#9AA7BD]">
-            <InstallHelp content={help} tone="dark" />
-          </div>
-        ) : null}
+        {sheet}
       </div>
     );
   }
@@ -203,13 +459,7 @@ export default function InstallApp({
         >
           {emblem ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={emblem}
-              alt=""
-              width={64}
-              height={64}
-              className="h-16 w-16 object-contain"
-            />
+            <img src={emblem} alt="" width={64} height={64} className="h-16 w-16 object-contain" />
           ) : (
             <span className="text-2xl font-bold">{initial}</span>
           )}
@@ -230,26 +480,36 @@ export default function InstallApp({
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={handleInstall}
-          className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
+          onClick={handlePrimary}
+          aria-haspopup={deferred ? undefined : 'dialog'}
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition hover:opacity-90"
           style={{ background: accent, color: onAccent }}
         >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" />
+          </svg>
           {t.install.button}
         </button>
         <button
           type="button"
-          onClick={() => setShowHelp((v) => !v)}
+          onClick={() => setSheetOpen(true)}
+          aria-haspopup="dialog"
           className="text-sm font-medium text-slate-500 underline-offset-4 hover:underline"
         >
           {t.install.helpToggle}
         </button>
       </div>
 
-      {showHelp ? (
-        <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-          <InstallHelp content={help} tone="light" />
-        </div>
-      ) : null}
+      {sheet}
     </div>
   );
 }

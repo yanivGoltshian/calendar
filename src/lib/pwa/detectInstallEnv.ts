@@ -77,6 +77,32 @@ export function detectInstallEnv(
   return { platform, browser, canPromptInstall, canAddToHomeScreen, mustOpenInBrowser };
 }
 
+/**
+ * ההנחיה הידנית שיש להציג כשאין התקנה בהקשה אחת (או כגיבוי אם האירוע לא נורה).
+ * זהו רכיב טהור הנגזר מ-InstallEnv בלבד, כדי שאפשר יהיה לבדוק אותו ביחידה:
+ * - inApp: דפדפן מובנה — יש לפתוח קודם בדפדפן אמיתי.
+ * - ios: iOS Safari — הוספה למסך הבית דרך תפריט השיתוף.
+ * - iosOtherBrowser: iOS שאינו Safari (כרום/פיירפוקס) — יש לפתוח בספארי.
+ * - android: הנחיית תפריט כרום/דפדפן באנדרואיד.
+ * - desktop: סמל ההתקנה בשורת הכתובת בכרום/אדג׳ במחשב.
+ * - manual: דפדפן מחשב ללא תמיכה בהתקנה (ספארי/פיירפוקס) — גיבוי כללי.
+ */
+export type InstallGuide =
+  | 'ios'
+  | 'iosOtherBrowser'
+  | 'android'
+  | 'desktop'
+  | 'inApp'
+  | 'manual';
+
+export function installGuideFor(env: InstallEnv): InstallGuide {
+  if (env.mustOpenInBrowser) return 'inApp';
+  if (env.platform === 'ios') return env.canAddToHomeScreen ? 'ios' : 'iosOtherBrowser';
+  if (env.platform === 'android') return 'android';
+  if (env.platform === 'desktop') return env.canPromptInstall ? 'desktop' : 'manual';
+  return 'manual';
+}
+
 function detectBrowser(input: {
   ua: string;
   isInApp: boolean;
