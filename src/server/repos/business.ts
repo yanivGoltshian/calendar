@@ -45,6 +45,38 @@ export async function getFirstBusiness() {
   });
 }
 
+/**
+ * שני עסקי הדגמה לבוחר ה-/demo:
+ * - premium: עסק ה-plan==='premium' הראשון (הקליניקה skin-beauty).
+ * - standard: עסק ה-plan!=='premium' הראשון (המספרה).
+ * נופל חזרה לעסק הראשון כשאין התאמה, כדי לא לשבור אורחים ולינקים עמוקים.
+ */
+export async function getExampleBusinesses() {
+  const [premium, standard] = await Promise.all([
+    prisma.business.findFirst({
+      where: { plan: 'premium' },
+      orderBy: { createdAt: 'asc' },
+      select: { slug: true, name: true },
+    }),
+    prisma.business.findFirst({
+      where: { NOT: { plan: 'premium' } },
+      orderBy: { createdAt: 'asc' },
+      select: { slug: true, name: true },
+    }),
+  ]);
+  const fallback =
+    standard ?? premium
+      ? null
+      : await prisma.business.findFirst({
+          orderBy: { createdAt: 'asc' },
+          select: { slug: true, name: true },
+        });
+  return {
+    standard: standard ?? fallback,
+    premium: premium ?? null,
+  };
+}
+
 /** שליפת כל ה-slugs של העסקים — לשימוש במפת האתר ובבנייה סטטית. */
 export async function getAllBusinessSlugs(): Promise<{ slug: string; updatedAt: Date }[]> {
   return prisma.business.findMany({
@@ -61,7 +93,21 @@ export async function getAllBusinessSlugs(): Promise<{ slug: string; updatedAt: 
 export async function getBusinessBranding(slug: string) {
   return prisma.business.findUnique({
     where: { slug },
-    select: { slug: true, name: true, logoUrl: true, brandColor: true, coverImageUrl: true },
+    select: {
+      slug: true,
+      name: true,
+      logoUrl: true,
+      brandColor: true,
+      coverImageUrl: true,
+      type: true,
+      address: true,
+      services: {
+        where: { hidden: false },
+        orderBy: { sortOrder: 'asc' },
+        take: 3,
+        select: { name: true },
+      },
+    },
   });
 }
 

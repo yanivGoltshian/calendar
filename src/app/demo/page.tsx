@@ -1,4 +1,4 @@
-import { getFirstBusiness } from '@/server/repos/business';
+import { getExampleBusinesses } from '@/server/repos/business';
 import { buildMetadata } from '@/lib/seo';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
@@ -22,8 +22,11 @@ export const metadata = buildMetadata({
  * בלבד. אין כתיבה ל-DB ואין seeding, הכל נגזר מעסק ההדגמה הקיים.
  */
 export default async function DemoPage() {
-  const business = await getFirstBusiness();
-  const demoSlug = business?.slug;
+  // סטנדרט = עסק שאינו פרימיום (מספרה); פרימיום = עסק ה-plan==='premium' (קליניקה skin-beauty).
+  const { standard, premium } = await getExampleBusinesses();
+  const standardSlug = standard?.slug;
+  const premiumSlug = premium?.slug ?? standardSlug;
+  const demoSlug = premiumSlug ?? standardSlug;
 
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
@@ -52,7 +55,7 @@ export default async function DemoPage() {
               </Reveal>
             </div>
 
-            {demoSlug ? (
+            {standardSlug || premiumSlug ? (
               <Reveal delay={0.15}>
                 <div className="mt-10 grid gap-6 sm:grid-cols-2">
                   <Card interactive className="flex flex-col text-center">
@@ -63,7 +66,7 @@ export default async function DemoPage() {
                       {m.demo.standard.description}
                     </p>
                     <Button
-                      href={`/b/${demoSlug}?style=booking`}
+                      href={`/b/${standardSlug ?? premiumSlug}?style=booking`}
                       size="lg"
                       className="mt-6 w-full"
                     >
@@ -78,7 +81,7 @@ export default async function DemoPage() {
                       {m.demo.premium.description}
                     </p>
                     <Button
-                      href={`/b/${demoSlug}?style=landing`}
+                      href={`/b/${premiumSlug}?style=landing`}
                       variant="accent"
                       size="lg"
                       className="mt-6 w-full"
