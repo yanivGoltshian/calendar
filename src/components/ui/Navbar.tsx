@@ -152,7 +152,7 @@ export function Navbar({ demoSlug, absoluteLinks = false }: { demoSlug?: string;
               ))}
               {demoSlug && (
                 <a
-                  href={`/b/${demoSlug}`}
+                  href="/demo"
                   onClick={() => setOpen(false)}
                   className="rounded-xl px-4 py-3 text-base font-medium text-sand-700 transition-colors hover:bg-sand-100 dark:text-sand-200 dark:hover:bg-sand-800"
                 >
