@@ -7,7 +7,6 @@ import { Navbar, Footer, Container, Section, Button, Card, Badge } from '@/compo
 import { Reveal, Stagger, StaggerItem, FadeIn } from '@/components/motion';
 import { HeroVisual } from '@/components/landing/HeroVisual';
 import { FaqAccordion } from '@/components/landing/FaqAccordion';
-import { MigrateSection } from '@/components/landing/MigrateSection';
 import { MascotTip } from '@/components/landing/MascotTip';
 import { AudienceSpotlight } from '@/components/landing/AudienceSpotlight';
 import { audienceIcons, featureIcons, SparkleIcon } from '@/components/landing/icons';
@@ -280,8 +279,6 @@ export default async function HomePage() {
           </Container>
         </Section>
 
-        {/* MIGRATE FROM OTHER PLATFORM */}
-        <MigrateSection demoHref={demoHref} />
         <Section id="pricing" className="bg-sand-100/50 dark:bg-sand-900/30">
           <Container>
             <Reveal className="mx-auto max-w-2xl text-center">
