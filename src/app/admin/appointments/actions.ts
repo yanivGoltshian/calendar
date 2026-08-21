@@ -6,6 +6,9 @@ import {
   getAppointmentById,
   updateAppointmentStatus,
 } from '@/server/repos/appointments';
+import { getBusinessAccess } from '@/server/subscription';
+import { notifyClientOfApproval } from '@/server/notifications/clientApproval';
+import { absoluteUrl } from '@/lib/seo';
 
 /**
  * פעולות מודול ההזמנות בניהול. שתיהן מאמתות שהתור משויך לעסק הפעיל
@@ -20,13 +23,47 @@ async function assertBelongsToBusiness(id: string): Promise<boolean> {
   return appt?.businessId === business.id;
 }
 
-/** אישור תור ממתין (סטטוס → CONFIRMED). */
+/**
+ * אישור תור ממתין (סטטוס → CONFIRMED) והתראת הלקוח על האישור.
+ * האימות והשינוי קורים תחילה; התראת הלקוח היא מיטבית ולעולם אינה חוסמת
+ * את האישור (כל כשל ערוץ נבלע בתוך notifyClientOfApproval).
+ */
 export async function approveAppointmentAction(formData: FormData) {
   const id = String(formData.get('appointmentId') || '');
-  if (!(await assertBelongsToBusiness(id))) return;
+  if (!id) return;
+  const business = await getActiveBusiness();
+  if (!business) return;
+  const appt = await getAppointmentById(id);
+  if (appt?.businessId !== business.id) return;
+
+  // מודיעים ללקוח רק כשמדובר באישור אמיתי של תור שהמתין לאישור.
+  const wasPending = appt.status === 'PENDING';
+
   await updateAppointmentStatus(id, 'CONFIRMED');
   revalidatePath('/admin/appointments');
   revalidatePath('/admin');
+
+  if (!wasPending) return;
+
+  const access = getBusinessAccess(business);
+  const isPremium = business.plan === 'premium' && access.active;
+
+  try {
+    await notifyClientOfApproval({
+      appointmentId: appt.id,
+      businessName: business.name,
+      clientName: appt.client.name,
+      clientEmail: appt.client.email,
+      clientPhone: appt.client.phone,
+      services: appt.services.map((s) => ({ name: s.nameSnapshot })),
+      startAt: appt.startAt,
+      timezone: business.timezone,
+      isPremium,
+      manageUrl: absoluteUrl(`/b/${business.slug}`),
+    });
+  } catch {
+    // התור כבר אושר והוחזר בהצלחה; כשל התראה אינו משפיע על הפעולה.
+  }
 }
 
 /** ביטול תור מתוך מודול ההזמנות (סטטוס → CANCELLED). */
