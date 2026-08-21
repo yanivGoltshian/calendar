@@ -1,6 +1,6 @@
 import { getFirstBusiness, getBusinessesOwnedByEmail } from '@/server/repos/business';
 import { auth } from '@/auth';
-import { buildMetadata } from '@/lib/seo';
+import { buildMetadata, SITE_URL } from '@/lib/seo';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { Navbar, Footer, Container, Section, Button, Card, Badge } from '@/components/ui';
@@ -8,6 +8,7 @@ import { Reveal, Stagger, StaggerItem, FadeIn } from '@/components/motion';
 import { HeroVisual } from '@/components/landing/HeroVisual';
 import { FaqAccordion } from '@/components/landing/FaqAccordion';
 import { MascotTip } from '@/components/landing/MascotTip';
+import { ShareTorchick } from '@/components/landing/ShareTorchick';
 import { AudienceSpotlight } from '@/components/landing/AudienceSpotlight';
 import { audienceIcons, featureIcons, SparkleIcon } from '@/components/landing/icons';
 import { ContactBlock } from '@/components/billing/ContactBlock';
@@ -437,6 +438,9 @@ export default async function HomePage() {
             </Reveal>
           </Container>
         </Section>
+
+        {/* SHARE / RECOMMEND — הזמנה חמה לשתף את הפלטפורמה, משנית לקריאה לפעולה */}
+        <ShareTorchick shareUrl={SITE_URL} />
       </main>
 
       <Footer demoSlug={demoSlug} />
