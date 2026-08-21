@@ -1,12 +1,20 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import type { SaveState } from '../settings/parse';
 import { t } from '@/i18n';
 import { Button } from '@/components/ui';
 import BookingLinkShare from '@/components/booking/BookingLinkShare';
 import { ImageUploadField, type ImageUploadLabels } from '../settings/ImageUploadField';
-import { saveServices, saveHours, saveBranding } from './actions';
+import { saveServices, saveHours, saveBranding, savePremiumLanding } from './actions';
+import { buildDefaultSectionToggles, BRAND_PRESETS, type BrandPreset } from './premium';
+import {
+  type LandingContent,
+  type LandingHotDeals,
+  type LandingLaunchOffer,
+  type LandingSocialLinks,
+  type LandingSectionKey,
+} from '@/lib/publicPageStyle';
 
 /** תת-קבוצה סריאליזבילית של שירות, לרינדור שורות ההחלפה בצעד השירותים. */
 export type WizardService = {
@@ -19,6 +27,18 @@ export type WizardService = {
 
 type HoursPresetKey = 'sun-thu' | 'every-day' | 'custom';
 
+/**
+ * שלב הפרימיום האופציונלי (אחרי המיתוג):
+ * 'gate' שער הבחירה, מספר 0..2 תת-שלב פעיל, 'summary' מסך הסיכום.
+ */
+type PremiumPhase = 'gate' | number | 'summary';
+
+/**
+ * שלושת תתי-השלבים של הפרימיום, כל אחד ממופה למקטע בעמוד הנחיתה הציבורי:
+ * hero (הירו + תמונות), hotDeals (מבצעים חמים), location (מיקום + וואטסאפ).
+ */
+const PREMIUM_SUB_KEYS = ['hero', 'hotDeals', 'location'] as const;
+
 type Props = {
   businessName: string;
   brandColor: string;
@@ -27,12 +47,21 @@ type Props = {
   serviceExample: string;
   bookingUrl: string;
   bookingQr: string;
+  // ── פרימיום: פרטי העסק והתוכן ההתחלתי לעמוד הנחיתה ──
+  businessType: string;
+  businessAddress: string;
+  slug: string;
+  premiumInitial: LandingContent | null;
 };
 
 const initialSaveState: SaveState = { ok: false };
 
 /** ששת גווני המותג המוצעים (תואם למוקאפ המאושר). */
-const BRAND_SWATCHES = ['#0a182d', '#12b886', '#7c3aed', '#e11d48', '#f59e0b', '#0ea5e9'];
+/** גווני מותג ראשיים אצורים (פיקס) — קובעים brandColor בלבד; שאר גווני --biz-* נגזרים אוטומטית. */
+const PRIMARY_SWATCHES = [
+  '#0a182d', '#12b886', '#7c3aed', '#e11d48', '#f59e0b', '#0ea5e9',
+  '#b0855f', '#d98ca3', '#3f9d8a', '#3b82c4', '#9b3b57', '#2fa9a2',
+];
 
 function errorText(state: SaveState): string | null {
   if (!state.error) return null;
@@ -54,10 +83,22 @@ export default function OnboardingWizard({
   serviceExample,
   bookingUrl,
   bookingQr,
+  businessType,
+  businessAddress,
+  slug,
+  premiumInitial,
 }: Props) {
   const o = t.admin.onboarding;
   const [step, setStep] = useState(0); // 0=services 1=hours 2=branding
   const [done, setDone] = useState(false);
+
+  // ── מצב שלב הפרימיום (אופציונלי, מופעל אחרי המיתוג) ──
+  // premiumPhase=null ⇐ שלב הפרימיום עדיין מחוץ לתמונה (שלושת הצעדים הרגילים).
+  const [premiumPhase, setPremiumPhase] = useState<PremiumPhase | null>(null);
+  // טיוטת התוכן היא מקור האמת היחיד; נשלחת כשדה JSON יחיד בכל שמירה.
+  const [premiumDraft, setPremiumDraft] = useState<LandingContent>(() => premiumInitial ?? {});
+  // יעד המעבר אחרי שמירה מוצלחת, נקבע ב-onClick לפני שליחת הטופס.
+  const nextTargetRef = useRef<PremiumPhase | 'done'>('gate');
 
   // מצב מקומי לצעד השירותים: אילו שירותים פעילים + טופס "הוספת שירות משלך".
   const [active, setActive] = useState<Record<string, boolean>>(() =>
@@ -95,6 +136,10 @@ export default function OnboardingWizard({
     saveBranding,
     initialSaveState,
   );
+  const [premiumState, premiumFormAction, premiumPending] = useActionState(
+    savePremiumLanding,
+    initialSaveState,
+  );
 
   useEffect(() => {
     if (servicesState.ok) setStep(1);
@@ -102,9 +147,17 @@ export default function OnboardingWizard({
   useEffect(() => {
     if (hoursState.ok) setStep(2);
   }, [hoursState]);
+  // אחרי המיתוג: במקום סיום מיידי, מציגים את שער הפרימיום האופציונלי.
   useEffect(() => {
-    if (brandingState.ok) setDone(true);
+    if (brandingState.ok) setPremiumPhase('gate');
   }, [brandingState]);
+  // אחרי שמירת פרימיום מוצלחת: מעבר ליעד שנקבע (תת-שלב הבא / סיכום / סיום).
+  useEffect(() => {
+    if (!premiumState.ok) return;
+    const target = nextTargetRef.current;
+    if (target === 'done') setDone(true);
+    else setPremiumPhase(target);
+  }, [premiumState]);
 
   const activeCount = Object.values(active).filter(Boolean).length;
   const draftPending = draftName.trim() !== '' ? 1 : 0;
@@ -203,6 +256,489 @@ export default function OnboardingWizard({
           </Button>
         </div>
       </section>
+    );
+  }
+
+  // ── שלב הפרימיום האופציונלי: מוצג אחרי המיתוג ולפני שובו של האשף הרגיל ──
+  // (premiumPhase!==null בלבד; שלושת הצעדים הרגילים אינם מושפעים.)
+  if (premiumPhase !== null) return renderPremium();
+
+  /**
+   * רינדור שער הפרימיום, שלושת תתי-השלבים הדילוגיים, ומסך הסיכום.
+   * הפונקציה מוגדרת כ-declaration ולכן זמינה בעת הקריאה בשמירה למעלה.
+   */
+  function renderPremium() {
+    const p = o.premium;
+    const inputCls = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm';
+    const labelCls = 'mb-1 block text-sm font-medium text-slate-700';
+    const cardCls = 'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6';
+    const err = errorText(premiumState);
+
+    // עדכון נקודתי של הטיוטה (מקור האמת היחיד לתוכן הפרימיום).
+    const patchDraft = (patch: Partial<LandingContent>) =>
+      setPremiumDraft((prev) => ({ ...prev, ...patch }));
+
+    // שדה טקסט/מרובה-שורות מבוקר, ללא name (נשמר לטיוטה, לא נכנס לשליחת הטופס).
+    const textField = (opts: {
+      id: string;
+      label: string;
+      value: string;
+      onChange: (v: string) => void;
+      placeholder?: string;
+      textarea?: boolean;
+      rows?: number;
+      dir?: 'rtl' | 'ltr';
+      type?: string;
+    }) => (
+      <div>
+        <label htmlFor={opts.id} className={labelCls}>
+          {opts.label}
+        </label>
+        {opts.textarea ? (
+          <textarea
+            id={opts.id}
+            value={opts.value}
+            rows={opts.rows ?? 3}
+            onChange={(e) => opts.onChange(e.target.value)}
+            placeholder={opts.placeholder}
+            dir={opts.dir}
+            className={inputCls}
+          />
+        ) : (
+          <input
+            id={opts.id}
+            type={opts.type ?? 'text'}
+            value={opts.value}
+            onChange={(e) => opts.onChange(e.target.value)}
+            placeholder={opts.placeholder}
+            dir={opts.dir}
+            className={inputCls}
+          />
+        )}
+      </div>
+    );
+
+    // ── שער הבחירה: שאלה מפורשת עם המשך/דילוג ──
+    if (premiumPhase === 'gate') {
+      const g = p.gate;
+      return (
+        <div dir="rtl">
+          <section className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-6 text-center shadow-sm sm:p-8">
+            <span
+              aria-hidden="true"
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-3xl shadow-lg"
+            >
+              ✨
+            </span>
+            <p className="mt-4 text-sm font-medium text-emerald-600">{g.eyebrow}</p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900">{g.title}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">{g.subtitle}</p>
+            <div className="mt-6 flex flex-col items-center gap-3">
+              {/* המשך: שומר טיוטה ריקה ומעביר לתת-השלב הראשון */}
+              <form action={premiumFormAction} className="w-full sm:w-auto">
+                <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
+                <button
+                  type="submit"
+                  disabled={premiumPending}
+                  onClick={() => {
+                    nextTargetRef.current = 0;
+                  }}
+                  className="w-full rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
+                >
+                  {premiumPending ? p.nav.saving : g.build}
+                </button>
+              </form>
+              {/* דילוג: סיום מיידי אל מסך שיתוף קישור ההזמנות */}
+              <button
+                type="button"
+                onClick={() => setDone(true)}
+                className="text-sm font-medium text-slate-500 transition hover:text-slate-700"
+              >
+                {g.skip}
+              </button>
+            </div>
+            {err && <p className="mt-3 text-sm text-rose-600">{err}</p>}
+          </section>
+        </div>
+      );
+    }
+
+    // ── מסך הסיכום: תצוגה מקדימה + סיום ──
+    if (premiumPhase === 'summary') {
+      const s = p.summary;
+      return (
+        <div dir="rtl">
+          <section className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-6 text-center shadow-sm sm:p-8">
+            <span
+              aria-hidden="true"
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-3xl shadow-lg"
+            >
+              ✨
+            </span>
+            <p className="mt-4 text-sm font-medium text-emerald-600">{s.eyebrow}</p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900">{s.title}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
+              {s.subtitle.replace('{name}', businessName)}
+            </p>
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <a
+                href={`/b/${slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full rounded-xl border border-slate-300 px-6 py-2.5 text-center font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+              >
+                {s.previewCta}
+              </a>
+              <form action={premiumFormAction} className="w-full sm:w-auto">
+                <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
+                <button
+                  type="submit"
+                  disabled={premiumPending}
+                  onClick={() => {
+                    nextTargetRef.current = 'done';
+                  }}
+                  className="w-full rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
+                >
+                  {premiumPending ? p.nav.saving : s.finishCta}
+                </button>
+              </form>
+            </div>
+            <p className="mt-4 text-xs text-slate-400">{s.editHint}</p>
+            {err && <p className="mt-3 text-sm text-rose-600">{err}</p>}
+          </section>
+        </div>
+      );
+    }
+
+    // מכאן ואילך: תת-שלב ממוספר בלבד (0..2). שמירת טיפוסים מפני null.
+    if (typeof premiumPhase !== 'number') return null;
+    const sub = premiumPhase;
+    const subKey = PREMIUM_SUB_KEYS[sub];
+    const sk = p.steps[subKey];
+    const isLast = sub === PREMIUM_SUB_KEYS.length - 1;
+    const progress = p.nav.progress
+      .replace('{current}', String(sub + 1))
+      .replace('{total}', String(PREMIUM_SUB_KEYS.length));
+
+    // אוספים נגזרים לרינדור (תמונת-מצב לקריאה בלבד).
+    const heroImages = premiumDraft.heroImages ?? [];
+    const hotDeals: LandingHotDeals = premiumDraft.hotDeals ?? { images: [] };
+    const hotDealsImages = hotDeals.images ?? [];
+    const launchOffer: LandingLaunchOffer | undefined = premiumDraft.launchOffer;
+    const social: LandingSocialLinks = premiumDraft.socialLinks ?? {};
+    const sections = premiumDraft.sections ?? buildDefaultSectionToggles(businessType);
+
+    // ── עוזרי עריכה (פונקציונליים, בטוחים לעדכונים עוקבים) ──
+
+    // הירו: עד שתי תמונות רקע (heroImages, נשמר כמערך כתובות).
+    const setHeroImage = (i: number, url: string) =>
+      setPremiumDraft((prev) => {
+        const next = [...(prev.heroImages ?? [])];
+        while (next.length <= i) next.push('');
+        next[i] = url;
+        return { ...prev, heroImages: next };
+      });
+
+    // מבצעים חמים: שדות טקסט + עד שש תמונות טיפולים.
+    const patchHotDeals = (patch: Partial<LandingHotDeals>) =>
+      setPremiumDraft((prev) => {
+        const cur = prev.hotDeals ?? { images: [] };
+        return { ...prev, hotDeals: { ...cur, ...patch } };
+      });
+    const setHotDealImage = (i: number, url: string) =>
+      setPremiumDraft((prev) => {
+        const cur = prev.hotDeals ?? { images: [] };
+        const next = [...(cur.images ?? [])];
+        while (next.length <= i) next.push('');
+        next[i] = url;
+        return { ...prev, hotDeals: { ...cur, images: next } };
+      });
+
+    // מבצע השקה אופציונלי בתוך המבצעים החמים (טקסט + מקומות שנותרו + מועד סיום).
+    const patchLaunchOffer = (patch: Partial<LandingLaunchOffer>) =>
+      setPremiumDraft((prev) => {
+        const cur = prev.launchOffer ?? { text: '', endsAt: '' };
+        return { ...prev, launchOffer: { ...cur, ...patch } };
+      });
+
+    // מיקום: עריכת וואטסאפ + הדלקת/כיבוי מקטע המיקום בעמוד הציבורי.
+    const setSocial = (key: keyof LandingSocialLinks, v: string) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        socialLinks: { ...(prev.socialLinks ?? {}), [key]: v },
+      }));
+    const setSection = (key: LandingSectionKey, on: boolean) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        sections: {
+          ...(prev.sections ?? buildDefaultSectionToggles(businessType)),
+          [key]: on,
+        },
+      }));
+
+    // לכידת כתובות התמונות מ-ImageUploadField דרך אירוע input שמבעבע לטופס.
+    const handlePremiumInput = (e: React.FormEvent<HTMLFormElement>) => {
+      const el = e.target as HTMLInputElement;
+      const name = el.name || '';
+      if (!name.startsWith('premImg:')) return;
+      const parts = name.split(':');
+      if (parts[1] === 'hero') {
+        setHeroImage(Number(parts[2]), el.value);
+      } else if (parts[1] === 'deal') {
+        setHotDealImage(Number(parts[2]), el.value);
+      }
+    };
+
+    return (
+      <div dir="rtl">
+        <div className="mb-5">
+          <p className="text-sm font-medium text-emerald-600">{sk.eyebrow}</p>
+          <h2 className="mt-1 text-xl font-bold text-slate-900">{sk.title}</h2>
+          <p className="mt-1 text-sm text-slate-500">{sk.subtitle}</p>
+          <p className="mt-2 text-xs font-medium text-slate-400">{progress}</p>
+        </div>
+
+        <form action={premiumFormAction} onInput={handlePremiumInput} className={cardCls}>
+          <div className="space-y-4">
+            {/* ── (0) כותרת הירו ── */}
+            {subKey === 'hero' && (
+              <>
+                {textField({
+                  id: 'prem-hero-eyebrow',
+                  label: p.steps.hero.eyebrowLabel,
+                  value: premiumDraft.heroEyebrow ?? '',
+                  placeholder: p.steps.hero.eyebrowPlaceholder,
+                  onChange: (v) => patchDraft({ heroEyebrow: v }),
+                })}
+                {textField({
+                  id: 'prem-hero-headline',
+                  label: p.steps.hero.headlineLabel,
+                  value: premiumDraft.heroHeadline ?? '',
+                  placeholder: p.steps.hero.headlinePlaceholder,
+                  onChange: (v) => patchDraft({ heroHeadline: v }),
+                })}
+                {textField({
+                  id: 'prem-hero-subtext',
+                  label: p.steps.hero.subtextLabel,
+                  value: premiumDraft.heroSubtext ?? '',
+                  placeholder: p.steps.hero.subtextPlaceholder,
+                  onChange: (v) => patchDraft({ heroSubtext: v }),
+                  textarea: true,
+                  rows: 2,
+                })}
+                {textField({
+                  id: 'prem-hero-cta',
+                  label: p.steps.hero.ctaLabelLabel,
+                  value: premiumDraft.ctaLabel ?? '',
+                  placeholder: p.steps.hero.ctaLabelPlaceholder,
+                  onChange: (v) => patchDraft({ ctaLabel: v }),
+                })}
+                <div>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    {p.steps.hero.imagesTitle}
+                  </span>
+                  <div className="grid grid-cols-2 gap-4">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div key={i}>
+                        <span className="mb-1 block text-xs font-medium text-slate-500">
+                          {p.steps.hero.imageLabel.replace('{n}', String(i + 1))}
+                        </span>
+                        <ImageUploadField
+                          name={`premImg:hero:${i}`}
+                          defaultValue={heroImages[i] ?? ''}
+                          targetAspect={16 / 9}
+                          rounded={false}
+                          maxWidth={1600}
+                          maxHeight={900}
+                          mime="image/jpeg"
+                          labels={imageLabels}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">{p.steps.hero.imagesHint}</p>
+                </div>
+              </>
+            )}
+
+            {/* ── (1) מבצעים חמים ── */}
+            {subKey === 'hotDeals' && (
+              <>
+                {textField({
+                  id: 'prem-deals-eyebrow',
+                  label: p.steps.hotDeals.eyebrowLabel,
+                  value: hotDeals.eyebrow ?? '',
+                  placeholder: p.steps.hotDeals.eyebrowPlaceholder,
+                  onChange: (v) => patchHotDeals({ eyebrow: v }),
+                })}
+                {textField({
+                  id: 'prem-deals-title',
+                  label: p.steps.hotDeals.titleLabel,
+                  value: hotDeals.title ?? '',
+                  placeholder: p.steps.hotDeals.titlePlaceholder,
+                  onChange: (v) => patchHotDeals({ title: v }),
+                })}
+                {textField({
+                  id: 'prem-deals-text',
+                  label: p.steps.hotDeals.textLabel,
+                  value: hotDeals.text ?? '',
+                  placeholder: p.steps.hotDeals.textPlaceholder,
+                  onChange: (v) => patchHotDeals({ text: v }),
+                  textarea: true,
+                  rows: 2,
+                })}
+                {textField({
+                  id: 'prem-deals-cta',
+                  label: p.steps.hotDeals.ctaLabelLabel,
+                  value: hotDeals.ctaLabel ?? '',
+                  placeholder: p.steps.hotDeals.ctaLabelPlaceholder,
+                  onChange: (v) => patchHotDeals({ ctaLabel: v }),
+                })}
+                <div>
+                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                    {p.steps.hotDeals.imagesTitle}
+                  </span>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i}>
+                        <span className="mb-1 block text-xs font-medium text-slate-500">
+                          {p.steps.hotDeals.imageLabel.replace('{n}', String(i + 1))}
+                        </span>
+                        <ImageUploadField
+                          name={`premImg:deal:${i}`}
+                          defaultValue={hotDealsImages[i] ?? ''}
+                          targetAspect={1}
+                          rounded={false}
+                          maxWidth={1080}
+                          maxHeight={1080}
+                          mime="image/jpeg"
+                          labels={imageLabels}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">{p.steps.hotDeals.imagesHint}</p>
+                </div>
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-700">
+                    {p.steps.hotDeals.offerTitle}
+                  </p>
+                  <p className="text-xs text-slate-400">{p.steps.hotDeals.offerHint}</p>
+                  {textField({
+                    id: 'prem-offer-text',
+                    label: p.steps.hotDeals.offerTextLabel,
+                    value: launchOffer?.text ?? '',
+                    placeholder: p.steps.hotDeals.offerTextPlaceholder,
+                    onChange: (v) => patchLaunchOffer({ text: v }),
+                  })}
+                  <div className="grid grid-cols-2 gap-4">
+                    {textField({
+                      id: 'prem-offer-spots',
+                      label: p.steps.hotDeals.spotsLeftLabel,
+                      value: launchOffer?.spotsLeft != null ? String(launchOffer.spotsLeft) : '',
+                      placeholder: p.steps.hotDeals.spotsLeftPlaceholder,
+                      onChange: (v) => {
+                        const n = Number(v);
+                        patchLaunchOffer({
+                          spotsLeft: v.trim() !== '' && Number.isFinite(n) ? n : undefined,
+                        });
+                      },
+                      type: 'number',
+                      dir: 'ltr',
+                    })}
+                    {textField({
+                      id: 'prem-offer-ends',
+                      label: p.steps.hotDeals.endsAtLabel,
+                      value: launchOffer?.endsAt ?? '',
+                      placeholder: p.steps.hotDeals.endsAtPlaceholder,
+                      onChange: (v) => patchLaunchOffer({ endsAt: v }),
+                      type: 'date',
+                      dir: 'ltr',
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── (2) מיקום + מפה ── */}
+            {subKey === 'location' && (
+              <>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-700">
+                    {p.steps.location.addressTitle}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {businessAddress.trim() !== '' ? businessAddress : p.steps.location.noAddress}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-400">{p.steps.location.addressHint}</p>
+                </div>
+                {textField({
+                  id: 'prem-location-whatsapp',
+                  label: p.steps.location.whatsappLabel,
+                  value: social.whatsapp ?? '',
+                  placeholder: p.steps.location.whatsappPlaceholder,
+                  onChange: (v) => setSocial('whatsapp', v),
+                  dir: 'ltr',
+                })}
+                <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={sections.location ?? false}
+                    onChange={(e) => setSection('location', e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600"
+                  />
+                  {p.steps.location.showToggle}
+                </label>
+              </>
+            )}
+
+            {/* שדה JSON יחיד שנושא את כל טיוטת התוכן אל פעולת השרת */}
+            <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
+            {err && <p className="text-sm text-rose-600">{err}</p>}
+
+            {/* ── ניווט התחתית: חזרה / דילוג / שמירה ויציאה / המשך ── */}
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={() => setPremiumPhase(sub === 0 ? 'gate' : sub - 1)}
+                className="rounded-xl border border-slate-300 px-5 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                {p.nav.back}
+              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPremiumPhase(isLast ? 'summary' : sub + 1)}
+                  disabled={premiumPending}
+                  className="text-sm font-medium text-slate-500 transition hover:text-slate-700 disabled:opacity-60"
+                >
+                  {p.nav.skip}
+                </button>
+                <button
+                  type="submit"
+                  onClick={() => {
+                    nextTargetRef.current = 'summary';
+                  }}
+                  disabled={premiumPending}
+                  className="rounded-xl border border-slate-300 px-5 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {p.nav.saveExit}
+                </button>
+                <button
+                  type="submit"
+                  onClick={() => {
+                    nextTargetRef.current = isLast ? 'summary' : sub + 1;
+                  }}
+                  disabled={premiumPending}
+                  className="rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {premiumPending ? p.nav.saving : p.nav.continue}
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
     );
   }
 
@@ -526,38 +1062,84 @@ export default function OnboardingWizard({
               />
             </div>
 
-            <div>
-              <span className="mb-1.5 block text-sm font-medium text-slate-700">
-                {o.branding.colorLabel}
-              </span>
-              <div className="flex flex-wrap gap-2.5">
-                {BRAND_SWATCHES.map((swatch) => {
-                  const on = color.toLowerCase() === swatch.toLowerCase();
-                  return (
-                    <button
-                      key={swatch}
-                      type="button"
-                      aria-label={swatch}
-                      aria-pressed={on}
-                      onClick={() => setColor(swatch)}
-                      style={{ backgroundColor: swatch }}
-                      className={
-                        'h-10 w-10 rounded-full ring-offset-2 transition ' +
-                        (on ? 'ring-2 ring-slate-900' : 'ring-1 ring-slate-200 hover:ring-slate-400')
-                      }
-                    />
-                  );
-                })}
-                <label className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5">
-                  <span className="text-xs text-slate-500">HEX</span>
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="h-6 w-8 cursor-pointer border-0 bg-transparent p-0"
-                    aria-label={o.branding.colorLabel}
-                  />
-                </label>
+            <div className="space-y-4">
+              {/* גלריית פלטות מותג אצורות: כרטיס קובע brandColor + theme לעמוד הפרימיום */}
+              <div>
+                <span className="mb-1.5 block text-sm font-medium text-slate-700">
+                  {o.premium.palette.presetsTitle}
+                </span>
+                <p className="mb-2 text-xs text-slate-400">{o.premium.palette.presetsHint}</p>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                  {BRAND_PRESETS.map((preset) => {
+                    const on =
+                      (premiumDraft.theme?.brand ?? '').toLowerCase() ===
+                      preset.theme.brand.toLowerCase();
+                    const dots = [
+                      preset.theme.brand,
+                      preset.theme.brandDark,
+                      preset.theme.gold,
+                      preset.theme.accent,
+                      preset.theme.cream,
+                    ];
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => {
+                          setColor(preset.theme.brand);
+                          setPremiumDraft((prev) => ({ ...prev, theme: preset.theme }));
+                        }}
+                        className={
+                          'flex flex-col gap-2 rounded-2xl border p-3 text-right transition ' +
+                          (on
+                            ? 'border-slate-900 ring-2 ring-slate-900 ring-offset-1'
+                            : 'border-slate-200 hover:border-slate-400')
+                        }
+                      >
+                        <span className="flex gap-1" aria-hidden="true">
+                          {dots.map((c, di) => (
+                            <span
+                              key={di}
+                              className="h-5 w-5 rounded-full ring-1 ring-black/5"
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+                        </span>
+                        <span className="text-xs font-medium text-slate-700">{preset.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* מסלול "צבע ראשי": גוונים קבועים אצורים; שאר --biz-* נגזרים אוטומטית */}
+              <div>
+                <span className="mb-1.5 block text-sm font-medium text-slate-700">
+                  {o.premium.palette.primaryTitle}
+                </span>
+                <p className="mb-2 text-xs text-slate-400">{o.premium.palette.primaryHint}</p>
+                <div className="flex flex-wrap gap-2.5">
+                  {PRIMARY_SWATCHES.map((swatch) => {
+                    const on = color.toLowerCase() === swatch.toLowerCase();
+                    return (
+                      <button
+                        key={swatch}
+                        type="button"
+                        aria-label={swatch}
+                        aria-pressed={on}
+                        onClick={() => setColor(swatch)}
+                        style={{ backgroundColor: swatch }}
+                        className={
+                          'h-10 w-10 rounded-full ring-offset-2 transition ' +
+                          (on
+                            ? 'ring-2 ring-slate-900'
+                            : 'ring-1 ring-slate-200 hover:ring-slate-400')
+                        }
+                      />
+                    );
+                  })}
+                </div>
               </div>
               <input type="hidden" name="brandColor" value={color} />
             </div>

@@ -8,6 +8,7 @@ import { listServices } from '@/server/repos/services';
 import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
 import { bookingUrl } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
+import { normalizeLandingContent } from '@/lib/publicPageStyle';
 import OnboardingWizard, { type WizardService } from './OnboardingWizard';
 
 export const metadata: Metadata = { title: t.admin.onboarding.title };
@@ -35,6 +36,9 @@ export default async function AdminOnboardingPage() {
   // דוגמת פלייסהולדר מותאמת לסוג העסק (למשל "אימון אישי" לעסק כושר).
   const serviceExample = getServiceTemplate(business.type)[0]?.name ?? '';
 
+  // תוכן פרימיום קיים (אם כבר מולא) — מנורמל לזריעת האשף בכניסה חוזרת.
+  const premiumInitial = normalizeLandingContent(business.landingContent);
+
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-6">
@@ -57,6 +61,10 @@ export default async function AdminOnboardingPage() {
         serviceExample={serviceExample}
         bookingUrl={link}
         bookingQr={qr}
+        businessType={business.type ?? ''}
+        businessAddress={business.address ?? ''}
+        slug={business.slug}
+        premiumInitial={premiumInitial}
       />
     </main>
   );
