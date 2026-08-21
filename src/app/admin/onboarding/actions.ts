@@ -17,6 +17,7 @@ import {
 } from '@/server/onboarding/hoursPresets';
 import type { SaveState } from '../settings/parse';
 import { ONBOARDING_CHECKLIST_DISMISS_COOKIE } from './checklistState';
+import { parsePremiumDraft } from './premium';
 
 /**
  * פעולות אשף ההקמה המודרך (מסלול העסק החדש):
@@ -177,6 +178,41 @@ export async function saveBranding(_prev: SaveState, fd: FormData): Promise<Save
 
   await updateBusinessProfile(business.id, profile);
   await setOnboardingCompleted(business.id, true);
+  revalidateAll(business.slug);
+  return { ok: true };
+}
+
+/**
+ * שלב פרימיום (אופציונלי) — שמירת תוכן עמוד הנחיתה העשיר והדלקת סגנון העמוד.
+ * נקרא מכל תת-שלב באשף הפרימיום (שמירה חלקית מותרת): הטיוטה נשלחת כשדה JSON
+ * יחיד בשם premiumDraft, מנותחת ומנורמלת דרך parsePremiumDraft, ונכתבת ל-
+ * Business.landingContent. במקביל סגנון העמוד הציבורי מוגדר ל-LANDING, כי הבעלים
+ * בחר לבנות עמוד פרימיום. שאר שדות הפרופיל מועתקים כפי שהם (ללא שינוי התנהגות).
+ */
+export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promise<SaveState> {
+  const business = await getActiveBusiness();
+  if (!business) return { ok: false, error: 'no_business' };
+
+  // ניתוח בטוח של טיוטת הפרימיום: null כשאין תוכן ממשי (ישמור NULL במסד).
+  const landingContent = parsePremiumDraft(fd.get('premiumDraft'));
+
+  const profile: BusinessProfileInput = {
+    name: business.name,
+    type: business.type,
+    phone: business.phone,
+    address: business.address,
+    description: business.description,
+    instagramUrl: business.instagramUrl,
+    logoUrl: business.logoUrl,
+    coverImageUrl: business.coverImageUrl,
+    brandColor: business.brandColor,
+    timezone: business.timezone,
+    // הבעלים בחר לבנות עמוד פרימיום ⇐ סגנון העמוד הציבורי הופך ל-LANDING.
+    publicPageStyle: 'LANDING',
+    landingContent,
+  };
+
+  await updateBusinessProfile(business.id, profile);
   revalidateAll(business.slug);
   return { ok: true };
 }
