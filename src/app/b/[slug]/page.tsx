@@ -6,7 +6,7 @@ import { getBusinessBySlug } from '@/server/repos/business';
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatMinutes } from '@/lib/time';
-import { localBusinessJsonLd } from '@/lib/seo';
+import { localBusinessJsonLd, absoluteUrl } from '@/lib/seo';
 import { buildBusinessPageMetadata } from './metadata';
 import { JsonLd } from '@/components/JsonLd';
 import InstallApp from '@/components/pwa/InstallApp';
@@ -29,6 +29,8 @@ import {
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
+import ShareBusiness from '@/components/publicLanding/ShareBusiness';
+import BackButton from '@/components/publicLanding/BackButton';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -90,6 +92,8 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
   const heroCtaLabel = landing?.ctaLabel || t.publicPage.bookCta;
 
   const bookHref = `/b/${business.slug}/book`;
+  // הכתובת הקנונית לשיתוף — https://<host>/b/<slug>. ה-OG card מנוהל בקובץ נפרד.
+  const shareUrl = absoluteUrl(`/b/${business.slug}`);
 
   // עמוד פרימיום של קליניקה — מזוהה לפי נוכחות launchOffer או hotDeals בתוכן הנחיתה.
   // רק אז מוחלת הפלטה החמה (זהב/קרם) והכותרת הייעודית, בלי לפגוע בשאר העסקים.
@@ -344,6 +348,11 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
       )}
 
       <div className="mx-auto max-w-3xl px-5">
+        {/* ניווט חזרה — למקום שממנו הגיע המשתמש, או לעמוד הבית */}
+        <div className="pt-4">
+          <BackButton />
+        </div>
+
         {isLanding ? (
           <LandingSections
             content={landing}
@@ -371,6 +380,11 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
             {hoursSection}
           </>
         )}
+
+        {/* שיתוף העמוד ברשתות — משני ל-CTA של קביעת התור, לא מתחרה בו */}
+        <div className="mt-10">
+          <ShareBusiness shareUrl={shareUrl} businessName={business.name} />
+        </div>
 
         {/* התקנת אפליקציה ממותגת של העסק */}
         <div className="mt-10">
