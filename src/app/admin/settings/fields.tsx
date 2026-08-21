@@ -377,6 +377,33 @@ export function PublicPageFields({
           </div>
         </div>
 
+        <div className="space-y-2">
+          <label className={labelClass}>{s.announcementLabel}</label>
+          <p className={hintClass}>{s.announcementHint}</p>
+          <textarea
+            name="landingAnnouncement"
+            defaultValue={lc.announcement ?? ''}
+            placeholder={s.announcementPlaceholder}
+            rows={2}
+            maxLength={200}
+            className={inputClass}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className={labelClass}>{s.googleReviewsLabel}</label>
+          <p className={hintClass}>{s.googleReviewsHint}</p>
+          <input
+            name="landingGoogleReviewsUrl"
+            type="url"
+            dir="ltr"
+            defaultValue={lc.googleReviewsUrl ?? ''}
+            placeholder={s.googleReviewsPlaceholder}
+            maxLength={2048}
+            className={inputClass}
+          />
+        </div>
+
         <div className="space-y-3">
           <label className={labelClass}>{s.beforeAfterLabel}</label>
           <p className={hintClass}>{s.beforeAfterHint}</p>

@@ -166,6 +166,8 @@ export interface LandingContent {
   testimonials?: LandingTestimonial[];
   faq?: LandingFaqItem[];
   about?: string;
+  announcement?: string; // שורת עדכון חי אופציונלית, נערכת בעמוד ניהול העסק
+  googleReviewsUrl?: string; // קישור לעמוד הביקורות של העסק בגוגל (שלב רשות)
   socialLinks?: LandingSocialLinks;
   ctaLabel?: string;
   sections?: LandingSectionToggles;
@@ -203,6 +205,8 @@ const LIMITS = {
   faqAnswer: 500,
   beforeAfterLabel: 80,
   about: 900,
+  announcement: 200,
+  googleReviewsUrl: 2048,
   ctaLabel: 40,
   socialUrl: 2048,
   launchOfferText: 160,
@@ -346,6 +350,9 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   const heroHeadline = cleanString(source.heroHeadline, LIMITS.heroHeadline);
   const heroSubtext = cleanString(source.heroSubtext, LIMITS.heroSubtext);
   const about = cleanString(source.about, LIMITS.about);
+  const announcement = cleanString(source.announcement, LIMITS.announcement);
+  const googleReviewsRaw = cleanString(source.googleReviewsUrl, LIMITS.googleReviewsUrl);
+  const googleReviewsUrl = /^https?:\/\//i.test(googleReviewsRaw) ? googleReviewsRaw : '';
   const ctaLabel = cleanString(source.ctaLabel, LIMITS.ctaLabel);
 
   const benefits: LandingBenefit[] = [];
@@ -420,6 +427,8 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   if (testimonials.length) content.testimonials = testimonials;
   if (faq.length) content.faq = faq;
   if (about) content.about = about;
+  if (announcement) content.announcement = announcement;
+  if (googleReviewsUrl) content.googleReviewsUrl = googleReviewsUrl;
   if (socialLinks) content.socialLinks = socialLinks;
   if (ctaLabel) content.ctaLabel = ctaLabel;
   if (sections) content.sections = sections;
