@@ -481,7 +481,11 @@ async function seedClinic() {
   console.log(`  שירותים: ${clinicServices.length} · צוות: ${clinicStaff.length}`);
 }
 
-main()
+// מאפשר אכלוס ממוקד. SEED_ONLY=clinic מריץ רק את קליניקת היופי (אדיטיבי,
+// לא נוגע ב-demo-barbershop); ללא המשתנה מריץ את האכלוס המלא כרגיל.
+const seedRunner = process.env.SEED_ONLY === 'clinic' ? seedClinic : main;
+
+seedRunner()
   .catch((e) => {
     console.error('שגיאה באכלוס:', e);
     process.exit(1);
