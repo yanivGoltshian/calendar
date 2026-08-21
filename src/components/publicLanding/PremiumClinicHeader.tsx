@@ -41,7 +41,6 @@ type Props = {
   todayHours?: string | null; // "10:00–20:00" או null כשסגור היום
   instagramUrl?: string | null;
   facebookUrl?: string | null;
-  whatsapp?: string | null;
   bookHref: string;
   heroImages: string[]; // עד שתי תמונות (ראשית + פנים הקליניקה)
   heroEyebrow?: string;
@@ -80,7 +79,6 @@ export default function PremiumClinicHeader({
   todayHours,
   instagramUrl,
   facebookUrl,
-  whatsapp,
   bookHref,
   heroImages,
   heroEyebrow,

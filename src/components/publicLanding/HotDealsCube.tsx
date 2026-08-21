@@ -42,7 +42,7 @@ export default function HotDealsCube({ eyebrow, title, text, ctaLabel, ctaHref, 
   };
 
   return (
-    <section className="mt-16 sm:mt-24">
+    <section id="lp-offers" className="mt-16 scroll-mt-24 sm:mt-24">
       <SectionHeading eyebrow={eyebrow} title={title} lede={text} icon={<SparklesIcon className="h-4 w-4" />} />
 
       {/* במה תלת-ממדית ממורכזת עם פרספקטיבה; גובה קבוע מונע קפיצת פריסה */}

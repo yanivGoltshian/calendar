@@ -15,6 +15,7 @@ import LandingFaq from './LandingFaq';
 import LandingAbout from './LandingAbout';
 import LandingLocation from './LandingLocation';
 import LandingSocialCta from './LandingSocialCta';
+import HotDealsCube from './HotDealsCube';
 import WhatsAppFab from './WhatsAppFab';
 
 type WorkingHour = { weekday: number; startMinute: number; endMinute: number };
@@ -51,6 +52,10 @@ export default function LandingSections({
 
   const benefits = content?.benefits?.length ? content.benefits : defaults.benefits;
   const whatsapp = content?.socialLinks?.whatsapp?.trim();
+  // עמוד פרימיום של קליניקה מזוהה לפי נוכחות launchOffer או hotDeals; רק אז
+  // מוזרקים מקטע הקובייה האינליין ומצב המפה הפרימיום למקטע המיקום.
+  const isClinicPremium = Boolean(content?.launchOffer || content?.hotDeals);
+  const clinic = t.premiumLanding.clinic;
 
   return (
     <>
@@ -63,16 +68,29 @@ export default function LandingSections({
           case 'services':
             if (services.length === 0) return null;
             return (
-              <LandingServices
-                key={section}
-                eyebrow={eyebrows.services}
-                lede={t.premiumLanding.servicesLede}
-                title={t.publicPage.servicesTitle}
-                services={services}
-                bookHref={bookHref}
-                iconKey={iconKey}
-                bookLabel={l.bookService}
-              />
+              // עטיפת display:contents שומרת על זרימת הפריסה ומאפשרת להזריק
+              // את מקטע "מבצעים חמים" האינליין מיד אחרי הטיפולים (עוגן #lp-offers).
+              <div key={section} className="contents">
+                <LandingServices
+                  eyebrow={eyebrows.services}
+                  lede={t.premiumLanding.servicesLede}
+                  title={t.publicPage.servicesTitle}
+                  services={services}
+                  bookHref={bookHref}
+                  iconKey={iconKey}
+                  bookLabel={l.bookService}
+                />
+                {content?.hotDeals ? (
+                  <HotDealsCube
+                    eyebrow={content.hotDeals.eyebrow}
+                    title={content.hotDeals.title ?? clinic.navOffers}
+                    text={content.hotDeals.text}
+                    ctaLabel={content.hotDeals.ctaLabel ?? l.bookService}
+                    ctaHref={bookHref}
+                    images={content.hotDeals.images}
+                  />
+                ) : null}
+              </div>
             );
           case 'gallery':
             return (
@@ -122,6 +140,17 @@ export default function LandingSections({
                 phone={phone}
                 directionsCta={l.directionsCta}
                 callCta={l.callCta}
+                {...(isClinicPremium
+                  ? {
+                      mapsCta: clinic.location.mapsCta,
+                      wazeCta: clinic.location.wazeCta,
+                      whatsappCta: clinic.location.whatsappCta,
+                      whatsapp: content?.socialLinks?.whatsapp ?? null,
+                      contactCta: clinic.location.contactCta,
+                      navTitle: clinic.location.navTitle,
+                      mapTitle: clinic.location.mapTitle,
+                    }
+                  : {})}
               />
             );
           case 'socialCta':
