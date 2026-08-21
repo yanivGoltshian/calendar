@@ -101,3 +101,35 @@ test('שדות undefined לגמרי — רקע נפילה, מצב אות ונק�
   assert.equal(model.mode, 'initial');
   assert.equal(model.initial, '\u2022');
 });
+
+test('תווית סוג העסק בעברית נגזרת מ-type', () => {
+  const model = buildBusinessOgModel({ name: 'X', type: 'BARBERSHOP' });
+  assert.equal(model.typeLabel, 'מספרה לגברים');
+});
+
+test("type ריק/לא ידוע/OTHER => כותרת משנה ריקה", () => {
+  assert.equal(buildBusinessOgModel({ name: 'X' }).typeLabel, '');
+  assert.equal(buildBusinessOgModel({ name: 'X', type: 'OTHER' }).typeLabel, '');
+  assert.equal(buildBusinessOgModel({ name: 'X', type: 'NOPE' }).typeLabel, '');
+});
+
+test('הקריאה לפעולה קבועה — קביעת תור אונליין', () => {
+  assert.equal(buildBusinessOgModel({ name: 'X' }).cta, 'קביעת תור אונליין');
+});
+
+test('שירותים — מסננים ריקים, גוזמים לשלושה ושומרים סדר', () => {
+  const model = buildBusinessOgModel({
+    name: 'X',
+    services: ['תספורת', '  ', null, 'זקן', undefined, 'צבע', 'החלקה'],
+  });
+  assert.deepEqual(model.services, ['תספורת', 'זקן', 'צבע']);
+});
+
+test('בלי שירותים — מערך ריק', () => {
+  assert.deepEqual(buildBusinessOgModel({ name: 'X' }).services, []);
+});
+
+test('name נשמר בסדר לוגי (ללא היפוך) במודל', () => {
+  const model = buildBusinessOgModel({ name: 'מספרת יוסי' });
+  assert.equal(model.name, 'מספרת יוסי');
+});

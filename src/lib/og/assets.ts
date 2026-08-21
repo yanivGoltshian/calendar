@@ -5,18 +5,23 @@
  */
 
 /**
- * User-Agent ישן במכוון: Google Fonts מגיש TTF (במקום WOFF2) ל-UA ישנים,
- * ו-satori (next/og) יודע לפרש רק TTF/OTF.
+ * User-Agent ישן במכוון: Google Fonts מגיש TTF (במקום WOFF/WOFF2) ל-UA ישנים,
+ * ו-satori (next/og) יודע לפרש רק TTF/OTF. חשוב: ה-UA של Chrome/40 שהיה כאן קודם
+ * חזר להגיש WOFF (ולא TTF) => הביטוי הרגולרי ל-.ttf נכשל, loadHebrewFont החזיר
+ * null, ו-satori נשאר בלי גופן עברי. UA של Android 2.3 עדיין מקבל truetype.
  */
 export const OG_FONT_UA =
-  'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.85 Safari/537.36';
+  'Mozilla/5.0 (Linux; U; Android 2.3; en-us) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1';
 
 /** טוען גופן עברי (Assistant TTF) מ-Google Fonts; מחזיר null בכשל. */
 export async function loadHebrewFont(weight: number = 700): Promise<ArrayBuffer | null> {
   try {
     const cssUrl = `https://fonts.googleapis.com/css2?family=Assistant:wght@${weight}`;
     const css = await fetch(cssUrl, { headers: { 'User-Agent': OG_FONT_UA } }).then((r) => r.text());
-    const match = css.match(/src:\s*url\(([^)]+\.ttf)\)/);
+    // מחפשים כתובת גופן שהיא TTF: או שהסיומת .ttf, או format('truetype') מפורש.
+    const match =
+      css.match(/src:\s*url\(([^)]+\.ttf)\)/) ??
+      css.match(/url\(([^)]+)\)\s*format\(['"]truetype['"]\)/);
     if (!match) return null;
     return await fetch(match[1]).then((r) => r.arrayBuffer());
   } catch {

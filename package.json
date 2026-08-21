@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "bidi-js": "^1.0.3",
     "firebase": "^12.17.1",
     "firebase-admin": "^14.2.0",
     "framer-motion": "^12.43.0",

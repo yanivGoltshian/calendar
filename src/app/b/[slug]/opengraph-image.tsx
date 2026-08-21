@@ -2,12 +2,15 @@ import { ImageResponse } from 'next/og';
 import { getBusinessBranding } from '@/server/repos/business';
 import { loadHebrewFont, loadImage, loadLogo } from '@/lib/og/assets';
 import { buildBusinessOgModel } from '@/lib/og/model';
+import { toVisualOrder } from '@/lib/og/bidi';
 
 /**
  * כרטיס שיתוף (Open Graph) דינמי לכל עסק — 1200x630, נחיתה (landscape).
  * מתקן את הבאג שבו שיתוף לינק עסק ב-WhatsApp/רשתות הראה את לוגו הפלטפורמה:
  * כאן מרונדרת תמונת העסק (coverImageUrl) במילוי מלא כשקיימת, אחרת הלוגו של
- * העסק, ואחרת אות ראשונה על רקע צבע המותג — ותמיד שם העסק מעל.
+ * העסק, ואחרת אות ראשונה על רקע צבע המותג. הכרטיס מועשר: שם העסק, סוג העסק,
+ * עד שלושה שירותים וקריאה להזמנת תור אונליין — וכל טקסט עברי מומר לסדר ויזואלי
+ * (toVisualOrder) לפני הרינדור, כי Satori לא מבצע bidi ומתעלם מ-direction:rtl.
  *
  * זהו קובץ file-convention של Next: כשעמוד העסק אינו קובע openGraph.images
  * במפורש, Next מזריק אוטומטית את התגית המצביעה לתמונה זו (וגם ל-Twitter).
@@ -36,13 +39,40 @@ export default async function BusinessOpengraphImage({ params }: Props) {
     coverUrl: cover,
     logoUrl: logo,
     brandColor: business?.brandColor ?? null,
+    type: business?.type ?? null,
+    services: business?.services?.map((s) => s.name) ?? null,
   });
-  const name = business?.name ?? '';
+
+  // המרה לסדר ויזואלי — לרינדור בלבד (Satori לא מבצע bidi). פעם אחת לכל מחרוזת.
+  const vName = model.name ? toVisualOrder(model.name) : '';
+  const vType = model.typeLabel ? toVisualOrder(model.typeLabel) : '';
+  const vCta = toVisualOrder(model.cta);
+  const vServices = model.services.map((s) => toVisualOrder(s));
 
   const bold = await loadHebrewFont(700);
   const fonts = bold
     ? [{ name: 'Assistant', data: bold, weight: 700 as const, style: 'normal' as const }]
     : [];
+
+  // גלולת קריאה לפעולה בצבע המותג — קושרת את הכרטיס למותג ומדגישה שהליבה
+  // היא הזמנת תור. fg מבטיח ניגודיות קריאה מעל צבע המותג.
+  const ctaPill = (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        background: model.background,
+        color: model.fg,
+        fontSize: '30px',
+        fontWeight: 700,
+        padding: '14px 30px',
+        borderRadius: '999px',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.28)',
+      }}
+    >
+      {vCta}
+    </div>
+  );
 
   const element =
     model.mode === 'cover' ? (
@@ -76,10 +106,10 @@ export default async function BusinessOpengraphImage({ params }: Props) {
             bottom: 0,
             left: 0,
             width: '1200px',
-            height: '360px',
+            height: '430px',
             display: 'flex',
             background:
-              'linear-gradient(to top, rgba(0,0,0,0.82), rgba(0,0,0,0.10) 60%, rgba(0,0,0,0))',
+              'linear-gradient(to top, rgba(0,0,0,0.86), rgba(0,0,0,0.16) 62%, rgba(0,0,0,0))',
           }}
         />
         {logo ? (
@@ -108,41 +138,57 @@ export default async function BusinessOpengraphImage({ params }: Props) {
             />
           </div>
         ) : null}
-        {name ? (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              bottom: 0,
-              width: '1200px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              justifyContent: 'flex-end',
-              padding: '64px',
-              boxSizing: 'border-box',
-            }}
-          >
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            bottom: 0,
+            width: '1200px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            justifyContent: 'flex-end',
+            padding: '60px',
+            boxSizing: 'border-box',
+          }}
+        >
+          {vType ? (
             <div
               style={{
                 display: 'flex',
-                maxWidth: '1000px',
-                color: '#ffffff',
-                fontSize: '72px',
+                color: 'rgba(255,255,255,0.92)',
+                fontSize: '34px',
                 fontWeight: 700,
-                lineHeight: 1.1,
+                marginBottom: '10px',
+                textShadow: '0 2px 12px rgba(0,0,0,0.55)',
+              }}
+            >
+              {vType}
+            </div>
+          ) : null}
+          {vName ? (
+            <div
+              style={{
+                display: 'flex',
+                maxWidth: '1040px',
+                color: '#ffffff',
+                fontSize: '74px',
+                fontWeight: 700,
+                lineHeight: 1.08,
                 textAlign: 'right',
                 textShadow: '0 3px 18px rgba(0,0,0,0.55)',
               }}
             >
-              {name}
+              {vName}
             </div>
-          </div>
-        ) : null}
+          ) : null}
+          <div style={{ display: 'flex', marginTop: '24px' }}>{ctaPill}</div>
+        </div>
       </div>
     ) : (
       <div
         style={{
+          position: 'relative',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -151,17 +197,31 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           justifyContent: 'center',
           background: model.background,
           fontFamily: 'Assistant, sans-serif',
-          padding: '80px',
+          padding: '72px',
+          boxSizing: 'border-box',
         }}
       >
+        {/* שכבת ברק עדינה כדי שהרקע לא ייראה שטוח; מרונדרת לפני התוכן. */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '1200px',
+            height: '630px',
+            display: 'flex',
+            background:
+              'linear-gradient(135deg, rgba(255,255,255,0.14), rgba(0,0,0,0.22))',
+          }}
+        />
         {model.mode === 'logo' ? (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '320px',
-              height: '320px',
+              width: '300px',
+              height: '300px',
               background: '#ffffff',
               borderRadius: '56px',
               boxShadow: '0 24px 70px rgba(0,0,0,0.28)',
@@ -171,9 +231,9 @@ export default async function BusinessOpengraphImage({ params }: Props) {
             <img
               src={logo ?? ''}
               alt=""
-              width={256}
-              height={256}
-              style={{ width: '256px', height: '256px', objectFit: 'contain' }}
+              width={236}
+              height={236}
+              style={{ width: '236px', height: '236px', objectFit: 'contain' }}
             />
           </div>
         ) : (
@@ -182,10 +242,12 @@ export default async function BusinessOpengraphImage({ params }: Props) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '320px',
-              height: '320px',
+              width: '300px',
+              height: '300px',
+              background: 'rgba(255,255,255,0.14)',
+              borderRadius: '56px',
               color: model.fg,
-              fontSize: '200px',
+              fontSize: '180px',
               fontWeight: 700,
               lineHeight: 1,
             }}
@@ -194,22 +256,69 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           </div>
         )}
 
-        {name ? (
+        {vName ? (
           <div
             style={{
               display: 'flex',
-              marginTop: '52px',
-              maxWidth: '1000px',
+              marginTop: '44px',
+              maxWidth: '1040px',
               color: model.fg,
-              fontSize: '68px',
+              fontSize: '66px',
               fontWeight: 700,
-              lineHeight: 1.1,
+              lineHeight: 1.08,
               textAlign: 'center',
             }}
           >
-            {name}
+            {vName}
           </div>
         ) : null}
+
+        {vType ? (
+          <div
+            style={{
+              display: 'flex',
+              marginTop: '10px',
+              color: model.fg,
+              opacity: 0.86,
+              fontSize: '34px',
+              fontWeight: 700,
+            }}
+          >
+            {vType}
+          </div>
+        ) : null}
+
+        {vServices.length ? (
+          <div
+            style={{
+              display: 'flex',
+              marginTop: '26px',
+              gap: '14px',
+              flexWrap: 'nowrap',
+              justifyContent: 'center',
+            }}
+          >
+            {vServices.map((s, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'rgba(255,255,255,0.18)',
+                  color: model.fg,
+                  fontSize: '26px',
+                  fontWeight: 700,
+                  padding: '10px 22px',
+                  borderRadius: '999px',
+                }}
+              >
+                {s}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div style={{ display: 'flex', marginTop: '30px' }}>{ctaPill}</div>
       </div>
     );
 
