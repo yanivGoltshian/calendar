@@ -61,6 +61,22 @@ const he = {
       ctaText: 'בחרו זמן שנוח לכם וקבעו תור בכמה קליקים.',
     },
   },
+  // מרחב שמות ייעודי לעמוד הנחיתה הפרימיום (עיצוב בוטיק), נפרד מ-publicPage.landing.
+  premiumLanding: {
+    heroSecondaryCta: 'לצפייה בשירותים',
+    servicesLede: 'בחרו את השירות שמתאים לכם וקבעו תור בכמה הקשות פשוטות.',
+    sectionEyebrow: {
+      highlights: 'למה אנחנו',
+      services: 'התפריט שלנו',
+      gallery: 'רגעים מהעסק',
+      beforeAfter: 'התוצאות מדברות',
+      testimonials: 'ממליצים עלינו',
+      faq: 'טוב לדעת',
+      about: 'הסיפור שלנו',
+      location: 'הגעה ושעות',
+    },
+    whatsappAria: 'פתיחת שיחת וואטסאפ',
+  },
   install: {
     badge: 'אפליקציה להתקנה',
     button: 'התקנת האפליקציה',

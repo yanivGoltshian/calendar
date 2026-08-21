@@ -1,5 +1,6 @@
 import { formatMinutes } from '@/lib/time';
-import { ClockIcon, MapPinIcon, PhoneIcon, NavigationIcon } from './icons';
+import { MapPinIcon, PhoneIcon, NavigationIcon } from './icons';
+import SectionHeading from './SectionHeading';
 
 type WorkingHour = { weekday: number; startMinute: number; endMinute: number };
 
@@ -13,6 +14,7 @@ type Props = {
   phone?: string | null;
   directionsCta: string;
   callCta: string;
+  eyebrow?: string;
 };
 
 // מקטע מיקום ושעות — טבלת שעות פעילות לצד כתובת, ניווט וטלפון.
@@ -26,6 +28,7 @@ export default function LandingLocation({
   phone,
   directionsCta,
   callCta,
+  eyebrow,
 }: Props) {
   const hasHours = workingHours.length > 0;
   if (!hasHours && !address && !phone) return null;
@@ -36,21 +39,18 @@ export default function LandingLocation({
   const mapHref = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : null;
 
   return (
-    <section className="mt-12">
-      <h2 className="mb-5 flex items-center gap-2 text-xl font-bold text-slate-900">
-        <MapPinIcon className="h-6 w-6 text-[color:var(--biz-strong)]" />
-        {title}
-      </h2>
-      <div className="grid gap-3 sm:grid-cols-2">
+    <section className="mt-16 sm:mt-24">
+      <SectionHeading eyebrow={eyebrow} title={title} icon={<MapPinIcon className="h-4 w-4" />} />
+      <div className="mt-10 grid gap-4 sm:grid-cols-2">
         {hasHours ? (
-          <ul className="overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-white shadow-sm">
+          <ul className="overflow-hidden rounded-3xl border border-[color:var(--biz-border)] bg-white shadow-soft">
             {[0, 1, 2, 3, 4, 5, 6].map((d) => {
               const wh = byDay.get(d);
               const isToday = d === todayIdx;
               return (
                 <li
                   key={d}
-                  className={`flex items-center justify-between px-4 py-2.5 text-sm ${d > 0 ? 'border-t border-slate-100' : ''} ${isToday ? 'bg-[var(--biz-soft)] font-semibold' : ''}`}
+                  className={`flex items-center justify-between px-5 py-3 text-sm ${d > 0 ? 'border-t border-slate-100' : ''} ${isToday ? 'bg-[var(--biz-soft)] font-semibold' : ''}`}
                 >
                   <span className="text-slate-900">{weekdays[d]}</span>
                   {wh ? (
@@ -67,9 +67,9 @@ export default function LandingLocation({
         ) : null}
 
         {address || phone ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {address ? (
-              <div className="rounded-2xl border border-[color:var(--biz-border)] bg-white p-4 shadow-sm">
+              <div className="rounded-3xl border border-[color:var(--biz-border)] bg-white p-5 shadow-soft">
                 <p className="flex items-start gap-2 text-sm text-slate-700">
                   <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--biz-strong)]" />
                   {address}
@@ -79,7 +79,7 @@ export default function LandingLocation({
                     href={mapHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[var(--biz-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:bg-[var(--biz)] hover:text-[color:var(--biz-ink)]"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--biz-soft)] px-4 py-2.5 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:bg-[var(--biz)] hover:text-[color:var(--biz-ink)]"
                   >
                     <NavigationIcon className="h-4 w-4" />
                     {directionsCta}
@@ -90,7 +90,7 @@ export default function LandingLocation({
             {phone ? (
               <a
                 href={`tel:${phone}`}
-                className="flex items-center gap-2 rounded-2xl border border-[color:var(--biz-border)] bg-white p-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-[color:var(--biz)]"
+                className="flex items-center gap-2 rounded-3xl border border-[color:var(--biz-border)] bg-white p-5 text-sm font-semibold text-slate-700 shadow-soft transition hover:border-[color:var(--biz)]"
               >
                 <PhoneIcon className="h-4 w-4 shrink-0 text-[color:var(--biz-strong)]" />
                 <span dir="ltr" className="tabular-nums">{phone}</span>
