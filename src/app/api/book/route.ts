@@ -60,6 +60,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400 });
   }
 
+  // שליפת העסק מוקדם: נדרשת גם לאכיפת מדיניות פרטי הקשר לפי מסלול (סטנדרט/פרימיום).
+  const business = await getBusinessBySlug(parsed.slug);
+  if (!business) {
+    return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
+  }
+
+  // מדיניות פרטי קשר לפי מסלול: סטנדרט מחייב גם טלפון וגם מייל (בעל העסק מקבל תמיד
+  // טלפון, והמייל חינמי עד 500 ליום); פרימיום מתיר טלפון בלבד כהטבה.
+  const requireBothContacts = business.plan !== 'premium';
+
   // זהות הלקוח: מתוך ההתחברות אם קיימת (טלפון ו/או מייל), אחרת מפרטי הזמנת האורח.
   let clientPhone: string | undefined;
   let clientEmail: string | undefined;
@@ -72,7 +82,9 @@ export async function POST(req: Request) {
     clientUserId = session.userId;
   } else {
     // חוקת זהות אורח חולצה לפונקציה טהורה `resolveGuestIdentity` (משותפת עם המבחן).
-    const guest = resolveGuestIdentity(parsed.name, parsed.phone, parsed.email);
+    const guest = resolveGuestIdentity(parsed.name, parsed.phone, parsed.email, {
+      requireBoth: requireBothContacts,
+    });
     if (!guest.ok) {
       return NextResponse.json({ ok: false, error: guest.error }, { status: 400 });
     }
@@ -80,11 +92,6 @@ export async function POST(req: Request) {
     clientEmail = guest.email;
     clientName = guest.name;
     clientUserId = undefined;
-  }
-
-  const business = await getBusinessBySlug(parsed.slug);
-  if (!business) {
-    return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
   }
 
   // אימות שאיש הצוות שייך לעסק ופעיל.

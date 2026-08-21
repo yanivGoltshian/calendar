@@ -106,6 +106,62 @@ test('זהות אורח: טלפון לא-תקין → invalid_phone; מייל ל
   assert.deepEqual(resolveGuestIdentity('דנה', undefined, 'no-at-sign'), { ok: false, error: 'invalid_email' });
 });
 
+// --- מדיניות פרטי קשר לפי מסלול (route.ts: business.plan !== 'premium' → requireBoth) ---
+
+// מראה של החלטת המסלול: סטנדרט (basic) מחייב שני פרטים, פרימיום מתיר אחד.
+function requireBothForPlan(plan: string): boolean {
+  return plan !== 'premium';
+}
+
+test('מדיניות מסלול: basic דורש שני פרטים, premium דורש אחד', () => {
+  assert.equal(requireBothForPlan('basic'), true);
+  assert.equal(requireBothForPlan('premium'), false);
+});
+
+test('מדיניות סטנדרט (requireBoth): חובה גם טלפון וגם מייל', () => {
+  // חסר מייל → email_required; חסר טלפון → phone_required.
+  assert.deepEqual(
+    resolveGuestIdentity('דנה', '0501234567', undefined, { requireBoth: true }),
+    { ok: false, error: 'email_required' },
+  );
+  assert.deepEqual(
+    resolveGuestIdentity('דנה', undefined, 'dana@example.com', { requireBoth: true }),
+    { ok: false, error: 'phone_required' },
+  );
+  // שם ריק עדיין נכשל תחילה על bad_request.
+  assert.deepEqual(
+    resolveGuestIdentity('', '0501234567', 'dana@example.com', { requireBoth: true }),
+    { ok: false, error: 'bad_request' },
+  );
+});
+
+test('מדיניות סטנדרט (requireBoth): שני פרטים תקינים מתקבלים ומנורמלים', () => {
+  const r = resolveGuestIdentity('דנה', '050-123-4567', '  Dana@Example.COM ', { requireBoth: true });
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.phone, '+972501234567');
+    assert.equal(r.email, 'dana@example.com');
+  }
+});
+
+test('מדיניות פרימיום (requireBoth=false): טלפון בלבד מתקבל', () => {
+  const r = resolveGuestIdentity('דנה', '0501234567', undefined, { requireBoth: false });
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.phone, '+972501234567');
+    assert.equal(r.email, undefined);
+  }
+});
+
+test('מדיניות פרימיום (requireBoth=false): מייל בלבד עדיין מתקבל (תאימות לאחור)', () => {
+  const r = resolveGuestIdentity('דנה', undefined, 'dana@example.com', { requireBoth: false });
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.phone, undefined);
+    assert.equal(r.email, 'dana@example.com');
+  }
+});
+
 // --- שיוך איש צוות לעסק (מראה של route.ts:100-104) ---
 type StaffLite = { id: string };
 function resolveStaffOrError(staff: StaffLite[], staffId: string): { ok: true } | { ok: false; error: 'invalid_staff' } {

@@ -24,13 +24,14 @@ type Props = {
   services: Service[];
   staff: Staff[];
   preselectedServiceId?: string | null;
+  plan: 'basic' | 'premium';
 };
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 const STEP_KEYS = ['services', 'staff', 'date', 'time', 'summary', 'confirm'] as const;
 
-export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId }: Props) {
+export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId, plan }: Props) {
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
   const hasPreselected = !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
@@ -44,8 +45,9 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
-  // מצב אישור הזמנת אורח (ללא OTP)
-  const [contactMethod, setContactMethod] = useState<'email' | 'phone'>('email');
+  // מצב אישור הזמנת אורח (ללא OTP). מדיניות פרטי הקשר נגזרת ממסלול העסק:
+  // סטנדרט מחייב גם טלפון וגם מייל; פרימיום מתיר טלפון בלבד (מייל רשות).
+  const requireBothContacts = plan !== 'premium';
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -108,8 +110,8 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
           serviceIds: selectedServiceIds,
           startAtUtc: selectedSlot?.startAtUtc,
           name,
-          phone: contactMethod === 'phone' ? phone : undefined,
-          email: contactMethod === 'email' ? email : undefined,
+          phone: phone.trim() || undefined,
+          email: email.trim() || undefined,
         }),
       });
       const bookData = await bookRes.json();
@@ -134,9 +136,13 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
                   ? t.auth.invalidPhone
                   : code === 'invalid_email'
                     ? t.auth.invalidEmail
-                    : code === 'bad_request'
-                      ? t.booking.guestMissingFields
-                      : t.common.error,
+                    : code === 'phone_required'
+                      ? t.booking.phoneRequired
+                      : code === 'email_required'
+                        ? t.booking.emailRequired
+                        : code === 'bad_request'
+                          ? t.booking.guestMissingFields
+                          : t.common.error,
         );
         return;
       }
@@ -389,7 +395,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
       {/* ----- שלב 5: אישור (הזמנת אורח, ללא OTP) ----- */}
       {step === 5 ? (
         <div className="space-y-4">
-          <p className="text-slate-600">{t.booking.guestHint}</p>
+          <p className="text-slate-600">{requireBothContacts ? t.booking.guestHintStandard : t.booking.guestHintPremium}</p>
           <div>
             <label className="mb-1 block text-sm text-slate-600">{t.booking.guestName}</label>
             <input
@@ -401,56 +407,36 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
             />
           </div>
           <div>
-            <div className="mb-2 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setContactMethod('email')}
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
-                  contactMethod === 'email'
-                    ? 'border-brand-600 bg-brand-50 text-brand-700'
-                    : 'border-slate-300 text-slate-600'
-                }`}
-              >
-                {t.booking.guestEmail}
-              </button>
-              <button
-                type="button"
-                onClick={() => setContactMethod('phone')}
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm font-medium transition ${
-                  contactMethod === 'phone'
-                    ? 'border-brand-600 bg-brand-50 text-brand-700'
-                    : 'border-slate-300 text-slate-600'
-                }`}
-              >
-                {t.booking.guestPhone}
-              </button>
-            </div>
-            {contactMethod === 'email' ? (
-              <input
-                type="email"
-                inputMode="email"
-                dir="ltr"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t.booking.guestEmailPlaceholder}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3"
-              />
-            ) : (
-              <input
-                type="tel"
-                inputMode="tel"
-                dir="ltr"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder={t.booking.guestPhonePlaceholder}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3"
-              />
-            )}
+            <label className="mb-1 block text-sm text-slate-600">{t.booking.guestPhone}</label>
+            <input
+              type="tel"
+              inputMode="tel"
+              dir="ltr"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder={t.booking.guestPhonePlaceholder}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-slate-600">
+              {requireBothContacts ? t.booking.guestEmail : t.booking.guestEmailOptional}
+            </label>
+            <input
+              type="email"
+              inputMode="email"
+              dir="ltr"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t.booking.guestEmailPlaceholder}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3"
+            />
           </div>
           <button
             type="button"
-            disabled={busy || !name.trim() || (contactMethod === 'phone' ? !phone : !email)}
+            disabled={busy || !name.trim() || !phone.trim() || (requireBothContacts && !email.trim())}
             onClick={submitBooking}
             className="w-full rounded-xl bg-brand-600 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-40"
           >

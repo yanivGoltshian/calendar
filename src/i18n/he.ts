@@ -165,7 +165,12 @@ const he = {
     guestEmail: 'כתובת אימייל',
     guestEmailPlaceholder: 'name@example.com',
     guestHint: 'להשלמת הקביעה נותרו רק השם ופרט התקשרות אחד (טלפון או אימייל). אישור העסק יישלח אליכם בהמשך.',
+    guestHintStandard: 'להשלמת הקביעה יש למלא שם, טלפון ואימייל. אישור העסק יישלח אליכם בהמשך.',
+    guestHintPremium: 'להשלמת הקביעה יש למלא שם וטלפון. אימייל הוא רשות. אישור העסק יישלח אליכם בהמשך.',
+    guestEmailOptional: 'כתובת אימייל (רשות)',
     guestMissingFields: 'יש למלא שם וטלפון או אימייל.',
+    phoneRequired: 'יש להזין מספר טלפון.',
+    emailRequired: 'יש להזין כתובת אימייל.',
   },
   auth: {
     phoneTitle: 'התחברות באמצעות טלפון',
