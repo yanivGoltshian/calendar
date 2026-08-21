@@ -23,15 +23,20 @@ type Props = {
   businessName: string;
   services: Service[];
   staff: Staff[];
+  preselectedServiceId?: string | null;
 };
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 const STEP_KEYS = ['services', 'staff', 'date', 'time', 'summary', 'confirm'] as const;
 
-export default function BookingStepper({ slug, businessName, services, staff }: Props) {
-  const [step, setStep] = useState<Step>(0);
-  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId }: Props) {
+  // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים.
+  const hasPreselected = !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
+  const [step, setStep] = useState<Step>(hasPreselected ? 1 : 0);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
+    hasPreselected ? [preselectedServiceId as string] : [],
+  );
   const [staffId, setStaffId] = useState<string>('');
   const [date, setDate] = useState<string>(todayDateString());
   const [slots, setSlots] = useState<Slot[]>([]);

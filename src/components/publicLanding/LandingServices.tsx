@@ -41,7 +41,7 @@ export default function LandingServices({ title, services, bookHref, iconKey, bo
         {services.map((s) => (
           <Link
             key={s.id}
-            href={bookHref}
+            href={`${bookHref}?service=${s.id}`}
             className="group flex flex-col justify-between rounded-3xl border border-[color:var(--biz-border)] bg-white p-6 shadow-soft transition duration-200 hover:-translate-y-1 hover:shadow-elevated"
           >
             <div className="min-w-0">
