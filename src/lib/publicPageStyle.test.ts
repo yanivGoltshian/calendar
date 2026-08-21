@@ -245,3 +245,44 @@ test('TOGGLEABLE_LANDING_SECTIONS: כולל את כל המקטעים פרט ל-h
   assert.ok(!TOGGLEABLE_LANDING_SECTIONS.includes('hero'));
   assert.equal(TOGGLEABLE_LANDING_SECTIONS.length, LANDING_SECTION_ORDER.length - 1);
 });
+
+test('normalizeLandingContent: מנרמל מבצע השקה עם spotsLeft שלם', () => {
+  const res = normalizeLandingContent({
+    launchOffer: { text: '  מבצעי השקה  ', spotsLeft: 7.9, endsAt: '2026-08-31' },
+  });
+  assert.deepEqual(res?.launchOffer, { text: 'מבצעי השקה', endsAt: '2026-08-31', spotsLeft: 7 });
+});
+
+test('normalizeLandingContent: מבצע השקה ללא טקסט/מועד או עם מועד לא תקין ⇐ מושמט', () => {
+  assert.equal(normalizeLandingContent({ launchOffer: { text: '', endsAt: '2026-08-31' } }), null);
+  assert.equal(normalizeLandingContent({ launchOffer: { text: 'x', endsAt: '' } }), null);
+  assert.equal(normalizeLandingContent({ launchOffer: { text: 'x', endsAt: 'bad' } }), null);
+});
+
+test('normalizeLandingContent: מבצע השקה ללא spotsLeft נשמר בלי השדה', () => {
+  const res = normalizeLandingContent({ launchOffer: { text: 'מבצע', endsAt: '2026-08-31' } });
+  assert.deepEqual(res?.launchOffer, { text: 'מבצע', endsAt: '2026-08-31' });
+});
+
+test('normalizeLandingContent: מנרמל בלוק מבצעים חמים ומגביל לשש תמונות', () => {
+  const imgs = Array.from({ length: 9 }, (_, i) => `/images/clinic/treatments/t${i}.jpg`);
+  const res = normalizeLandingContent({
+    hotDeals: { eyebrow: 'מבצעים חמים', title: 'הטיפולים המבוקשים', ctaLabel: 'לכל הטיפולים', images: imgs },
+  });
+  assert.equal(res?.hotDeals?.images.length, 6);
+  assert.equal(res?.hotDeals?.eyebrow, 'מבצעים חמים');
+  assert.equal(res?.hotDeals?.title, 'הטיפולים המבוקשים');
+  assert.equal(res?.hotDeals?.ctaLabel, 'לכל הטיפולים');
+});
+
+test('normalizeLandingContent: בלוק מבצעים חמים ללא תמונות ⇐ מושמט', () => {
+  assert.equal(normalizeLandingContent({ hotDeals: { title: 'x', images: [] } }), null);
+  assert.equal(normalizeLandingContent({ hotDeals: { title: 'x', images: ['  ', ''] } }), null);
+});
+
+test('normalizeLandingContent: מגביל heroImages לשתי תמונות ומסנן ריקים', () => {
+  const res = normalizeLandingContent({
+    heroImages: ['/a.jpg', '  ', '/b.jpg', '/c.jpg'],
+  });
+  assert.deepEqual(res?.heroImages, ['/a.jpg', '/b.jpg']);
+});

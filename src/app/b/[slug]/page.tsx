@@ -28,6 +28,7 @@ import {
 } from '@/components/publicLanding/icons';
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
+import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -89,6 +90,28 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
   const heroCtaLabel = landing?.ctaLabel || t.publicPage.bookCta;
 
   const bookHref = `/b/${business.slug}/book`;
+
+  // עמוד פרימיום של קליניקה — מזוהה לפי נוכחות launchOffer או hotDeals בתוכן הנחיתה.
+  // רק אז מוחלת הפלטה החמה (זהב/קרם) והכותרת הייעודית, בלי לפגוע בשאר העסקים.
+  const isClinicPremium = isLanding && Boolean(landing?.launchOffer || landing?.hotDeals);
+  const todayWorkingHours = hoursByDay.get(todayIdx);
+  const todayHours = todayWorkingHours
+    ? `${formatMinutes(todayWorkingHours.startMinute)}–${formatMinutes(todayWorkingHours.endMinute)}`
+    : null;
+  const clinicLabels = t.premiumLanding.clinic;
+  // משתני הפלטה החמה מוזרקים רק בעמוד הקליניקה; שאר העסקים נשארים עם ‎--biz-*‎ בלבד.
+  const clinicThemeVars = {
+    '--c-gold': '#c6a86a',
+    '--c-gold-strong': '#a6863f',
+    '--c-gold-text': '#8c6748',
+    '--c-cream': '#faf6ef',
+    '--c-ink': '#1b1715',
+    '--c-brand': '#b0855f',
+    '--biz-strong': '#8c6748',
+  } as unknown as CSSProperties;
+  const rootStyle = isClinicPremium
+    ? ({ ...themeVars, ...clinicThemeVars } as CSSProperties)
+    : themeVars;
 
   const jsonLd = localBusinessJsonLd({
     name: business.name,
@@ -236,47 +259,87 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
   ) : null;
 
   return (
-    <main dir="rtl" style={themeVars} className="min-h-screen bg-slate-50 pb-28">
+    <main
+      dir="rtl"
+      style={rootStyle}
+      className={`min-h-screen pb-28 ${isClinicPremium ? 'bg-[color:var(--c-cream,#faf6ef)]' : 'bg-slate-50'}`}
+    >
       <JsonLd data={jsonLd} />
 
-      {/* קאבר מותגי — צבע נגזר מצבע המותג של העסק */}
-      <header className="relative overflow-hidden">
-        <div
-          className="relative"
-          style={{ backgroundImage: 'linear-gradient(135deg, var(--biz-dark) 0%, var(--biz) 58%, var(--biz-light) 130%)' }}
-        >
-          {business.coverImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={business.coverImageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover opacity-20"
-            />
-          ) : null}
+      {isClinicPremium ? (
+        /* כותרת פרימיום של הקליניקה — סרגל כהה, ניווט קרם, פס מבצע והירו המפוצל */
+        <PremiumClinicHeader
+          name={business.name}
+          logoUrl={business.logoUrl}
+          phone={business.phone}
+          todayHours={todayHours}
+          instagramUrl={landing?.socialLinks?.instagram ?? business.instagramUrl ?? null}
+          facebookUrl={landing?.socialLinks?.facebook ?? null}
+          bookHref={bookHref}
+          heroImages={landing?.heroImages ?? []}
+          heroEyebrow={heroEyebrow}
+          heroHeadline={heroHeadline}
+          heroSubtext={heroSubtext}
+          heroCtaLabel={heroCtaLabel}
+          launchOffer={landing?.launchOffer}
+          labels={{
+            bookCta: clinicLabels.bookCta,
+            navServices: clinicLabels.navServices,
+            navOffers: clinicLabels.navOffers,
+            navLocation: clinicLabels.navLocation,
+            hoursToday: clinicLabels.topbarHoursToday,
+            closedToday: clinicLabels.topbarClosedToday,
+            offerSpots: clinicLabels.offerSpots,
+            offerEndsIn: clinicLabels.offerEndsIn,
+            offerClose: clinicLabels.offerClose,
+            callAria: clinicLabels.callAria,
+            instagramAria: clinicLabels.instagramAria,
+            facebookAria: clinicLabels.facebookAria,
+            heroImageAlt: clinicLabels.heroImageAlt,
+            heroSecondaryCta: t.premiumLanding.heroSecondaryCta,
+            countdown: clinicLabels.countdown,
+          }}
+        />
+      ) : (
+        /* קאבר מותגי — צבע נגזר מצבע המותג של העסק */
+        <header className="relative overflow-hidden">
           <div
-            className="relative mx-auto max-w-3xl px-5 pb-9 pt-10 sm:pb-12 sm:pt-16"
-            style={{ color: 'var(--biz-ink)' }}
+            className="relative"
+            style={{ backgroundImage: 'linear-gradient(135deg, var(--biz-dark) 0%, var(--biz) 58%, var(--biz-light) 130%)' }}
           >
-            {logoTile}
-            <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{business.name}</h1>
-            {contactRows}
-
-            {isLanding ? (
-              <LandingHero
-                eyebrow={heroEyebrow}
-                headline={heroHeadline}
-                subtext={heroSubtext}
-                ctaLabel={heroCtaLabel}
-                bookHref={bookHref}
+            {business.coverImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={business.coverImageUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover opacity-20"
               />
             ) : null}
+            <div
+              className="relative mx-auto max-w-3xl px-5 pb-9 pt-10 sm:pb-12 sm:pt-16"
+              style={{ color: 'var(--biz-ink)' }}
+            >
+              {logoTile}
+              <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{business.name}</h1>
+              {contactRows}
+
+              {isLanding ? (
+                <LandingHero
+                  eyebrow={heroEyebrow}
+                  headline={heroHeadline}
+                  subtext={heroSubtext}
+                  ctaLabel={heroCtaLabel}
+                  bookHref={bookHref}
+                />
+              ) : null}
+            </div>
           </div>
-        </div>
-        <div
-          className="h-1.5 w-full"
-          style={{ backgroundImage: 'linear-gradient(90deg, var(--biz-dark), var(--biz-light), var(--biz-dark))' }}
-        />
-      </header>
+          <div
+            className="h-1.5 w-full"
+            style={{ backgroundImage: 'linear-gradient(90deg, var(--biz-dark), var(--biz-light), var(--biz-dark))' }}
+          />
+        </header>
+      )}
 
       <div className="mx-auto max-w-3xl px-5">
         {isLanding ? (

@@ -76,6 +76,32 @@ const he = {
       location: 'הגעה ושעות',
     },
     whatsappAria: 'פתיחת שיחת וואטסאפ',
+    // מחרוזות ייעודיות לעמוד הקליניקה הפרימיום בלבד (סקין ביוטי קליניק).
+    // אין לגעת ב-nav.cta / finalCta / hero / publicPage.landing.
+    clinic: {
+      bookCta: 'לקביעת תור',
+      navServices: 'הטיפולים',
+      navOffers: 'מבצעים',
+      navLocation: 'הגעה',
+      topbarHoursToday: 'היום',
+      topbarClosedToday: 'סגור היום',
+      offerSpots: 'מקומות אחרונים',
+      offerEndsIn: 'מסתיים בעוד',
+      offerClose: 'סגירת פס המבצע',
+      callAria: 'התקשרות לקליניקה',
+      instagramAria: 'עמוד האינסטגרם של הקליניקה',
+      facebookAria: 'עמוד הפייסבוק של הקליניקה',
+      heroImageAlt: 'הקליניקה של סקין ביוטי',
+      countdown: { days: 'ימים', hours: 'שעות', minutes: 'דקות', seconds: 'שניות' },
+      location: {
+        mapsCta: 'Google Maps',
+        wazeCta: 'Waze',
+        whatsappCta: 'וואטסאפ',
+        contactCta: 'צרו קשר',
+        navTitle: 'ניווט מהיר',
+        mapTitle: 'מפת הגעה לסקין ביוטי קליניק',
+      },
+    },
   },
   install: {
     badge: 'אפליקציה להתקנה',
