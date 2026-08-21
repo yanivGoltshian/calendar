@@ -120,6 +120,9 @@ export default function LandingSections({
                 eyebrow={eyebrows.testimonials}
                 title={l.testimonialsTitle}
                 items={content?.testimonials ?? []}
+                googleReviewsUrl={content?.googleReviewsUrl}
+                googleLabel={l.googleReviewsLabel}
+                googleCta={l.googleReviewsCta}
               />
             );
           case 'faq':

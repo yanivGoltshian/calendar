@@ -31,6 +31,7 @@ import LandingSections from '@/components/publicLanding/LandingSections';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
 import ShareBusiness from '@/components/publicLanding/ShareBusiness';
 import BackButton from '@/components/publicLanding/BackButton';
+import AnnouncementBar from '@/components/publicLanding/AnnouncementBar';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -352,6 +353,11 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
         <div className="pt-4">
           <BackButton />
         </div>
+
+        {/* שורת עדכון חי — נשלטת מעמוד ניהול העסק, לדוגמה הודעת חופשה */}
+        {isLanding && landing?.announcement ? (
+          <AnnouncementBar text={landing.announcement} dismissAria={t.publicPage.landing.announcementDismiss} />
+        ) : null}
 
         {isLanding ? (
           <LandingSections
