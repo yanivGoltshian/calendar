@@ -36,6 +36,7 @@ export default async function BookPage({ params }: Props) {
         businessName={business.name}
         services={services}
         staff={staff}
+        plan={business.plan === 'premium' ? 'premium' : 'basic'}
       />
     </main>
   );
