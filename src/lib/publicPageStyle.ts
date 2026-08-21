@@ -7,6 +7,8 @@
  * המודול נטול תלות בקליינט של Prisma או ב-React כדי שיהיה קל לבדיקה תחת node --test.
  */
 
+import { resolveEndTime } from './launchOffer';
+
 /** מפתחות סוגי העסק (תואמים ל-enum BusinessType בסכימה). */
 export type BusinessTypeKey =
   | 'BARBERSHOP'
@@ -123,11 +125,28 @@ export interface LandingSocialLinks {
 /** מפת הצגה/הסתרה של מקטעי עמוד הנחיתה (true = מוצג). */
 export type LandingSectionToggles = Partial<Record<LandingSectionKey, boolean>>;
 
+/** מבצע השקה אופציונלי — מזין את פס המבצע והספירה-לאחור. מוסתר כשאין ערך. */
+export interface LandingLaunchOffer {
+  text: string;
+  spotsLeft?: number;
+  endsAt: string; // מועד סיום; תאריך בלבד נחשב לסוף היום ב-UTC
+}
+
+/** בלוק "מבצעים חמים" אופציונלי — עד שש תמונות טיפולים לקובייה התלת-ממדית. */
+export interface LandingHotDeals {
+  eyebrow?: string;
+  title?: string;
+  text?: string;
+  ctaLabel?: string;
+  images: string[];
+}
+
 /** תוכן עמוד הנחיתה הנשמר בשדה Business.landingContent (Json). כל השדות אופציונליים. */
 export interface LandingContent {
   heroEyebrow?: string;
   heroHeadline?: string;
   heroSubtext?: string;
+  heroImages?: string[]; // הירו מפוצל — עד שתי תמונות (ראשית + פנים הקליניקה)
   benefits?: LandingBenefit[];
   galleryImageUrls?: string[];
   beforeAfter?: LandingBeforeAfter[];
@@ -137,6 +156,8 @@ export interface LandingContent {
   socialLinks?: LandingSocialLinks;
   ctaLabel?: string;
   sections?: LandingSectionToggles;
+  launchOffer?: LandingLaunchOffer; // אופציונלי, אדיטיבי — לא משפיע על עסקים קיימים
+  hotDeals?: LandingHotDeals; // אופציונלי, אדיטיבי — בלוק inline ולא LandingSectionKey
 }
 
 /** ברירות מחדל תלויות-סוג שמוצגות בעמוד הנחיתה כשאין תוכן מותאם. */
@@ -152,6 +173,8 @@ export const MAX_TESTIMONIALS = 3;
 export const MAX_GALLERY_IMAGES = 4;
 export const MAX_FAQ = 5;
 export const MAX_BEFORE_AFTER = 3;
+export const MAX_HOT_DEALS_IMAGES = 6;
+export const MAX_HERO_IMAGES = 2;
 
 /** מגבלות אורך טקסט (קיטום עדין כדי לשמור על עיצוב נקי). */
 const LIMITS = {
@@ -169,6 +192,11 @@ const LIMITS = {
   about: 900,
   ctaLabel: 40,
   socialUrl: 2048,
+  launchOfferText: 160,
+  hotDealsEyebrow: 60,
+  hotDealsTitle: 140,
+  hotDealsText: 220,
+  hotDealsCta: 40,
 } as const;
 
 const DEFAULTS_BY_TYPE: Record<BusinessTypeKey, LandingDefaults> = {
@@ -355,11 +383,23 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
 
   const socialLinks = normalizeSocialLinks(source.socialLinks);
   const sections = normalizeSectionToggles(source.sections);
+  const launchOffer = normalizeLaunchOffer(source.launchOffer);
+  const hotDeals = normalizeHotDeals(source.hotDeals);
+
+  const heroImages: string[] = [];
+  const rawHeroImages = Array.isArray(source.heroImages) ? source.heroImages : [];
+  for (const item of rawHeroImages) {
+    const url = cleanString(item, LIMITS.galleryUrl);
+    if (!url) continue;
+    heroImages.push(url);
+    if (heroImages.length >= MAX_HERO_IMAGES) break;
+  }
 
   const content: LandingContent = {};
   if (heroEyebrow) content.heroEyebrow = heroEyebrow;
   if (heroHeadline) content.heroHeadline = heroHeadline;
   if (heroSubtext) content.heroSubtext = heroSubtext;
+  if (heroImages.length) content.heroImages = heroImages;
   if (benefits.length) content.benefits = benefits;
   if (galleryImageUrls.length) content.galleryImageUrls = galleryImageUrls;
   if (beforeAfter.length) content.beforeAfter = beforeAfter;
@@ -369,8 +409,51 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   if (socialLinks) content.socialLinks = socialLinks;
   if (ctaLabel) content.ctaLabel = ctaLabel;
   if (sections) content.sections = sections;
+  if (launchOffer) content.launchOffer = launchOffer;
+  if (hotDeals) content.hotDeals = hotDeals;
 
   return Object.keys(content).length ? content : null;
+}
+
+/** מנרמל מבצע השקה; דורש טקסט ומועד סיום תקין. spotsLeft הוא מספר שלם אי-שלילי אופציונלי. */
+function normalizeLaunchOffer(value: unknown): LandingLaunchOffer | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const text = cleanString(source.text, LIMITS.launchOfferText);
+  const endsAt = cleanString(source.endsAt, 40);
+  if (!text || !endsAt) return null;
+  if (Number.isNaN(resolveEndTime(endsAt))) return null; // מועד לא תקין — מדלגים על המבצע
+  const offer: LandingLaunchOffer = { text, endsAt };
+  const spots = source.spotsLeft;
+  if (typeof spots === 'number' && Number.isFinite(spots) && spots >= 0) {
+    offer.spotsLeft = Math.floor(spots);
+  }
+  return offer;
+}
+
+/** מנרמל בלוק "מבצעים חמים"; דורש לפחות תמונה אחת. שאר השדות אופציונליים. */
+function normalizeHotDeals(value: unknown): LandingHotDeals | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const images: string[] = [];
+  const rawImages = Array.isArray(source.images) ? source.images : [];
+  for (const item of rawImages) {
+    const url = cleanString(item, LIMITS.galleryUrl);
+    if (!url) continue;
+    images.push(url);
+    if (images.length >= MAX_HOT_DEALS_IMAGES) break;
+  }
+  if (!images.length) return null; // בלי תמונות אין קובייה
+  const result: LandingHotDeals = { images };
+  const eyebrow = cleanString(source.eyebrow, LIMITS.hotDealsEyebrow);
+  const title = cleanString(source.title, LIMITS.hotDealsTitle);
+  const text = cleanString(source.text, LIMITS.hotDealsText);
+  const ctaLabel = cleanString(source.ctaLabel, LIMITS.hotDealsCta);
+  if (eyebrow) result.eyebrow = eyebrow;
+  if (title) result.title = title;
+  if (text) result.text = text;
+  if (ctaLabel) result.ctaLabel = ctaLabel;
+  return result;
 }
 
 /** מנרמל קישורי רשתות חברתיות; מחזיר null כשאין אף קישור תקין. */

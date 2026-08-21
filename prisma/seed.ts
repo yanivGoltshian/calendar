@@ -5,9 +5,14 @@
  *
  * הרצה: npm run db:seed
  */
-import { PrismaClient, type Service } from '@prisma/client';
+import { PrismaClient, Prisma, type Service } from '@prisma/client';
 import { normalizePhone } from '../src/lib/crypto';
 import { localWallTimeToUtc, todayDateString } from '../src/lib/time';
+import {
+  CLINIC_IDENTITY,
+  CLINIC_SERVICES,
+  buildClinicLandingContent,
+} from '../src/data/clinicDemo';
 
 const prisma = new PrismaClient();
 
@@ -286,6 +291,194 @@ async function main() {
   console.log(`  צוות:   ${staff.length} אנשי צוות`);
   console.log(`  שירותים: ${services.length}`);
   console.log(`  תורים:  ${sampleAppts.length} להיום (${today})`);
+
+  // אכלוס אדיטיבי של עסק דמו נוסף — קליניקת יופי. נוגע רק ב-slug שלו.
+  await seedClinic();
+}
+
+/**
+ * אכלוס עסק דמו "סקין ביוטי קליניק" — אדיטיבי ולא הרסני.
+ * מנקה אך ורק את ה-slug של הקליניקה ואת משתמשי הדמו שלה (לפי טלפון),
+ * ולעולם לא נוגע ב-demo-barbershop. מגדיר brandColor, publicPageStyle=LANDING,
+ * ו-landingContent מלא כדי שעמוד הנחיתה יוצג, לצד שירותים/צוות/שעות אמיתיים
+ * כדי שאשף קביעת התור יעבוד עם טיפולי הקליניקה.
+ */
+async function seedClinic() {
+  console.log('\nמאכלס עסק דמו: קליניקת יופי…');
+
+  // ניקוי מבוקר של הקליניקה בלבד (אותו סדר כמו הברשופ: תורים → עסק).
+  const existingClinic = await prisma.business.findUnique({
+    where: { slug: CLINIC_IDENTITY.slug },
+    select: { id: true },
+  });
+  if (existingClinic) {
+    await prisma.appointment.deleteMany({ where: { businessId: existingClinic.id } });
+    await prisma.business.deleteMany({ where: { slug: CLINIC_IDENTITY.slug } });
+  }
+  // טלפוני דמו ייחודיים לקליניקה (לא מתנגשים עם הברשופ).
+  const clinicDemoPhones = ['050-4444444', '050-5555555', '050-6666666', '052-8765432'].map(
+    normalizePhone,
+  );
+  await prisma.user.deleteMany({ where: { phone: { in: clinicDemoPhones } } });
+
+  const clinicOwner = await prisma.user.create({
+    data: {
+      phone: normalizePhone('050-4444444'),
+      name: 'סקין ביוטי קליניק',
+      role: 'OWNER',
+    },
+  });
+
+  const clinicBusiness = await prisma.business.create({
+    data: {
+      slug: CLINIC_IDENTITY.slug,
+      name: CLINIC_IDENTITY.name,
+      type: 'BEAUTY_COSMETICS',
+      description: CLINIC_IDENTITY.description,
+      address: CLINIC_IDENTITY.address,
+      phone: normalizePhone(CLINIC_IDENTITY.phone),
+      instagramUrl: CLINIC_IDENTITY.instagramUrl,
+      logoUrl: CLINIC_IDENTITY.logoUrl,
+      coverImageUrl: CLINIC_IDENTITY.coverImageUrl,
+      brandColor: CLINIC_IDENTITY.brandColor,
+      // עמוד נחיתה (ולא זרימת BOOKING) — כדי להציג את מראה הקליניקה.
+      publicPageStyle: 'LANDING',
+      landingContent: buildClinicLandingContent() as unknown as Prisma.InputJsonValue,
+      timezone: TZ,
+      ownerId: clinicOwner.id,
+      plan: 'premium',
+      subscriptionStatus: 'active',
+      premiumSince: new Date(),
+      paidUntil: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000),
+      settings: {
+        create: {
+          minLeadTimeMinutes: 120,
+          cancellationWindowHours: 24,
+          slotGranularityMinutes: 15,
+          maxAdvanceBookingDays: 90,
+        },
+      },
+      // שעות פעילות (scope BUSINESS): א׳-ה׳ 10:00-20:00, ו׳ 09:00-14:00, שבת סגור.
+      workingHours: {
+        create: [
+          ...[0, 1, 2, 3, 4].map((weekday) => ({
+            scope: 'BUSINESS' as const,
+            weekday,
+            startMinute: 10 * 60,
+            endMinute: 20 * 60,
+            breaks: [],
+          })),
+          {
+            scope: 'BUSINESS' as const,
+            weekday: 5,
+            startMinute: 9 * 60,
+            endMinute: 14 * 60,
+            breaks: [],
+          },
+        ],
+      },
+    },
+  });
+
+  // שירותים — עשרת הטיפולים מהמודול הטהור (התמונה נשמרת רק ב-landingContent).
+  const clinicServices: Service[] = [];
+  for (let i = 0; i < CLINIC_SERVICES.length; i++) {
+    const s = CLINIC_SERVICES[i];
+    clinicServices.push(
+      await prisma.service.create({
+        data: {
+          businessId: clinicBusiness.id,
+          name: s.name,
+          description: s.description,
+          durationMin: s.durationMin,
+          priceAgorot: s.priceAgorot,
+          hidePrice: s.hidePrice ?? false,
+          sortOrder: i + 1,
+        },
+      }),
+    );
+  }
+
+  // צוות: רופאה אסתטית (הזרקות) וקוסמטיקאית רפואית (טיפולי עור/לייזר).
+  const clinicStaffSpecs = [
+    {
+      phone: '050-5555555',
+      name: 'ד"ר דנה שגב',
+      displayName: 'ד"ר דנה',
+      title: 'רופאה אסתטית',
+      bio: 'מתמחה בהזרקות בוטוקס ומילויים, פיסול אף ועיצוב קו לסת, עם דגש על תוצאה טבעית והתאמה אישית.',
+      avatarUrl: CLINIC_IDENTITY.logoUrl,
+      permissionLevel: 'MANAGER' as const,
+      serviceIdxs: [0, 1, 2, 3, 4],
+    },
+    {
+      phone: '050-6666666',
+      name: 'מאיה כהן',
+      displayName: 'מאיה',
+      title: 'קוסמטיקאית רפואית',
+      bio: 'מובילה טיפולי לייזר, RF, PRP וטיפולי פנים, לצד אבחון עור מתקדם ובניית תוכנית טיפול מדויקת.',
+      avatarUrl: CLINIC_IDENTITY.logoUrl,
+      permissionLevel: 'CALENDAR_ONLY' as const,
+      serviceIdxs: [5, 6, 7, 8, 9],
+    },
+  ];
+
+  const clinicStaff = [];
+  for (const spec of clinicStaffSpecs) {
+    const user = await prisma.user.create({
+      data: {
+        phone: normalizePhone(spec.phone),
+        name: spec.name,
+        role: 'STAFF',
+      },
+    });
+    // שעות צוות (scope STAFF): א׳-ה׳ 10:00-20:00, ו׳ 09:00-14:00.
+    const member = await prisma.staffMember.create({
+      data: {
+        businessId: clinicBusiness.id,
+        userId: user.id,
+        displayName: spec.displayName,
+        title: spec.title,
+        bio: spec.bio,
+        avatarUrl: spec.avatarUrl,
+        permissionLevel: spec.permissionLevel,
+        workingHours: {
+          create: [
+            ...[0, 1, 2, 3, 4].map((weekday) => ({
+              scope: 'STAFF' as const,
+              weekday,
+              startMinute: 10 * 60,
+              endMinute: 20 * 60,
+              breaks: [] as [number, number][],
+            })),
+            {
+              scope: 'STAFF' as const,
+              weekday: 5,
+              startMinute: 9 * 60,
+              endMinute: 14 * 60,
+              breaks: [] as [number, number][],
+            },
+          ],
+        },
+      },
+    });
+    clinicStaff.push({ member, serviceIdxs: spec.serviceIdxs });
+  }
+
+  // קישור צוות לשירותים (ServiceStaff m2m).
+  for (let staffIdx = 0; staffIdx < clinicStaff.length; staffIdx++) {
+    for (const svcIdx of clinicStaff[staffIdx].serviceIdxs) {
+      await prisma.serviceStaff.create({
+        data: {
+          serviceId: clinicServices[svcIdx].id,
+          staffId: clinicStaff[staffIdx].member.id,
+        },
+      });
+    }
+  }
+
+  console.log(`✓ קליניקה: ${clinicBusiness.name} (/b/${clinicBusiness.slug})`);
+  console.log(`  שירותים: ${clinicServices.length} · צוות: ${clinicStaff.length}`);
 }
 
 main()
