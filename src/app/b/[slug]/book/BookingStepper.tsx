@@ -30,9 +30,10 @@ type Step = 0 | 1 | 2 | 3 | 4 | 5;
 const STEP_KEYS = ['services', 'staff', 'date', 'time', 'summary', 'confirm'] as const;
 
 export default function BookingStepper({ slug, businessName, services, staff }: Props) {
+  const singleStaff = staff.length === 1;
   const [step, setStep] = useState<Step>(0);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-  const [staffId, setStaffId] = useState<string>('');
+  const [staffId, setStaffId] = useState<string>(singleStaff ? staff[0].id : '');
   const [date, setDate] = useState<string>(todayDateString());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -186,6 +187,12 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
     5: false,
   };
 
+  // דילוג על שלב הצוות כאשר יש נותן שירות יחיד: המספור והמחוון נגזרים מהשלבים הגלויים בלבד.
+  const visibleStepKeys: readonly (typeof STEP_KEYS)[number][] = singleStaff
+    ? STEP_KEYS.filter((k) => k !== 'staff')
+    : STEP_KEYS;
+  const displayIndex = visibleStepKeys.indexOf(STEP_KEYS[step]);
+
   return (
     <div>
       {/* כותרת + מחוון שלבים */}
@@ -195,14 +202,14 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
             ← {businessName}
           </Link>
           <span className="text-sm text-slate-400">
-            {step + 1}/{STEP_KEYS.length}
+            {displayIndex + 1}/{visibleStepKeys.length}
           </span>
         </div>
         <div className="flex gap-1">
-          {STEP_KEYS.map((k, i) => (
+          {visibleStepKeys.map((k, i) => (
             <div
               key={k}
-              className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-brand-600' : 'bg-slate-200'}`}
+              className={`h-1.5 flex-1 rounded-full ${i <= displayIndex ? 'bg-brand-600' : 'bg-slate-200'}`}
             />
           ))}
         </div>
@@ -453,7 +460,7 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
           {step > 0 ? (
             <button
               type="button"
-              onClick={() => setStep((s) => (s - 1) as Step)}
+              onClick={() => setStep((s) => (s === 2 && singleStaff ? 0 : ((s - 1) as Step)))}
               className="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               {t.common.back}
@@ -463,7 +470,9 @@ export default function BookingStepper({ slug, businessName, services, staff }: 
             type="button"
             disabled={!canProceed[step]}
             onClick={() => {
-              if (step === 2) {
+              if (step === 0 && singleStaff) {
+                setStep(2);
+              } else if (step === 2) {
                 goToTime();
               } else {
                 setStep((s) => (s + 1) as Step);
