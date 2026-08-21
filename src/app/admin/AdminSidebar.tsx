@@ -68,10 +68,14 @@ export default function AdminSidebar({
   }, [open]);
 
   const brand = (
-    <div className="flex items-center gap-2">
+    <Link
+      href="/"
+      aria-label={BRAND.name}
+      className="flex items-center gap-2 rounded-lg transition hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F2D695]"
+    >
       <Mascot pose="head" size={26} className="drop-shadow-sm" />
       <p className="text-lg font-bold text-[#F2D695]">{BRAND.name}</p>
-    </div>
+    </Link>
   );
 
   const nav = (
