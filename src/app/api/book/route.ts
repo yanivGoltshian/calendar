@@ -108,7 +108,7 @@ export async function POST(req: Request) {
   const settings = business.settings;
   const minLeadMinutes = settings?.minLeadTimeMinutes ?? 120;
   const maxAdvanceDays = settings?.maxAdvanceBookingDays ?? 60;
-  const requiresApproval = settings?.bookingRequiresApproval ?? true;
+  const requiresApproval = settings?.bookingRequiresApproval ?? false;
   const reminderLeadHours = settings?.reminderLeadHours ?? 24;
 
   const now = Date.now();

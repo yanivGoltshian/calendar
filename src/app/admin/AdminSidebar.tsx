@@ -8,7 +8,8 @@ import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
 import InstallApp from '@/components/pwa/InstallApp';
 import { logout } from '@/app/account/actions';
-import MenuHintCoachmark from './MenuHintCoachmark';
+import NotificationsBell from './NotificationsBell';
+import type { AdminNotification } from './notifications';
 
 type NavItem = { href: string; label: string; exact?: boolean };
 
@@ -36,7 +37,13 @@ function isActive(pathname: string, item: NavItem): boolean {
   return pathname === item.href || pathname.startsWith(item.href + '/');
 }
 
-export default function AdminSidebar({ pendingCount = 0 }: { pendingCount?: number }) {
+export default function AdminSidebar({
+  pendingCount = 0,
+  notifications = [],
+}: {
+  pendingCount?: number;
+  notifications?: AdminNotification[];
+}) {
   const pathname = usePathname() ?? '/admin';
   const [open, setOpen] = useState(false);
 
@@ -122,7 +129,8 @@ export default function AdminSidebar({ pendingCount = 0 }: { pendingCount?: numb
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
       >
         {brand}
-        <div className="relative">
+        <div className="flex items-center gap-2">
+          <NotificationsBell notifications={notifications} placement="mobile" />
           <button
             type="button"
             onClick={() => setOpen(true)}
@@ -143,7 +151,6 @@ export default function AdminSidebar({ pendingCount = 0 }: { pendingCount?: numb
               <path d="M4 7h16M4 12h16M4 17h16" />
             </svg>
           </button>
-          <MenuHintCoachmark variant="mobile" open={open} />
         </div>
       </div>
 
@@ -201,13 +208,15 @@ export default function AdminSidebar({ pendingCount = 0 }: { pendingCount?: numb
         className="relative hidden shrink-0 flex-col gap-4 bg-[#08101C] p-4 md:flex md:sticky md:top-0 md:h-screen md:w-64 md:overflow-y-auto"
         style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
       >
-        <div className="px-2 pt-1">
-          {brand}
-          <p className="text-xs text-[#9AA7BD]">{t.admin.panelTitle}</p>
+        <div className="flex items-start justify-between px-2 pt-1">
+          <div>
+            {brand}
+            <p className="text-xs text-[#9AA7BD]">{t.admin.panelTitle}</p>
+          </div>
+          <NotificationsBell notifications={notifications} placement="desktop" />
         </div>
         {nav}
         {footer}
-        <MenuHintCoachmark variant="desktop" />
       </aside>
     </>
   );
