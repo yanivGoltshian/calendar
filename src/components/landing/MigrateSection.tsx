@@ -8,9 +8,8 @@ const mascots = t.marketing.mascots;
 
 /**
  * MigrateSection — מסלול הגירה כן מפלטפורמה אחרת לתור צ׳יק.
- * ארבעה שלבים מבוססי-יכולות אמת + בלוק שקיפות שמפריד בין מה שזמין היום
- * (העברת לקוחות ידנית מלווה) לבין מה שעדיין בפיתוח (ייבוא קובץ בלחיצה).
- * אדם, בעל עסק, מלווה את המעבר.
+ * ארבעה שלבים מבוססי-יכולות אמת, כאשר אדם — בעל עסק — מלווה את המעבר.
+ * הרכיב מוצג בעמוד ייעודי (/migrate) כדי לשמור על דף הבית ממוקד וקליל.
  */
 export function MigrateSection({ demoHref }: { demoHref?: string }) {
   const steps = Object.values(m.steps);
@@ -48,38 +47,15 @@ export function MigrateSection({ demoHref }: { demoHref?: string }) {
             ))}
           </Stagger>
 
-          {/* אדם + בלוק שקיפות */}
-          <Reveal delay={0.1} className="flex flex-col items-center gap-6">
+          {/* אדם מלווה את המעבר */}
+          <Reveal delay={0.1} className="flex flex-col items-center justify-center gap-6">
             <Image
               src="/brand/mascots/adam-34.png"
               alt={mascots.migrateAlt}
               width={375}
               height={863}
-              className="h-52 w-auto drop-shadow-xl sm:h-60"
+              className="h-56 w-auto drop-shadow-xl sm:h-72"
             />
-            <Card className="w-full p-6">
-              <h3 className="mb-4 font-display text-lg font-bold text-sand-900 dark:text-sand-50">
-                {m.honest.title}
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <Badge tone="brand" className="mb-2">
-                    {m.honest.readyLabel}
-                  </Badge>
-                  <p className="text-sm leading-relaxed text-sand-600 dark:text-sand-300">
-                    {m.honest.ready}
-                  </p>
-                </div>
-                <div className="border-t border-sand-200/70 pt-4 dark:border-sand-700/70">
-                  <Badge tone="accent" className="mb-2">
-                    {m.honest.soonLabel}
-                  </Badge>
-                  <p className="text-sm leading-relaxed text-sand-600 dark:text-sand-300">
-                    {m.honest.soon}
-                  </p>
-                </div>
-              </div>
-            </Card>
           </Reveal>
         </div>
 

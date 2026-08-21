@@ -16,16 +16,21 @@ const sectionLinks: NavLink[] = [
   { href: '#features', label: t.marketing.nav.features },
   { href: '#audiences', label: t.marketing.nav.audiences },
   { href: '#how-it-works', label: t.marketing.nav.howItWorks },
-  { href: '#migrate', label: t.marketing.nav.migrate },
+  { href: '/migrate', label: t.marketing.nav.migrate },
   { href: '#pricing', label: t.marketing.nav.pricing },
   { href: '#faq', label: t.marketing.nav.faq },
 ];
 
 /** Navbar — כותרת עליונה דביקה, אלגנטית, עם CTA וקישורי שער לניהול ולעמוד לדוגמה. */
-export function Navbar({ demoSlug }: { demoSlug?: string }) {
+export function Navbar({ demoSlug, absoluteLinks = false }: { demoSlug?: string; absoluteLinks?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
+
+  // בעמודים עצמאיים (למשל /migrate) עוגני הגלילה של דף הבית הופכים למוחלטים (/#features)
+  // כדי שהניווט יעבוד גם מחוץ לדף הבית, בעוד שבדף הבית הם נשארים גלילה חלקה.
+  const resolveHref = (href: string) =>
+    absoluteLinks && href.startsWith('#') ? `/${href}` : href;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -69,7 +74,7 @@ export function Navbar({ demoSlug }: { demoSlug?: string }) {
           {sectionLinks.map((link) => (
             <a
               key={link.href}
-              href={link.href}
+              href={resolveHref(link.href)}
               className="rounded-full px-4 py-2 text-sm font-medium text-sand-600 transition-colors hover:bg-sand-100 hover:text-sand-900 dark:text-sand-300 dark:hover:bg-sand-800 dark:hover:text-sand-50"
             >
               {link.label}
@@ -138,7 +143,7 @@ export function Navbar({ demoSlug }: { demoSlug?: string }) {
               {sectionLinks.map((link) => (
                 <a
                   key={link.href}
-                  href={link.href}
+                  href={resolveHref(link.href)}
                   onClick={() => setOpen(false)}
                   className="rounded-xl px-4 py-3 text-base font-medium text-sand-700 transition-colors hover:bg-sand-100 dark:text-sand-200 dark:hover:bg-sand-800"
                 >

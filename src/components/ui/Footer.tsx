@@ -6,9 +6,12 @@ import { LEGAL_LINKS } from '@/content/legal/links';
 import { Container } from './Container';
 
 /** Footer — כותרת תחתונה עם קישורי שער, קרדיט ופרטי מותג. */
-export function Footer({ demoSlug }: { demoSlug?: string }) {
+export function Footer({ demoSlug, absoluteLinks = false }: { demoSlug?: string; absoluteLinks?: boolean }) {
   const year = new Date().getFullYear();
   const f = t.marketing.footer;
+
+  // בעמודים עצמאיים עוגני הגלילה של דף הבית הופכים למוחלטים כדי שהניווט יעבוד גם מחוץ לדף הבית.
+  const hashHref = (hash: string) => (absoluteLinks ? `/${hash}` : hash);
 
   return (
     <footer className="border-t border-sand-200 bg-sand-100/60 dark:border-sand-800 dark:bg-sand-950">
@@ -36,14 +39,19 @@ export function Footer({ demoSlug }: { demoSlug?: string }) {
             <h3 className="text-sm font-bold text-sand-900 dark:text-sand-100">{f.productTitle}</h3>
             <ul className="space-y-2 text-sm text-sand-600 dark:text-sand-400">
               <li>
-                <a href="#features" className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
+                <a href={hashHref('#features')} className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
                   {f.links.features}
                 </a>
               </li>
               <li>
-                <a href="#pricing" className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
+                <a href={hashHref('#pricing')} className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
                   {f.links.pricing}
                 </a>
+              </li>
+              <li>
+                <Link href="/migrate" className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
+                  {f.links.migrate}
+                </Link>
               </li>
               {demoSlug && (
                 <li>
@@ -67,7 +75,12 @@ export function Footer({ demoSlug }: { demoSlug?: string }) {
                 </Link>
               </li>
               <li>
-                <a href="#faq" className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
+                <Link href="/roadmap" className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
+                  {f.links.roadmap}
+                </Link>
+              </li>
+              <li>
+                <a href={hashHref('#faq')} className="transition-colors hover:text-brand-700 dark:hover:text-brand-200">
                   {t.marketing.nav.faq}
                 </a>
               </li>
