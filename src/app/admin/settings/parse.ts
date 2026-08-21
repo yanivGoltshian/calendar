@@ -112,6 +112,8 @@ export function parseLandingContent(fd: FormData) {
     testimonials,
     faq,
     about: str(fd, 'landingAbout'),
+    announcement: str(fd, 'landingAnnouncement'),
+    googleReviewsUrl: str(fd, 'landingGoogleReviewsUrl'),
     socialLinks: {
       whatsapp: str(fd, 'landingSocialWhatsapp'),
       instagram: str(fd, 'landingSocialInstagram'),

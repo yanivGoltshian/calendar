@@ -67,6 +67,9 @@ const he = {
       afterLabel: 'אחרי',
       beforeAfterHint: 'החליקו להשוואה',
       testimonialsTitle: 'לקוחות מספרים',
+      googleReviewsLabel: 'ביקורות אמיתיות מגוגל',
+      googleReviewsCta: 'לכל הביקורות בגוגל',
+      announcementDismiss: 'סגירת ההודעה',
       faqTitle: 'שאלות נפוצות',
       aboutTitle: 'קצת עלינו',
       locationTitle: 'איפה אנחנו',
@@ -961,6 +964,14 @@ const he = {
         testimonialsLabel: 'המלצות לקוחות (עד שלוש)',
         testimonialNamePlaceholder: 'שם הלקוח (אופציונלי)',
         testimonialQuotePlaceholder: 'מה הלקוח אמר',
+        announcementLabel: 'שורת עדכון חי (אופציונלי)',
+        announcementHint:
+          'הודעה קצרה שתופיע בראש עמוד העסק ומתעדכנת בכל רגע. לדוגמה: בחופשה בין ה-1 ל-5 בחודש, נחזור אליכם.',
+        announcementPlaceholder: 'לדוגמה: בחופשה 1-5 בחודש, ההזמנות ייפתחו שוב ב-6',
+        googleReviewsLabel: 'קישור לביקורות בגוגל (אופציונלי)',
+        googleReviewsHint:
+          'הדביקו קישור לעמוד העסק בגוגל כדי להציג את הביקורות הטובות בעמוד. אין לכם עמוד? פתחו פרופיל עסק חינם בגוגל (חיפוש "Google Business Profile") — זה מחזק את הנוכחות והאמון.',
+        googleReviewsPlaceholder: 'https://g.page/... או קישור לעסק בגוגל',
         sectionsTitle: 'אילו מקטעים להציג',
         sectionsHint:
           'סמנו את המקטעים שיופיעו בעמוד הנחיתה. מקטעים שדורשים תוכן יופיעו רק אחרי שתמלאו אותם.',
