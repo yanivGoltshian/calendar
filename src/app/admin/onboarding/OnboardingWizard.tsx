@@ -1,12 +1,23 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import type { SaveState } from '../settings/parse';
 import { t } from '@/i18n';
 import { Button } from '@/components/ui';
 import BookingLinkShare from '@/components/booking/BookingLinkShare';
 import { ImageUploadField, type ImageUploadLabels } from '../settings/ImageUploadField';
-import { saveServices, saveHours, saveBranding } from './actions';
+import { saveServices, saveHours, saveBranding, savePremiumLanding } from './actions';
+import { buildDefaultSectionToggles } from './premium';
+import {
+  TOGGLEABLE_LANDING_SECTIONS,
+  type LandingContent,
+  type LandingBenefit,
+  type LandingTestimonial,
+  type LandingFaqItem,
+  type LandingBeforeAfter,
+  type LandingSocialLinks,
+  type LandingSectionKey,
+} from '@/lib/publicPageStyle';
 
 /** תת-קבוצה סריאליזבילית של שירות, לרינדור שורות ההחלפה בצעד השירותים. */
 export type WizardService = {
@@ -19,6 +30,25 @@ export type WizardService = {
 
 type HoursPresetKey = 'sun-thu' | 'every-day' | 'custom';
 
+/**
+ * שלב הפרימיום האופציונלי (אחרי המיתוג):
+ * 'gate' שער הבחירה, מספר 0..8 תת-שלב פעיל, 'summary' מסך הסיכום.
+ */
+type PremiumPhase = 'gate' | number | 'summary';
+
+/** מפתחות תתי-השלבים של הפרימיום, לפי סדר ההצגה (0..8). */
+const PREMIUM_SUB_KEYS = [
+  'hero',
+  'about',
+  'benefits',
+  'gallery',
+  'beforeAfter',
+  'testimonials',
+  'faq',
+  'social',
+  'closing',
+] as const;
+
 type Props = {
   businessName: string;
   brandColor: string;
@@ -27,6 +57,11 @@ type Props = {
   serviceExample: string;
   bookingUrl: string;
   bookingQr: string;
+  // ── פרימיום: פרטי העסק והתוכן ההתחלתי לעמוד הנחיתה ──
+  businessType: string;
+  businessAddress: string;
+  slug: string;
+  premiumInitial: LandingContent | null;
 };
 
 const initialSaveState: SaveState = { ok: false };
@@ -54,10 +89,22 @@ export default function OnboardingWizard({
   serviceExample,
   bookingUrl,
   bookingQr,
+  businessType,
+  businessAddress,
+  slug,
+  premiumInitial,
 }: Props) {
   const o = t.admin.onboarding;
   const [step, setStep] = useState(0); // 0=services 1=hours 2=branding
   const [done, setDone] = useState(false);
+
+  // ── מצב שלב הפרימיום (אופציונלי, מופעל אחרי המיתוג) ──
+  // premiumPhase=null ⇐ שלב הפרימיום עדיין מחוץ לתמונה (שלושת הצעדים הרגילים).
+  const [premiumPhase, setPremiumPhase] = useState<PremiumPhase | null>(null);
+  // טיוטת התוכן היא מקור האמת היחיד; נשלחת כשדה JSON יחיד בכל שמירה.
+  const [premiumDraft, setPremiumDraft] = useState<LandingContent>(() => premiumInitial ?? {});
+  // יעד המעבר אחרי שמירה מוצלחת, נקבע ב-onClick לפני שליחת הטופס.
+  const nextTargetRef = useRef<PremiumPhase | 'done'>('gate');
 
   // מצב מקומי לצעד השירותים: אילו שירותים פעילים + טופס "הוספת שירות משלך".
   const [active, setActive] = useState<Record<string, boolean>>(() =>
@@ -95,6 +142,10 @@ export default function OnboardingWizard({
     saveBranding,
     initialSaveState,
   );
+  const [premiumState, premiumFormAction, premiumPending] = useActionState(
+    savePremiumLanding,
+    initialSaveState,
+  );
 
   useEffect(() => {
     if (servicesState.ok) setStep(1);
@@ -102,9 +153,17 @@ export default function OnboardingWizard({
   useEffect(() => {
     if (hoursState.ok) setStep(2);
   }, [hoursState]);
+  // אחרי המיתוג: במקום סיום מיידי, מציגים את שער הפרימיום האופציונלי.
   useEffect(() => {
-    if (brandingState.ok) setDone(true);
+    if (brandingState.ok) setPremiumPhase('gate');
   }, [brandingState]);
+  // אחרי שמירת פרימיום מוצלחת: מעבר ליעד שנקבע (תת-שלב הבא / סיכום / סיום).
+  useEffect(() => {
+    if (!premiumState.ok) return;
+    const target = nextTargetRef.current;
+    if (target === 'done') setDone(true);
+    else setPremiumPhase(target);
+  }, [premiumState]);
 
   const activeCount = Object.values(active).filter(Boolean).length;
   const draftPending = draftName.trim() !== '' ? 1 : 0;
@@ -203,6 +262,665 @@ export default function OnboardingWizard({
           </Button>
         </div>
       </section>
+    );
+  }
+
+  // ── שלב הפרימיום האופציונלי: מוצג אחרי המיתוג ולפני שובו של האשף הרגיל ──
+  // (premiumPhase!==null בלבד; שלושת הצעדים הרגילים אינם מושפעים.)
+  if (premiumPhase !== null) return renderPremium();
+
+  /**
+   * רינדור שער הפרימיום, תשעת תתי-השלבים הדילוגיים, ומסך הסיכום.
+   * הפונקציה מוגדרת כ-declaration ולכן זמינה בעת הקריאה בשמירה למעלה.
+   */
+  function renderPremium() {
+    const p = o.premium;
+    const inputCls = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm';
+    const labelCls = 'mb-1 block text-sm font-medium text-slate-700';
+    const cardCls = 'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6';
+    const err = errorText(premiumState);
+
+    // עדכון נקודתי של הטיוטה (מקור האמת היחיד לתוכן הפרימיום).
+    const patchDraft = (patch: Partial<LandingContent>) =>
+      setPremiumDraft((prev) => ({ ...prev, ...patch }));
+
+    // שדה טקסט/מרובה-שורות מבוקר, ללא name (נשמר לטיוטה, לא נכנס לשליחת הטופס).
+    const textField = (opts: {
+      id: string;
+      label: string;
+      value: string;
+      onChange: (v: string) => void;
+      placeholder?: string;
+      textarea?: boolean;
+      rows?: number;
+      dir?: 'rtl' | 'ltr';
+      type?: string;
+    }) => (
+      <div>
+        <label htmlFor={opts.id} className={labelCls}>
+          {opts.label}
+        </label>
+        {opts.textarea ? (
+          <textarea
+            id={opts.id}
+            value={opts.value}
+            rows={opts.rows ?? 3}
+            onChange={(e) => opts.onChange(e.target.value)}
+            placeholder={opts.placeholder}
+            dir={opts.dir}
+            className={inputCls}
+          />
+        ) : (
+          <input
+            id={opts.id}
+            type={opts.type ?? 'text'}
+            value={opts.value}
+            onChange={(e) => opts.onChange(e.target.value)}
+            placeholder={opts.placeholder}
+            dir={opts.dir}
+            className={inputCls}
+          />
+        )}
+      </div>
+    );
+
+    // ── שער הבחירה: שאלה מפורשת עם המשך/דילוג ──
+    if (premiumPhase === 'gate') {
+      const g = p.gate;
+      return (
+        <div dir="rtl">
+          <section className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-6 text-center shadow-sm sm:p-8">
+            <span
+              aria-hidden="true"
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-3xl shadow-lg"
+            >
+              ✨
+            </span>
+            <p className="mt-4 text-sm font-medium text-emerald-600">{g.eyebrow}</p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900">{g.title}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">{g.subtitle}</p>
+            <div className="mt-6 flex flex-col items-center gap-3">
+              {/* המשך: שומר טיוטה ריקה ומעביר לתת-השלב הראשון */}
+              <form action={premiumFormAction} className="w-full sm:w-auto">
+                <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
+                <button
+                  type="submit"
+                  disabled={premiumPending}
+                  onClick={() => {
+                    nextTargetRef.current = 0;
+                  }}
+                  className="w-full rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
+                >
+                  {premiumPending ? p.nav.saving : g.build}
+                </button>
+              </form>
+              {/* דילוג: סיום מיידי אל מסך שיתוף קישור ההזמנות */}
+              <button
+                type="button"
+                onClick={() => setDone(true)}
+                className="text-sm font-medium text-slate-500 transition hover:text-slate-700"
+              >
+                {g.skip}
+              </button>
+            </div>
+            {err && <p className="mt-3 text-sm text-rose-600">{err}</p>}
+          </section>
+        </div>
+      );
+    }
+
+    // ── מסך הסיכום: תצוגה מקדימה + סיום ──
+    if (premiumPhase === 'summary') {
+      const s = p.summary;
+      return (
+        <div dir="rtl">
+          <section className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-6 text-center shadow-sm sm:p-8">
+            <span
+              aria-hidden="true"
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-3xl shadow-lg"
+            >
+              ✨
+            </span>
+            <p className="mt-4 text-sm font-medium text-emerald-600">{s.eyebrow}</p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900">{s.title}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
+              {s.subtitle.replace('{name}', businessName)}
+            </p>
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <a
+                href={`/b/${slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full rounded-xl border border-slate-300 px-6 py-2.5 text-center font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+              >
+                {s.previewCta}
+              </a>
+              <form action={premiumFormAction} className="w-full sm:w-auto">
+                <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
+                <button
+                  type="submit"
+                  disabled={premiumPending}
+                  onClick={() => {
+                    nextTargetRef.current = 'done';
+                  }}
+                  className="w-full rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
+                >
+                  {premiumPending ? p.nav.saving : s.finishCta}
+                </button>
+              </form>
+            </div>
+            <p className="mt-4 text-xs text-slate-400">{s.editHint}</p>
+            {err && <p className="mt-3 text-sm text-rose-600">{err}</p>}
+          </section>
+        </div>
+      );
+    }
+
+    // מכאן ואילך: תת-שלב ממוספר בלבד (0..8). שמירת טיפוסים מפני null.
+    if (typeof premiumPhase !== 'number') return null;
+    const sub = premiumPhase;
+    const subKey = PREMIUM_SUB_KEYS[sub];
+    const sk = p.steps[subKey];
+    const isLast = sub === PREMIUM_SUB_KEYS.length - 1;
+    const progress = p.nav.progress
+      .replace('{current}', String(sub + 1))
+      .replace('{total}', String(PREMIUM_SUB_KEYS.length));
+
+    // אוספים נגזרים לרינדור (תמונת-מצב לקריאה בלבד).
+    const benefits = premiumDraft.benefits ?? [];
+    const testimonials = premiumDraft.testimonials ?? [];
+    const faq = premiumDraft.faq ?? [];
+    const beforeAfter = premiumDraft.beforeAfter ?? [];
+    const galleryUrls = premiumDraft.galleryImageUrls ?? [];
+    const social: LandingSocialLinks = premiumDraft.socialLinks ?? {};
+    const sections = premiumDraft.sections ?? buildDefaultSectionToggles(businessType);
+
+    // ── עוזרי עריכה של אוספים (פונקציונליים, בטוחים לעדכונים עוקבים) ──
+    const updateBenefit = (i: number, patch: Partial<LandingBenefit>) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        benefits: (prev.benefits ?? []).map((b, idx) => (idx === i ? { ...b, ...patch } : b)),
+      }));
+    const addBenefit = () =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        benefits: [...(prev.benefits ?? []), { title: '', text: '' }],
+      }));
+    const removeBenefit = (i: number) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        benefits: (prev.benefits ?? []).filter((_, idx) => idx !== i),
+      }));
+
+    const updateTestimonial = (i: number, patch: Partial<LandingTestimonial>) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        testimonials: (prev.testimonials ?? []).map((x, idx) =>
+          idx === i ? { ...x, ...patch } : x,
+        ),
+      }));
+    const addTestimonial = () =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        testimonials: [...(prev.testimonials ?? []), { name: '', quote: '' }],
+      }));
+    const removeTestimonial = (i: number) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        testimonials: (prev.testimonials ?? []).filter((_, idx) => idx !== i),
+      }));
+
+    const updateFaq = (i: number, patch: Partial<LandingFaqItem>) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        faq: (prev.faq ?? []).map((x, idx) => (idx === i ? { ...x, ...patch } : x)),
+      }));
+    const addFaq = () =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        faq: [...(prev.faq ?? []), { question: '', answer: '' }],
+      }));
+    const removeFaq = (i: number) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        faq: (prev.faq ?? []).filter((_, idx) => idx !== i),
+      }));
+
+    const updateBeforeAfter = (i: number, patch: Partial<LandingBeforeAfter>) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        beforeAfter: (prev.beforeAfter ?? []).map((x, idx) =>
+          idx === i ? { ...x, ...patch } : x,
+        ),
+      }));
+    const addBeforeAfter = () =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        beforeAfter: [...(prev.beforeAfter ?? []), { beforeUrl: '', afterUrl: '', label: '' }],
+      }));
+    const removeBeforeAfter = (i: number) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        beforeAfter: (prev.beforeAfter ?? []).filter((_, idx) => idx !== i),
+      }));
+
+    const setGalleryUrl = (i: number, url: string) =>
+      setPremiumDraft((prev) => {
+        const next = [...(prev.galleryImageUrls ?? [])];
+        while (next.length <= i) next.push('');
+        next[i] = url;
+        return { ...prev, galleryImageUrls: next };
+      });
+
+    const setSocial = (key: keyof LandingSocialLinks, v: string) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        socialLinks: { ...(prev.socialLinks ?? {}), [key]: v },
+      }));
+
+    const setSection = (key: LandingSectionKey, on: boolean) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        sections: {
+          ...(prev.sections ?? buildDefaultSectionToggles(businessType)),
+          [key]: on,
+        },
+      }));
+
+    // לכידת כתובות התמונות מ-ImageUploadField דרך אירוע input שמבעבע לטופס.
+    const handlePremiumInput = (e: React.FormEvent<HTMLFormElement>) => {
+      const el = e.target as HTMLInputElement;
+      const name = el.name || '';
+      if (!name.startsWith('premImg:')) return;
+      const parts = name.split(':');
+      if (parts[1] === 'gallery') {
+        setGalleryUrl(Number(parts[2]), el.value);
+      } else if (parts[1] === 'ba') {
+        updateBeforeAfter(
+          Number(parts[2]),
+          parts[3] === 'before' ? { beforeUrl: el.value } : { afterUrl: el.value },
+        );
+      }
+    };
+
+    return (
+      <div dir="rtl">
+        <div className="mb-5">
+          <p className="text-sm font-medium text-emerald-600">{sk.eyebrow}</p>
+          <h2 className="mt-1 text-xl font-bold text-slate-900">{sk.title}</h2>
+          <p className="mt-1 text-sm text-slate-500">{sk.subtitle}</p>
+          <p className="mt-2 text-xs font-medium text-slate-400">{progress}</p>
+        </div>
+
+        <form action={premiumFormAction} onInput={handlePremiumInput} className={cardCls}>
+          <div className="space-y-4">
+            {/* ── (0) כותרת הירו ── */}
+            {subKey === 'hero' && (
+              <>
+                {textField({
+                  id: 'prem-hero-eyebrow',
+                  label: p.steps.hero.eyebrowLabel,
+                  value: premiumDraft.heroEyebrow ?? '',
+                  placeholder: p.steps.hero.eyebrowPlaceholder,
+                  onChange: (v) => patchDraft({ heroEyebrow: v }),
+                })}
+                {textField({
+                  id: 'prem-hero-headline',
+                  label: p.steps.hero.headlineLabel,
+                  value: premiumDraft.heroHeadline ?? '',
+                  placeholder: p.steps.hero.headlinePlaceholder,
+                  onChange: (v) => patchDraft({ heroHeadline: v }),
+                })}
+                {textField({
+                  id: 'prem-hero-subtext',
+                  label: p.steps.hero.subtextLabel,
+                  value: premiumDraft.heroSubtext ?? '',
+                  placeholder: p.steps.hero.subtextPlaceholder,
+                  onChange: (v) => patchDraft({ heroSubtext: v }),
+                  textarea: true,
+                  rows: 2,
+                })}
+              </>
+            )}
+
+            {/* ── (1) אודות ── */}
+            {subKey === 'about' &&
+              textField({
+                id: 'prem-about',
+                label: p.steps.about.label,
+                value: premiumDraft.about ?? '',
+                placeholder: p.steps.about.placeholder,
+                onChange: (v) => patchDraft({ about: v }),
+                textarea: true,
+                rows: 5,
+              })}
+
+            {/* ── (2) יתרונות ── */}
+            {subKey === 'benefits' && (
+              <>
+                {benefits.map((b, i) => (
+                  <div key={i} className="space-y-3 rounded-2xl border border-slate-200 p-4">
+                    {textField({
+                      id: `prem-benefit-title-${i}`,
+                      label: p.steps.benefits.titleLabel,
+                      value: b.title,
+                      placeholder: p.steps.benefits.titlePlaceholder,
+                      onChange: (v) => updateBenefit(i, { title: v }),
+                    })}
+                    {textField({
+                      id: `prem-benefit-text-${i}`,
+                      label: p.steps.benefits.textLabel,
+                      value: b.text,
+                      placeholder: p.steps.benefits.textPlaceholder,
+                      onChange: (v) => updateBenefit(i, { text: v }),
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => removeBenefit(i)}
+                      className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                    >
+                      {p.steps.benefits.remove}
+                    </button>
+                  </div>
+                ))}
+                {benefits.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={addBenefit}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    + {p.steps.benefits.add}
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* ── (3) גלריה ── */}
+            {subKey === 'gallery' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i}>
+                      <span className="mb-1 block text-sm font-medium text-slate-700">
+                        {p.steps.gallery.imageLabel.replace('{n}', String(i + 1))}
+                      </span>
+                      <ImageUploadField
+                        name={`premImg:gallery:${i}`}
+                        defaultValue={galleryUrls[i] ?? ''}
+                        targetAspect={4 / 3}
+                        rounded={false}
+                        maxWidth={1280}
+                        maxHeight={960}
+                        mime="image/jpeg"
+                        labels={imageLabels}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-400">{p.steps.gallery.hint}</p>
+              </>
+            )}
+
+            {/* ── (4) לפני ואחרי ── */}
+            {subKey === 'beforeAfter' && (
+              <>
+                {beforeAfter.map((pair, i) => (
+                  <div key={i} className="space-y-3 rounded-2xl border border-slate-200 p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="mb-1 block text-sm font-medium text-slate-700">
+                          {p.steps.beforeAfter.before}
+                        </span>
+                        <ImageUploadField
+                          name={`premImg:ba:${i}:before`}
+                          defaultValue={pair.beforeUrl}
+                          targetAspect={4 / 3}
+                          rounded={false}
+                          maxWidth={1280}
+                          maxHeight={960}
+                          mime="image/jpeg"
+                          labels={imageLabels}
+                        />
+                      </div>
+                      <div>
+                        <span className="mb-1 block text-sm font-medium text-slate-700">
+                          {p.steps.beforeAfter.after}
+                        </span>
+                        <ImageUploadField
+                          name={`premImg:ba:${i}:after`}
+                          defaultValue={pair.afterUrl}
+                          targetAspect={4 / 3}
+                          rounded={false}
+                          maxWidth={1280}
+                          maxHeight={960}
+                          mime="image/jpeg"
+                          labels={imageLabels}
+                        />
+                      </div>
+                    </div>
+                    {textField({
+                      id: `prem-ba-label-${i}`,
+                      label: p.steps.beforeAfter.labelLabel,
+                      value: pair.label ?? '',
+                      placeholder: p.steps.beforeAfter.labelPlaceholder,
+                      onChange: (v) => updateBeforeAfter(i, { label: v }),
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => removeBeforeAfter(i)}
+                      className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                    >
+                      {p.steps.beforeAfter.removePair}
+                    </button>
+                  </div>
+                ))}
+                {beforeAfter.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={addBeforeAfter}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    + {p.steps.beforeAfter.addPair}
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* ── (5) המלצות ── */}
+            {subKey === 'testimonials' && (
+              <>
+                {testimonials.map((x, i) => (
+                  <div key={i} className="space-y-3 rounded-2xl border border-slate-200 p-4">
+                    {textField({
+                      id: `prem-testi-name-${i}`,
+                      label: p.steps.testimonials.nameLabel,
+                      value: x.name ?? '',
+                      placeholder: p.steps.testimonials.namePlaceholder,
+                      onChange: (v) => updateTestimonial(i, { name: v }),
+                    })}
+                    {textField({
+                      id: `prem-testi-quote-${i}`,
+                      label: p.steps.testimonials.quoteLabel,
+                      value: x.quote,
+                      placeholder: p.steps.testimonials.quotePlaceholder,
+                      onChange: (v) => updateTestimonial(i, { quote: v }),
+                      textarea: true,
+                      rows: 2,
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => removeTestimonial(i)}
+                      className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                    >
+                      {p.steps.testimonials.remove}
+                    </button>
+                  </div>
+                ))}
+                {testimonials.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={addTestimonial}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    + {p.steps.testimonials.add}
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* ── (6) שאלות נפוצות ── */}
+            {subKey === 'faq' && (
+              <>
+                {faq.map((x, i) => (
+                  <div key={i} className="space-y-3 rounded-2xl border border-slate-200 p-4">
+                    {textField({
+                      id: `prem-faq-q-${i}`,
+                      label: p.steps.faq.questionLabel,
+                      value: x.question,
+                      placeholder: p.steps.faq.questionPlaceholder,
+                      onChange: (v) => updateFaq(i, { question: v }),
+                    })}
+                    {textField({
+                      id: `prem-faq-a-${i}`,
+                      label: p.steps.faq.answerLabel,
+                      value: x.answer,
+                      placeholder: p.steps.faq.answerPlaceholder,
+                      onChange: (v) => updateFaq(i, { answer: v }),
+                      textarea: true,
+                      rows: 2,
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => removeFaq(i)}
+                      className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                    >
+                      {p.steps.faq.remove}
+                    </button>
+                  </div>
+                ))}
+                {faq.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={addFaq}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                  >
+                    + {p.steps.faq.add}
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* ── (7) רשתות ומיקום ── */}
+            {subKey === 'social' && (
+              <>
+                {(['whatsapp', 'instagram', 'facebook', 'tiktok'] as const).map((key) =>
+                  textField({
+                    id: `prem-social-${key}`,
+                    label: p.steps.social[key],
+                    value: social[key] ?? '',
+                    placeholder: p.steps.social.urlPlaceholder,
+                    onChange: (v) => setSocial(key, v),
+                    type: 'url',
+                    dir: 'ltr',
+                  }),
+                )}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-700">
+                    {p.steps.social.locationTitle}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {businessAddress.trim() !== '' ? businessAddress : p.steps.social.noAddress}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-400">{p.steps.social.locationHint}</p>
+                </div>
+              </>
+            )}
+
+            {/* ── (8) כפתור סוגר + טוגלים של מקטעים ── */}
+            {subKey === 'closing' && (
+              <>
+                {textField({
+                  id: 'prem-cta-label',
+                  label: p.steps.closing.ctaLabelLabel,
+                  value: premiumDraft.ctaLabel ?? '',
+                  placeholder: p.steps.closing.ctaLabelPlaceholder,
+                  onChange: (v) => patchDraft({ ctaLabel: v }),
+                })}
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {p.steps.closing.sectionsTitle}
+                  </p>
+                  <p className="mb-2 mt-1 text-xs text-slate-400">{p.steps.closing.sectionsHint}</p>
+                  <div className="space-y-2">
+                    {TOGGLEABLE_LANDING_SECTIONS.map((key) => {
+                      const labels = p.steps.closing.sections as Record<string, string>;
+                      return (
+                        <label
+                          key={key}
+                          className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={sections[key] ?? false}
+                            onChange={(e) => setSection(key, e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-600"
+                          />
+                          {labels[key]}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* שדה JSON יחיד שנושא את כל טיוטת התוכן אל פעולת השרת */}
+            <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
+            {err && <p className="text-sm text-rose-600">{err}</p>}
+
+            {/* ── ניווט התחתית: חזרה / דילוג / שמירה ויציאה / המשך ── */}
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={() => setPremiumPhase(sub === 0 ? 'gate' : sub - 1)}
+                className="rounded-xl border border-slate-300 px-5 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                {p.nav.back}
+              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPremiumPhase(isLast ? 'summary' : sub + 1)}
+                  disabled={premiumPending}
+                  className="text-sm font-medium text-slate-500 transition hover:text-slate-700 disabled:opacity-60"
+                >
+                  {p.nav.skip}
+                </button>
+                <button
+                  type="submit"
+                  onClick={() => {
+                    nextTargetRef.current = 'summary';
+                  }}
+                  disabled={premiumPending}
+                  className="rounded-xl border border-slate-300 px-5 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {p.nav.saveExit}
+                </button>
+                <button
+                  type="submit"
+                  onClick={() => {
+                    nextTargetRef.current = isLast ? 'summary' : sub + 1;
+                  }}
+                  disabled={premiumPending}
+                  className="rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {premiumPending ? p.nav.saving : p.nav.continue}
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
     );
   }
 
