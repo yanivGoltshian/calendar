@@ -7,6 +7,7 @@ import { countPendingAppointments } from '@/server/repos/appointments';
 import { getBusinessAccess } from '@/server/subscription';
 import { isPlatformAdminEmail } from '@/server/platformAdmin';
 import AdminSidebar from './AdminSidebar';
+import { buildAdminNotifications } from './notifications';
 import Paywall from './Paywall';
 import TrialBanner from './TrialBanner';
 
@@ -72,9 +73,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // ספירת תורים הממתינים לאישור לחיווי (תג) על פריט "הזמנות" בסרגל הצד.
   const pendingCount = await countPendingAppointments(owned[0].id);
 
+  // מרכז ההתראות בפעמון: תורים הממתינים לאישור וחידוש מנוי.
+  const notifications = buildAdminNotifications({ pendingCount, access });
+
   return (
     <div dir="rtl" className="flex min-h-screen flex-col bg-slate-50 md:flex-row">
-      <AdminSidebar pendingCount={pendingCount} />
+      <AdminSidebar pendingCount={pendingCount} notifications={notifications} />
       <div
         className="min-w-0 flex-1"
         style={{

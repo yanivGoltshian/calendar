@@ -122,8 +122,8 @@ test('שיוך צוות: staffId ששייך לעסק מתקבל; זר/לא-קי�
 
 // --- סטטוס לפי מדיניות אישור (מראה של route.ts:118-121, 151) ---
 function resolveBookingStatus(bookingRequiresApproval?: boolean): 'PENDING' | 'CONFIRMED' {
-  // ברירת מחדל: נדרש אישור (route.ts:121 → `?? true`).
-  const requiresApproval = bookingRequiresApproval ?? true;
+  // ברירת מחדל: אישור כבוי (route.ts:121 → `?? false`).
+  const requiresApproval = bookingRequiresApproval ?? false;
   return requiresApproval ? 'PENDING' : 'CONFIRMED';
 }
 
@@ -132,8 +132,8 @@ test('מדיניות סטטוס: אישור כבוי → CONFIRMED; אישור �
   assert.equal(resolveBookingStatus(true), 'PENDING');
 });
 
-test('מדיניות סטטוס: ברירת מחדל כשאין הגדרה היא PENDING (אישור נדרש)', () => {
-  assert.equal(resolveBookingStatus(undefined), 'PENDING');
+test('מדיניות סטטוס: ברירת מחדל כשאין הגדרה היא CONFIRMED (אישור כבוי)', () => {
+  assert.equal(resolveBookingStatus(undefined), 'CONFIRMED');
 });
 
 // --- שער זמן: lead-time / max-advance (מראה של route.ts:112-130) ---

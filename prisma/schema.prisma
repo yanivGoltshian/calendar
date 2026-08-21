@@ -270,7 +270,7 @@ model BusinessSettings {
   maxAdvanceBookingDays   Int @default(30) // עד כמה ימים קדימה ניתן להזמין
 
   // האם תור חדש דורש אישור עסק (נשאר PENDING עד אישור)
-  bookingRequiresApproval Boolean @default(true)
+  bookingRequiresApproval Boolean @default(false)
   // כמה שעות לפני התור לשלוח תזכורת
   reminderLeadHours       Int     @default(24)
   // מדיניות/הודעה חופשית לתצוגה ללקוח
