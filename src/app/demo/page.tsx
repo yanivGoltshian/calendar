@@ -58,22 +58,7 @@ export default async function DemoPage() {
             {standardSlug || premiumSlug ? (
               <Reveal delay={0.15}>
                 <div className="mt-10 grid gap-6 sm:grid-cols-2">
-                  <Card interactive className="flex flex-col text-center">
-                    <h2 className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
-                      {m.demo.standard.title}
-                    </h2>
-                    <p className="mt-3 flex-1 text-sand-600 dark:text-sand-300">
-                      {m.demo.standard.description}
-                    </p>
-                    <Button
-                      href={`/b/${standardSlug ?? premiumSlug}?style=booking`}
-                      size="lg"
-                      className="mt-6 w-full"
-                    >
-                      {m.demo.standard.cta}
-                    </Button>
-                  </Card>
-                  <Card interactive className="flex flex-col text-center">
+                  <Card interactive className="flex flex-col text-center border-brand-300 ring-2 ring-brand-500/40 dark:border-brand-700">
                     <h2 className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
                       {m.demo.premium.title}
                     </h2>
@@ -87,6 +72,21 @@ export default async function DemoPage() {
                       className="mt-6 w-full"
                     >
                       {m.demo.premium.cta}
+                    </Button>
+                  </Card>
+                  <Card interactive className="flex flex-col text-center">
+                    <h2 className="font-display text-xl font-bold text-sand-900 dark:text-sand-50">
+                      {m.demo.standard.title}
+                    </h2>
+                    <p className="mt-3 flex-1 text-sand-600 dark:text-sand-300">
+                      {m.demo.standard.description}
+                    </p>
+                    <Button
+                      href={`/b/${standardSlug ?? premiumSlug}?style=booking`}
+                      size="lg"
+                      className="mt-6 w-full"
+                    >
+                      {m.demo.standard.cta}
                     </Button>
                   </Card>
                 </div>

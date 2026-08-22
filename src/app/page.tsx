@@ -290,7 +290,7 @@ export default async function HomePage() {
               </h2>
               <p className="mt-4 text-lg text-sand-600 dark:text-sand-300">{q.subtitle}</p>
             </Reveal>
-            <div className="mx-auto mt-12 grid max-w-5xl gap-6 lg:grid-cols-3">
+            <div className="mx-auto mt-12 grid max-w-7xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {/* חודש ניסיון חינם עם כל היכולות */}
               <Reveal direction="up">
                 <Card className="relative flex h-full flex-col border-brand-300 shadow-elevated ring-2 ring-brand-500/40 dark:border-brand-700">
@@ -321,10 +321,16 @@ export default async function HomePage() {
                 </Card>
               </Reveal>
 
-              {/* שתי החבילות המתקדמות — ללא מחיר מספרי, פנייה אישית */}
-              {(['standard', 'premium'] as const).map((key) => {
+              {/* שלוש החבילות המתקדמות — ללא מחיר מספרי, פנייה אישית */}
+              {(['standard', 'premium', 'exclusive'] as const).map((key) => {
                 const plan = q[key];
-                const planCode = key === 'premium' ? 'PREMIUM' : 'STANDARD';
+                // Exclusive מפנה לזרם ההצעה הכללי (/quote) בלי לבחור מראש חבילה שאינה נתמכת ב-enum.
+                const planHref =
+                  key === 'premium'
+                    ? upgradeHref('PREMIUM')
+                    : key === 'standard'
+                      ? upgradeHref('STANDARD')
+                      : '/quote';
                 return (
                   <Reveal key={key} direction="up">
                     <Card className="relative flex h-full flex-col">
@@ -351,7 +357,7 @@ export default async function HomePage() {
                       </ul>
                       <div className="mt-auto">
                         <Button
-                          href={upgradeHref(planCode)}
+                          href={planHref}
                           variant="secondary"
                           size="lg"
                           className="w-full"
