@@ -57,6 +57,6 @@
     "typescript": "^5.7.3"
   },
   "optionalDependencies": {
-    "@azure/communication-messages": "^2.0.0"
+    "@azure/communication-messages": ">=1.0.0 <3.0.0"
   }
 }
