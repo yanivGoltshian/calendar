@@ -116,6 +116,21 @@ param firebaseClientEmail string = ''
 @secure()
 param firebasePrivateKey string = ''
 
+@description('Firebase Web — apiKey ציבורי (NEXT_PUBLIC). ריק = אימות טלפון בצד הלקוח מושבת')
+param firebaseWebApiKey string = ''
+
+@description('Firebase Web — authDomain ציבורי (NEXT_PUBLIC)')
+param firebaseWebAuthDomain string = ''
+
+@description('Firebase Web — projectId ציבורי (NEXT_PUBLIC)')
+param firebaseWebProjectId string = ''
+
+@description('Firebase Web — appId ציבורי (NEXT_PUBLIC)')
+param firebaseWebAppId string = ''
+
+@description('Firebase Web — messagingSenderId ציבורי (NEXT_PUBLIC)')
+param firebaseWebMessagingSenderId string = ''
+
 // ---------- Static Web App ----------
 @description('האם לפרוס Static Web App')
 param deployStaticWebApp bool = true
@@ -210,6 +225,11 @@ module containerApp 'modules/containerApp.bicep' = {
     firebaseProjectId: firebaseProjectId
     firebaseClientEmail: firebaseClientEmail
     firebasePrivateKey: firebasePrivateKey
+    firebaseWebApiKey: firebaseWebApiKey
+    firebaseWebAuthDomain: firebaseWebAuthDomain
+    firebaseWebProjectId: firebaseWebProjectId
+    firebaseWebAppId: firebaseWebAppId
+    firebaseWebMessagingSenderId: firebaseWebMessagingSenderId
     tags: tags
   }
 }

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "5769510359877834915"
+      "templateHash": "1178989620700008731"
     }
   },
   "parameters": {
@@ -217,6 +217,41 @@
       "defaultValue": "",
       "metadata": {
         "description": "Firebase Admin — private_key של חשבון השירות (סוד; עשוי לכלול \\n מילוליים)"
+      }
+    },
+    "firebaseWebApiKey": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Firebase Web — apiKey ציבורי (NEXT_PUBLIC). ריק = אימות טלפון בצד הלקוח מושבת"
+      }
+    },
+    "firebaseWebAuthDomain": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Firebase Web — authDomain ציבורי (NEXT_PUBLIC)"
+      }
+    },
+    "firebaseWebProjectId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Firebase Web — projectId ציבורי (NEXT_PUBLIC)"
+      }
+    },
+    "firebaseWebAppId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Firebase Web — appId ציבורי (NEXT_PUBLIC)"
+      }
+    },
+    "firebaseWebMessagingSenderId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Firebase Web — messagingSenderId ציבורי (NEXT_PUBLIC)"
       }
     },
     "deployStaticWebApp": {
@@ -595,6 +630,21 @@
           "firebasePrivateKey": {
             "value": "[parameters('firebasePrivateKey')]"
           },
+          "firebaseWebApiKey": {
+            "value": "[parameters('firebaseWebApiKey')]"
+          },
+          "firebaseWebAuthDomain": {
+            "value": "[parameters('firebaseWebAuthDomain')]"
+          },
+          "firebaseWebProjectId": {
+            "value": "[parameters('firebaseWebProjectId')]"
+          },
+          "firebaseWebAppId": {
+            "value": "[parameters('firebaseWebAppId')]"
+          },
+          "firebaseWebMessagingSenderId": {
+            "value": "[parameters('firebaseWebMessagingSenderId')]"
+          },
           "tags": {
             "value": "[parameters('tags')]"
           }
@@ -606,7 +656,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "10813355989556300322"
+              "templateHash": "4504733608189025059"
             }
           },
           "parameters": {
@@ -807,6 +857,41 @@
                 "description": "Firebase Admin — private_key של חשבון השירות (עשוי לכלול \\n מילוליים; קוד האפליקציה ממיר). ריק = מושבת"
               }
             },
+            "firebaseWebApiKey": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Firebase Web — apiKey ציבורי (NEXT_PUBLIC). ריק = אימות טלפון בצד הלקוח מושבת"
+              }
+            },
+            "firebaseWebAuthDomain": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Firebase Web — authDomain ציבורי (NEXT_PUBLIC)"
+              }
+            },
+            "firebaseWebProjectId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Firebase Web — projectId ציבורי (NEXT_PUBLIC)"
+              }
+            },
+            "firebaseWebAppId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Firebase Web — appId ציבורי (NEXT_PUBLIC)"
+              }
+            },
+            "firebaseWebMessagingSenderId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Firebase Web — messagingSenderId ציבורי (NEXT_PUBLIC)"
+              }
+            },
             "tags": {
               "type": "object",
               "defaultValue": {},
@@ -853,7 +938,9 @@
             "authEnv": "[concat(if(empty(parameters('nextAuthSecret')), createArray(), createArray(createObject('name', 'NEXTAUTH_SECRET', 'secretRef', 'nextauth-secret'))), createArray(createObject('name', 'NEXTAUTH_URL', 'value', if(empty(parameters('nextAuthUrl')), parameters('appPublicUrl'), parameters('nextAuthUrl')))), if(empty(parameters('googleClientId')), createArray(), createArray(createObject('name', 'GOOGLE_CLIENT_ID', 'value', parameters('googleClientId')))), if(empty(parameters('googleClientSecret')), createArray(), createArray(createObject('name', 'GOOGLE_CLIENT_SECRET', 'secretRef', 'google-client-secret'))), if(empty(parameters('emailServer')), createArray(), createArray(createObject('name', 'EMAIL_SERVER', 'secretRef', 'email-server'))), if(empty(parameters('emailFrom')), createArray(), createArray(createObject('name', 'EMAIL_FROM', 'value', parameters('emailFrom')))))]",
             "firebaseConfigured": "[and(and(not(empty(parameters('firebaseProjectId'))), not(empty(parameters('firebaseClientEmail')))), not(empty(parameters('firebasePrivateKey'))))]",
             "firebaseSecrets": "[if(variables('firebaseConfigured'), createArray(createObject('name', 'firebase-private-key', 'value', parameters('firebasePrivateKey'))), createArray())]",
-            "firebaseEnv": "[if(variables('firebaseConfigured'), createArray(createObject('name', 'FIREBASE_PROJECT_ID', 'value', parameters('firebaseProjectId')), createObject('name', 'FIREBASE_CLIENT_EMAIL', 'value', parameters('firebaseClientEmail')), createObject('name', 'FIREBASE_PRIVATE_KEY', 'secretRef', 'firebase-private-key')), createArray())]"
+            "firebaseEnv": "[if(variables('firebaseConfigured'), createArray(createObject('name', 'FIREBASE_PROJECT_ID', 'value', parameters('firebaseProjectId')), createObject('name', 'FIREBASE_CLIENT_EMAIL', 'value', parameters('firebaseClientEmail')), createObject('name', 'FIREBASE_PRIVATE_KEY', 'secretRef', 'firebase-private-key')), createArray())]",
+            "firebaseWebConfigured": "[and(not(empty(parameters('firebaseWebApiKey'))), not(empty(parameters('firebaseWebAppId'))))]",
+            "firebasePublicEnv": "[if(variables('firebaseWebConfigured'), createArray(createObject('name', 'NEXT_PUBLIC_FIREBASE_API_KEY', 'value', parameters('firebaseWebApiKey')), createObject('name', 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', 'value', parameters('firebaseWebAuthDomain')), createObject('name', 'NEXT_PUBLIC_FIREBASE_PROJECT_ID', 'value', parameters('firebaseWebProjectId')), createObject('name', 'NEXT_PUBLIC_FIREBASE_APP_ID', 'value', parameters('firebaseWebAppId')), createObject('name', 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID', 'value', parameters('firebaseWebMessagingSenderId'))), createArray())]"
           },
           "resources": [
             {
@@ -893,7 +980,7 @@
                         "cpu": "[json(parameters('cpu'))]",
                         "memory": "[parameters('memory')]"
                       },
-                      "env": "[concat(createArray(createObject('name', 'DATABASE_URL', 'secretRef', 'database-url'), createObject('name', 'SESSION_SECRET', 'secretRef', 'session-secret'), createObject('name', 'OTP_PEPPER', 'secretRef', 'otp-pepper'), createObject('name', 'BUSINESS_TIMEZONE', 'value', parameters('businessTimezone')), createObject('name', 'MESSAGING_PROVIDER', 'value', parameters('messagingProvider')), createObject('name', 'NEXT_PUBLIC_APP_URL', 'value', parameters('appPublicUrl')), createObject('name', 'PORT', 'value', string(parameters('targetPort'))), createObject('name', 'HOSTNAME', 'value', '0.0.0.0')), variables('messagingSecretEnv'), variables('messagingConfigEnv'), variables('authEnv'), variables('firebaseEnv'))]"
+                      "env": "[concat(createArray(createObject('name', 'DATABASE_URL', 'secretRef', 'database-url'), createObject('name', 'SESSION_SECRET', 'secretRef', 'session-secret'), createObject('name', 'OTP_PEPPER', 'secretRef', 'otp-pepper'), createObject('name', 'BUSINESS_TIMEZONE', 'value', parameters('businessTimezone')), createObject('name', 'MESSAGING_PROVIDER', 'value', parameters('messagingProvider')), createObject('name', 'NEXT_PUBLIC_APP_URL', 'value', parameters('appPublicUrl')), createObject('name', 'PORT', 'value', string(parameters('targetPort'))), createObject('name', 'HOSTNAME', 'value', '0.0.0.0')), variables('messagingSecretEnv'), variables('messagingConfigEnv'), variables('authEnv'), variables('firebaseEnv'), variables('firebasePublicEnv'))]"
                     }
                   ],
                   "scale": {

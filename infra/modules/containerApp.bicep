@@ -101,6 +101,21 @@ param firebaseClientEmail string = ''
 @secure()
 param firebasePrivateKey string = ''
 
+@description('Firebase Web — apiKey ציבורי (NEXT_PUBLIC). ריק = אימות טלפון בצד הלקוח מושבת')
+param firebaseWebApiKey string = ''
+
+@description('Firebase Web — authDomain ציבורי (NEXT_PUBLIC)')
+param firebaseWebAuthDomain string = ''
+
+@description('Firebase Web — projectId ציבורי (NEXT_PUBLIC)')
+param firebaseWebProjectId string = ''
+
+@description('Firebase Web — appId ציבורי (NEXT_PUBLIC)')
+param firebaseWebAppId string = ''
+
+@description('Firebase Web — messagingSenderId ציבורי (NEXT_PUBLIC)')
+param firebaseWebMessagingSenderId string = ''
+
 @description('תגיות משאב')
 param tags object = {}
 
@@ -234,6 +249,34 @@ var firebaseEnv = firebaseConfigured ? [
   }
 ] : []
 
+// תצורת Firebase Web ציבורית (NEXT_PUBLIC_*) — ערכים ציבוריים לא סודיים הנצרכים
+// בצד הלקוח לאימות טלפון. נפלטים רק כאשר apiKey ו-appId קיימים (אדיטיבי, degrade
+// gracefully). קיבוע כאן מבטיח שפריסת תשתית (deployInfra) לא תמחק אותם.
+var firebaseWebConfigured = !empty(firebaseWebApiKey) && !empty(firebaseWebAppId)
+
+var firebasePublicEnv = firebaseWebConfigured ? [
+  {
+    name: 'NEXT_PUBLIC_FIREBASE_API_KEY'
+    value: firebaseWebApiKey
+  }
+  {
+    name: 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'
+    value: firebaseWebAuthDomain
+  }
+  {
+    name: 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'
+    value: firebaseWebProjectId
+  }
+  {
+    name: 'NEXT_PUBLIC_FIREBASE_APP_ID'
+    value: firebaseWebAppId
+  }
+  {
+    name: 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'
+    value: firebaseWebMessagingSenderId
+  }
+] : []
+
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
@@ -308,7 +351,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'HOSTNAME'
               value: '0.0.0.0'
             }
-          ], messagingSecretEnv, messagingConfigEnv, authEnv, firebaseEnv)
+          ], messagingSecretEnv, messagingConfigEnv, authEnv, firebaseEnv, firebasePublicEnv)
         }
       ]
       scale: {
