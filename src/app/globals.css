@@ -103,3 +103,25 @@ button {
     display: none;
   }
 }
+
+/* רצועת עדכונים — פס טקסט מתגלגל בעמוד הקליניקה הפרימיום */
+@keyframes tc-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.tc-ticker-track {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  will-change: transform;
+  animation: tc-marquee 28s linear infinite;
+}
+
+.tc-ticker:hover .tc-ticker-track {
+  animation-play-state: paused;
+}

@@ -51,9 +51,10 @@ test('landingContent — שורד את הנרמול ושומר על השדות �
   // שדות אופציונליים חדשים — חייבים לשרוד את הנרמול
   assert.ok(Array.isArray(normalized!.heroImages));
   assert.equal(normalized!.heroImages!.length, 2);
-  assert.ok(normalized!.launchOffer, 'launchOffer שורד');
-  assert.equal(normalized!.launchOffer!.spotsLeft, 7);
-  assert.equal(normalized!.launchOffer!.endsAt, '2026-08-31');
+  // רצועת העדכונים — טקסט ההכרזה חייב לשרוד את הנרמול ומזין את הפס הרץ בהירו הפרימיום.
+  assert.ok(normalized!.announcement && normalized!.announcement.length > 0, 'announcement שורד');
+  // פס מבצע ההשקה הוסר מברירת המחדל — הפרימיום מונע כעת מרצועת עדכונים ומ״מבצעים חמים״.
+  assert.equal(normalized!.launchOffer, undefined, 'launchOffer אינו חלק מברירת המחדל');
   assert.ok(normalized!.hotDeals, 'hotDeals שורד');
   assert.equal(normalized!.hotDeals!.images.length, 6);
 });

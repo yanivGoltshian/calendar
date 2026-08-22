@@ -79,6 +79,16 @@ export function StarIcon({ className }: IconProps) {
   );
 }
 
+export function MegaphoneIcon({ className }: IconProps) {
+  return (
+    <svg {...svgProps(className)}>
+      <path d="M3 11v2a1 1 0 0 0 1 1h2l3.5 3.5c.6.6 1.5.2 1.5-.7V7.2c0-.9-.9-1.3-1.5-.7L6 10H4a1 1 0 0 0-1 1Z" />
+      <path d="M15 8a4 4 0 0 1 0 8" />
+      <path d="M8 18.5V20a1.5 1.5 0 0 0 3 0v-1" />
+    </svg>
+  );
+}
+
 export function ArrowLeftIcon({ className }: IconProps) {
   return (
     <svg {...svgProps(className)}>

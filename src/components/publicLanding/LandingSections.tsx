@@ -16,6 +16,7 @@ import LandingAbout from './LandingAbout';
 import LandingLocation from './LandingLocation';
 import LandingSocialCta from './LandingSocialCta';
 import HotDealsCube from './HotDealsCube';
+import LandingBooking from './LandingBooking';
 import WhatsAppFab from './WhatsAppFab';
 
 type WorkingHour = { weekday: number; startMinute: number; endMinute: number };
@@ -59,6 +60,11 @@ export default function LandingSections({
 
   return (
     <>
+      {/* ווידג'ט קביעת תור אינליין — חלון ראווה יוקרתי במרכז העמוד, מוצג רק בפרימיום.
+          הבחירה מודגמת כאן והאישור הסופי מתבצע באשף קביעת התור המאובטח. */}
+      {isClinicPremium && services.length > 0 ? (
+        <LandingBooking services={services} bookHref={bookHref} labels={clinic.booking} />
+      ) : null}
       {sections.map((section) => {
         switch (section) {
           case 'highlights':

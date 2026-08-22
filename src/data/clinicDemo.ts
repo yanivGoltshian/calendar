@@ -169,12 +169,6 @@ export function buildClinicLandingContent(): LandingContent {
       instagram: CLINIC_IDENTITY.instagramUrl,
       facebook: CLINIC_IDENTITY.facebookUrl,
     },
-    // פס מבצע ההשקה — מזין את הספירה-לאחור. מוסתר אוטומטית אם יוסר.
-    launchOffer: {
-      text: 'מבצעי השקה לרגל פתיחת הקליניקה ביבנה',
-      spotsLeft: 7,
-      endsAt: '2026-08-31',
-    },
     // "מבצעים חמים" — שש תמונות טיפולים לקובייה התלת-ממדית (בלוק inline)
     hotDeals: {
       eyebrow: 'מבצעים חמים',

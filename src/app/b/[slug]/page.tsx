@@ -290,6 +290,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
           heroHeadline={heroHeadline}
           heroSubtext={heroSubtext}
           heroCtaLabel={heroCtaLabel}
+          updatesText={landing?.announcement ?? null}
           launchOffer={landing?.launchOffer}
           labels={{
             bookCta: clinicLabels.bookCta,
@@ -308,6 +309,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
             facebookAria: clinicLabels.facebookAria,
             heroImageAlt: clinicLabels.heroImageAlt,
             heroSecondaryCta: t.premiumLanding.heroSecondaryCta,
+            updatesLabel: clinicLabels.updatesLabel,
             countdown: clinicLabels.countdown,
           }}
         />
@@ -358,8 +360,8 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
           <BackButton />
         </div>
 
-        {/* שורת עדכון חי — נשלטת מעמוד ניהול העסק, לדוגמה הודעת חופשה */}
-        {isLanding && landing?.announcement ? (
+        {/* שורת עדכון חי — נשלטת מעמוד ניהול העסק, לדוגמה הודעת חופשה. בפרימיום מוצגת ברצועת הכותרת */}
+        {isLanding && !isClinicPremium && landing?.announcement ? (
           <AnnouncementBar text={landing.announcement} dismissAria={t.publicPage.landing.announcementDismiss} />
         ) : null}
 
