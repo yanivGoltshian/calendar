@@ -187,23 +187,27 @@ export default function PremiumClinicHeader({
 
       {/* פס מבצע ההשקה — עדין: טקסט · מקומות במחירי השקה · ימים שנותרו (ללא שעון מתקתק) */}
       {showOffer && launchOffer && countdown ? (
-        <div className="border-y border-[color:var(--c-gold,#c6a86a)]/30 bg-[color:var(--biz-soft)]">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-2.5 gap-y-1 px-5 py-2 text-center text-xs text-[color:var(--biz-strong)] sm:text-sm">
-            <span className="font-semibold">{launchOffer.text}</span>
+        <div
+          className="text-[#f4e9d6]"
+          style={{ backgroundImage: 'linear-gradient(90deg, var(--biz-ink) 0%, var(--biz-ink-strong) 100%)' }}
+        >
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-2.5 gap-y-1 px-5 py-2.5 text-center text-xs font-semibold sm:text-sm">
+            <span>{launchOffer.text}</span>
             {typeof launchOffer.spotsLeft === 'number' ? (
               <>
-                <span aria-hidden className="opacity-40">·</span>
+                <span aria-hidden className="text-[color:var(--c-gold,#c6a86a)]">·</span>
                 <span>
-                  {labels.offerRemaining} {launchOffer.spotsLeft} {labels.offerSpotsCalm}
+                  {labels.offerRemaining}{' '}
+                  <b className="font-bold text-white">{launchOffer.spotsLeft}</b> {labels.offerSpotsCalm}
                 </span>
               </>
             ) : null}
             {countdown.days > 0 ? (
               <>
-                <span aria-hidden className="opacity-40">·</span>
+                <span aria-hidden className="text-[color:var(--c-gold,#c6a86a)]">·</span>
                 <span>
                   {labels.offerRemaining}{' '}
-                  <span dir="ltr" className="tabular-nums">{countdown.days}</span> {labels.countdown.days}
+                  <b dir="ltr" className="font-bold tabular-nums text-white">{countdown.days}</b> {labels.countdown.days}
                 </span>
               </>
             ) : null}
