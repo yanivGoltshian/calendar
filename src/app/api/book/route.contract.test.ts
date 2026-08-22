@@ -85,67 +85,43 @@ test('זהות אורח: שם + טלפון תקין מתקבל ומנורמל ל
   }
 });
 
-test('זהות אורח: שם + מייל תקין מתקבל ומנורמל (lowercase/trim)', () => {
-  const r = resolveGuestIdentity('דנה', undefined, '  Dana@Example.COM ');
-  assert.equal(r.ok, true);
-  if (r.ok) {
-    assert.equal(r.email, 'dana@example.com');
-    assert.equal(r.phone, undefined);
-  }
+test('זהות אורח: טלפון חובה בכל מסלול — מייל ללא טלפון → phone_required', () => {
+  assert.deepEqual(resolveGuestIdentity('דנה', undefined, 'dana@example.com'), {
+    ok: false,
+    error: 'phone_required',
+  });
 });
 
-test('זהות אורח: חסר שם או חסרים גם טלפון וגם מייל → bad_request', () => {
-  assert.deepEqual(resolveGuestIdentity('', undefined, 'dana@example.com'), { ok: false, error: 'bad_request' });
-  assert.deepEqual(resolveGuestIdentity('דנה', undefined, undefined), { ok: false, error: 'bad_request' });
+test('זהות אורח: חסר שם → bad_request; חסר טלפון → phone_required', () => {
+  assert.deepEqual(resolveGuestIdentity('', '0501234567', 'dana@example.com'), { ok: false, error: 'bad_request' });
+  assert.deepEqual(resolveGuestIdentity('דנה', undefined, undefined), { ok: false, error: 'phone_required' });
   assert.deepEqual(resolveGuestIdentity('  ', '  '), { ok: false, error: 'bad_request' });
 });
 
-test('זהות אורח: טלפון לא-תקין → invalid_phone; מייל לא-תקין → invalid_email', () => {
-  // קווי-נייח נדחה כטלפון לא-נייד.
+test('זהות אורח: טלפון לא-תקין → invalid_phone; מייל לא-תקין (עם טלפון) → invalid_email', () => {
+  // קו-נייח נדחה כטלפון לא-נייד.
   assert.deepEqual(resolveGuestIdentity('דנה', '021234567'), { ok: false, error: 'invalid_phone' });
-  assert.deepEqual(resolveGuestIdentity('דנה', undefined, 'no-at-sign'), { ok: false, error: 'invalid_email' });
+  assert.deepEqual(resolveGuestIdentity('דנה', '0501234567', 'no-at-sign', { requireEmail: true }), {
+    ok: false,
+    error: 'invalid_email',
+  });
 });
 
-// --- מדיניות פרטי קשר לפי מסלול (route.ts: business.plan !== 'premium' → requireBoth) ---
+// --- מדיניות פרטי קשר לפי מסלול (route.ts: requiresClientEmail(plan) → requireEmail) ---
 
-// מראה של החלטת המסלול: סטנדרט (basic) מחייב שני פרטים, פרימיום מתיר אחד.
-function requireBothForPlan(plan: string): boolean {
-  return plan !== 'premium';
+// מראה של החלטת המסלול: מייל נדרש רק בפרימיום/אקסקלוסיב; טלפון תמיד חובה.
+function requireEmailForPlan(plan: string): boolean {
+  return plan === 'premium' || plan === 'exclusive';
 }
 
-test('מדיניות מסלול: basic דורש שני פרטים, premium דורש אחד', () => {
-  assert.equal(requireBothForPlan('basic'), true);
-  assert.equal(requireBothForPlan('premium'), false);
+test('מדיניות מסלול: סטנדרט (basic) לא דורש מייל; פרימיום/אקסקלוסיב דורשים מייל', () => {
+  assert.equal(requireEmailForPlan('basic'), false);
+  assert.equal(requireEmailForPlan('premium'), true);
+  assert.equal(requireEmailForPlan('exclusive'), true);
 });
 
-test('מדיניות סטנדרט (requireBoth): חובה גם טלפון וגם מייל', () => {
-  // חסר מייל → email_required; חסר טלפון → phone_required.
-  assert.deepEqual(
-    resolveGuestIdentity('דנה', '0501234567', undefined, { requireBoth: true }),
-    { ok: false, error: 'email_required' },
-  );
-  assert.deepEqual(
-    resolveGuestIdentity('דנה', undefined, 'dana@example.com', { requireBoth: true }),
-    { ok: false, error: 'phone_required' },
-  );
-  // שם ריק עדיין נכשל תחילה על bad_request.
-  assert.deepEqual(
-    resolveGuestIdentity('', '0501234567', 'dana@example.com', { requireBoth: true }),
-    { ok: false, error: 'bad_request' },
-  );
-});
-
-test('מדיניות סטנדרט (requireBoth): שני פרטים תקינים מתקבלים ומנורמלים', () => {
-  const r = resolveGuestIdentity('דנה', '050-123-4567', '  Dana@Example.COM ', { requireBoth: true });
-  assert.equal(r.ok, true);
-  if (r.ok) {
-    assert.equal(r.phone, '+972501234567');
-    assert.equal(r.email, 'dana@example.com');
-  }
-});
-
-test('מדיניות פרימיום (requireBoth=false): טלפון בלבד מתקבל', () => {
-  const r = resolveGuestIdentity('דנה', '0501234567', undefined, { requireBoth: false });
+test('מדיניות סטנדרט (requireEmail=false): שם + טלפון בלבד מתקבלים, מייל לא נדרש', () => {
+  const r = resolveGuestIdentity('דנה', '0501234567', undefined, { requireEmail: false });
   assert.equal(r.ok, true);
   if (r.ok) {
     assert.equal(r.phone, '+972501234567');
@@ -153,11 +129,29 @@ test('מדיניות פרימיום (requireBoth=false): טלפון בלבד מ�
   }
 });
 
-test('מדיניות פרימיום (requireBoth=false): מייל בלבד עדיין מתקבל (תאימות לאחור)', () => {
-  const r = resolveGuestIdentity('דנה', undefined, 'dana@example.com', { requireBoth: false });
+test('מדיניות פרימיום/אקסקלוסיב (requireEmail=true): חובה גם טלפון וגם מייל', () => {
+  // חסר מייל → email_required.
+  assert.deepEqual(
+    resolveGuestIdentity('דנה', '0501234567', undefined, { requireEmail: true }),
+    { ok: false, error: 'email_required' },
+  );
+  // חסר טלפון נבדק לפני מייל → phone_required.
+  assert.deepEqual(
+    resolveGuestIdentity('דנה', undefined, 'dana@example.com', { requireEmail: true }),
+    { ok: false, error: 'phone_required' },
+  );
+  // שם ריק עדיין נכשל תחילה על bad_request.
+  assert.deepEqual(
+    resolveGuestIdentity('', '0501234567', 'dana@example.com', { requireEmail: true }),
+    { ok: false, error: 'bad_request' },
+  );
+});
+
+test('מדיניות פרימיום/אקסקלוסיב (requireEmail=true): שני פרטים תקינים מתקבלים ומנורמלים', () => {
+  const r = resolveGuestIdentity('דנה', '050-123-4567', '  Dana@Example.COM ', { requireEmail: true });
   assert.equal(r.ok, true);
   if (r.ok) {
-    assert.equal(r.phone, undefined);
+    assert.equal(r.phone, '+972501234567');
     assert.equal(r.email, 'dana@example.com');
   }
 });

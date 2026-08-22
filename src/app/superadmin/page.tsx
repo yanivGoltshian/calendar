@@ -8,6 +8,7 @@ import InstallApp from '@/components/pwa/InstallApp';
 import {
   extendTrialAction,
   upgradePremiumAction,
+  upgradeExclusiveAction,
   revertToBasicAction,
   editBusinessDetailsAction,
 } from './actions';
@@ -326,6 +327,54 @@ export default async function SuperadminPage() {
                             style={{ backgroundColor: GOLD_MID, color: NAVY_EDGE }}
                           >
                             {s.upgrade.submit}
+                          </button>
+                        </form>
+
+                        {/* שדרוג לאקסקלוסיב */}
+                        <form action={upgradeExclusiveAction} className="flex flex-col gap-2">
+                          <input type="hidden" name="businessId" value={b.id} />
+                          <label>
+                            <span className="mb-1 block text-xs" style={{ color: TEXT_MUTED }}>
+                              {s.upgrade.paidUntilLabel}
+                            </span>
+                            <input
+                              type="date"
+                              name="paidUntil"
+                              required
+                              className={inputClass}
+                              style={inputStyle}
+                            />
+                          </label>
+                          <label>
+                            <span className="mb-1 block text-xs" style={{ color: TEXT_MUTED }}>
+                              {s.upgrade.amountLabel}
+                            </span>
+                            <input
+                              type="number"
+                              name="amountShekel"
+                              min={0}
+                              step="1"
+                              className={inputClass}
+                              style={inputStyle}
+                            />
+                          </label>
+                          <label>
+                            <span className="mb-1 block text-xs" style={{ color: TEXT_MUTED }}>
+                              {s.upgrade.notesLabel}
+                            </span>
+                            <input
+                              type="text"
+                              name="planNotes"
+                              className={inputClass}
+                              style={inputStyle}
+                            />
+                          </label>
+                          <button
+                            type="submit"
+                            className="min-h-[44px] rounded-lg px-3 py-2 text-xs font-bold"
+                            style={{ backgroundColor: GOLD_LIGHT, color: NAVY_EDGE }}
+                          >
+                            {s.upgradeExclusive.submit}
                           </button>
                         </form>
 

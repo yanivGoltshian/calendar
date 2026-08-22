@@ -18,8 +18,12 @@ import QuoteRequestForm, { type QuoteFormDefaults } from './QuoteRequestForm';
 
 type Variant = 'page' | 'paywall';
 
-function pickDefaultPlan(searchParamPlan?: string): 'STANDARD' | 'PREMIUM' {
-  return searchParamPlan === 'PREMIUM' ? 'PREMIUM' : 'STANDARD';
+function pickDefaultPlan(
+  searchParamPlan?: string,
+): 'STANDARD' | 'PREMIUM' | 'EXCLUSIVE' {
+  if (searchParamPlan === 'PREMIUM') return 'PREMIUM';
+  if (searchParamPlan === 'EXCLUSIVE') return 'EXCLUSIVE';
+  return 'STANDARD';
 }
 
 export default async function UpgradeQuote({
@@ -85,9 +89,15 @@ export default async function UpgradeQuote({
       </p>
 
       {!dark ? (
-        <div className="mb-8 grid gap-4 sm:grid-cols-2">
-          {(['standard', 'premium'] as const).map((key) => {
-            const plan = t.quote.plans[key];
+        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+          {(['standard', 'premium', 'exclusive'] as const).map((key) => {
+            const plan = (
+              t.quote.plans as unknown as Record<
+                string,
+                { name: string; tagline: string; features: string[] }
+              >
+            )[key];
+            if (!plan) return null;
             return (
               <div
                 key={key}

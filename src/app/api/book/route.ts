@@ -9,10 +9,18 @@ import {
 import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
 import { notifyOwnerOfBooking } from '@/server/notifications/ownerBooking';
+import { notifyClientOfBooking } from '@/server/notifications/bookingConfirmation';
+import { getBusinessAccess } from '@/server/subscription';
 import { absoluteUrl } from '@/lib/seo';
 import { getClientSession } from '@/lib/session';
 import { resolveGuestIdentity } from '@/server/booking/guestIdentity';
 import { checkBookRequestAllowed } from '@/server/repos/bookRateLimit';
+import {
+  canEmailClients,
+  canWhatsappClients,
+  requiresClientEmail,
+  schedulesReminders,
+} from '@/server/tier';
 import { t } from '@/i18n';
 
 const bodySchema = z.object({
@@ -66,9 +74,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
   }
 
-  // מדיניות פרטי קשר לפי מסלול: סטנדרט מחייב גם טלפון וגם מייל (בעל העסק מקבל תמיד
-  // טלפון, והמייל חינמי עד 500 ליום); פרימיום מתיר טלפון בלבד כהטבה.
-  const requireBothContacts = business.plan !== 'premium';
+  // מדיניות פרטי קשר לפי מסלול: שם + טלפון חובה בכל המסלולים (כולל סטנדרט). מייל נדרש
+  // רק בפרימיום/אקסקלוסיב, שם נשלח אישור הזמנה ותזכורות במייל וקיימת הרשמת לקוחות.
+  const requireEmail = requiresClientEmail(business.plan);
 
   // זהות הלקוח: מתוך ההתחברות אם קיימת (טלפון ו/או מייל), אחרת מפרטי הזמנת האורח.
   let clientPhone: string | undefined;
@@ -83,7 +91,7 @@ export async function POST(req: Request) {
   } else {
     // חוקת זהות אורח חולצה לפונקציה טהורה `resolveGuestIdentity` (משותפת עם המבחן).
     const guest = resolveGuestIdentity(parsed.name, parsed.phone, parsed.email, {
-      requireBoth: requireBothContacts,
+      requireEmail,
     });
     if (!guest.ok) {
       return NextResponse.json({ ok: false, error: guest.error }, { status: 400 });
@@ -163,10 +171,40 @@ export async function POST(req: Request) {
     status,
   });
 
-  // תזכורת לפי מדיניות (reminderLeadHours), לא לפני "עכשיו". השליחה עצמה תמומש ב-worker עתידי.
-  const reminderLeadMs = reminderLeadHours * 60 * 60 * 1000;
-  const sendAt = new Date(Math.max(startAt.getTime() - reminderLeadMs, Date.now() + 60_000));
-  await createReminder(appointment.id, sendAt);
+  // תזכורת רק במסלולים ששולחים תזכורות (פרימיום/אקסקלוסיב). בסטנדרט אין תקשורת ללקוח
+  // ולכן לא נקבעת תזכורת. השליחה עצמה תמומש ב-worker עתידי.
+  if (schedulesReminders(business.plan)) {
+    const reminderLeadMs = reminderLeadHours * 60 * 60 * 1000;
+    const sendAt = new Date(Math.max(startAt.getTime() - reminderLeadMs, Date.now() + 60_000));
+    await createReminder(appointment.id, sendAt);
+  }
+
+  // אישור הזמנה מיידי ללקוח בנתיב CONFIRMED לפי הרשאות המסלול (best-effort, לעולם לא
+  // חוסם). המנוי חייב להיות פעיל כדי לפתוח ערוצים בתשלום. בסטנדרט אין ערוצי תקשורת.
+  if (status === 'CONFIRMED') {
+    const access = getBusinessAccess(business);
+    const canEmail = access.active && canEmailClients(business.plan);
+    const canWhatsapp = access.active && canWhatsappClients(business.plan);
+    if (canEmail || canWhatsapp) {
+      try {
+        await notifyClientOfBooking({
+          appointmentId: appointment.id,
+          businessName: business.name,
+          clientName,
+          clientEmail: clientEmail ?? null,
+          clientPhone: clientPhone ?? null,
+          services: services.map((s) => ({ name: s.name })),
+          startAt,
+          timezone: business.timezone,
+          canEmail,
+          canWhatsapp,
+          manageUrl: absoluteUrl(`/b/${business.slug}`),
+        });
+      } catch {
+        // ההזמנה כבר נוצרה והוחזרה בהצלחה; כשל התראה אינו משפיע על התשובה.
+      }
+    }
+  }
 
   // התראת בעל העסק על הזמנה הממתינה לאישור (best-effort, לעולם לא חוסמת).
   // היעד הוא מייל העסק עצמו (ownerEmail / owner.email) — לא מייל הפלטפורמה.

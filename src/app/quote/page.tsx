@@ -12,9 +12,13 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-function pickDefaultPlan(searchParamPlan?: string): 'STANDARD' | 'PREMIUM' {
+function pickDefaultPlan(
+  searchParamPlan?: string,
+): 'STANDARD' | 'PREMIUM' | 'EXCLUSIVE' {
   const upper = searchParamPlan?.toUpperCase();
-  return upper === 'PREMIUM' ? 'PREMIUM' : 'STANDARD';
+  if (upper === 'PREMIUM') return 'PREMIUM';
+  if (upper === 'EXCLUSIVE') return 'EXCLUSIVE';
+  return 'STANDARD';
 }
 
 /**

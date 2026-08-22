@@ -21,7 +21,7 @@ import { notifyOwnerOfInquiry } from '@/server/notifications/ownerInquiry';
  */
 
 const schema = z.object({
-  plan: z.enum(['STANDARD', 'PREMIUM']),
+  plan: z.enum(['STANDARD', 'PREMIUM', 'EXCLUSIVE']),
   name: z.string().trim().min(1, 'name'),
   email: z.string().trim().email('email'),
   phone: z.string().trim().min(6, 'phone'),

@@ -12,12 +12,12 @@ import {
  * לוגיקה אמיתית (במקום שכפול). כל מזהה שסופק חייב לעבור ולידציה ומנורמל (טלפון ל-E.164,
  * מייל ל-lowercase/trim). קודי השגיאה נשמרים זהים למקור.
  *
- * מדיניות פרטי קשר לפי מסלול (`opts.requireBoth`):
- *   - ברירת מחדל / פרימיום (`requireBoth=false`): שם + לפחות אחד מבין טלפון/מייל, כך
- *     שהלקוח יכול למסור טלפון בלבד (הטבת פרימיום) ועסק מבוסס-מייל בלבד עובד גם הוא.
- *   - סטנדרט (`requireBoth=true`): שם + גם טלפון וגם מייל. שליחת SMS/וואטסאפ עולה כסף,
- *     ולכן במסלול הסטנדרט בעל העסק מקבל תמיד את הטלפון (גם אם אינו מאומת) לצד המייל
- *     (500 מיילים חינם ביום). קודי שגיאה ייעודיים: `phone_required` / `email_required`.
+ * מדיניות פרטי קשר לפי מסלול (`opts.requireEmail`):
+ *   - שם + טלפון הם חובה בכל המסלולים (כולל סטנדרט). כך בעל העסק תמיד מקבל טלפון ליצירת
+ *     קשר, וההזמנה נעשית כאורח ללא הרשמה.
+ *   - מייל נדרש רק בפרימיום/אקסקלוסיב (`requireEmail=true`), שכן שם נשלח אישור הזמנה
+ *     ותזכורות במייל וקיימת הרשמת לקוחות. בסטנדרט המייל אינו נאסף כלל.
+ *   - קודי שגיאה ייעודיים: `phone_required` (חסר טלפון) / `email_required` (חסר מייל בפרימיום/אקסקלוסיב).
  */
 
 export type GuestIdentityResult =
@@ -28,25 +28,26 @@ export function resolveGuestIdentity(
   name?: string,
   phone?: string,
   email?: string,
-  opts?: { requireBoth?: boolean },
+  opts?: { requireEmail?: boolean },
 ): GuestIdentityResult {
   const guestName = name?.trim();
   const guestPhone = phone?.trim();
   const guestEmail = email?.trim();
-  const requireBoth = opts?.requireBoth ?? false;
+  const requireEmail = opts?.requireEmail ?? false;
 
   // שם הוא חובה בכל מסלול.
   if (!guestName) {
     return { ok: false, error: 'bad_request' };
   }
 
-  if (requireBoth) {
-    // מסלול סטנדרט: חובה גם טלפון וגם מייל.
-    if (!guestPhone) return { ok: false, error: 'phone_required' };
-    if (!guestEmail) return { ok: false, error: 'email_required' };
-  } else if (!guestPhone && !guestEmail) {
-    // מסלול פרימיום/ברירת מחדל: לפחות אחד מבין טלפון/מייל (לעולם לא שניהם כפויים).
-    return { ok: false, error: 'bad_request' };
+  // טלפון הוא חובה בכל המסלולים (סטנדרט/פרימיום/אקסקלוסיב).
+  if (!guestPhone) {
+    return { ok: false, error: 'phone_required' };
+  }
+
+  // מייל נדרש רק בפרימיום/אקסקלוסיב (אישור/תזכורת במייל + הרשמה).
+  if (requireEmail && !guestEmail) {
+    return { ok: false, error: 'email_required' };
   }
 
   let outPhone: string | undefined;

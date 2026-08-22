@@ -234,7 +234,8 @@ const he = {
     confirmBooking: 'אישור וקביעת התור',
     selectAtLeastOne: 'יש לבחור לפחות שירות אחד',
     bookingSuccessTitle: 'התור נקבע בהצלחה!',
-    bookingSuccessBody: 'נשלח אליכם אישור. נתראה בקרוב.',
+    bookingSuccessBody: 'נשלח אליכם אישור באימייל. נתראה בקרוב.',
+    bookingSuccessBodyNoComms: 'התור נקבע. נתראה בקרוב.',
     pendingTitle: 'הבקשה התקבלה וממתינה לאישור',
     pendingBody: 'העסק יאשר את התור בקרוב. נעדכן אתכם כשההזמנה תאושר.',
     bookAnother: 'קביעת תור נוסף',
@@ -248,8 +249,8 @@ const he = {
     guestEmail: 'כתובת אימייל',
     guestEmailPlaceholder: 'name@example.com',
     guestHint: 'להשלמת הקביעה נותרו רק השם ופרט התקשרות אחד (טלפון או אימייל). אישור העסק יישלח אליכם בהמשך.',
-    guestHintStandard: 'להשלמת הקביעה יש למלא שם, טלפון ואימייל. אישור העסק יישלח אליכם בהמשך.',
-    guestHintPremium: 'להשלמת הקביעה יש למלא שם וטלפון. אימייל הוא רשות. אישור העסק יישלח אליכם בהמשך.',
+    guestHintStandard: 'להשלמת הקביעה יש למלא שם וטלפון.',
+    guestHintPremium: 'להשלמת הקביעה יש למלא שם, טלפון ואימייל. אישור התור יישלח אליכם באימייל.',
     guestEmailOptional: 'כתובת אימייל (רשות)',
     guestMissingFields: 'יש למלא שם וטלפון או אימייל.',
     phoneRequired: 'יש להזין מספר טלפון.',
@@ -1916,8 +1917,9 @@ const he = {
       callCta: 'לתיאום שיחה או פגישה עסקית',
     },
     plan: {
-      basic: 'בסיס',
+      basic: 'סטנדרט',
       premium: 'פרימיום',
+      exclusive: 'אקסקלוסיב',
     },
     status: {
       trialing: 'בתקופת ניסיון',
@@ -1976,6 +1978,10 @@ const he = {
         amountLabel: 'סכום שסוכם (₪)',
         notesLabel: 'הערה (אופציונלי)',
         submit: 'שדרוג לפרימיום',
+      },
+      upgradeExclusive: {
+        title: 'שדרוג לאקסקלוסיב',
+        submit: 'שדרוג לאקסקלוסיב',
       },
       revert: {
         title: 'החזרה לבסיס',

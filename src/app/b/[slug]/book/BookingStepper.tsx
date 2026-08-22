@@ -24,7 +24,7 @@ type Props = {
   services: Service[];
   staff: Staff[];
   preselectedServiceId?: string | null;
-  plan: 'basic' | 'premium';
+  plan: 'basic' | 'premium' | 'exclusive';
 };
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
@@ -46,8 +46,9 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
   // מצב אישור הזמנת אורח (ללא OTP). מדיניות פרטי הקשר נגזרת ממסלול העסק:
-  // סטנדרט מחייב גם טלפון וגם מייל; פרימיום מתיר טלפון בלבד (מייל רשות).
-  const requireBothContacts = plan !== 'premium';
+  // בכל המסלולים שם וטלפון חובה. מייל נדרש רק בפרימיום/אקסקלוסיב (לאישור, תזכורות
+  // והרשמת לקוח); בסטנדרט שדה המייל מוסתר כי אין תקשורת ללקוח הקצה.
+  const requireEmail = plan === 'premium' || plan === 'exclusive';
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -177,7 +178,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
           {isPending ? t.booking.pendingTitle : t.booking.bookingSuccessTitle}
         </h1>
         <p className="text-slate-600">
-          {isPending ? t.booking.pendingBody : t.booking.bookingSuccessBody}
+          {isPending ? t.booking.pendingBody : (requireEmail ? t.booking.bookingSuccessBody : t.booking.bookingSuccessBodyNoComms)}
         </p>
         <Link
           href={`/b/${slug}`}
@@ -395,7 +396,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
       {/* ----- שלב 5: אישור (הזמנת אורח, ללא OTP) ----- */}
       {step === 5 ? (
         <div className="space-y-4">
-          <p className="text-slate-600">{requireBothContacts ? t.booking.guestHintStandard : t.booking.guestHintPremium}</p>
+          <p className="text-slate-600">{requireEmail ? t.booking.guestHintPremium : t.booking.guestHintStandard}</p>
           <div>
             <label className="mb-1 block text-sm text-slate-600">{t.booking.guestName}</label>
             <input
@@ -419,24 +420,24 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
               className="w-full rounded-xl border border-slate-300 px-4 py-3"
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm text-slate-600">
-              {requireBothContacts ? t.booking.guestEmail : t.booking.guestEmailOptional}
-            </label>
-            <input
-              type="email"
-              inputMode="email"
-              dir="ltr"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t.booking.guestEmailPlaceholder}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3"
-            />
-          </div>
+          {requireEmail ? (
+            <div>
+              <label className="mb-1 block text-sm text-slate-600">{t.booking.guestEmail}</label>
+              <input
+                type="email"
+                inputMode="email"
+                dir="ltr"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t.booking.guestEmailPlaceholder}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3"
+              />
+            </div>
+          ) : null}
           <button
             type="button"
-            disabled={busy || !name.trim() || !phone.trim() || (requireBothContacts && !email.trim())}
+            disabled={busy || !name.trim() || !phone.trim() || (requireEmail && !email.trim())}
             onClick={submitBooking}
             className="w-full rounded-xl bg-brand-600 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-40"
           >

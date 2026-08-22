@@ -41,7 +41,7 @@ function daysUntil(target: Date | null, nowMs: number): number {
 
 /**
  * חישוב מצב הגישה של עסק לפי החבילה והתאריכים. מחושב תמיד מחדש על קריאה.
- * - פרימיום עם paidUntil בעתיד ⇐ active.
+ * - פרימיום/אקסקלוסיב עם paidUntil בעתיד ⇐ active (שניהם מסלולים בתשלום).
  * - בסיס עם trialEndsAt בעתיד ⇐ trialing.
  * - אחרת ⇐ expired (חסום).
  */
@@ -49,12 +49,14 @@ export function getBusinessAccess(business: BusinessAccessInput): BusinessAccess
   const nowMs = Date.now();
   const { plan, trialEndsAt, paidUntil } = business;
 
-  const premiumActive =
-    plan === 'premium' && paidUntil != null && paidUntil.getTime() > nowMs;
+  // מסלולים בתשלום — פרימיום ואקסקלוסיב. הבסיס (סטנדרט) הוא מסלול הניסיון/החינם.
+  const paidPlan = plan === 'premium' || plan === 'exclusive';
+  const paidActive =
+    paidPlan && paidUntil != null && paidUntil.getTime() > nowMs;
   const trialActive =
-    plan !== 'premium' && trialEndsAt != null && trialEndsAt.getTime() > nowMs;
+    !paidPlan && trialEndsAt != null && trialEndsAt.getTime() > nowMs;
 
-  if (premiumActive) {
+  if (paidActive) {
     return {
       active: true,
       state: 'active',
@@ -88,7 +90,9 @@ export function describeAccessState(state: AccessState): string {
   return t.billing.status[state];
 }
 
-/** תווית עברית קריאה לשם החבילה. */
+/** תווית עברית קריאה לשם החבילה (סטנדרט / פרימיום / אקסקלוסיב). */
 export function describePlan(plan: BusinessPlan): string {
-  return plan === 'premium' ? t.billing.plan.premium : t.billing.plan.basic;
+  if (plan === 'exclusive') return t.billing.plan.exclusive;
+  if (plan === 'premium') return t.billing.plan.premium;
+  return t.billing.plan.basic;
 }

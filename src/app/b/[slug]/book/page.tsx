@@ -41,7 +41,7 @@ export default async function BookPage({ params, searchParams }: Props) {
         services={services}
         staff={staff}
         preselectedServiceId={preselectedServiceId}
-        plan={business.plan === 'premium' ? 'premium' : 'basic'}
+        plan={business.plan}
       />
     </main>
   );

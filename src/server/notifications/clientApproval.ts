@@ -7,10 +7,10 @@ import { formatDateString, formatLongDate, formatTime } from '@/lib/time';
  * התראת הלקוח על אישור התור על ידי בעל העסק (מעבר PENDING → CONFIRMED).
  *
  * עקרונות:
- *  - מייל נשלח ללקוח כאשר יש לו כתובת מייל, דרך תשתית המייל הקיימת (sendEmail),
- *    שנופלת בחן ל-console כשאין SMTP ולכן לעולם אינה חוסמת את האישור.
- *  - הודעת טקסט (WhatsApp, ובנפילה SMS) נשלחת רק בעסקי פרימיום ורק כשיש טלפון,
- *    מפני שערוצי ההודעות בתשלום. בבסיס נשלח מייל בלבד.
+ *  - מייל נשלח ללקוח בפרימיום/אקסקלוסיב כאשר יש לו כתובת מייל, דרך תשתית המייל הקיימת
+ *    (sendEmail), שנופלת בחן ל-console כשאין SMTP ולכן לעולם אינה חוסמת את האישור.
+ *  - הודעת וואטסאפ נשלחת רק בעסקי אקסקלוסיב ורק כשיש טלפון, מפני שערוץ ההודעות בתשלום.
+ *    בסטנדרט אין ערוצי תקשורת ללקוח כלל.
  *  - הפונקציה לעולם אינה זורקת: כל ערוץ עטוף ב-try/catch ומחזיר תוצאה מובנית.
  *    אישור התור וההתמדה קורים *לפני* הקריאה הזו, כך שדבר לא אובד גם אם ההתראה נכשלת.
  */
@@ -37,8 +37,10 @@ export type ClientApprovalPayload = {
   startAt: Date;
   /** אזור הזמן של העסק (לעיצוב תאריך/שעה). */
   timezone: string;
-  /** האם העסק בפרימיום פעיל — שער לערוצי ההודעות בתשלום. */
-  isPremium: boolean;
+  /** האם העסק שולח מיילים ללקוח (פרימיום/אקסקלוסיב) — שער ערוץ המייל. */
+  canEmail: boolean;
+  /** האם העסק שולח וואטסאפ ללקוח (אקסקלוסיב) — שער ערוץ ההודעות בתשלום. */
+  canWhatsapp: boolean;
   /** קישור מוחלט לעמוד העסק/התור (אופציונלי). */
   manageUrl?: string | null;
 };
@@ -114,7 +116,8 @@ export function buildApprovalMessage(payload: ClientApprovalPayload): string {
 
 /**
  * שליחת התראת אישור התור ללקוח. לעולם אינו זורק.
- * מייל בכל החבילות (כשיש מייל); WhatsApp/SMS רק בפרימיום (כשיש טלפון).
+ * מייל בפרימיום/אקסקלוסיב (כשיש מייל); וואטסאפ רק באקסקלוסיב (כשיש טלפון).
+ * בסטנדרט אין ערוצי תקשורת ללקוח ולכן לא נשלחת התראה.
  */
 export async function notifyClientOfApproval(
   payload: ClientApprovalPayload,
@@ -128,8 +131,8 @@ export async function notifyClientOfApproval(
   const email = payload.clientEmail?.trim() || null;
   const phone = payload.clientPhone?.trim() || null;
 
-  // ── ערוץ 1: מייל ללקוח (בכל החבילות, כשיש כתובת) ─────────────────────────
-  if (!email) {
+  // ── ערוץ 1: מייל ללקוח (פרימיום/אקסקלוסיב בלבד, כשיש כתובת) ───────────────
+  if (!payload.canEmail || !email) {
     emailSkipped = true;
   } else {
     try {
@@ -143,8 +146,8 @@ export async function notifyClientOfApproval(
     }
   }
 
-  // ── ערוץ 2: הודעת טקסט — פרימיום בלבד (ערוץ בתשלום), כשיש טלפון ──────────
-  if (payload.isPremium && phone) {
+  // ── ערוץ 2: הודעת וואטסאפ — אקסקלוסיב בלבד (ערוץ בתשלום), כשיש טלפון ──────
+  if (payload.canWhatsapp && phone) {
     const message = buildApprovalMessage(payload);
     try {
       await sendWhatsApp(phone, message);

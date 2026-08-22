@@ -87,6 +87,42 @@ export async function upgradePremiumAction(formData: FormData): Promise<void> {
   revalidatePath('/superadmin');
 }
 
+/** שדרוג לאקסקלוסיב: plan=exclusive, active, paidUntil, סכום ידני (₪→אגורות), premiumSince, הערה. */
+export async function upgradeExclusiveAction(formData: FormData): Promise<void> {
+  await assertPlatformAdmin();
+  const businessId = readBusinessId(formData);
+
+  const paidUntilRaw = String(formData.get('paidUntil') ?? '').trim();
+  const paidUntil = paidUntilRaw ? new Date(paidUntilRaw) : null;
+  // חובה תאריך תקף להמשך התשלום.
+  if (!paidUntil || Number.isNaN(paidUntil.getTime())) {
+    return;
+  }
+
+  const amountShekelRaw = Number(formData.get('amountShekel'));
+  const manualAmountAgorot =
+    Number.isFinite(amountShekelRaw) && amountShekelRaw > 0
+      ? Math.round(amountShekelRaw * 100)
+      : null;
+
+  const notesRaw = String(formData.get('planNotes') ?? '').trim();
+  const planNotes = notesRaw.length > 0 ? notesRaw : null;
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: {
+      plan: 'exclusive',
+      subscriptionStatus: 'active',
+      paidUntil,
+      manualAmountAgorot,
+      premiumSince: new Date(),
+      planNotes,
+    },
+  });
+
+  revalidatePath('/superadmin');
+}
+
 /** החזרה לבסיס: plan=basic, חישוב סטטוס מחדש מ-trialEndsAt (trialing אם בעתיד, אחרת expired). */
 export async function revertToBasicAction(formData: FormData): Promise<void> {
   await assertPlatformAdmin();

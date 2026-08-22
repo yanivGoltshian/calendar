@@ -5,7 +5,7 @@ import { t } from '@/i18n';
 import { submitQuoteRequest, type QuoteRequestState } from './actions';
 
 export type QuoteFormDefaults = {
-  plan: 'STANDARD' | 'PREMIUM';
+  plan: 'STANDARD' | 'PREMIUM' | 'EXCLUSIVE';
   name: string;
   email: string;
   phone: string;
@@ -24,6 +24,10 @@ const inputClass =
 export default function QuoteRequestForm({ defaults }: { defaults: QuoteFormDefaults }) {
   const [state, formAction, pending] = useActionState(submitQuoteRequest, initialState);
   const f = t.quote.form;
+  const plansCopy = t.quote.plans as unknown as Record<
+    string,
+    { name: string; tagline: string; features?: string[] }
+  >;
 
   const errorText =
     state.error === 'auth'
@@ -58,9 +62,10 @@ export default function QuoteRequestForm({ defaults }: { defaults: QuoteFormDefa
         <span className="mb-2 block text-sm font-semibold text-slate-800">
           {f.planLabel}
         </span>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {(['STANDARD', 'PREMIUM'] as const).map((code) => {
-            const plan = code === 'PREMIUM' ? t.quote.plans.premium : t.quote.plans.standard;
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(['STANDARD', 'PREMIUM', 'EXCLUSIVE'] as const).map((code) => {
+            const plan = plansCopy[code.toLowerCase()];
+            if (!plan) return null;
             return (
               <label
                 key={code}

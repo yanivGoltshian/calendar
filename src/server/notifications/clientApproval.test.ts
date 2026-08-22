@@ -17,7 +17,9 @@ const basePayload: ClientApprovalPayload = {
   services: [{ name: 'תספורת' }, { name: 'צבע' }],
   startAt: new Date('2026-08-25T09:30:00.000Z'),
   timezone: 'Asia/Jerusalem',
-  isPremium: true,
+  // ברירת מחדל לבדיקות: אקסקלוסיב (מייל + וואטסאפ).
+  canEmail: true,
+  canWhatsapp: true,
   manageUrl: 'http://localhost:3000/b/demo',
 };
 
@@ -45,7 +47,7 @@ test('buildApprovalMessage בונה הודעת טקסט קצרה עם שם הע�
   assert.ok(message.includes('אושר'));
 });
 
-test('notifyClientOfApproval שולח מייל והודעה בפרימיום ואינו זורק', async () => {
+test('אקסקלוסיב: שולח מייל והודעת וואטסאפ ואינו זורק', async () => {
   const result = await notifyClientOfApproval(basePayload);
   assert.equal(result.emailSkipped, false);
   assert.equal(result.emailed, true);
@@ -55,23 +57,35 @@ test('notifyClientOfApproval שולח מייל והודעה בפרימיום ו�
   assert.deepEqual(result.errors, []);
 });
 
-test('notifyClientOfApproval מדלג בחן על מייל כשאין ללקוח כתובת', async () => {
+test('מדלג בחן על מייל כשאין ללקוח כתובת (גם אם canEmail)', async () => {
   const result = await notifyClientOfApproval({ ...basePayload, clientEmail: null });
   assert.equal(result.emailSkipped, true);
   assert.equal(result.emailed, false);
   assert.deepEqual(result.errors, []);
 });
 
-test('notifyClientOfApproval אינו שולח הודעת טקסט בחבילת בסיס', async () => {
-  const result = await notifyClientOfApproval({ ...basePayload, isPremium: false });
+test('סטנדרט: אין ערוצי תקשורת ללקוח — לא מייל ולא וואטסאפ', async () => {
+  const result = await notifyClientOfApproval({
+    ...basePayload,
+    canEmail: false,
+    canWhatsapp: false,
+  });
+  assert.equal(result.emailed, false);
+  assert.equal(result.emailSkipped, true);
   assert.equal(result.messaged, false);
   assert.equal(result.messageChannel, null);
-  // מייל עדיין נשלח בבסיס.
-  assert.equal(result.emailed, true);
   assert.deepEqual(result.errors, []);
 });
 
-test('notifyClientOfApproval אינו שולח הודעה כשאין טלפון גם בפרימיום', async () => {
+test('פרימיום: שולח מייל אך לא וואטסאפ (ערוץ הודעות רק באקסקלוסיב)', async () => {
+  const result = await notifyClientOfApproval({ ...basePayload, canWhatsapp: false });
+  assert.equal(result.emailed, true);
+  assert.equal(result.messaged, false);
+  assert.equal(result.messageChannel, null);
+  assert.deepEqual(result.errors, []);
+});
+
+test('אקסקלוסיב ללא טלפון: לא נשלחת הודעת וואטסאפ, המייל עדיין נשלח', async () => {
   const result = await notifyClientOfApproval({ ...basePayload, clientPhone: null });
   assert.equal(result.messaged, false);
   assert.equal(result.messageChannel, null);

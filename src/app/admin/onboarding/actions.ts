@@ -6,6 +6,7 @@ import { getActiveBusiness } from '@/server/repos/business';
 import {
   updateBusinessProfile,
   setOnboardingCompleted,
+  markOnboardingStep,
   type BusinessProfileInput,
 } from '@/server/repos/settings';
 import { createService, setServiceHidden } from '@/server/repos/services';
@@ -127,6 +128,7 @@ export async function saveServices(_prev: SaveState, fd: FormData): Promise<Save
     });
   }
 
+  await markOnboardingStep(business.id, 'services');
   revalidateAll(business.slug);
   return { ok: true };
 }
@@ -151,6 +153,7 @@ export async function saveHours(_prev: SaveState, fd: FormData): Promise<SaveSta
   }
 
   await setBusinessHours(business.id, hours);
+  await markOnboardingStep(business.id, 'hours');
   revalidateAll(business.slug);
   return { ok: true };
 }
@@ -178,6 +181,10 @@ export async function saveBranding(_prev: SaveState, fd: FormData): Promise<Save
 
   await updateBusinessProfile(business.id, profile);
   await setOnboardingCompleted(business.id, true);
+  // סימון צעד המיתוג רק כשקיים מיתוג ממשי (לוגו וגם צבע מותג).
+  if (profile.logoUrl && profile.brandColor) {
+    await markOnboardingStep(business.id, 'branding');
+  }
   revalidateAll(business.slug);
   return { ok: true };
 }
@@ -213,6 +220,10 @@ export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promis
   };
 
   await updateBusinessProfile(business.id, profile);
+  // סימון צעד התוכן העשיר רק כשנשמר תוכן נחיתה ממשי (לא NULL).
+  if (landingContent !== null) {
+    await markOnboardingStep(business.id, 'richContent');
+  }
   revalidateAll(business.slug);
   return { ok: true };
 }

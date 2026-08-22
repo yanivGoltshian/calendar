@@ -8,6 +8,7 @@ import {
 } from '@/server/repos/appointments';
 import { getBusinessAccess } from '@/server/subscription';
 import { notifyClientOfApproval } from '@/server/notifications/clientApproval';
+import { canEmailClients, canWhatsappClients } from '@/server/tier';
 import { absoluteUrl } from '@/lib/seo';
 
 /**
@@ -45,8 +46,11 @@ export async function approveAppointmentAction(formData: FormData) {
 
   if (!wasPending) return;
 
+  // ערוצי התקשורת נגזרים מהמסלול (tier) בזמן ריצה, כך ששדרוג משתקף מיד. המנוי חייב
+  // להיות פעיל כדי לפתוח ערוצים בתשלום.
   const access = getBusinessAccess(business);
-  const isPremium = business.plan === 'premium' && access.active;
+  const canEmail = access.active && canEmailClients(business.plan);
+  const canWhatsapp = access.active && canWhatsappClients(business.plan);
 
   try {
     await notifyClientOfApproval({
@@ -58,7 +62,8 @@ export async function approveAppointmentAction(formData: FormData) {
       services: appt.services.map((s) => ({ name: s.nameSnapshot })),
       startAt: appt.startAt,
       timezone: business.timezone,
-      isPremium,
+      canEmail,
+      canWhatsapp,
       manageUrl: absoluteUrl(`/b/${business.slug}`),
     });
   } catch {

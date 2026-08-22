@@ -29,6 +29,7 @@ import {
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
+import { visualLevelForPublicPage } from '@/server/onboardingProgress';
 import ShareBusiness from '@/components/publicLanding/ShareBusiness';
 import BackButton from '@/components/publicLanding/BackButton';
 import AnnouncementBar from '@/components/publicLanding/AnnouncementBar';
@@ -82,10 +83,23 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
       : styleParam === 'booking'
         ? 'BOOKING'
         : normalizePublicPageStyle(business.publicPageStyle);
-  const isLanding = pageStyle === 'LANDING';
+  const styleIsLanding = pageStyle === 'LANDING';
   const iconKey = sectionIconKey(business.type);
 
   const landing = normalizeLandingContent(business.landingContent);
+  // רמת העיטור נגזרת מהתקדמות האונבורדינג (0..3), לא מהחבילה. עסק סטנדרט שהשלים
+  // את כל האונבורדינג מגיע לרמה 3 — המראה הפרימיום המלא. דילוג ⇐ עמוד פשוט יותר.
+  const onboarding = visualLevelForPublicPage({
+    onboardingSteps: business.settings?.onboardingSteps ?? null,
+    servicesCount: services.length,
+    workingHoursCount: business.workingHours.length,
+    logoUrl: business.logoUrl,
+    brandColor: business.brandColor,
+    hasLandingContent: landing != null,
+  });
+  const visualLevel = onboarding.visualLevel;
+  // פריסת נחיתה: כשהסגנון LANDING, או כשהאונבורדינג הגיע לרמה 2+ (נחיתה עשירה קיימת).
+  const isLanding = styleIsLanding || visualLevel >= 2;
   const defaults = landingDefaults(business.type);
   const heroHeadline = landing?.heroHeadline ?? defaults.heroHeadline;
   const heroSubtext = landing?.heroSubtext ?? defaults.heroSubtext;
@@ -98,7 +112,11 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
 
   // עמוד פרימיום של קליניקה — מזוהה לפי נוכחות launchOffer או hotDeals בתוכן הנחיתה.
   // רק אז מוחלת הפלטה החמה (זהב/קרם) והכותרת הייעודית, בלי לפגוע בשאר העסקים.
-  const isClinicPremium = isLanding && Boolean(landing?.launchOffer || landing?.hotDeals);
+  // מראה הקליניקה הפרימיום: כשקיים מבצע/דילים בתוכן הנחיתה, או כשהאונבורדינג הושלם
+  // במלואו (רמה 3) — כך גם עסק סטנדרט שהשלים הכול מקבל את המראה המלא.
+  const isClinicPremium =
+    (isLanding && Boolean(landing?.launchOffer || landing?.hotDeals)) ||
+    (visualLevel >= 3 && landing != null);
   const todayWorkingHours = hoursByDay.get(todayIdx);
   const todayHours = todayWorkingHours
     ? `${formatMinutes(todayWorkingHours.startMinute)}–${formatMinutes(todayWorkingHours.endMinute)}`

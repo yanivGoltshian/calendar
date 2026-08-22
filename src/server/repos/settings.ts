@@ -2,6 +2,10 @@ import { prisma } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import type { BusinessType, PublicPageStyle, ReminderChannel } from '@prisma/client';
 import type { LandingContent } from '@/lib/publicPageStyle';
+import {
+  parseOnboardingSteps,
+  type OnboardingStepKey,
+} from '@/server/onboardingProgress';
 
 /**
  * Repo של מודול ההקמה וההגדרות.
@@ -123,5 +127,29 @@ export async function setOnboardingCompleted(businessId: string, completed: bool
     where: { businessId },
     update: { onboardingCompleted: completed },
     create: { businessId, onboardingCompleted: completed },
+  });
+}
+
+/**
+ * סימון צעד אונבורדינג יחיד כהושלם ב-BusinessSettings.onboardingSteps (JSON).
+ * קורא את ה-JSON הקיים, מוסיף את הצעד כ-true, ומסיר אותו מרשימת ה-skipped אם היה.
+ * זהו מקור האמת המפורש לרמת העיטור של העמוד הציבורי (מעל אותות המידע), כך
+ * שהשלמת צעד נשמרת גם אם בהמשך מסתירים שירות או משנים נתון.
+ */
+export async function markOnboardingStep(businessId: string, step: OnboardingStepKey) {
+  const existing = await prisma.businessSettings.findUnique({
+    where: { businessId },
+    select: { onboardingSteps: true },
+  });
+  const current = parseOnboardingSteps(existing?.onboardingSteps);
+  const skipped = (current.skipped ?? []).filter((s) => s !== step);
+  const next: Record<string, unknown> = { ...current, [step]: true };
+  if (skipped.length > 0) next.skipped = skipped;
+  else delete next.skipped;
+
+  return prisma.businessSettings.upsert({
+    where: { businessId },
+    update: { onboardingSteps: next as Prisma.InputJsonValue },
+    create: { businessId, onboardingSteps: next as Prisma.InputJsonValue },
   });
 }

@@ -18,7 +18,7 @@ import {
  *    ההתמדה במסד קורית *לפני* הקריאה הזו, כך שדבר לא אובד גם אם כל הערוצים נכשלים.
  */
 
-export type RequestedPlanCode = 'STANDARD' | 'PREMIUM';
+export type RequestedPlanCode = 'STANDARD' | 'PREMIUM' | 'EXCLUSIVE';
 
 export type OwnerInquiryPayload = {
   id: string;
@@ -46,6 +46,9 @@ export type NotifyOwnerResult = {
 
 /** תווית עברית קריאה לחבילה המבוקשת (לגוף ההתראה). */
 function planLabel(plan: RequestedPlanCode): string {
+  if (plan === 'EXCLUSIVE') {
+    return 'Exclusive · כל מה שבפרימיום בתוספת תקשורת וואטסאפ ללקוחות';
+  }
   return plan === 'PREMIUM'
     ? 'Premium · עמוד נחיתה עשיר ומלא'
     : 'Standard · עמוד עסק ומערכת קביעת תורים';

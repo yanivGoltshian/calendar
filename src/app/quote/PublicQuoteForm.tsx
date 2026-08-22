@@ -10,7 +10,7 @@ import { buildWhatsappQuoteLink } from '@/lib/whatsappQuote';
 
 export type PublicQuoteDefaults = {
   mode: 'owner' | 'visitor';
-  plan: 'STANDARD' | 'PREMIUM';
+  plan: 'STANDARD' | 'PREMIUM' | 'EXCLUSIVE';
   name: string;
   email: string;
   phone: string;
@@ -38,7 +38,16 @@ export default function PublicQuoteForm({
   const f = t.quote.form;
   const w = t.quote.whatsapp;
 
-  const [plan, setPlan] = useState<'STANDARD' | 'PREMIUM'>(defaults.plan);
+  // עותק החבילות מגיע מבלוק השיווק (t.quote.plans). קריאה גמישה לפי קוד החבילה
+  // כדי ש-exclusive יוצג ברגע שהעותק קיים, בלי לשבור טיפוסים אם עדיין חסר.
+  const plansCopy = t.quote.plans as unknown as Record<
+    string,
+    { name: string; tagline: string; features?: string[] }
+  >;
+
+  const [plan, setPlan] = useState<'STANDARD' | 'PREMIUM' | 'EXCLUSIVE'>(
+    defaults.plan,
+  );
   const [name, setName] = useState(defaults.name);
   const [phone, setPhone] = useState(defaults.phone);
   const [email, setEmail] = useState(defaults.email);
@@ -49,8 +58,7 @@ export default function PublicQuoteForm({
     initialState,
   );
 
-  const planLabel =
-    plan === 'PREMIUM' ? t.quote.plans.premium.name : t.quote.plans.standard.name;
+  const planLabel = plansCopy[plan.toLowerCase()]?.name ?? plansCopy.standard.name;
 
   const waLink = buildWhatsappQuoteLink({
     businessName: isOwner ? defaults.businessName : businessName,
@@ -97,10 +105,10 @@ export default function PublicQuoteForm({
           <span className="mb-2 block text-sm font-semibold text-slate-800">
             {f.planLabel}
           </span>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(['STANDARD', 'PREMIUM'] as const).map((code) => {
-              const p =
-                code === 'PREMIUM' ? t.quote.plans.premium : t.quote.plans.standard;
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(['STANDARD', 'PREMIUM', 'EXCLUSIVE'] as const).map((code) => {
+              const p = plansCopy[code.toLowerCase()];
+              if (!p) return null;
               return (
                 <label
                   key={code}
