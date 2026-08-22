@@ -9,6 +9,7 @@ import { isPlatformAdminEmail } from '@/server/platformAdmin';
 import AdminSidebar from './AdminSidebar';
 import { buildAdminNotifications } from './notifications';
 import Paywall from './Paywall';
+import DeletionPending from './DeletionPending';
 import TrialBanner from './TrialBanner';
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,25 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const owned = await getBusinessesOwnedByEmail(email);
   if (owned.length === 0) {
     redirect('/business/new');
+  }
+
+  // עסק שממתין למחיקה (PENDING_DELETION): אזור הניהול והעמוד הציבורי מושבתים.
+  // במקום התוכן מציגים מסך שחזור בלבד (שחזור מנוי או התנתקות), כדי לאפשר לבטל את
+  // המחיקה עד למועד המחיקה הסופית. הבעלים עדיין מזוהה כי השחזור מחייב זהות מאומתת.
+  if (owned[0].accountStatus === 'PENDING_DELETION') {
+    const purge = owned[0].purgeScheduledFor;
+    const purgeDateLabel = purge
+      ? new Intl.DateTimeFormat('he-IL', {
+          dateStyle: 'long',
+          timeZone: 'Asia/Jerusalem',
+        }).format(purge)
+      : '';
+    return (
+      <DeletionPending
+        businessName={owned[0].name}
+        purgeDateLabel={purgeDateLabel}
+      />
+    );
   }
 
   const access = getBusinessAccess(owned[0]);

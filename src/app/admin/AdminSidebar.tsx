@@ -7,7 +7,7 @@ import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
 import InstallApp from '@/components/pwa/InstallApp';
-import { logout } from '@/app/account/actions';
+import { ownerLogout } from './actions';
 import NotificationsBell from './NotificationsBell';
 import type { AdminNotification } from './notifications';
 
@@ -113,7 +113,7 @@ export default function AdminSidebar({
   const footer = (
     <div className="mt-auto flex flex-col gap-3 px-1">
       <InstallApp variant="admin" compact />
-      <form action={logout}>
+      <form action={ownerLogout}>
         <button
           type="submit"
           className="min-h-[44px] w-full rounded-lg border border-[#82643C] px-3 py-2 text-sm font-medium text-[#F2D695] transition hover:bg-[#82643C]/20"

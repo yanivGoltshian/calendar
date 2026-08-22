@@ -93,6 +93,13 @@ enum SubscriptionStatus {
   expired // פג תוקף (ניסיון הסתיים / תשלום לא בתוקף)
 }
 
+// מצב חשבון העסק לצורך מחיקת מנוי (grace period). אדיטיבי בלבד, ברירת מחדל ACTIVE
+// כדי שכל העסקים הקיימים יישארו פעילים ללא שינוי.
+enum AccountStatus {
+  ACTIVE // חשבון פעיל רגיל
+  PENDING_DELETION // ממתין למחיקה — חסום לציבור, ניתן לשחזור עד מועד המחיקה
+}
+
 // החבילה שהבעלים ביקש בטופס בקשת הצעת מחיר (שדרוג). נפרד מ-BusinessPlan הפנימי:
 // STANDARD = עמוד ההזמנות הציבורי; PREMIUM = עמוד נחיתה עשיר. שתיהן מתומחרות בפנייה.
 enum RequestedPlan {
@@ -230,6 +237,14 @@ model Business {
   priorCalendar  String?
   referralSource String?
 
+  // ── מחיקת מנוי (Account Deletion) — כל השדות אדיטיביים בלבד ─────────────────
+  // מצב החשבון: פעיל (ברירת מחדל) או ממתין למחיקה בתוך תקופת החסד.
+  accountStatus AccountStatus @default(ACTIVE)
+  // מתי הבעלים ביקש למחוק את המנוי (nullable — נקבע רק בבקשת מחיקה).
+  deletionRequestedAt DateTime?
+  // מתי המידע יימחק לצמיתות (14 ימי עסקים מרגע הבקשה, מדלג שישי/שבת). nullable.
+  purgeScheduledFor DateTime?
+
   settings        BusinessSettings?
   staff           StaffMember[]
   services        Service[]
@@ -256,6 +271,8 @@ model Business {
 
   @@index([slug])
   @@index([ownerEmail])
+  // אינדקס לשאילתת המחיקה: מציאת עסקים שממתינים למחיקה ומועד המחיקה שלהם עבר.
+  @@index([accountStatus, purgeScheduledFor])
 }
 
 model BusinessSettings {

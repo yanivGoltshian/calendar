@@ -1,15 +1,22 @@
 import type { BusinessType } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { auth } from '@/auth';
+import { normalizePhone } from '@/lib/crypto';
+import { addBusinessDays } from '@/lib/businessDays';
 import { defaultBusinessHours, setBusinessHours } from './workingHours';
 import { ensureOwnerStaffMember } from './staff';
 import { seedServicesForBusiness } from './services';
 import { shapeBusinessMetrics, type BusinessMetrics } from '@/app/superadmin/logic';
 
-/** שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל. */
+/**
+ * שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל.
+ * מסנן עסקים שממתינים למחיקה (accountStatus=PENDING_DELETION): העמוד הציבורי,
+ * עמוד ההזמנות וה-API של הזמינות "עיוורים" לעסק חסום, ולכן מחזיר null (→notFound)
+ * מיד עם בקשת המחיקה ועד לשחזור או למחיקה הסופית. זהו תפר החסימה הציבורי היחיד.
+ */
 export async function getBusinessBySlug(slug: string) {
-  return prisma.business.findUnique({
-    where: { slug },
+  return prisma.business.findFirst({
+    where: { slug, accountStatus: { not: 'PENDING_DELETION' } },
     include: {
       settings: true,
       owner: { select: { email: true } },
@@ -80,6 +87,8 @@ export async function getExampleBusinesses() {
 /** שליפת כל ה-slugs של העסקים — לשימוש במפת האתר ובבנייה סטטית. */
 export async function getAllBusinessSlugs(): Promise<{ slug: string; updatedAt: Date }[]> {
   return prisma.business.findMany({
+    // עסק שממתין למחיקה מוסתר גם ממפת האתר (sitemap) כמו מהעמוד הציבורי עצמו.
+    where: { accountStatus: { not: 'PENDING_DELETION' } },
     select: { slug: true, updatedAt: true },
     orderBy: { createdAt: 'asc' },
   });
@@ -91,8 +100,8 @@ export async function getAllBusinessSlugs(): Promise<{ slug: string; updatedAt: 
  * על הלוגו. שולף מעט שדות כדי לא להעמיס, ומחזיר null כשהעסק לא קיים.
  */
 export async function getBusinessBranding(slug: string) {
-  return prisma.business.findUnique({
-    where: { slug },
+  return prisma.business.findFirst({
+    where: { slug, accountStatus: { not: 'PENDING_DELETION' } },
     select: {
       slug: true,
       name: true,
@@ -225,6 +234,14 @@ export async function createBusiness(input: {
   priorCalendar?: string | null;
   referralSource?: string | null;
 }) {
+  // רשת ביטחון לשחזור (אפיק ההרשמה): אם קיים עסק שממתין למחיקה בבעלות אותו מייל,
+  // מספר הטלפון תואם ומועד המחיקה טרם עבר — משחזרים את העסק הקיים במקום ליצור כפול.
+  // התפר העיקרי לשחזור הוא מסך השחזור באזור הניהול, וזו רשת הביטחון המשלימה.
+  const restorable = await findRestorableBusinessForOwner(input.ownerEmail, input.phone ?? null);
+  if (restorable) {
+    return restoreBusiness(restorable.id);
+  }
+
   const slug = await generateUniqueSlug(input.name);
   // תקופת ניסיון חינם של 30 יום מרגע היצירה (חבילת בסיס, מצב trialing).
   const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -296,4 +313,111 @@ export async function createBusiness(input: {
   }
 
   return business;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// מחיקת מנוי, שחזור ומחיקה סופית (purge)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * בקשת מחיקת מנוי: מסמן את העסק כ-PENDING_DELETION, שומר את מועד הבקשה ואת מועד
+ * המחיקה הסופית (14 ימי עסקים קדימה, מדלג על שישי ושבת). ההשבתה מיידית: מרגע זה
+ * העמוד הציבורי מוסתר ואזור הניהול מוחלף במסך שחזור, עד שחזור או מחיקה סופית.
+ */
+export async function requestBusinessDeletion(businessId: string) {
+  const now = new Date();
+  const purgeScheduledFor = addBusinessDays(now, 14);
+  return prisma.business.update({
+    where: { id: businessId },
+    data: {
+      accountStatus: 'PENDING_DELETION',
+      deletionRequestedAt: now,
+      purgeScheduledFor,
+    },
+  });
+}
+
+/**
+ * שחזור מנוי: מחזיר עסק שהיה PENDING_DELETION למצב ACTIVE ומנקה את מועדי המחיקה.
+ * כל נתוני העסק נשמרים במלואם עד למחיקה הסופית, ולכן שחזור מחזיר הכול לקדמותו.
+ */
+export async function restoreBusiness(businessId: string) {
+  return prisma.business.update({
+    where: { id: businessId },
+    data: {
+      accountStatus: 'ACTIVE',
+      deletionRequestedAt: null,
+      purgeScheduledFor: null,
+    },
+    include: { settings: true },
+  });
+}
+
+/**
+ * איתור עסק בר-שחזור לבעלים: עסק בבעלות אותו מייל שנמצא ב-PENDING_DELETION ומועד
+ * המחיקה שלו טרם עבר. אימות הטלפון: אם לעסק נשמר טלפון, הטלפון שהוזן חייב להיות
+ * תואם (מנורמל ל-E.164). אם לא נשמר טלפון (חשבון ישן), הזהות מבוססת-המייל המאומת
+ * מספיקה לשחזור, שכן המייל כבר עבר אימות בהתחברות. מחזיר null כשאין התאמה.
+ */
+export async function findRestorableBusinessForOwner(ownerEmail: string, phone: string | null) {
+  const pending = await prisma.business.findFirst({
+    where: {
+      ownerEmail,
+      accountStatus: 'PENDING_DELETION',
+      OR: [{ purgeScheduledFor: null }, { purgeScheduledFor: { gt: new Date() } }],
+    },
+    orderBy: { deletionRequestedAt: 'desc' },
+  });
+  if (!pending) return null;
+  if (pending.phone) {
+    if (!phone) return null;
+    let enteredNormalized: string;
+    let storedNormalized: string;
+    try {
+      enteredNormalized = normalizePhone(phone);
+      storedNormalized = normalizePhone(pending.phone);
+    } catch {
+      return null;
+    }
+    if (enteredNormalized !== storedNormalized) return null;
+  }
+  return pending;
+}
+
+/**
+ * מחיקה סופית של עסקים שהגיע מועד המחיקה שלהם (purge). מוחק קשיח בטרנזקציה לכל עסק:
+ * קודם התורים (מסירים AppointmentService שמוגן ב-Restrict), ואז העסק עצמו —
+ * וה-cascade מוחק את כל נתוני הלקוחות והעסק (לקוחות, תורים, שירותים, צוות, מכירות,
+ * מסמכים, תזכורות ועוד). רשומת המשתמש-בעלים (מזוהה-מייל) מנוקה רק אם אינה בבעלות
+ * עסק אחר. עמיד לתקלות: כשל בניקוי הבעלים לא יפגע במחיקת נתוני העסק שכבר בוצעה.
+ */
+export async function purgeExpiredBusinesses(
+  now: Date = new Date(),
+): Promise<{ purgedBusinessIds: string[] }> {
+  const due = await prisma.business.findMany({
+    where: {
+      accountStatus: 'PENDING_DELETION',
+      purgeScheduledFor: { lte: now },
+    },
+    select: { id: true, ownerEmail: true },
+  });
+  const purgedBusinessIds: string[] = [];
+  for (const b of due) {
+    await prisma.$transaction([
+      prisma.appointment.deleteMany({ where: { businessId: b.id } }),
+      prisma.business.delete({ where: { id: b.id } }),
+    ]);
+    purgedBusinessIds.push(b.id);
+    if (b.ownerEmail) {
+      try {
+        const otherOwned = await prisma.business.count({ where: { ownerEmail: b.ownerEmail } });
+        if (otherOwned === 0) {
+          await prisma.user.deleteMany({ where: { email: b.ownerEmail } });
+        }
+      } catch {
+        // ניקוי רשומת הבעלים נכשל; נתוני העסק כבר נמחקו. מתעלמים בבטחה.
+      }
+    }
+  }
+  return { purgedBusinessIds };
 }

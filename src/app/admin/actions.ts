@@ -1,9 +1,17 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import type { AppointmentStatus } from '@prisma/client';
-import { getActiveBusiness } from '@/server/repos/business';
+import { auth, signOut } from '@/auth';
+import {
+  getActiveBusiness,
+  getBusinessesOwnedByEmail,
+  requestBusinessDeletion,
+  findRestorableBusinessForOwner,
+  restoreBusiness,
+} from '@/server/repos/business';
 import { getServicesByIds } from '@/server/repos/services';
 import {
   createAppointment,
@@ -112,4 +120,67 @@ export async function createManualAppointmentAction(
 
   revalidatePath('/admin');
   return { ok: true };
+}
+
+/**
+ * התנתקות בעל העסק דרך Auth.js (NextAuth v5): מנקה את עוגיית ה-session של הבעלים
+ * (__Secure-authjs.session-token) ומפנה למסך כניסת הבעלים. זו ההתנתקות הנכונה
+ * לאזור הניהול, בשונה מהתנתקות הלקוח שמנקה רק את עוגיית הלקוח.
+ */
+export async function ownerLogout(): Promise<void> {
+  await signOut({ redirectTo: '/business/login' });
+}
+
+/**
+ * בקשת מחיקת מנוי מאזור הניהול. מאמת שהקורא הוא בעל עסק מחובר, מסמן את העסק
+ * PENDING_DELETION עם מועד מחיקה של 14 ימי עסקים, ומיד מנתק את הבעלים. מרגע זה
+ * העמוד הציבורי מוסתר ואזור הניהול מוחלף במסך שחזור, עד לשחזור או למחיקה סופית.
+ * שומר על אימות מכוון: מוחק רק כשהטופס כולל אישור מפורש (confirm=yes), כהגנה
+ * נוספת מפני שליחה בשוגג.
+ */
+export async function requestAccountDeletion(formData: FormData): Promise<void> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) redirect('/business/login?redirect=/admin/settings');
+
+  // אישור מפורש מהטופס (תיבת הסימון) — בלעדיו חוזרים להגדרות בלי למחוק.
+  if (formData.get('confirm') !== 'yes') {
+    redirect('/admin/settings');
+  }
+
+  const owned = await getBusinessesOwnedByEmail(email);
+  const business = owned[0];
+  if (!business) redirect('/admin');
+
+  // אידמפוטנטי: אם כבר סומן למחיקה, מדלגים על סימון חוזר ורק מנתקים.
+  if (business.accountStatus !== 'PENDING_DELETION') {
+    await requestBusinessDeletion(business.id);
+  }
+
+  // ניתוק מיידי של הבעלים (השבתה בפועל) והפניה למסך הכניסה.
+  await signOut({ redirectTo: '/business/login?deleted=1' });
+}
+
+export type RestoreState = { ok: boolean; error?: string };
+
+/**
+ * שחזור מנוי ממצב PENDING_DELETION. מאמת שהמייל המחובר הוא בעל עסק שממתין למחיקה,
+ * שמספר הטלפון שהוזן תואם לזה שנשמר (כשקיים), ושמועד המחיקה טרם עבר, ואז מחזיר
+ * את העסק ל-ACTIVE עם כל הנתונים ומפנה חזרה לאזור הניהול.
+ */
+export async function restoreAccountAction(
+  _prev: RestoreState,
+  formData: FormData,
+): Promise<RestoreState> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) return { ok: false, error: 'unauthorized' };
+
+  const phone = String(formData.get('phone') || '').trim();
+  const restorable = await findRestorableBusinessForOwner(email, phone || null);
+  if (!restorable) return { ok: false, error: 'no_match' };
+
+  await restoreBusiness(restorable.id);
+  revalidatePath('/admin');
+  redirect('/admin');
 }

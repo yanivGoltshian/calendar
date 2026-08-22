@@ -1,0 +1,64 @@
+# ============================================================================
+# מחיקה סופית של מנויים (purge) — טריגר מתוזמן יומי שקורא ל-endpoint בפרודקשן.
+# ----------------------------------------------------------------------------
+# רץ פעם ביום ב-03:00 UTC (וגם ידנית), ומפעיל את POST /api/cron/purge-expired
+# עם כותרת הסוד. ה-endpoint עצמו מוצא עסקים ב-PENDING_DELETION שמועד המחיקה שלהם
+# עבר, ומוחק לצמיתות את כל נתוני העסק והלקוחות בטרנזקציה בטוחה. אידמפוטנטי.
+#
+# דרישות סוד (חייבות להיות מוגדרות באותו ערך בשני המקומות):
+#   1) Repository secret בשם CRON_SECRET   — נשלח ככותרת x-cron-secret.
+#   2) משתנה סביבה CRON_SECRET על ה-Container App (torchick-app-prod) —
+#      מולו ה-endpoint משווה. אם הערכים לא תואמים יתקבל 401.
+#   בנוסף: Repository secret בשם APP_PUBLIC_URL עם כתובת הפרודקשן
+#   (למשל https://torchick.duckdns.org), ממנה נבנית כתובת ה-endpoint.
+# ============================================================================
+
+name: Purge expired accounts (daily)
+
+on:
+  schedule:
+    # פעם ביום ב-03:00 UTC. המחיקה מבוססת מועד ה-purge שנשמר, לכן תדירות יומית מספיקה.
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: purge-expired-cron
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger purge-expired endpoint
+        env:
+          APP_PUBLIC_URL: ${{ secrets.APP_PUBLIC_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_PUBLIC_URL:-}" ]; then
+            echo "APP_PUBLIC_URL secret is not set" >&2
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "CRON_SECRET secret is not set" >&2
+            exit 1
+          fi
+          BASE="${APP_PUBLIC_URL%/}"
+          URL="${BASE}/api/cron/purge-expired"
+          echo "POST ${URL}"
+          # ‎-sS שקט אך מדווח שגיאות; מפרידים גוף מסטטוס לצורך בדיקה.
+          BODY_FILE="$(mktemp)"
+          CODE="$(curl -sS -o "${BODY_FILE}" -w '%{http_code}' \
+            -X POST "${URL}" \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            -H 'content-type: application/json' \
+            --max-time 120 || true)"
+          echo "HTTP ${CODE}"
+          echo "Response:"; cat "${BODY_FILE}" || true; echo
+          if [ "${CODE}" != "200" ]; then
+            echo "Purge endpoint returned non-200 (${CODE})" >&2
+            exit 1
+          fi

@@ -6,6 +6,7 @@ import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
 import SettingsForm from './SettingsForm';
+import DeleteAccountSection from './DeleteAccountSection';
 
 export const metadata: Metadata = { title: t.admin.settings.title };
 
@@ -40,6 +41,8 @@ export default async function AdminSettingsPage() {
         settings={settings}
         onboardingCompleted={settings.onboardingCompleted}
       />
+
+      <DeleteAccountSection />
     </main>
   );
 }
