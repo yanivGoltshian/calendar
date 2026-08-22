@@ -58,6 +58,32 @@ test('landingContent — שורד את הנרמול ושומר על השדות �
   assert.equal(normalized!.hotDeals!.images.length, 6);
 });
 
+test('landingContent — וידאו הירו קיים ולפני/אחרי הוסר (דרישת פרימיום)', () => {
+  const built = buildClinicLandingContent();
+  const normalized = normalizeLandingContent(built);
+  assert.ok(normalized, 'הנרמול לא מחזיר null');
+
+  // וידאו הירו חייב לשרוד את הנרמול ולהיות תחת /images/clinic
+  assert.ok(normalized!.heroVideoUrl, 'heroVideoUrl קיים');
+  assert.ok(
+    normalized!.heroVideoUrl!.startsWith('/images/clinic/'),
+    'heroVideoUrl תחת /images/clinic',
+  );
+  assert.ok(normalized!.heroPosterUrl, 'heroPosterUrl קיים');
+  assert.ok(
+    normalized!.heroPosterUrl!.startsWith('/images/clinic/'),
+    'heroPosterUrl תחת /images/clinic',
+  );
+
+  // סקשן לפני/אחרי הוסר מתוכן הקליניקה
+  assert.equal((built.beforeAfter ?? []).length, 0, 'אין לפני/אחרי בתוכן הקליניקה');
+  assert.equal(
+    (normalized!.beforeAfter ?? []).length,
+    0,
+    'אין לפני/אחרי אחרי הנרמול',
+  );
+});
+
 test('landingContent — כיבוד המכסות', () => {
   const c = buildClinicLandingContent();
   assert.ok((c.benefits ?? []).length <= 3, 'עד 3 יתרונות');

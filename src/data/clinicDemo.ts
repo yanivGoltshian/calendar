@@ -125,7 +125,7 @@ export const CLINIC_SERVICES: ClinicService[] = [
 /**
  * בונה את תוכן עמוד הנחיתה של הקליניקה. טהור — מחזיר אובייקט LandingContent
  * שתואם בדיוק לסכימה (כל שדה שורד את normalizeLandingContent). מכבד את המכסות:
- * 3 יתרונות, 4 תמונות גלריה, 3 לפני/אחרי, 6 תמונות לקובייה, 2 תמונות הירו.
+ * 3 יתרונות, 4 תמונות גלריה, 6 תמונות לקובייה, 2 תמונות הירו, ווידאו הירו יחיד.
  */
 export function buildClinicLandingContent(): LandingContent {
   return {
@@ -135,6 +135,9 @@ export function buildClinicLandingContent(): LandingContent {
       'קליניקת אסתטיקה רפואית מתקדמת ביבנה – בוטוקס, מילויים, לייזר, RF, PRP ואבחון עור. בדיקת התאמה מקצועית והתאמה אישית למבנה הפנים, העור והמטרה שלך.',
     // הירו מפוצל: תמונה ראשית + פנים הקליניקה (עד 2 לפי המכסה)
     heroImages: [`${IMG}/banners/hero.jpg`, `${IMG}/banners/interior.jpg`],
+    // וידאו הירו — מוצג בצד ההירו במקום התמונה הראשית (פוסטר נטען לפני הניגון)
+    heroVideoUrl: `${IMG}/videos/clinic-hero.mp4`,
+    heroPosterUrl: `${IMG}/videos/clinic-hero-poster.jpg`,
     // שלושת היתרונות המובילים (המכסה היא 3, ולכן "מחירי השקה" מיוצג בפס המבצע)
     benefits: [
       { title: 'צוות רפואי מקצועי', text: 'רופאים ואנשי אסתטיקה מוסמכים עם ניסיון קליני מוכח.' },
@@ -147,12 +150,6 @@ export function buildClinicLandingContent(): LandingContent {
       `${IMG}/gallery/work-jawline.jpg`,
       `${IMG}/gallery/work-lips-1.jpg`,
       `${IMG}/treatments/glow-facial.jpg`,
-    ],
-    // לפני / אחרי (עד 3)
-    beforeAfter: [
-      { beforeUrl: `${IMG}/gallery/work-lips-2.jpg`, afterUrl: `${IMG}/gallery/work-lips-1.jpg`, label: 'מילוי שפתיים' },
-      { beforeUrl: `${IMG}/gallery/work-lips-4.jpg`, afterUrl: `${IMG}/gallery/work-jawline.jpg`, label: 'עיצוב קו לסת' },
-      { beforeUrl: `${IMG}/gallery/work-lips-5.jpg`, afterUrl: `${IMG}/gallery/work-lips-3.jpg`, label: 'טיפול פנים' },
     ],
     about:
       'סקין ביוטי קליניק הוקמה כדי להביא ליבנה ולסביבה סטנדרט גבוה של אסתטיקה רפואית – קרוב לבית. הקליניקה משלבת טכנולוגיות מתקדמות, צוות מקצועי ואווירה מפנקת, עם דגש על התאמה אישית ושקיפות מלאה בכל שלב.',

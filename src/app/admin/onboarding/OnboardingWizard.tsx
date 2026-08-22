@@ -533,6 +533,14 @@ export default function OnboardingWizard({
                   placeholder: p.steps.hero.ctaLabelPlaceholder,
                   onChange: (v) => patchDraft({ ctaLabel: v }),
                 })}
+                {textField({
+                  id: 'prem-hero-video',
+                  label: p.steps.hero.videoUrlLabel,
+                  value: premiumDraft.heroVideoUrl ?? '',
+                  placeholder: p.steps.hero.videoUrlPlaceholder,
+                  onChange: (v) => patchDraft({ heroVideoUrl: v }),
+                })}
+                <p className="-mt-2 text-xs text-slate-400">{p.steps.hero.videoUrlHint}</p>
                 <div>
                   <span className="mb-2 block text-sm font-medium text-slate-700">
                     {p.steps.hero.imagesTitle}

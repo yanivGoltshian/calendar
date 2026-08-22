@@ -284,6 +284,8 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
           facebookUrl={landing?.socialLinks?.facebook ?? null}
           bookHref={bookHref}
           heroImages={landing?.heroImages ?? []}
+          heroVideoUrl={landing?.heroVideoUrl ?? null}
+          heroPosterUrl={landing?.heroPosterUrl ?? null}
           heroEyebrow={heroEyebrow}
           heroHeadline={heroHeadline}
           heroSubtext={heroSubtext}
@@ -297,6 +299,8 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
             hoursToday: clinicLabels.topbarHoursToday,
             closedToday: clinicLabels.topbarClosedToday,
             offerSpots: clinicLabels.offerSpots,
+            offerSpotsCalm: clinicLabels.offerSpotsCalm,
+            offerRemaining: clinicLabels.offerRemaining,
             offerEndsIn: clinicLabels.offerEndsIn,
             offerClose: clinicLabels.offerClose,
             callAria: clinicLabels.callAria,

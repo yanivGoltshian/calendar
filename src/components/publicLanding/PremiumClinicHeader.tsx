@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { LandingLaunchOffer } from '@/lib/publicPageStyle';
-import { computeCountdown, type Countdown } from '@/lib/launchOffer';
+import { computeCountdown } from '@/lib/launchOffer';
 import { formatIsraeliPhoneDisplay } from '@/lib/phoneDisplay';
-import { socialHref } from '@/lib/socialLinks';
 import {
   PhoneIcon,
   ClockIcon,
@@ -24,6 +22,8 @@ type Labels = {
   hoursToday: string;
   closedToday: string;
   offerSpots: string;
+  offerSpotsCalm: string;
+  offerRemaining: string;
   offerEndsIn: string;
   offerClose: string;
   callAria: string;
@@ -43,6 +43,8 @@ type Props = {
   facebookUrl?: string | null;
   bookHref: string;
   heroImages: string[]; // עד שתי תמונות (ראשית + פנים הקליניקה)
+  heroVideoUrl?: string | null; // וידאו הירו אופציונלי — מוצג בצד ההירו במקום התמונה הראשית
+  heroPosterUrl?: string | null; // פוסטר לווידאו ההירו
   heroEyebrow?: string;
   heroHeadline: string;
   heroSubtext: string;
@@ -51,27 +53,10 @@ type Props = {
   labels: Labels;
 };
 
-// יחידת ספירה-לאחור בודדת. רוחב קבוע (tabular-nums + min-w) מונע קפיצת פריסה
-// בין ספרות. עד להרכבה (mount) מוצג מציין "--" באותו מימד כדי למנוע hydration mismatch.
-function CountdownCell({ value, label, mounted }: { value: number; label: string; mounted: boolean }) {
-  return (
-    <div className="flex flex-col items-center">
-      <span
-        suppressHydrationWarning
-        dir="ltr"
-        className="min-w-[2ch] text-center text-base font-bold tabular-nums sm:text-lg"
-      >
-        {mounted ? String(value).padStart(2, '0') : '--'}
-      </span>
-      <span className="text-[10px] font-medium uppercase tracking-wide opacity-80">{label}</span>
-    </div>
-  );
-}
-
 // מקטע חתום #2 — כותרת + הירו + פס מבצע לעמוד הקליניקה הפרימיום.
 // סרגל עליון כהה (טלפון · שעות היום · רשתות), שורת ניווט בגוון קרם עם כפתור זהב
-// "לקביעת תור" שפותח את אשף קביעת התור, פס מבצע נסגר עם ספירה-לאחור מ-launchOffer
-// (מוסתר כשאין מבצע או כשהסתיים), והירו מפוצל עם שתי תמונות. RTL מלא ונגיש.
+// "לקביעת תור" שפותח את אשף קביעת התור, פס מבצע עדין (טקסט · מקומות · ימים בלבד,
+// ללא שעון מתקתק) שמוסתר כשאין מבצע או כשהסתיים, והירו מפוצל עם וידאו או תמונות. RTL מלא ונגיש.
 export default function PremiumClinicHeader({
   name,
   logoUrl,
@@ -81,6 +66,8 @@ export default function PremiumClinicHeader({
   facebookUrl,
   bookHref,
   heroImages,
+  heroVideoUrl,
+  heroPosterUrl,
   heroEyebrow,
   heroHeadline,
   heroSubtext,
@@ -88,23 +75,11 @@ export default function PremiumClinicHeader({
   launchOffer,
   labels,
 }: Props) {
-  // מצב ההרכבה (mount) — מונע אי-התאמת הידרציה בספרות התלויות בזמן.
-  const [mounted, setMounted] = useState(false);
-  const [closed, setClosed] = useState(false);
-  const [cd, setCd] = useState<Countdown>(() =>
-    launchOffer ? computeCountdown(launchOffer.endsAt) : { expired: true, totalMs: 0, days: 0, hours: 0, minutes: 0, seconds: 0 },
-  );
-
-  useEffect(() => {
-    if (!launchOffer) return;
-    setMounted(true);
-    const id = setInterval(() => setCd(computeCountdown(launchOffer.endsAt)), 1000);
-    return () => clearInterval(id);
-  }, [launchOffer]);
-
   const phoneDisplay = formatIsraeliPhoneDisplay(phone);
-  // פס המבצע מוצג רק כשיש מבצע תקין, לא נסגר, ולא הסתיים (על השרת ובלקוח מסכימים – תאריך עתידי).
-  const showOffer = Boolean(launchOffer) && !closed && !cd.expired;
+  // פס המבצע מוצג רק כשיש מבצע תקין ולא הסתיים. הספירה מחושבת פעם אחת (ימים בלבד),
+  // בלי טיימר מתקתק — כך אין קפיצה, אין לחץ, ואין אי-התאמת הידרציה.
+  const countdown = launchOffer ? computeCountdown(launchOffer.endsAt) : null;
+  const showOffer = Boolean(launchOffer) && Boolean(countdown) && !countdown!.expired;
 
   const primary = heroImages[0];
   const secondary = heroImages[1];
@@ -210,40 +185,28 @@ export default function PremiumClinicHeader({
         </div>
       </div>
 
-      {/* פס מבצע ההשקה — ספירה-לאחור מ-launchOffer, נסגר ומוסתר כשהסתיים */}
-      {showOffer && launchOffer ? (
-        <div className="bg-gradient-to-l from-[color:var(--biz-strong)] to-[color:var(--biz)] text-[color:var(--biz-ink)]">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-5 gap-y-2 px-5 py-2.5 sm:justify-between">
-            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold sm:text-base">
-              <span>{launchOffer.text}</span>
-              {typeof launchOffer.spotsLeft === 'number' ? (
-                <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-bold">
-                  {launchOffer.spotsLeft} {labels.offerSpots}
+      {/* פס מבצע ההשקה — עדין: טקסט · מקומות במחירי השקה · ימים שנותרו (ללא שעון מתקתק) */}
+      {showOffer && launchOffer && countdown ? (
+        <div className="border-y border-[color:var(--c-gold,#c6a86a)]/30 bg-[color:var(--biz-soft)]">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-2.5 gap-y-1 px-5 py-2 text-center text-xs text-[color:var(--biz-strong)] sm:text-sm">
+            <span className="font-semibold">{launchOffer.text}</span>
+            {typeof launchOffer.spotsLeft === 'number' ? (
+              <>
+                <span aria-hidden className="opacity-40">·</span>
+                <span>
+                  {labels.offerRemaining} {launchOffer.spotsLeft} {labels.offerSpotsCalm}
                 </span>
-              ) : null}
-            </p>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-medium opacity-90">{labels.offerEndsIn}</span>
-              <div className="flex items-center gap-2" role="timer" aria-live="off">
-                <CountdownCell value={cd.days} label={labels.countdown.days} mounted={mounted} />
-                <span aria-hidden className="pb-3 text-base font-bold opacity-70">:</span>
-                <CountdownCell value={cd.hours} label={labels.countdown.hours} mounted={mounted} />
-                <span aria-hidden className="pb-3 text-base font-bold opacity-70">:</span>
-                <CountdownCell value={cd.minutes} label={labels.countdown.minutes} mounted={mounted} />
-                <span aria-hidden className="pb-3 text-base font-bold opacity-70">:</span>
-                <CountdownCell value={cd.seconds} label={labels.countdown.seconds} mounted={mounted} />
-              </div>
-              <button
-                type="button"
-                onClick={() => setClosed(true)}
-                aria-label={labels.offerClose}
-                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15 transition hover:bg-white/30"
-              >
-                <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5" aria-hidden>
-                  <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
+              </>
+            ) : null}
+            {countdown.days > 0 ? (
+              <>
+                <span aria-hidden className="opacity-40">·</span>
+                <span>
+                  {labels.offerRemaining}{' '}
+                  <span dir="ltr" className="tabular-nums">{countdown.days}</span> {labels.countdown.days}
+                </span>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -285,7 +248,22 @@ export default function PremiumClinicHeader({
           </div>
         </div>
 
-        {primary ? (
+        {heroVideoUrl ? (
+          <div className="overflow-hidden rounded-3xl border border-[color:var(--c-gold,#c6a86a)]/30 shadow-elevated">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={heroPosterUrl ?? primary ?? undefined}
+              aria-label={labels.heroImageAlt}
+              className="aspect-[4/5] h-full w-full object-cover"
+            >
+              <source src={heroVideoUrl} type="video/mp4" />
+            </video>
+          </div>
+        ) : primary ? (
           <div className="grid grid-cols-5 grid-rows-6 gap-3">
             <div className="col-span-3 row-span-6 overflow-hidden rounded-3xl border border-[color:var(--c-gold,#c6a86a)]/30 shadow-elevated">
               {/* eslint-disable-next-line @next/next/no-img-element */}

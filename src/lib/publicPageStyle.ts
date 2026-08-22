@@ -160,6 +160,8 @@ export interface LandingContent {
   heroHeadline?: string;
   heroSubtext?: string;
   heroImages?: string[]; // הירו מפוצל — עד שתי תמונות (ראשית + פנים הקליניקה)
+  heroVideoUrl?: string; // וידאו הירו אופציונלי — מוצג בצד ההירו במקום התמונה הראשית
+  heroPosterUrl?: string; // תמונת פוסטר לווידאו ההירו (נטענת לפני הניגון)
   benefits?: LandingBenefit[];
   galleryImageUrls?: string[];
   beforeAfter?: LandingBeforeAfter[];
@@ -416,11 +418,18 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
     if (heroImages.length >= MAX_HERO_IMAGES) break;
   }
 
+  const heroVideoRaw = cleanString(source.heroVideoUrl, LIMITS.galleryUrl);
+  const heroVideoUrl = /^(https?:\/\/|\/)/i.test(heroVideoRaw) ? heroVideoRaw : '';
+  const heroPosterRaw = cleanString(source.heroPosterUrl, LIMITS.galleryUrl);
+  const heroPosterUrl = /^(https?:\/\/|\/)/i.test(heroPosterRaw) ? heroPosterRaw : '';
+
   const content: LandingContent = {};
   if (heroEyebrow) content.heroEyebrow = heroEyebrow;
   if (heroHeadline) content.heroHeadline = heroHeadline;
   if (heroSubtext) content.heroSubtext = heroSubtext;
   if (heroImages.length) content.heroImages = heroImages;
+  if (heroVideoUrl) content.heroVideoUrl = heroVideoUrl;
+  if (heroPosterUrl) content.heroPosterUrl = heroPosterUrl;
   if (benefits.length) content.benefits = benefits;
   if (galleryImageUrls.length) content.galleryImageUrls = galleryImageUrls;
   if (beforeAfter.length) content.beforeAfter = beforeAfter;
