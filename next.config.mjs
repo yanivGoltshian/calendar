@@ -13,31 +13,34 @@ const nextConfig = {
     },
   },
   async headers() {
-    return [
-      {
-        // HSTS על כל התגובות: מכריח את הדפדפן ל-HTTPS למשך שנתיים. ה-redirect
-        // עצמו מ-HTTP ל-HTTPS נאכף בשכבת ה-ingress של Container Apps
-        // (allowInsecure=false), וכאן רק מצרפים את מדיניות ה-HSTS לתגובות ה-HTTPS.
-        // הערה: preload אינו ניתן להגשה בפועל למארח DuckDNS (אי-אפשר להגיש
-        // תת-דומיין ל-hstspreload.org ללא בעלות על duckdns.org), ולכן ה-token
-        // נשאר הצהרתי; ההגנה בפועל מגיעה מ-max-age + includeSubDomains.
-        // ראו docs/ssl-https-runbook.md.
+    const rules = [];
+    // HSTS רק בבנייית production: מכריח את הדפדפן ל-HTTPS למשך שנתיים. ה-redirect
+    // עצמו מ-HTTP ל-HTTPS נאכף בשכבת ה-ingress של Container Apps
+    // (allowInsecure=false), וכאן רק מצרפים את מדיניות ה-HSTS לתגובות ה-HTTPS.
+    // מגבילים ל-production כדי לא להשפיע על פיתוח מקומי מעל http.
+    // אין preload: torchick.duckdns.org הוא תת-דומיין של הסיומת הציבורית המשותפת
+    // duckdns.org, והגשת מארח בסיומת משותפת לרשימת ה-preload אינה נאותה ובלתי
+    // הפיכה למעשה. includeSubDomains נשאר כי איננו מחזיקים תת-תת-דומיינים.
+    // ראו docs/ssl-https-runbook.md.
+    if (process.env.NODE_ENV === 'production') {
+      rules.push({
         source: '/:path*',
         headers: [
           {
             key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
+            value: 'max-age=63072000; includeSubDomains',
           },
         ],
-      },
-      {
-        source: '/sw.js',
-        headers: [
-          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
-          { key: 'Service-Worker-Allowed', value: '/' },
-        ],
-      },
-    ];
+      });
+    }
+    rules.push({
+      source: '/sw.js',
+      headers: [
+        { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        { key: 'Service-Worker-Allowed', value: '/' },
+      ],
+    });
+    return rules;
   },
 };
 

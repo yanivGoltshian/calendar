@@ -84,17 +84,16 @@ az containerapp ingress show \
 
 ## החלטת HSTS
 
-נוסף header גלובלי לכל התגובות דרך `next.config.mjs` בבלוק `headers()` הקיים:
+נוסף header גלובלי לכל תגובות ה-production דרך `next.config.mjs` בבלוק `headers()` הקיים. הבלוק פולט את ה-header רק כאשר `process.env.NODE_ENV === 'production'`, כדי להשאיר פיתוח מקומי מעל http ללא שינוי:
 
 ```
-Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+Strict-Transport-Security: max-age=63072000; includeSubDomains
 ```
 
 - `max-age=63072000` (שנתיים): הדפדפן יזכור לגשת רק ב-HTTPS למשך שנתיים מכל ביקור.
-- `includeSubDomains`: המדיניות חלה גם על תתי-דומיינים של `torchick.duckdns.org`. בטוח, כי כולם מוגשים ב-HTTPS דרך אותו ingress.
-- `preload`: token הצהרתי.
+- `includeSubDomains`: המדיניות חלה גם על תתי-דומיינים של `torchick.duckdns.org`. בטוח, כי איננו מחזיקים תת-תת-דומיינים וכולם ממילא מוגשים ב-HTTPS דרך אותו ingress.
 
-**הערה חשובה על `preload`:** הגשה בפועל לרשימת ה-preload (hstspreload.org) דורשת בעלות על הדומיין הרשום (`duckdns.org`), שאינו בבעלותנו. לכן לא ניתן להגיש את `torchick.duckdns.org` לרשימה, וה-token נשאר הצהרתי בלבד. הוא אינו מזיק (דפדפנים מתעלמים ממנו כל עוד הדומיין אינו ברשימה), וההגנה בפועל מגיעה מ-`max-age` יחד עם `includeSubDomains`.
+**למה בלי `preload`:** `torchick.duckdns.org` הוא תת-דומיין של הסיומת הציבורית המשותפת `duckdns.org`, המשמשת אלפי משתמשים. הגשת מארח בסיומת משותפת לרשימת ה-preload (hstspreload.org) אינה נאותה, ובפועל בלתי הפיכה (הסרה מהרשימה איטית ומורכבת). לכן ההגנה נשענת על `max-age` בן השנתיים יחד עם `includeSubDomains`, שנותנים את מלוא ערך ה-HSTS בלי הסיכון של רשימת ה-preload.
 
 **למה בקונפיג ולא ב-middleware:** ה-`headers()` של Next.js כבר קיים בפרויקט (עבור `/sw.js`), חל על כל המסלולים, ורץ בזמן הבנייה ללא עלות ריצה. ה-header מופיע על תגובות ה-HTTPS שהדפדפן מקבל אחרי הפניית ה-ingress, וזו ההתנהגות הנכונה. תגובת ה-301 עצמה מיוצרת על ידי ה-ingress ואינה נושאת HSTS, וזה תקין.
 
@@ -136,7 +135,7 @@ TLS 1.2 ו-TLS 1.3 מנהלים משא ומתן עם צפני ECDHE/AEAD חזק�
 ```bash
 # 1) HSTS נוכח על תגובת ה-HTTPS
 curl -sI https://torchick.duckdns.org | grep -i strict-transport-security
-# strict-transport-security: max-age=63072000; includeSubDomains; preload
+# strict-transport-security: max-age=63072000; includeSubDomains
 
 # 2) התעודה עדיין מאומתת (שרשרת מלאה, verify=0)
 echo | openssl s_client -connect torchick.duckdns.org:443 \
@@ -159,5 +158,5 @@ echo | openssl s_client -connect torchick.duckdns.org:443 \
 ## מגבלות ידועות
 
 - **www לא נתמך:** DuckDNS מספק מארח יחיד. `www.torchick.duckdns.org` מאפס את החיבור ב-SNI כי הוא אינו קשור לתעודה. אין הפניית www לאפקס. תמיכה ב-www תדרוש מארח DuckDNS נוסף ותעודה מנוהלת נוספת.
-- **preload לא ניתן להגשה** לרשימת ה-preload עבור מארח DuckDNS (ראו [החלטת HSTS](#החלטת-hsts)).
+- **אין preload בכוונה:** המארח יושב על הסיומת הציבורית המשותפת `duckdns.org`, ולכן הגשה לרשימת ה-preload אינה נאותה ובלתי הפיכה למעשה (ראו [החלטת HSTS](#החלטת-hsts)).
 - **בדיקת TLS 1.0/1.1** אינה חד-משמעית מ-macOS עקב מגבלת ה-LibreSSL המקומי. הקביעה נשענת על מינימום TLS 1.2 של הפלטפורמה.
