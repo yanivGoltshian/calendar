@@ -3,8 +3,8 @@
  * אסטרטגיה: network-first עבור ניווטים, עם נפילה למטמון (cache) בעת כשל רשת.
  * דחיפת התראות (push) תמומש מאחורי ממשק בהמשך.
  */
-const CACHE = 'torchick-shell-v1';
-const SHELL = ['/', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'torchick-shell-v2';
+const SHELL = ['/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -34,7 +34,16 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE).then((cache) => cache.put(request, copy));
           return res;
         })
-        .catch(() => caches.match(request).then((r) => r || caches.match('/'))),
+        .catch(() =>
+          caches.match(request).then(
+            (r) =>
+              r ||
+              new Response(
+                '<!doctype html><meta charset="utf-8"><title>לא מקוון</title><body dir="rtl" style="font-family:sans-serif;padding:2rem">אין חיבור לרשת. נסה שוב.',
+                { headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+              ),
+          ),
+        ),
     );
     return;
   }
