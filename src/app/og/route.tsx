@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { BRAND } from '@/config/brand';
+import { toVisualOrder } from '@/lib/og/bidi';
 import { SITE_DESCRIPTION } from '@/lib/seo';
 
 /**
@@ -125,6 +126,11 @@ export async function GET(req: Request) {
   const title = rawTitle;
   const subtitle = searchParams.get('subtitle') ?? SITE_DESCRIPTION;
 
+  // הקשחה: Satori אינו מריץ את אלגוריתם ה-bidi ומרנדר עברית משמאל-לימין,
+  // ולכן טקסט חי נשבר הפוך. מסדרים מראש לסדר ויזואלי כדי שהכרטיס לעולם לא יתהפך.
+  const vTitle = toVisualOrder(title);
+  const vSubtitle = toVisualOrder(subtitle);
+
   const [regular, bold] = await Promise.all([loadHebrewFont(400), loadHebrewFont(700)]);
 
   const fonts = [
@@ -201,7 +207,7 @@ export async function GET(req: Request) {
               maxWidth: '1000px',
             }}
           >
-            {title}
+            {vTitle}
           </div>
           <div
             style={{
@@ -213,7 +219,7 @@ export async function GET(req: Request) {
               maxWidth: '980px',
             }}
           >
-            {subtitle}
+            {vSubtitle}
           </div>
         </div>
 
