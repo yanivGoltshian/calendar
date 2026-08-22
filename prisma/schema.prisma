@@ -171,6 +171,22 @@ enum MessageStatus {
   FAILED // נכשל
 }
 
+// סוג הודעת וואטסאפ (אפיק Exclusive דרך Azure Communication Services).
+enum WhatsAppMessageType {
+  OTP // קוד אימות/התחברות
+  CONFIRMATION // אישור תור
+  REMINDER // תזכורת תור
+  CAMPAIGN // דיוור/קמפיין
+}
+
+// סטטוס רשומת יומן וואטסאפ.
+enum WhatsAppLogStatus {
+  SENT // נשלח בהצלחה (עלות נצברה)
+  FAILED // כשל שליחה (ללא צבירת עלות)
+  SKIPPED // דולג בחן (ערוץ לא מוגדר/לא זמין; ללא עלות)
+  BLOCKED // נחסם בשל חריגת סף חודשי (ללא עלות; נפילה למייל)
+}
+
 // סוג תנועת מלאי (אפוס L — מלאי בסיסי). enum חדש ונפרד, ללא נגיעה ב-enums קיימים.
 enum StockMovementType {
   PURCHASE // קליטת סחורה / רכש (כניסה)
@@ -225,6 +241,18 @@ model Business {
   // מועד המעבר לפרימיום (אופציונלי, לתיעוד).
   premiumSince DateTime?
 
+  // ── ממשל עלויות וואטסאפ (אפיק Exclusive) — כל השדות אדיטיביים ובאגורות ─────
+  // צובר עלות וואטסאפ מוערכת לחודש הקלנדרי הנוכחי (אגורות, מספר שלם).
+  monthlyWhatsappCostAgorot Int @default(0)
+  // החודש (YYYY-MM) שאליו שייך הצובר; כשמשתנה — הצובר מתאפס לפני הוספת עלות חדשה.
+  whatsappCostMonth String?
+  // האם שליחת וואטסאפ חסומה לעסק (נקבע אוטומטית בחציית סף החסימה עד אישור סופר-אדמין).
+  whatsappBlocked Boolean @default(false)
+  // שומר שההתראה על סף האזהרה (40₪) נשלחה כבר החודש (YYYY-MM) — פעם אחת לחודש לעסק.
+  whatsappWarn40SentForMonth String?
+  // אישור חריגה של סופר-אדמין לחודש נתון (YYYY-MM) — מבטל חסימה עד סוף אותו חודש.
+  whatsappOverrideApprovedForMonth String?
+
   // שאלות שיווק באונבורדינג (אפיק D2), בדומה ל-calmark: מאיזה יומן הגיע הבעלים
   // וכיצד שמע עלינו. עמודות nullable אדיטיביות בלבד; נאספות בהקמת העסק לצורכי אנליטיקה.
   priorCalendar  String?
@@ -240,6 +268,7 @@ model Business {
   punchCards      PunchCard[]
   campaigns       Campaign[]
   messageLogs     MessageLog[]
+  whatsappLogs    WhatsAppMessageLog[]
 
   // מודול קופה ומסמכים (אפוסים J+K) — קשרים אדיטיביים
   products  Product[]
@@ -795,6 +824,38 @@ model MessageLog {
 
   @@index([businessId, createdAt])
   @@index([campaignId])
+}
+
+// יומן הודעות וואטסאפ (אפיק Exclusive דרך Azure Communication Services).
+// רשומה לכל ניסיון שליחה: מוצלח, כושל, מדולג או חסום. שדה month (YYYY-MM) מאפשר
+// אגרגציה חודשית יעילה לצובר העלות ולדשבורד ניהול-העל. עלות באגורות (Int) כדי
+// למנוע סחף float. אדיטיבי בלבד; אינו נוגע ב-MessageLog הקיים.
+model WhatsAppMessageLog {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // מספר היעד (E.164 מנורמל) של הנמען.
+  toPhone String
+  // סוג ההודעה: OTP / אישור / תזכורת / קמפיין.
+  messageType WhatsAppMessageType
+  // שם תבנית ה-WhatsApp שנעשה בה שימוש (nullable עבור טקסט חופשי בתוך חלון 24ש).
+  templateName String?
+  // תוצאת השליחה.
+  status WhatsAppLogStatus
+  // מזהה ההודעה שהחזיר הספק (ACS), כשקיים.
+  providerMessageId String?
+  // עלות מוערכת שנצברה לרשומה זו, באגורות (0 עבור FAILED/SKIPPED/BLOCKED).
+  estimatedCostAgorot Int @default(0)
+  // קוד/הודעת שגיאה כשהשליחה נכשלה.
+  errorCode String?
+  // החודש הקלנדרי (YYYY-MM, לפי אזור הזמן העסקי) שאליו משויכת הרשומה.
+  month String
+
+  createdAt DateTime @default(now())
+
+  @@index([businessId, month])
+  @@index([businessId, createdAt])
 }
 
 // ---------- מלאי (אפוס L — מלאי בסיסי) ----------

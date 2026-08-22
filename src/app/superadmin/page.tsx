@@ -152,6 +152,13 @@ export default async function SuperadminPage() {
             <p className="mt-2 text-xs" style={{ color: TEXT_MUTED }}>
               {s.countLabel.replace('{count}', String(businesses.length))}
             </p>
+            <a
+              href="/superadmin/whatsapp"
+              className="mt-3 inline-flex min-h-[40px] items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold"
+              style={{ borderColor: NAVY_GLOW, backgroundColor: NAVY_EDGE, color: GOLD_LIGHT }}
+            >
+              📊 עלויות וואטסאפ
+            </a>
           </div>
           <div className="shrink-0">
             <InstallApp variant="superadmin" compact />
