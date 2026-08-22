@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { BRAND } from '@/config/brand';
 import { SITE_DESCRIPTION } from '@/lib/seo';
+import { toVisualOrder } from '@/lib/og/bidi';
 
 /**
  * תמונת Open Graph דינמית (1200x630) בעברית עם רקע מותג (נייבי + זהב).
@@ -201,7 +202,7 @@ export async function GET(req: Request) {
               maxWidth: '1000px',
             }}
           >
-            {title}
+            {toVisualOrder(title)}
           </div>
           <div
             style={{
@@ -213,7 +214,7 @@ export async function GET(req: Request) {
               maxWidth: '980px',
             }}
           >
-            {subtitle}
+            {toVisualOrder(subtitle)}
           </div>
         </div>
 
