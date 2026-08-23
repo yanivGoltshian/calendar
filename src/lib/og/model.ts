@@ -4,8 +4,9 @@ import { resolveBrandColor, readableText } from '@/lib/brandColor';
  * מודל טהור לכרטיס השיתוף (OG) של עסק — מפריד את ההחלטה הוויזואלית
  * מרינדור התמונה עצמה (ImageResponse), כדי שנוכל לבדוק אותו ביחידה.
  *
- * סדר עדיפויות המצב: 'cover' כשסופקה תמונת עסק טעונה, אחרת 'logo' כשסופק
- * לוגו טעון, ואחרת נפילה ל-'initial' (אות ראשונה על רקע צבע המותג).
+ * סדר עדיפויות המצב: 'logo' כשסופק לוגו טעון (התמונה הראשית המועדפת לכרטיס
+ * העסק), אחרת 'cover' כשסופקה תמונת עסק טעונה, ואחרת נפילה ל-'initial' (אות
+ * ראשונה על רקע צבע המותג).
  * background/fg נגזרים מצבע המותג (עם נפילה לצבע תור צ׳יק) ומצבע טקסט
  * קריא מעליו, ומשמשים בעיקר את מצבי הנפילה.
  */
@@ -41,7 +42,7 @@ export type BusinessOgModel = {
   background: string;
   /** צבע טקסט קריא (לבן/כהה) מעל הרקע. */
   fg: string;
-  /** מצב הרינדור: תמונת עסק כשקיימת, אחרת לוגו, ואחרת אות ראשונה. */
+  /** מצב הרינדור: לוגו כשקיים, אחרת תמונת עסק, ואחרת אות ראשונה. */
   mode: BusinessOgMode;
   /** אות הנפילה (התו הראשון של שם העסק) לשימוש כשאין לוגו. */
   initial: string;
@@ -57,7 +58,7 @@ export type BusinessOgModel = {
 
 export type BusinessOgInput = {
   name?: string | null;
-  /** תמונת עסק שכבר נטענה (data URI) או כתובת; מעדיפה על הלוגו כשקיימת. */
+  /** תמונת עסק שכבר נטענה (data URI) או כתובת; משמשת כשאין לוגו. */
   coverUrl?: string | null;
   /** לוגו שכבר נטען (data URI) או כתובת; ריק/undefined => נפילה לאות. */
   logoUrl?: string | null;
@@ -74,7 +75,7 @@ export function buildBusinessOgModel(input: BusinessOgInput): BusinessOgModel {
   const fg = readableText(background);
   const name = (input.name ?? '').trim();
   const initial = name.charAt(0) || '\u2022';
-  const mode: BusinessOgMode = input.coverUrl ? 'cover' : input.logoUrl ? 'logo' : 'initial';
+  const mode: BusinessOgMode = input.logoUrl ? 'logo' : input.coverUrl ? 'cover' : 'initial';
   const typeLabel = BUSINESS_TYPE_LABEL_HE[String(input.type ?? '').trim()] ?? '';
   const services = (input.services ?? [])
     .map((s) => (s ?? '').trim())

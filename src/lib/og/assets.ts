@@ -4,6 +4,8 @@
  * הן את האייקון הריבועי (icon/route.tsx) והן את כרטיס השיתוף (opengraph-image.tsx).
  */
 
+import { absoluteUrl } from '@/lib/seo';
+
 /**
  * User-Agent ישן במכוון: Google Fonts מגיש TTF (במקום WOFF/WOFF2) ל-UA ישנים,
  * ו-satori (next/og) יודע לפרש רק TTF/OTF. חשוב: ה-UA של Chrome/40 שהיה כאן קודם
@@ -33,7 +35,10 @@ export async function loadHebrewFont(weight: number = 700): Promise<ArrayBuffer 
 export async function loadLogo(url: string | null): Promise<string | null> {
   if (!url) return null;
   try {
-    const res = await fetch(url);
+    // נתיבים יחסיים (למשל /brand/business/skin.jpg) נכשלים ב-fetch צד-שרת;
+    // ממירים למוחלט דרך SITE_URL (בפרוד = הדומיין הממותג) לפני הטעינה.
+    const target = url.startsWith('/') ? absoluteUrl(url) : url;
+    const res = await fetch(target);
     if (!res.ok) return null;
     const type = res.headers.get('content-type') ?? 'image/png';
     if (!type.startsWith('image/')) return null;

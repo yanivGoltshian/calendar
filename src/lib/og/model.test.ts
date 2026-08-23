@@ -13,11 +13,21 @@ test('כשיש לוגו — mode הוא logo', () => {
   assert.equal(model.mode, 'logo');
 });
 
-test('כשיש תמונת עסק — mode הוא cover (גובר גם על לוגו)', () => {
+test('כשיש גם לוגו וגם תמונת עסק — mode הוא logo (הלוגו גובר)', () => {
   const model = buildBusinessOgModel({
     name: 'מספרת יוסי',
     coverUrl: 'data:image/jpeg;base64,BBBB',
     logoUrl: 'data:image/png;base64,AAAA',
+    brandColor: '#3366cc',
+  });
+  assert.equal(model.mode, 'logo');
+});
+
+test('יש תמונת עסק אך אין לוגו — mode הוא cover', () => {
+  const model = buildBusinessOgModel({
+    name: 'מספרת יוסי',
+    coverUrl: 'data:image/jpeg;base64,BBBB',
+    logoUrl: null,
     brandColor: '#3366cc',
   });
   assert.equal(model.mode, 'cover');

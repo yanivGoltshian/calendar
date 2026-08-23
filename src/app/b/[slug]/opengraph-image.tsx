@@ -7,8 +7,8 @@ import { toVisualOrder } from '@/lib/og/bidi';
 /**
  * כרטיס שיתוף (Open Graph) דינמי לכל עסק — 1200x630, נחיתה (landscape).
  * מתקן את הבאג שבו שיתוף לינק עסק ב-WhatsApp/רשתות הראה את לוגו הפלטפורמה:
- * כאן מרונדרת תמונת העסק (coverImageUrl) במילוי מלא כשקיימת, אחרת הלוגו של
- * העסק, ואחרת אות ראשונה על רקע צבע המותג. הכרטיס מועשר: שם העסק, סוג העסק,
+ * כאן מרונדר הלוגו של העסק כתמונה הראשית כשקיים, אחרת תמונת העסק
+ * (coverImageUrl) במילוי מלא, ואחרת אות ראשונה על רקע צבע המותג. הכרטיס מועשר: שם העסק, סוג העסק,
  * עד שלושה שירותים וקריאה להזמנת תור אונליין — וכל טקסט עברי מומר לסדר ויזואלי
  * (toVisualOrder) לפני הרינדור, כי Satori לא מבצע bidi ומתעלם מ-direction:rtl.
  *
@@ -29,9 +29,9 @@ export default async function BusinessOpengraphImage({ params }: Props) {
   const { slug } = await params;
   const business = await getBusinessBranding(slug);
 
-  // טעינת תמונת העסק והלוגו לפני בניית המודל: כשתמונת העסק נטענת בהצלחה
-  // המודל בוחר mode='cover'; אחרת נופל ללוגו, ואם גם הוא חסר — לאות ראשונה
-  // על רקע צבע המותג. כל טעינה שנכשלת מחזירה null ומורידה מדרגה בבטחה.
+  // טעינת הלוגו ותמונת העסק לפני בניית המודל: כשהלוגו נטען בהצלחה המודל
+  // בוחר mode='logo'; אחרת נופל לתמונת העסק (cover), ואם גם היא חסרה — לאות
+  // ראשונה על רקע צבע המותג. כל טעינה שנכשלת מחזירה null ומורידה מדרגה בבטחה.
   const cover = await loadImage(business?.coverImageUrl ?? null);
   const logo = await loadLogo(business?.logoUrl ?? null);
   const model = buildBusinessOgModel({
