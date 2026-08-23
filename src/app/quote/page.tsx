@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
-import { auth } from '@/auth';
+import { auth, authProviderStatus } from '@/auth';
 import { t } from '@/i18n';
 import { getBusinessesOwnedByEmail } from '@/server/repos/business';
+import { getClientSession } from '@/lib/session';
 import { bookingUrl } from '@/lib/booking-link';
 import PublicQuoteForm, { type PublicQuoteDefaults } from './PublicQuoteForm';
 
@@ -44,6 +45,11 @@ export default async function QuotePage({
     : null;
   const isOwner = Boolean(ownedBusiness);
 
+  // מבקר מחובר הוא בעלים (NextAuth) או לקוח (client_session). כפתור גוגל מוצג
+  // רק כשאיש אינו מחובר, ומפנה דרך גשר הזהות /account/continue.
+  const clientSession = await getClientSession();
+  const authed = Boolean(session?.user) || Boolean(clientSession);
+
   const defaults: PublicQuoteDefaults = ownedBusiness
     ? {
         mode: 'owner',
@@ -74,7 +80,11 @@ export default async function QuotePage({
         </p>
       </header>
 
-      <PublicQuoteForm defaults={defaults} />
+      <PublicQuoteForm
+        defaults={defaults}
+        authed={authed}
+        googleEnabled={authProviderStatus.google}
+      />
     </main>
   );
 }
