@@ -3,14 +3,17 @@ import { getBusinessBranding } from '@/server/repos/business';
 import { loadHebrewFont, loadImage, loadLogo } from '@/lib/og/assets';
 import { buildBusinessOgModel } from '@/lib/og/model';
 import { toVisualOrder } from '@/lib/og/bidi';
+import { absoluteUrl } from '@/lib/seo';
 
 /**
  * כרטיס שיתוף (Open Graph) דינמי לכל עסק — 1200x630, נחיתה (landscape).
  * מתקן את הבאג שבו שיתוף לינק עסק ב-WhatsApp/רשתות הראה את לוגו הפלטפורמה:
- * כאן מרונדר הלוגו של העסק כתמונה הראשית כשקיים, אחרת תמונת העסק
- * (coverImageUrl) במילוי מלא, ואחרת אות ראשונה על רקע צבע המותג. הכרטיס מועשר: שם העסק, סוג העסק,
- * עד שלושה שירותים וקריאה להזמנת תור אונליין — וכל טקסט עברי מומר לסדר ויזואלי
- * (toVisualOrder) לפני הרינדור, כי Satori לא מבצע bidi ומתעלם מ-direction:rtl.
+ * כשלעסק יש לוגו — משתפים את קובץ הלוגו עצמו בלבד (בייטים גולמיים, ללא
+ * כרטיס מורכב, ללא שם/סוג/שירותים/קריאה לפעולה), כדי ש-WhatsApp/פייסבוק
+ * יראו את הלוגו הנקי. רק כשאין לוגו נופלים לכרטיס מרונדר: תמונת העסק
+ * (coverImageUrl) במילוי מלא, ואחרת אות ראשונה על רקע צבע המותג. בכרטיס
+ * הזה כל טקסט עברי מומר לסדר ויזואלי (toVisualOrder) לפני הרינדור, כי
+ * Satori לא מבצע bidi ומתעלם מ-direction:rtl.
  *
  * זהו קובץ file-convention של Next: כשעמוד העסק אינו קובע openGraph.images
  * במפורש, Next מזריק אוטומטית את התגית המצביעה לתמונה זו (וגם ל-Twitter).
@@ -28,6 +31,31 @@ type Props = { params: Promise<{ slug: string }> };
 export default async function BusinessOpengraphImage({ params }: Props) {
   const { slug } = await params;
   const business = await getBusinessBranding(slug);
+
+  // כשלעסק יש לוגו — מגישים את קובץ הלוגו עצמו כתגובת התמונה ומדלגים לגמרי
+  // על Satori/ImageResponse, כדי שהשיתוף יהיה הלוגו הנקי בלבד (ללא כרטיס,
+  // ללא שם/סוג/שירותים/קריאה לפעולה). לוגו גובר על cover בראוט הזה. נפילה
+  // בטוחה: אם ה-fetch נכשל ממשיכים להתנהגות הקיימת (cover, ואחרת אות ראשונה).
+  if (business?.logoUrl) {
+    try {
+      const abs = business.logoUrl.startsWith('/')
+        ? absoluteUrl(business.logoUrl)
+        : business.logoUrl;
+      const res = await fetch(abs);
+      const ct = res.headers.get('content-type') ?? '';
+      if (res.ok && ct.startsWith('image/')) {
+        const buf = await res.arrayBuffer();
+        return new Response(buf, {
+          headers: {
+            'Content-Type': ct || 'image/jpeg',
+            'Cache-Control': 'public, max-age=3600, s-maxage=86400',
+          },
+        });
+      }
+    } catch {
+      // נמשיך למסלול הכרטיס המרונדר למטה
+    }
+  }
 
   // טעינת הלוגו ותמונת העסק לפני בניית המודל: כשהלוגו נטען בהצלחה המודל
   // בוחר mode='logo'; אחרת נופל לתמונת העסק (cover), ואם גם היא חסרה — לאות
@@ -197,7 +225,7 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           justifyContent: 'center',
           background: model.background,
           fontFamily: 'Assistant, sans-serif',
-          padding: '48px',
+          padding: '72px',
           boxSizing: 'border-box',
         }}
       >
@@ -220,8 +248,8 @@ export default async function BusinessOpengraphImage({ params }: Props) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '224px',
-              height: '224px',
+              width: '300px',
+              height: '300px',
               background: '#ffffff',
               borderRadius: '56px',
               boxShadow: '0 24px 70px rgba(0,0,0,0.28)',
@@ -231,9 +259,9 @@ export default async function BusinessOpengraphImage({ params }: Props) {
             <img
               src={logo ?? ''}
               alt=""
-              width={176}
-              height={176}
-              style={{ width: '176px', height: '176px', objectFit: 'contain' }}
+              width={236}
+              height={236}
+              style={{ width: '236px', height: '236px', objectFit: 'contain' }}
             />
           </div>
         ) : (
@@ -242,12 +270,12 @@ export default async function BusinessOpengraphImage({ params }: Props) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '224px',
-              height: '224px',
+              width: '300px',
+              height: '300px',
               background: 'rgba(255,255,255,0.14)',
               borderRadius: '56px',
               color: model.fg,
-              fontSize: '132px',
+              fontSize: '180px',
               fontWeight: 700,
               lineHeight: 1,
             }}
@@ -260,10 +288,10 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           <div
             style={{
               display: 'flex',
-              marginTop: '28px',
+              marginTop: '44px',
               maxWidth: '1040px',
               color: model.fg,
-              fontSize: '50px',
+              fontSize: '66px',
               fontWeight: 700,
               lineHeight: 1.08,
               textAlign: 'center',
@@ -280,7 +308,7 @@ export default async function BusinessOpengraphImage({ params }: Props) {
               marginTop: '10px',
               color: model.fg,
               opacity: 0.86,
-              fontSize: '28px',
+              fontSize: '34px',
               fontWeight: 700,
             }}
           >
@@ -292,7 +320,7 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           <div
             style={{
               display: 'flex',
-              marginTop: '20px',
+              marginTop: '26px',
               gap: '14px',
               flexWrap: 'nowrap',
               justifyContent: 'center',
@@ -306,9 +334,9 @@ export default async function BusinessOpengraphImage({ params }: Props) {
                   alignItems: 'center',
                   background: 'rgba(255,255,255,0.18)',
                   color: model.fg,
-                  fontSize: '24px',
+                  fontSize: '26px',
                   fontWeight: 700,
-                  padding: '8px 18px',
+                  padding: '10px 22px',
                   borderRadius: '999px',
                 }}
               >
@@ -318,7 +346,7 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           </div>
         ) : null}
 
-        <div style={{ display: 'flex', marginTop: '22px' }}>{ctaPill}</div>
+        <div style={{ display: 'flex', marginTop: '30px' }}>{ctaPill}</div>
       </div>
     );
 
