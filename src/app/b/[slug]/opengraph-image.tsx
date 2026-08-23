@@ -197,7 +197,7 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           justifyContent: 'center',
           background: model.background,
           fontFamily: 'Assistant, sans-serif',
-          padding: '72px',
+          padding: '48px',
           boxSizing: 'border-box',
         }}
       >
@@ -220,8 +220,8 @@ export default async function BusinessOpengraphImage({ params }: Props) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '300px',
-              height: '300px',
+              width: '224px',
+              height: '224px',
               background: '#ffffff',
               borderRadius: '56px',
               boxShadow: '0 24px 70px rgba(0,0,0,0.28)',
@@ -231,9 +231,9 @@ export default async function BusinessOpengraphImage({ params }: Props) {
             <img
               src={logo ?? ''}
               alt=""
-              width={236}
-              height={236}
-              style={{ width: '236px', height: '236px', objectFit: 'contain' }}
+              width={176}
+              height={176}
+              style={{ width: '176px', height: '176px', objectFit: 'contain' }}
             />
           </div>
         ) : (
@@ -242,12 +242,12 @@ export default async function BusinessOpengraphImage({ params }: Props) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '300px',
-              height: '300px',
+              width: '224px',
+              height: '224px',
               background: 'rgba(255,255,255,0.14)',
               borderRadius: '56px',
               color: model.fg,
-              fontSize: '180px',
+              fontSize: '132px',
               fontWeight: 700,
               lineHeight: 1,
             }}
@@ -260,10 +260,10 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           <div
             style={{
               display: 'flex',
-              marginTop: '44px',
+              marginTop: '28px',
               maxWidth: '1040px',
               color: model.fg,
-              fontSize: '66px',
+              fontSize: '50px',
               fontWeight: 700,
               lineHeight: 1.08,
               textAlign: 'center',
@@ -280,7 +280,7 @@ export default async function BusinessOpengraphImage({ params }: Props) {
               marginTop: '10px',
               color: model.fg,
               opacity: 0.86,
-              fontSize: '34px',
+              fontSize: '28px',
               fontWeight: 700,
             }}
           >
@@ -292,7 +292,7 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           <div
             style={{
               display: 'flex',
-              marginTop: '26px',
+              marginTop: '20px',
               gap: '14px',
               flexWrap: 'nowrap',
               justifyContent: 'center',
@@ -306,9 +306,9 @@ export default async function BusinessOpengraphImage({ params }: Props) {
                   alignItems: 'center',
                   background: 'rgba(255,255,255,0.18)',
                   color: model.fg,
-                  fontSize: '26px',
+                  fontSize: '24px',
                   fontWeight: 700,
-                  padding: '10px 22px',
+                  padding: '8px 18px',
                   borderRadius: '999px',
                 }}
               >
@@ -318,7 +318,7 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           </div>
         ) : null}
 
-        <div style={{ display: 'flex', marginTop: '30px' }}>{ctaPill}</div>
+        <div style={{ display: 'flex', marginTop: '22px' }}>{ctaPill}</div>
       </div>
     );
 

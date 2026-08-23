@@ -1,9 +1,9 @@
-import { Heebo, Frank_Ruhl_Libre } from 'next/font/google';
+import { Heebo } from 'next/font/google';
 
 /**
  * טיפוגרפיה עברית פרימיום — נטענת דרך next/font עם display: 'swap'.
  *
- * - כותרת (display): Frank Ruhl Libre — פונט תצוגה אלגנטי בעל אופי.
+ * - כותרת (display): Heebo במשקלים כבדים — פונט תצוגה עברי נקי ומודרני.
  * - גוף (body): Heebo — פונט גוף עברי נקי וקריא.
  *
  * שניהם ממופים למשתני CSS ומחוברים ל-Tailwind (ראו tailwind.config.ts).
@@ -15,9 +15,9 @@ export const fontBody = Heebo({
   variable: '--font-body',
 });
 
-export const fontDisplay = Frank_Ruhl_Libre({
+export const fontDisplay = Heebo({
   subsets: ['hebrew', 'latin'],
-  weight: ['400', '500', '700', '900'],
+  weight: ['700', '800', '900'],
   display: 'swap',
   variable: '--font-display',
 });

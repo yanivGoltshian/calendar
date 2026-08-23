@@ -72,7 +72,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-body)', 'Assistant', 'Heebo', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'Frank Ruhl Libre', 'Georgia', 'serif'],
+        display: ['var(--font-display)', 'Heebo', 'Assistant', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         'display-sm': ['2.5rem', { lineHeight: '1.1', letterSpacing: '-0.01em' }],
