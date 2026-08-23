@@ -5,6 +5,7 @@ import { requireClientSession } from '@/lib/auth';
 import { getAppointmentsForUser } from '@/server/repos/account';
 import { logout } from './actions';
 import { CancelAppointmentButton } from './CancelAppointmentButton';
+import { DeleteAccountSection } from './DeleteAccountSection';
 import {
   Card,
   CardBody,
@@ -129,6 +130,30 @@ export default async function AccountPage() {
           </div>
         </header>
 
+        <section className="flex flex-col gap-3 rounded-2xl border border-[#16233A] bg-[#08101C] p-4">
+          <h2 className="text-base font-bold text-[#E8ECF3]">{t.account.detailsTitle}</h2>
+          <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-[#9AA7BD]">{t.account.nameLabel}</dt>
+              <dd className="font-medium text-[#E8ECF3]">
+                {session.name || t.account.notProvided}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-[#9AA7BD]">{t.account.emailLabel}</dt>
+              <dd className="font-medium text-[#E8ECF3]" dir="ltr">
+                {session.email || t.account.notProvided}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <dt className="text-[#9AA7BD]">{t.account.phoneLabel}</dt>
+              <dd className="font-medium text-[#E8ECF3]" dir="ltr">
+                {session.phone || t.account.notProvided}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
         <section className="flex flex-col gap-3">
           <CardHeader className="px-0">
             <CardTitle className="text-[#E8ECF3]">{t.account.upcomingTitle}</CardTitle>
@@ -154,6 +179,8 @@ export default async function AccountPage() {
             </p>
           )}
         </section>
+
+        <DeleteAccountSection />
       </div>
     </main>
   );

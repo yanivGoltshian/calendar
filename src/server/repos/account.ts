@@ -53,3 +53,31 @@ export async function getAppointmentsForUser(identity: UserIdentity) {
 
   return { upcoming, past };
 }
+
+/**
+ * מידע לצורך מחיקת חשבון: כמה עסקים בבעלות המשתמש וכמה שיוכי-צוות יש לו.
+ * חשבון שהוא בעל עסק או איש צוות אינו נמחק אוטומטית (הגנה על נתוני העסק).
+ */
+export async function getAccountDeletionInfo(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      _count: { select: { ownedBusinesses: true, staffMemberships: true } },
+    },
+  });
+  if (!user) return null;
+  return {
+    ownedBusinesses: user._count.ownedBusinesses,
+    staffMemberships: user._count.staffMemberships,
+  };
+}
+
+/**
+ * מחיקת רישום המשתמש שלנו (זהות ההתחברות + פרטי הזיהוי).
+ * לפי הסכימה: פרופילי לקוח מנותקים (Client.userId → SetNull) כך שתורים שכבר
+ * נקבעו נשמרים אצל בעלי העסקים, אך מנותקים מהזהות האישית.
+ */
+export async function deleteUserAccount(userId: string) {
+  await prisma.user.delete({ where: { id: userId } });
+}

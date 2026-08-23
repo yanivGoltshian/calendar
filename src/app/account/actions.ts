@@ -7,6 +7,10 @@ import {
   getAppointmentForOwner,
   updateAppointmentStatus,
 } from '@/server/repos/appointments';
+import {
+  deleteUserAccount,
+  getAccountDeletionInfo,
+} from '@/server/repos/account';
 
 /** התנתקות: ניקוי עוגיית ה-session והפניה למסך ההתחברות. */
 export async function logout() {
@@ -53,4 +57,36 @@ export async function cancelAppointmentAction(
   await updateAppointmentStatus(id, 'CANCELLED');
   revalidatePath('/account');
   return { ok: true };
+}
+
+export type DeleteAccountState = { ok: boolean; error?: string };
+
+/**
+ * מחיקת חשבון הלקוח (חתימת useActionState).
+ * הגנה: חשבון שהוא בעל עסק או איש צוות אינו נמחק כאן (מניעת ניתוק/יתום של עסק) —
+ * מוחזרת הודעה המפנה לאזור ניהול העסק. אחרת נמחקת זהות המשתמש, מנוקה ה-session
+ * ומתבצעת הפניה לעמוד הבית.
+ */
+export async function deleteAccount(
+  _prev: DeleteAccountState,
+  _formData: FormData,
+): Promise<DeleteAccountState> {
+  const session = await getClientSession();
+  if (!session) return { ok: false, error: 'unauthorized' };
+
+  const info = await getAccountDeletionInfo(session.userId);
+  // אם המשתמש כבר אינו קיים — מנקים session ומסיימים בהצלחה.
+  if (info) {
+    if (info.ownedBusinesses > 0 || info.staffMemberships > 0) {
+      return { ok: false, error: 'owner_blocked' };
+    }
+    try {
+      await deleteUserAccount(session.userId);
+    } catch {
+      return { ok: false, error: 'delete_failed' };
+    }
+  }
+
+  await clearClientSession();
+  redirect('/?farewell=1');
 }

@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import type { LandingLaunchOffer } from '@/lib/publicPageStyle';
+import { logout } from '@/app/account/actions';
 import { computeCountdown } from '@/lib/launchOffer';
 import { formatIsraeliPhoneDisplay } from '@/lib/phoneDisplay';
 import {
@@ -33,6 +35,16 @@ type Labels = {
   heroImageAlt: string;
   heroSecondaryCta: string;
   updatesLabel: string;
+  menu: {
+    open: string;
+    close: string;
+    title: string;
+    account: string;
+    login: string;
+    logout: string;
+    connectedLabel: string;
+    guestLabel: string;
+  };
   countdown: CountdownLabels;
 };
 
@@ -54,6 +66,10 @@ type Props = {
   heroCtaLabel: string;
   updatesText?: string | null;
   launchOffer?: LandingLaunchOffer | null;
+  // מצב ההתחברות של הלקוח לתפריט ההמבורגר (null = אורח/ת לא מחובר/ת).
+  account?: { name?: string | null; email?: string | null } | null;
+  accountHref?: string;
+  loginHref?: string;
   labels: Labels;
 };
 
@@ -79,8 +95,12 @@ export default function PremiumClinicHeader({
   heroCtaLabel,
   updatesText,
   launchOffer,
+  account = null,
+  accountHref = '/account',
+  loginHref = '/login',
   labels,
 }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const phoneDisplay = formatIsraeliPhoneDisplay(phone);
   // פס המבצע מוצג רק כשיש מבצע תקין ולא הסתיים. הספירה מחושבת פעם אחת (ימים בלבד),
   // בלי טיימר מתקתק — כך אין קפיצה, אין לחץ, ואין אי-התאמת הידרציה.
@@ -187,8 +207,102 @@ export default function PremiumClinicHeader({
               {labels.bookCta}
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-expanded={menuOpen}
+              aria-controls="tc-clinic-menu"
+              aria-label={menuOpen ? labels.menu.close : labels.menu.open}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 text-[color:var(--c-ink,#1b1715)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10 sm:hidden"
+            >
+              {menuOpen ? (
+                <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
+                  <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
           </nav>
         </div>
+
+        {/* מגירת תפריט מובייל — ניווט + מצב התחברות הלקוח. גלויה רק כשפתוחה ורק במובייל. */}
+        {menuOpen ? (
+          <div id="tc-clinic-menu" className="sm:hidden">
+            <div className="mx-auto max-w-5xl px-5 pb-4">
+              <nav className="flex flex-col gap-1 border-t border-[color:var(--c-gold,#c6a86a)]/20 pt-3">
+                <a
+                  href="#lp-services"
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/85 transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
+                >
+                  {labels.navServices}
+                </a>
+                <a
+                  href="#lp-offers"
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/85 transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
+                >
+                  {labels.navOffers}
+                </a>
+                <a
+                  href="#lp-location"
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/85 transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
+                >
+                  {labels.navLocation}
+                </a>
+              </nav>
+
+              <div className="mt-3 rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white/60 p-3">
+                {account ? (
+                  <>
+                    <div className="flex flex-col gap-0.5 px-1 pb-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[color:var(--biz-strong)]">
+                        {labels.menu.connectedLabel}
+                      </span>
+                      {account.name ? (
+                        <span className="truncate text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
+                          {account.name}
+                        </span>
+                      ) : null}
+                      {account.email ? (
+                        <span dir="ltr" className="truncate text-start text-xs text-[color:var(--c-ink,#1b1715)]/70">
+                          {account.email}
+                        </span>
+                      ) : null}
+                    </div>
+                    <Link
+                      href={accountHref}
+                      onClick={() => setMenuOpen(false)}
+                      className="mt-1 block rounded-xl bg-[color:var(--c-gold,#c6a86a)]/15 px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/25"
+                    >
+                      {labels.menu.account}
+                    </Link>
+                    <form action={logout} className="mt-2">
+                      <button
+                        type="submit"
+                        className="block w-full rounded-xl border border-[color:var(--c-ink,#1b1715)]/15 px-3 py-2.5 text-center text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:bg-[color:var(--c-ink,#1b1715)]/5"
+                      >
+                        {labels.menu.logout}
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <Link
+                    href={loginHref}
+                    onClick={() => setMenuOpen(false)}
+                    className="block rounded-xl bg-[color:var(--c-gold,#c6a86a)]/15 px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/25"
+                  >
+                    {labels.menu.login}
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* רצועת עדכונים — טקסט מתגלגל שנשלט מניהול העסק (חופשה · זמינות · הודעה). נופלת חזרה לפס מבצע כשאין עדכון */}

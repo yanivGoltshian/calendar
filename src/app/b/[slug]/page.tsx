@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import { getBusinessBySlug } from '@/server/repos/business';
+import { getClientSession } from '@/lib/session';
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatMinutes } from '@/lib/time';
@@ -51,6 +52,13 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
   const { slug } = await params;
   const business = await getBusinessBySlug(slug);
   if (!business) notFound();
+
+  // מצב התחברות הלקוח — מוזרם לתפריט ההמבורגר בכותרת הקליניקה (זהות + התחברות/התנתקות).
+  const clientSession = await getClientSession();
+  const headerAccount = clientSession
+    ? { name: clientSession.name ?? null, email: clientSession.email ?? null }
+    : null;
+  const loginHref = `/login?redirect=${encodeURIComponent(`/b/${slug}`)}`;
 
   const services = business.services;
   const staff = business.staff;
@@ -316,6 +324,9 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
           heroCtaLabel={heroCtaLabel}
           updatesText={landing?.announcement ?? null}
           launchOffer={landing?.launchOffer}
+          account={headerAccount}
+          accountHref="/account"
+          loginHref={loginHref}
           labels={{
             bookCta: clinicLabels.bookCta,
             navServices: clinicLabels.navServices,
@@ -334,6 +345,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
             heroImageAlt: clinicLabels.heroImageAlt,
             heroSecondaryCta: t.premiumLanding.heroSecondaryCta,
             updatesLabel: clinicLabels.updatesLabel,
+            menu: clinicLabels.menu,
             countdown: clinicLabels.countdown,
           }}
         />
