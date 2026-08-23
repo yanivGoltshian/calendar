@@ -10,7 +10,7 @@ import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
 import { notifyOwnerOfBooking } from '@/server/notifications/ownerBooking';
 import { notifyClientOfBooking } from '@/server/notifications/bookingConfirmation';
-import { getBusinessAccess } from '@/server/subscription';
+import { getBusinessAccess, canAcceptPublicBookings } from '@/server/subscription';
 import { absoluteUrl } from '@/lib/seo';
 import { getClientSession } from '@/lib/session';
 import { resolveGuestIdentity } from '@/server/booking/guestIdentity';
@@ -72,6 +72,12 @@ export async function POST(req: Request) {
   const business = await getBusinessBySlug(parsed.slug);
   if (!business) {
     return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
+  }
+
+  // אכיפת מנוי בצד השרת: עסק שתוקף הניסיון/המנוי שלו פג אינו מקבל הזמנות דרך העמוד
+  // הציבורי. זהו הגייט האמיתי נגד ניצול (גם קריאה ישירה ל-API נחסמת, לא רק ה-UI).
+  if (!canAcceptPublicBookings(business)) {
+    return NextResponse.json({ ok: false, error: 'business_inactive' }, { status: 403 });
   }
 
   // מדיניות פרטי קשר לפי מסלול: שם + טלפון חובה בכל המסלולים (כולל סטנדרט). מייל נדרש

@@ -5,6 +5,7 @@ import { getServicesByIds } from '@/server/repos/services';
 import { getEffectiveStaffWorkingHours } from '@/server/repos/workingHours';
 import { getBlockingAppointments } from '@/server/repos/appointments';
 import { computeSlots } from '@/server/availability';
+import { canAcceptPublicBookings } from '@/server/subscription';
 import { localWallTimeToUtc, addDaysToDateString } from '@/lib/time';
 
 const schema = z.object({
@@ -35,6 +36,12 @@ export async function POST(request: Request) {
   const business = await getBusinessBySlug(slug);
   if (!business) {
     return NextResponse.json({ ok: false, error: 'business_not_found' }, { status: 404 });
+  }
+
+  // אכיפת מנוי: עסק שפג תוקפו אינו מציג משבצות פנויות (הגנה בעומק לצד הגייט בעמוד
+  // ההזמנה). מחזירים רשימה ריקה עם דגל blocked כדי שה-UI יוכל להציג הודעת חוסם.
+  if (!canAcceptPublicBookings(business)) {
+    return NextResponse.json({ ok: true, durationMin: 0, slots: [], blocked: true });
   }
 
   // ודא שאיש הצוות שייך לעסק.

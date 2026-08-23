@@ -85,6 +85,17 @@ export function getBusinessAccess(business: BusinessAccessInput): BusinessAccess
   };
 }
 
+/**
+ * האם העסק רשאי לקבל הזמנות דרך העמוד הציבורי.
+ *
+ * חסימת ההזמנות הציבוריות בפקיעת הניסיון או המנוי מונעת שימוש חינמי בלתי מוגבל
+ * בפלטפורמה דרך העמוד הציבורי. זהו מקור אמת יחיד המשותף לעמוד ההזמנה (UI) ולנתיבי
+ * ה-API (‎/api/book, ‎/api/availability), כך שהאכיפה בצד השרת עקבית עם התצוגה.
+ */
+export function canAcceptPublicBookings(business: BusinessAccessInput): boolean {
+  return getBusinessAccess(business).active;
+}
+
 /** תווית עברית קריאה למצב הגישה (למשל לתצוגה בטבלת הסופר-אדמין ובבאנר). */
 export function describeAccessState(state: AccessState): string {
   return t.billing.status[state];
