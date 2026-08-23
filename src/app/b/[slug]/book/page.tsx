@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getBusinessBySlug } from '@/server/repos/business';
 import { t } from '@/i18n';
+import { getClientSession } from '@/lib/session';
+import { authProviderStatus } from '@/auth';
 import BookingStepper from './BookingStepper';
 
 type Props = { params: Promise<{ slug: string }>; searchParams?: Promise<{ service?: string }> };
@@ -33,6 +35,16 @@ export default async function BookPage({ params, searchParams }: Props) {
   const serviceParam = ((await searchParams) ?? {}).service;
   const preselectedServiceId = services.find((s) => s.id === serviceParam)?.id ?? null;
 
+  // לקוח מחובר: מעבירים פרטי קשר למילוי מוקדם ולהסתרת שדה המייל (#2). כניסת גוגל זמינה בכל המסלולים (#1).
+  const clientSession = await getClientSession();
+  const customer = clientSession
+    ? {
+        name: clientSession.name ?? '',
+        phone: clientSession.phone ?? '',
+        email: clientSession.email ?? '',
+      }
+    : null;
+
   return (
     <main className="mx-auto max-w-2xl px-5 py-6">
       <BookingStepper
@@ -42,6 +54,8 @@ export default async function BookPage({ params, searchParams }: Props) {
         staff={staff}
         preselectedServiceId={preselectedServiceId}
         plan={business.plan}
+        customer={customer}
+        googleEnabled={authProviderStatus.google}
       />
     </main>
   );

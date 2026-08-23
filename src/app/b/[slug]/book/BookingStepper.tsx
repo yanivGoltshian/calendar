@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
+import CustomerGoogleSignIn from '@/components/auth/CustomerGoogleSignIn';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatLongDate, todayDateString, addDaysToDateString } from '@/lib/time';
 
@@ -25,13 +26,26 @@ type Props = {
   staff: Staff[];
   preselectedServiceId?: string | null;
   plan: 'basic' | 'premium' | 'exclusive';
+  // לקוח מחובר (עוגיית client_session): מאפשר מילוי מוקדם והסתרת שדה המייל.
+  customer?: { name: string; phone: string; email: string } | null;
+  // האם כניסת גוגל זמינה בסביבה (GOOGLE_CLIENT_ID/SECRET מוגדרים).
+  googleEnabled?: boolean;
 };
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 const STEP_KEYS = ['services', 'staff', 'date', 'time', 'summary', 'confirm'] as const;
 
-export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId, plan }: Props) {
+export default function BookingStepper({
+  slug,
+  businessName,
+  services,
+  staff,
+  preselectedServiceId,
+  plan,
+  customer = null,
+  googleEnabled = false,
+}: Props) {
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
   const hasPreselected = !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
@@ -49,9 +63,14 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
   // בכל המסלולים שם וטלפון חובה. מייל נדרש רק בפרימיום/אקסקלוסיב (לאישור, תזכורות
   // והרשמת לקוח); בסטנדרט שדה המייל מוסתר כי אין תקשורת ללקוח הקצה.
   const requireEmail = plan === 'premium' || plan === 'exclusive';
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
+  // לקוח מחובר: פרטי הקשר ממולאים מראש ושדה המייל מוסתר (מוגש בשקט).
+  const authed = !!customer;
+  const authedEmail = customer?.email?.trim() ?? '';
+  const hideEmailField = authed && authedEmail.length > 0;
+  const showEmailField = requireEmail && !hideEmailField;
+  const [phone, setPhone] = useState(customer?.phone ?? '');
+  const [email, setEmail] = useState(customer?.email ?? '');
+  const [name, setName] = useState(customer?.name ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
@@ -396,6 +415,13 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
       {/* ----- שלב 5: אישור (הזמנת אורח, ללא OTP) ----- */}
       {step === 5 ? (
         <div className="space-y-4">
+          {/* כניסת לקוח חוזר עם גוגל: ממלא פרטים אוטומטית ומרכז את ההזמנות באזור האישי */}
+          {!authed && googleEnabled ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-center">
+              <p className="mb-3 text-sm text-slate-600">{t.account.googlePrompt}</p>
+              <CustomerGoogleSignIn callbackUrl={`/account/continue?next=${encodeURIComponent(`/b/${slug}/book`)}`} />
+            </div>
+          ) : null}
           <p className="text-slate-600">{requireEmail ? t.booking.guestHintPremium : t.booking.guestHintStandard}</p>
           <div>
             <label className="mb-1 block text-sm text-slate-600">{t.booking.guestName}</label>
@@ -420,7 +446,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
               className="w-full rounded-xl border border-slate-300 px-4 py-3"
             />
           </div>
-          {requireEmail ? (
+          {showEmailField ? (
             <div>
               <label className="mb-1 block text-sm text-slate-600">{t.booking.guestEmail}</label>
               <input
@@ -437,7 +463,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
           ) : null}
           <button
             type="button"
-            disabled={busy || !name.trim() || !phone.trim() || (requireEmail && !email.trim())}
+            disabled={busy || !name.trim() || !phone.trim() || (showEmailField && !email.trim())}
             onClick={submitBooking}
             className="w-full rounded-xl bg-brand-600 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-40"
           >
