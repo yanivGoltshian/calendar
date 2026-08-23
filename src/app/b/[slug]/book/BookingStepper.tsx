@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
+import CustomerGoogleSignIn from '@/components/auth/CustomerGoogleSignIn';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatLongDate, todayDateString, addDaysToDateString } from '@/lib/time';
 
@@ -43,6 +44,7 @@ export default function BookingStepper({
   preselectedServiceId,
   plan,
   customer = null,
+  googleEnabled = false,
 }: Props) {
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
@@ -413,6 +415,13 @@ export default function BookingStepper({
       {/* ----- שלב 5: אישור (הזמנת אורח, ללא OTP) ----- */}
       {step === 5 ? (
         <div className="space-y-4">
+          {/* כניסת לקוח חוזר עם גוגל: ממלא פרטים אוטומטית ומרכז את ההזמנות באזור האישי */}
+          {!authed && googleEnabled ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-center">
+              <p className="mb-3 text-sm text-slate-600">{t.account.googlePrompt}</p>
+              <CustomerGoogleSignIn callbackUrl={`/account/continue?next=${encodeURIComponent(`/b/${slug}/book`)}`} />
+            </div>
+          ) : null}
           <p className="text-slate-600">{requireEmail ? t.booking.guestHintPremium : t.booking.guestHintStandard}</p>
           <div>
             <label className="mb-1 block text-sm text-slate-600">{t.booking.guestName}</label>

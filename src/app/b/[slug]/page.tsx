@@ -287,9 +287,14 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
     <main
       dir="rtl"
       style={rootStyle}
-      className={`min-h-screen pb-28 ${isClinicPremium ? 'bg-[color:var(--c-cream,#faf6ef)]' : 'bg-slate-50'}`}
+      className={`relative min-h-screen pb-28 ${isClinicPremium ? 'bg-[color:var(--c-cream,#faf6ef)]' : 'bg-slate-50'}`}
     >
       <JsonLd data={jsonLd} />
+
+      {/* ניווט חזרה — כפתור זכוכית צף בפינה הימנית־עליונה מעל ההירו (RTL) */}
+      <div className="absolute right-4 top-3 z-50 sm:right-6 sm:top-5">
+        <BackButton />
+      </div>
 
       {isClinicPremium ? (
         /* כותרת פרימיום של הקליניקה — סרגל כהה, ניווט קרם, פס מבצע והירו המפוצל */
@@ -373,11 +378,6 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
       )}
 
       <div className="mx-auto max-w-3xl px-5">
-        {/* ניווט חזרה — למקום שממנו הגיע המשתמש, או לעמוד הבית */}
-        <div className="pt-4">
-          <BackButton />
-        </div>
-
         {/* שורת עדכון חי — נשלטת מעמוד ניהול העסק, לדוגמה הודעת חופשה. בפרימיום מוצגת ברצועת הכותרת */}
         {isLanding && !isClinicPremium && landing?.announcement ? (
           <AnnouncementBar text={landing.announcement} dismissAria={t.publicPage.landing.announcementDismiss} />

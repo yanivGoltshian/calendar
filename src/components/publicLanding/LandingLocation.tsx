@@ -67,46 +67,61 @@ export default function LandingLocation({
   // ── מצב פרימיום (קליניקה): כרטיס מפה מוטמע צף + טור פרטים + כפתורי ניווט ──
   if (premium && embedUrl) {
     return (
-      <section id="lp-location" className="mt-16 scroll-mt-24 sm:mt-24">
-        <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
-          {/* כרטיס מפה מוטמע צף */}
-          <div className="order-2 min-h-[340px] overflow-hidden rounded-3xl border border-[color:var(--c-gold,#c6a86a)]/30 shadow-elevated lg:order-1">
-            <iframe
-              src={embedUrl}
-              title={mapTitle ?? title}
-              className="h-full min-h-[340px] w-full border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
+      <section
+        id="lp-location"
+        dir="rtl"
+        className="relative mt-16 scroll-mt-24 sm:mt-24"
+        style={{
+          width: '100vw',
+          marginInline: 'calc(50% - 50vw)',
+          overflowX: 'clip',
+          background:
+            'radial-gradient(1200px 500px at 15% -10%, rgba(198,168,106,0.20), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(176,133,95,0.22), transparent 55%), linear-gradient(160deg, #1b1513, #2c2420)',
+          color: '#fff',
+        }}
+      >
+        {/* רצועה כהה אופקית: טור פרטים זהב מימין, מפה מוטמעת משמאל (RTL), קורסת לטור אחד במובייל */}
+        <div className="mx-auto grid max-w-[1120px] items-center gap-10 px-4 py-16 sm:py-20 lg:grid-cols-2">
+          {/* טור טקסט: עינית זהב, כתובת ככותרת, קו זהב, פרטים וכפתורי ניווט */}
+          <div className="order-2 lg:order-1">
+            {eyebrow ? (
+              <p className="text-sm font-extrabold tracking-wide text-[#c6a86a]">{eyebrow}</p>
+            ) : null}
+            <h2 className="mt-1 font-display text-3xl font-black leading-tight sm:text-4xl">{title}</h2>
+            <span
+              aria-hidden
+              className="mt-3 block h-[3px] w-20 rounded-full"
+              style={{ background: 'linear-gradient(90deg, #c6a86a, transparent)' }}
             />
-          </div>
 
-          {/* טור פרטים: עינית זהב, כותרת סריפית, קו זהב, פרטים וכפתורים */}
-          <div className="order-1 flex flex-col justify-center rounded-3xl border border-[color:var(--biz-border)] bg-white p-6 shadow-soft sm:p-8 lg:order-2">
-            <SectionHeading align="start" eyebrow={eyebrow} title={title} icon={<MapPinIcon className="h-4 w-4" />} />
-
-            <div className="mt-6 space-y-3 text-sm">
+            <ul className="mt-6 space-y-3 text-sm text-white/90">
               {address ? (
-                <p className="flex items-start gap-2 text-slate-700">
-                  <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--biz-strong)]" />
+                <li className="flex items-start gap-2">
+                  <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#c6a86a]" />
                   <span>{address}</span>
-                </p>
+                </li>
               ) : null}
               {phone ? (
-                <a href={`tel:${phone}`} className="flex items-center gap-2 text-slate-700 transition hover:text-[color:var(--biz-strong)]">
-                  <PhoneIcon className="h-4 w-4 shrink-0 text-[color:var(--biz-strong)]" />
-                  <span dir="ltr" className="tabular-nums">{phoneDisplay}</span>
-                </a>
+                <li>
+                  <a
+                    href={`tel:${phone}`}
+                    aria-label={contactCta ?? callCta}
+                    className="flex items-center gap-2 transition hover:text-white"
+                  >
+                    <PhoneIcon className="h-4 w-4 shrink-0 text-[#c6a86a]" />
+                    <span dir="ltr" className="tabular-nums">{phoneDisplay}</span>
+                  </a>
+                </li>
               ) : null}
               {hasHours ? (
-                <div className="flex items-start gap-2 text-slate-700">
-                  <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--biz-strong)]" />
+                <li className="flex items-start gap-2">
+                  <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#c6a86a]" />
                   <ul className="space-y-1">
                     {[0, 1, 2, 3, 4, 5, 6].map((d) => {
                       const wh = byDay.get(d);
                       if (!wh) return null;
                       return (
-                        <li key={d} className={`flex gap-2 ${d === todayIdx ? 'font-semibold text-[color:var(--biz-strong)]' : ''}`}>
+                        <li key={d} className={`flex gap-2 ${d === todayIdx ? 'font-semibold text-[#c6a86a]' : ''}`}>
                           <span className="min-w-[3.5rem]">{weekdays[d]}</span>
                           <span dir="ltr" className="tabular-nums">
                             {formatMinutes(wh.startMinute)}–{formatMinutes(wh.endMinute)}
@@ -115,69 +130,73 @@ export default function LandingLocation({
                       );
                     })}
                   </ul>
-                </div>
+                </li>
               ) : null}
-            </div>
+            </ul>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              {phone ? (
-                <a
-                  href={`tel:${phone}`}
-                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-l from-[color:var(--biz)] to-[color:var(--biz-strong)] px-5 py-2.5 text-sm font-bold text-[color:var(--biz-ink)] shadow-soft transition hover:-translate-y-0.5"
-                >
-                  <PhoneIcon className="h-4 w-4" />
-                  {contactCta ?? callCta}
-                </a>
+            {/* כפתורי ניווט: Google (זהב), Waze (רפאים), וואטסאפ (אקו) */}
+            <div className="mt-6">
+              {navTitle ? (
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#c6a86a]">{navTitle}</p>
               ) : null}
-              {whatsappTrimmed ? (
-                <a
-                  href={socialHref('whatsapp', whatsappTrimmed)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-[color:var(--biz-border)] px-5 py-2.5 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:border-[color:var(--biz)] hover:bg-[color:var(--biz-soft)]"
-                >
-                  <WhatsappIcon className="h-4 w-4" />
-                  {whatsappCta}
-                </a>
-              ) : null}
+              <div className="flex flex-wrap gap-3">
+                {gmapsUrl ? (
+                  <a
+                    href={gmapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-[#241d10] shadow-soft transition hover:-translate-y-0.5"
+                    style={{ background: 'linear-gradient(90deg, #a6863f, #c6a86a)' }}
+                  >
+                    <NavigationIcon className="h-4 w-4" />
+                    {mapsCta}
+                  </a>
+                ) : null}
+                {wazeHref ? (
+                  <a
+                    href={wazeHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5"
+                    style={{ background: 'rgba(255,255,255,0.10)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.35)' }}
+                  >
+                    <NavigationIcon className="h-4 w-4" />
+                    {wazeCta}
+                  </a>
+                ) : null}
+                {whatsappTrimmed && whatsappCta ? (
+                  <a
+                    href={socialHref('whatsapp', whatsappTrimmed)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                    style={{ background: '#c08f86' }}
+                  >
+                    <WhatsappIcon className="h-4 w-4" />
+                    {whatsappCta}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* כרטיס מפה מוטמע — יחס-גובה קבוע מונע קפיצת פריסה */}
+          <div className="order-1 lg:order-2">
+            <div
+              className="relative overflow-hidden rounded-[22px] border border-white/15 shadow-elevated"
+              style={{ aspectRatio: '4 / 3' }}
+            >
+              <iframe
+                src={embedUrl}
+                title={mapTitle ?? title}
+                className="absolute inset-0 h-full w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
             </div>
           </div>
         </div>
-
-        {/* שני כפתורי ניווט — Google Maps ו-Waze, נבנים מהכתובת המקודדת */}
-        {gmapsUrl || wazeHref ? (
-          <div className="mt-6">
-            {navTitle ? (
-              <p className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--biz-strong)]">
-                {navTitle}
-              </p>
-            ) : null}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {gmapsUrl ? (
-                <a
-                  href={gmapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[color:var(--biz-border)] bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 shadow-soft transition hover:border-[color:var(--biz)] hover:text-[color:var(--biz-strong)]"
-                >
-                  <NavigationIcon className="h-4 w-4 text-[color:var(--biz-strong)]" />
-                  {mapsCta}
-                </a>
-              ) : null}
-              {wazeHref ? (
-                <a
-                  href={wazeHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[color:var(--biz-border)] bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 shadow-soft transition hover:border-[color:var(--biz)] hover:text-[color:var(--biz-strong)]"
-                >
-                  <NavigationIcon className="h-4 w-4 text-[color:var(--biz-strong)]" />
-                  {wazeCta}
-                </a>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
       </section>
     );
   }

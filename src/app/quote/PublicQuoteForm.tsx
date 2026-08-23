@@ -7,6 +7,7 @@ import {
   type QuoteRequestState,
 } from '@/app/admin/upgrade/actions';
 import { buildWhatsappQuoteLink } from '@/lib/whatsappQuote';
+import CustomerGoogleSignIn from '@/components/auth/CustomerGoogleSignIn';
 
 export type PublicQuoteDefaults = {
   mode: 'owner' | 'visitor';
@@ -31,6 +32,8 @@ const inputClass =
  */
 export default function PublicQuoteForm({
   defaults,
+  authed = false,
+  googleEnabled = false,
 }: {
   defaults: PublicQuoteDefaults;
   // מבקר מחובר (בעלים או לקוח): מסתיר את כפתור כניסת הגוגל.
@@ -41,6 +44,7 @@ export default function PublicQuoteForm({
   const isOwner = defaults.mode === 'owner';
   const f = t.quote.form;
   const w = t.quote.whatsapp;
+  const showGoogle = !authed && googleEnabled;
 
   // עותק החבילות מגיע מבלוק השיווק (t.quote.plans). קריאה גמישה לפי קוד החבילה
   // כדי ש-exclusive יוצג ברגע שהעותק קיים, בלי לשבור טיפוסים אם עדיין חסר.
@@ -100,6 +104,13 @@ export default function PublicQuoteForm({
 
   return (
     <div dir="rtl" className="space-y-6">
+      {/* כניסת לקוח חוזר עם גוגל — מוצגת רק כשהמבקר אינו מחובר, מפנה דרך גשר הזהות */}
+      {showGoogle ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
+          <p className="mb-3 text-sm text-slate-600">{t.account.googlePrompt}</p>
+          <CustomerGoogleSignIn callbackUrl={`/account/continue?next=${encodeURIComponent('/quote')}`} />
+        </div>
+      ) : null}
       <form
         action={isOwner ? formAction : undefined}
         onSubmit={isOwner ? undefined : (e) => e.preventDefault()}
