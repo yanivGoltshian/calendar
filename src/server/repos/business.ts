@@ -44,6 +44,35 @@ export async function getBusinessById(id: string) {
   });
 }
 
+/**
+ * שליפת עסקים המועמדים למייל התראת סוף-ניסיון (cron יומי).
+ *
+ * מחזיר עסקים בחבילת ניסיון בסיסית (plan='basic') ופעילים (accountStatus='ACTIVE')
+ * שמועד סוף הניסיון שלהם נופל בחלון רחב סביב "עכשיו" — מיומיים אחורה ועד ארבעה
+ * ימים קדימה — המכסה בשוליים בטוחים גם את שכבת האזהרה (~3 ימים לפני) וגם את שכבת
+ * הפקיעה (סביב היום עצמו). הסיווג המדויק לשכבה נעשה ב-classifyTrialNotice, ולכן
+ * החלון כאן מכוון להיות מכיל ולא מדויק. השדות המצומצמים מספיקים לבניית המייל.
+ */
+export async function getBusinessesForTrialExpiryNotice(now: Date) {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const from = new Date(now.getTime() - 2 * DAY_MS);
+  const to = new Date(now.getTime() + 4 * DAY_MS);
+  return prisma.business.findMany({
+    where: {
+      plan: 'basic',
+      accountStatus: 'ACTIVE',
+      trialEndsAt: { gte: from, lte: to },
+    },
+    select: {
+      id: true,
+      name: true,
+      ownerEmail: true,
+      trialEndsAt: true,
+      owner: { select: { email: true, name: true } },
+    },
+  });
+}
+
 /** שליפת העסק הראשון (נוח לניהול ב-MVP עם עסק יחיד). */
 export async function getFirstBusiness() {
   return prisma.business.findFirst({
