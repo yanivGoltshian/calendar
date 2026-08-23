@@ -69,6 +69,18 @@ export default function LandingSections({
       {isClinicPremium && services.length > 0 ? (
         <LandingBooking slug={slug} services={services} staff={staff} bookHref={bookHref} labels={clinic.booking} />
       ) : null}
+      {/* מבצעים חמים — קובייה כהה מיד אחרי ווידג'ט קביעת התור, לפני שאר המקטעים,
+          בהתאם לסדר המוקאפ המאושר (הירו → קביעת תור → מבצעים → שאר המקטעים). */}
+      {isClinicPremium && content?.hotDeals ? (
+        <HotDealsCube
+          eyebrow={content.hotDeals.eyebrow}
+          title={content.hotDeals.title ?? clinic.navOffers}
+          text={content.hotDeals.text}
+          ctaLabel={content.hotDeals.ctaLabel ?? l.bookService}
+          ctaHref={bookHref}
+          images={content.hotDeals.images}
+        />
+      ) : null}
       {sections.map((section) => {
         switch (section) {
           case 'highlights':
@@ -78,29 +90,16 @@ export default function LandingSections({
           case 'services':
             if (services.length === 0) return null;
             return (
-              // עטיפת display:contents שומרת על זרימת הפריסה ומאפשרת להזריק
-              // את מקטע "מבצעים חמים" האינליין מיד אחרי הטיפולים (עוגן #lp-offers).
-              <div key={section} className="contents">
-                <LandingServices
-                  eyebrow={eyebrows.services}
-                  lede={t.premiumLanding.servicesLede}
-                  title={t.publicPage.servicesTitle}
-                  services={services}
-                  bookHref={bookHref}
-                  iconKey={iconKey}
-                  bookLabel={l.bookService}
-                />
-                {content?.hotDeals ? (
-                  <HotDealsCube
-                    eyebrow={content.hotDeals.eyebrow}
-                    title={content.hotDeals.title ?? clinic.navOffers}
-                    text={content.hotDeals.text}
-                    ctaLabel={content.hotDeals.ctaLabel ?? l.bookService}
-                    ctaHref={bookHref}
-                    images={content.hotDeals.images}
-                  />
-                ) : null}
-              </div>
+              <LandingServices
+                key={section}
+                eyebrow={eyebrows.services}
+                lede={t.premiumLanding.servicesLede}
+                title={t.publicPage.servicesTitle}
+                services={services}
+                bookHref={bookHref}
+                iconKey={iconKey}
+                bookLabel={l.bookService}
+              />
             );
           case 'gallery':
             return (

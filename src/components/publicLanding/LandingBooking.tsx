@@ -139,29 +139,31 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
   const ctaHref = bookQuery ? `${bookHref}?${bookQuery}` : bookHref;
 
   return (
-    <section id="lp-book" className="mt-4 scroll-mt-24">
-      <div className="overflow-hidden rounded-[28px] border border-[color:var(--c-gold,#c6a86a)]/25 bg-white shadow-elevated">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--c-gold,#c6a86a)]/20 bg-[color:var(--c-cream,#faf6ef)] px-6 py-5">
+    <section id="lp-book" className="relative z-[5] -mt-14 scroll-mt-24 sm:-mt-16">
+      <div className="relative overflow-hidden rounded-[26px] border border-[#e7ddcd] bg-white p-5 shadow-[0_30px_60px_-30px_rgba(40,28,18,0.5)] sm:p-[26px]">
+        {/* פס עליון בגרדיאנט זהב→אקו→מותג — חתימת הכרטיס הצף */}
+        <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#c6a86a,#c08f86,#b0855f)]" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-2xl font-black text-[color:var(--c-ink,#1b1715)]">{labels.title}</h2>
-          <span className="inline-flex items-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/45 bg-white px-3.5 py-1.5 text-xs font-bold text-[color:var(--c-gold-strong,#a6863f)]">
+          <span className="inline-flex items-center rounded-full bg-[#c08f86]/15 px-3.5 py-1.5 text-xs font-extrabold text-[#a06c63]">
             {labels.pill}
           </span>
         </div>
 
-        <div className="grid gap-6 px-6 py-6 lg:grid-cols-3">
+        <div className="mt-[18px] grid grid-cols-1 gap-[18px] min-[821px]:grid-cols-[1.1fr_1fr_1fr]">
           {/* טיפול + צוות */}
           <div>
-            <p className="mb-2 text-sm font-bold text-[color:var(--c-ink,#1b1715)]">{labels.treatmentLabel}</p>
+            <p className="mb-2 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.treatmentLabel}</p>
             <div className="flex flex-wrap gap-2">
               {serviceChips.map((s) => (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => setServiceId(s.id)}
-                  className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+                  className={`rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
                     serviceId === s.id
-                      ? 'border-transparent bg-[color:var(--c-ink,#1b1715)] text-white'
-                      : 'border-[color:var(--c-gold,#c6a86a)]/40 text-[color:var(--c-ink,#1b1715)]/75 hover:border-[color:var(--c-gold,#c6a86a)]'
+                      ? 'border-transparent bg-[color:var(--c-brand,#b0855f)] text-white'
+                      : 'border-[#e7ddcd] bg-[#fbf7f0] text-[#4a423c] hover:border-[color:var(--c-brand,#b0855f)]'
                   }`}
                 >
                   {s.name}
@@ -169,17 +171,17 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
               ))}
             </div>
 
-            <p className="mb-2 mt-5 text-sm font-bold text-[color:var(--c-ink,#1b1715)]">{labels.staffLabel}</p>
+            <p className="mb-2 mt-4 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.staffLabel}</p>
             <div className="flex flex-wrap gap-2">
               {staffChips.map((m) => (
                 <button
                   key={m.id || 'any'}
                   type="button"
                   onClick={() => setSelectedStaffId(m.id)}
-                  className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+                  className={`rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
                     selectedStaffId === m.id
-                      ? 'border-transparent bg-[color:var(--c-ink,#1b1715)] text-white'
-                      : 'border-[color:var(--c-gold,#c6a86a)]/40 text-[color:var(--c-ink,#1b1715)]/75 hover:border-[color:var(--c-gold,#c6a86a)]'
+                      ? 'border-transparent bg-[color:var(--c-brand,#b0855f)] text-white'
+                      : 'border-[#e7ddcd] bg-[#fbf7f0] text-[#4a423c] hover:border-[color:var(--c-brand,#b0855f)]'
                   }`}
                 >
                   {m.displayName}
@@ -190,8 +192,8 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
 
           {/* תאריך — לוח מיני דקורטיבי */}
           <div>
-            <p className="mb-2 text-sm font-bold text-[color:var(--c-ink,#1b1715)]">{labels.dateLabel}</p>
-            <div className="rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-[color:var(--c-cream,#faf6ef)] p-3">
+            <p className="mb-2 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.dateLabel}</p>
+            <div className="rounded-2xl border border-[#e7ddcd] bg-[#fbf7f0] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <button
                   type="button"
@@ -216,7 +218,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
               </div>
               <div className="grid grid-cols-7 gap-1 text-center">
                 {labels.weekdays.map((d) => (
-                  <span key={d} className="py-1 text-[11px] font-bold text-[color:var(--c-ink,#1b1715)]/50">
+                  <span key={d} className="py-1 text-[11px] font-bold text-[#9a8f82]">
                     {d}
                   </span>
                 ))}
@@ -231,7 +233,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                       onClick={() => setDate(c.dateStr as string)}
                       className={`flex h-8 items-center justify-center rounded-lg text-sm transition ${
                         date === c.dateStr
-                          ? 'bg-[color:var(--c-ink,#1b1715)] font-bold text-white'
+                          ? 'bg-[color:var(--c-brand,#b0855f)] font-bold text-white'
                           : c.past
                             ? 'cursor-default text-[color:var(--c-ink,#1b1715)]/25'
                             : 'text-[color:var(--c-ink,#1b1715)]/80 hover:bg-white'
@@ -247,7 +249,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
 
           {/* שעה */}
           <div>
-            <p className="mb-2 text-sm font-bold text-[color:var(--c-ink,#1b1715)]">{labels.timeLabel}</p>
+            <p className="mb-2 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.timeLabel}</p>
             {slotsLoading ? (
               <p className="py-3 text-sm text-[color:var(--c-ink,#1b1715)]/50">{labels.loadingSlots}</p>
             ) : slots.length === 0 ? (
@@ -260,10 +262,10 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                     type="button"
                     dir="ltr"
                     onClick={() => setTime(slot.label)}
-                    className={`rounded-xl border px-3.5 py-2 text-sm font-semibold tabular-nums transition ${
+                    className={`rounded-[10px] border px-3.5 py-2 text-sm font-bold tabular-nums transition ${
                       time === slot.label
-                        ? 'border-transparent bg-[color:var(--c-gold,#c6a86a)] text-[color:var(--c-ink,#1b1715)]'
-                        : 'border-[color:var(--c-gold,#c6a86a)]/40 text-[color:var(--c-ink,#1b1715)]/75 hover:border-[color:var(--c-gold,#c6a86a)]'
+                        ? 'border-transparent bg-[#c08f86] text-white'
+                        : 'border-[#e7ddcd] bg-white text-[#4a423c] hover:border-[color:var(--c-brand,#b0855f)]'
                     }`}
                   >
                     {slot.label}
@@ -274,12 +276,11 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[color:var(--c-gold,#c6a86a)]/20 bg-[color:var(--c-cream,#faf6ef)] px-6 py-5">
-          <p className="text-sm text-[color:var(--c-ink,#1b1715)]/75">{summary}</p>
+        <div className="mt-[18px] flex flex-wrap items-center justify-between gap-4 border-t border-dashed border-[#e7ddcd] pt-4">
+          <p className="text-[0.9rem] text-[color:var(--c-muted,#6e655f)]">{summary}</p>
           <Link
             href={ctaHref}
-            className="group inline-flex items-center gap-2 rounded-full px-7 py-3 text-base font-bold text-white shadow-elevated transition hover:-translate-y-0.5"
-            style={{ backgroundImage: 'linear-gradient(to left, #c08f86, #a06c63)' }}
+            className="group inline-flex items-center gap-2 rounded-full bg-[#c08f86] px-8 py-3 text-base font-bold text-white shadow-elevated transition hover:-translate-y-0.5 hover:bg-[#a06c63]"
           >
             {labels.cta}
             <ArrowLeftIcon className="h-4 w-4 transition group-hover:-translate-x-1" />
