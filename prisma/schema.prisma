@@ -191,25 +191,25 @@ enum StockMovementType {
 // ---------- Core ----------
 
 model Business {
-  id            String        @id @default(cuid())
-  slug          String        @unique
-  name          String
-  description   String?
-  address       String?
-  phone         String?
-  instagramUrl  String?
-  logoUrl       String?
-  brandColor    String?
-  coverImageUrl String?
-  timezone      String        @default("Asia/Jerusalem")
-  type          BusinessType?
+  id              String          @id @default(cuid())
+  slug            String          @unique
+  name            String
+  description     String?
+  address         String?
+  phone           String?
+  instagramUrl    String?
+  logoUrl         String?
+  brandColor      String?
+  coverImageUrl   String?
+  timezone        String          @default("Asia/Jerusalem")
+  type            BusinessType?
   // בחירת סגנון העמוד הציבורי (אדיטיבי, ברירת מחדל = עמוד הזמנות).
   publicPageStyle PublicPageStyle @default(BOOKING)
   // תוכן עמוד הנחיתה (אופציונלי): { heroHeadline?, heroSubtext?, benefits?:[{title,text}],
   // galleryImageUrls?:string[], testimonials?:[{name,quote}] }. nullable ולכן בטוח לפרודקשן.
   landingContent  Json?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   ownerId String?
   owner   User?   @relation("BusinessOwner", fields: [ownerId], references: [id])
@@ -220,19 +220,19 @@ model Business {
 
   // ── מנוי, ניסיון חינם ותשלום ידני (אפוס חיוב) — כל השדות אדיטיביים ──────────
   // החבילה הנוכחית של העסק (בסיס כברירת מחדל).
-  plan BusinessPlan @default(basic)
+  plan               BusinessPlan       @default(basic)
   // מצב המנוי — מחושב מחדש על קריאה מתוך התאריכים למטה.
   subscriptionStatus SubscriptionStatus @default(trialing)
   // סוף תקופת הניסיון החינמית (נקבע ביצירה = עכשיו + 30 יום).
-  trialEndsAt DateTime?
+  trialEndsAt        DateTime?
   // עד מתי שולם עבור פרימיום (נקבע ידנית על-ידי סופר-אדמין; nullable).
-  paidUntil DateTime?
+  paidUntil          DateTime?
   // הסכום שסוכם טלפונית, נשמר באגורות ₪ (nullable).
   manualAmountAgorot Int?
   // הערת אדמין אופציונלית על החבילה/העסקה.
-  planNotes String?
+  planNotes          String?
   // מועד המעבר לפרימיום (אופציונלי, לתיעוד).
-  premiumSince DateTime?
+  premiumSince       DateTime?
 
   // שאלות שיווק באונבורדינג (אפיק D2), בדומה ל-calmark: מאיזה יומן הגיע הבעלים
   // וכיצד שמע עלינו. עמודות nullable אדיטיביות בלבד; נאספות בהקמת העסק לצורכי אנליטיקה.
@@ -241,11 +241,11 @@ model Business {
 
   // ── מחיקת מנוי (Account Deletion) — כל השדות אדיטיביים בלבד ─────────────────
   // מצב החשבון: פעיל (ברירת מחדל) או ממתין למחיקה בתוך תקופת החסד.
-  accountStatus AccountStatus @default(ACTIVE)
+  accountStatus       AccountStatus @default(ACTIVE)
   // מתי הבעלים ביקש למחוק את המנוי (nullable — נקבע רק בבקשת מחיקה).
   deletionRequestedAt DateTime?
   // מתי המידע יימחק לצמיתות (14 ימי עסקים מרגע הבקשה, מדלג שישי/שבת). nullable.
-  purgeScheduledFor DateTime?
+  purgeScheduledFor   DateTime?
 
   settings        BusinessSettings?
   staff           StaffMember[]
@@ -313,26 +313,26 @@ model BusinessSettings {
   onboardingCompleted Boolean @default(false)
   // מעקב גרנולרי אחר צעדי ההקמה שהושלמו ואלו שדולגו. מזין את רמת העיצוב של העמוד הציבורי.
   // צורה: { services: bool, hours: bool, branding: bool, richContent: bool, skipped: string[] }
-  onboardingSteps Json?
+  onboardingSteps     Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model User {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   // טלפון ומייל שניהם אופציונליים-ייחודיים: משתמש יכול להיווצר לפי טלפון (OTP/Firebase)
   // או לפי מייל (email OTP). האכיפה של "לפחות אחד מהם" היא בשכבת האפליקציה, לא ב-DB.
   // ב-Postgres כמה ערכי NULL מותרים תחת אינדקס ייחודי, ולכן nullable-unique בטוח.
-  phone          String?  @unique
-  email          String?  @unique
+  phone          String?   @unique
+  email          String?   @unique
   emailVerified  DateTime?
   name           String?
-  role           Role     @default(CLIENT)
+  role           Role      @default(CLIENT)
   // מזהים רגישים נשמרים כ-hash בלבד (למשל ת"ז) — לא בשימוש ב-MVP אך שמור מראש
   nationalIdHash String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   ownedBusinesses  Business[]    @relation("BusinessOwner")
   staffMemberships StaffMember[]
@@ -904,4 +904,29 @@ model PlanInquiry {
 
   @@index([businessId, createdAt])
   @@index([status])
+}
+
+// ── דג׳ר טביעות-אצבע לניסיון חינם (anti-abuse) ─────────────────────────────
+// עמיד ל-purge: מודל עצמאי שאינו קשור ל-Business/User, ולכן אינו נמחק כשמוחקים
+// עסק או משתמש (מחיקת חשבון). שומר רק hash חד-כיווני של מייל/טלפון מנורמלים כדי
+// לזהות הרשמה חוזרת ולמנוע איפוס תקופת הניסיון. אין בו PII גולמי, בהתאם למדיניות
+// הפרטיות (המזהה המקורי אינו ניתן לשחזור מה-hash). כל השדות אדיטיביים בלבד.
+model TrialLedger {
+  id                  String   @id @default(cuid())
+  // hash של המייל המנורמל (ownerEmail). ייחודי כדי למנוע כפילויות לאותו מזהה.
+  emailHash           String?  @unique
+  // hash של הטלפון המנורמל (E.164). ייחודי; nullable כשלא נמסר טלפון.
+  phoneHash           String?  @unique
+  // מתי התחילה תקופת הניסיון הראשונה של המזהה הזה.
+  firstTrialStartedAt DateTime @default(now())
+  // מועד סיום הניסיון המקורי. הרשמה חוזרת מקבלת את הערך הזה (ללא הארכה); אם עבר,
+  // העסק החדש נוצר כבר-פג ונדרש לשלם.
+  originalTrialEndsAt DateTime
+  // כמה פעמים נראתה הרשמה עם המזהה הזה (לצורכי אנליטיקה וזיהוי ניצול).
+  registrationCount   Int      @default(1)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([emailHash])
+  @@index([phoneHash])
 }

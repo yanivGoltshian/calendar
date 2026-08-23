@@ -6,6 +6,7 @@ import { addBusinessDays } from '@/lib/businessDays';
 import { defaultBusinessHours, setBusinessHours } from './workingHours';
 import { ensureOwnerStaffMember } from './staff';
 import { seedServicesForBusiness } from './services';
+import { decideTrialForRegistration } from './trialLedger';
 import { shapeBusinessMetrics, type BusinessMetrics } from '@/app/superadmin/logic';
 
 /**
@@ -273,8 +274,11 @@ export async function createBusiness(input: {
   }
 
   const slug = await generateUniqueSlug(input.name);
-  // תקופת ניסיון חינם של 30 יום מרגע היצירה (חבילת בסיס, מצב trialing).
-  const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  // החלטת ניסיון חינם מול דג׳ר טביעות-האצבע (anti-abuse): הרשמה ראשונה מקבלת 30 יום;
+  // הרשמה חוזרת (אחרי מחיקת חשבון) מקבלת את מועד הסיום המקורי ללא הארכה — ואם עבר,
+  // העסק נוצר כבר-פג (subscriptionStatus=expired) וייחסם מיד על-ידי אכיפת המנוי.
+  const trialDecision = await decideTrialForRegistration(input.ownerEmail, input.phone ?? null);
+  const trialEndsAt = trialDecision.trialEndsAt;
   const business = await prisma.business.create({
     data: {
       name: input.name,
@@ -285,7 +289,7 @@ export async function createBusiness(input: {
       timezone: process.env.BUSINESS_TIMEZONE || 'Asia/Jerusalem',
       ownerEmail: input.ownerEmail,
       plan: 'basic',
-      subscriptionStatus: 'trialing',
+      subscriptionStatus: trialDecision.subscriptionStatus,
       trialEndsAt,
       settings: { create: {} },
     },

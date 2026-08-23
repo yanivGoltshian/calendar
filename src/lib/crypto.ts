@@ -58,6 +58,16 @@ export function normalizeEmail(input: string): string {
   return input.trim().toLowerCase();
 }
 
+/**
+ * טביעת-אצבע חד-כיוונית לזיהוי-מנוי (anti-abuse): hash של מזהה מנורמל (מייל או טלפון)
+ * יחד עם ה-pepper מהסביבה. משמש לזיהוי הרשמה חוזרת אחרי מחיקה, כדי למנוע ניצול של
+ * תקופת ניסיון חינם חוזרת. חד-כיווני: לא ניתן לשחזר ממנו את המזהה המקורי, ולכן נשמר
+ * בלבד ה-hash (עמידה במדיניות פרטיות — אין PII גולמי).
+ */
+export function fingerprintHash(normalizedIdentifier: string): string {
+  return createHash('sha256').update(`trial:${normalizedIdentifier}:${PEPPER}`).digest('hex');
+}
+
 /** תצוגה ידידותית של טלפון E.164 ישראלי, למשל "050-1234567". */
 export function displayPhone(e164: string | null | undefined): string {
   if (!e164) return '';
