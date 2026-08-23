@@ -4,9 +4,13 @@ import { getBusinessBySlug } from '@/server/repos/business';
 import { t } from '@/i18n';
 import { getClientSession } from '@/lib/session';
 import { authProviderStatus } from '@/auth';
+import { todayDateString } from '@/lib/time';
 import BookingStepper from './BookingStepper';
 
-type Props = { params: Promise<{ slug: string }>; searchParams?: Promise<{ service?: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ service?: string; staffId?: string; date?: string; time?: string }>;
+};
 
 export const metadata: Metadata = { title: t.booking.title };
 
@@ -31,9 +35,14 @@ export default async function BookPage({ params, searchParams }: Props) {
     title: m.title,
   }));
 
-  // קישור עמוק משירות: אם הגיעו עם ?service=<id> תקין, מסמנים אותו מראש ומדלגים על שלב השירותים.
-  const serviceParam = ((await searchParams) ?? {}).service;
-  const preselectedServiceId = services.find((s) => s.id === serviceParam)?.id ?? null;
+  // קישור עמוק מהווידג'ט: מסמנים מראש שירות, איש צוות, תאריך ושעה תקינים; האשף יקפוץ לסיכום כשכולם תקפים.
+  const sp = (await searchParams) ?? {};
+  const preselectedServiceId = services.find((s) => s.id === sp.service)?.id ?? null;
+  const preselectedStaffId = staff.find((m) => m.id === sp.staffId)?.id ?? null;
+  const today = todayDateString();
+  const preselectedDate =
+    sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) && sp.date >= today ? sp.date : null;
+  const preselectedTime = sp.time && /^\d{2}:\d{2}$/.test(sp.time) ? sp.time : null;
 
   // לקוח מחובר: מעבירים פרטי קשר למילוי מוקדם ולהסתרת שדה המייל (#2). כניסת גוגל זמינה בכל המסלולים (#1).
   const clientSession = await getClientSession();
@@ -53,6 +62,9 @@ export default async function BookPage({ params, searchParams }: Props) {
         services={services}
         staff={staff}
         preselectedServiceId={preselectedServiceId}
+        preselectedStaffId={preselectedStaffId}
+        preselectedDate={preselectedDate}
+        preselectedTime={preselectedTime}
         plan={business.plan}
         customer={customer}
         googleEnabled={authProviderStatus.google}

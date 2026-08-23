@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeftIcon } from './icons';
 
@@ -13,58 +13,130 @@ export type BookingLabels = {
   dateLabel: string;
   timeLabel: string;
   weekdays: readonly string[];
+  months: readonly string[];
+  prevMonth: string;
+  nextMonth: string;
+  loadingSlots: string;
+  noSlots: string;
   summaryEmpty: string;
   cta: string;
   note: string;
 };
 
+type StaffMember = { id: string; displayName: string };
+type Slot = { label: string; startAtUtc: string; endAtUtc: string };
+
 type Props = {
+  slug: string;
   services: { id: string; name: string }[];
-  staff?: string[];
+  staff?: StaffMember[];
   bookHref: string;
   labels: BookingLabels;
 };
 
-// לוח חודש דקורטיבי קבוע — הווידג'ט הוא חלון ראווה יוקרתי, והאישור הסופי
-// מתבצע באשף קביעת התור המאובטח. היום המודגש והמשבצות ממחישים את החוויה.
-const CAL_DAYS = [
-  { n: 28, muted: true },
-  { n: 29, muted: true },
-  { n: 30, muted: true },
-  { n: 1 },
-  { n: 2 },
-  { n: 3 },
-  { n: 4 },
-  { n: 5 },
-  { n: 6 },
-  { n: 7, active: true },
-  { n: 8 },
-  { n: 9 },
-  { n: 10 },
-  { n: 11 },
-  { n: 12 },
-  { n: 13 },
-  { n: 14 },
-  { n: 15 },
-  { n: 16 },
-  { n: 17 },
-  { n: 18 },
-];
+function pad(n: number) {
+  return String(n).padStart(2, '0');
+}
+// תאריך מקומי בפורמט YYYY-MM-DD (חודש באינדקס 0).
+function ymd(y: number, m: number, d: number) {
+  return `${y}-${pad(m + 1)}-${pad(d)}`;
+}
 
-const TIME_SLOTS = ['10:00', '10:45', '11:30', '13:00', '16:15', '17:00', '18:30'];
+// ווידג'ט קביעת תור אינטראקטיבי: לוח חודש אמיתי + שעות פנויות אמיתיות מ-/api/availability.
+// הבחירה נישאת לאשף המאובטח דרך פרמטרים בקישור, תוך שמירה על העיצוב היוקרתי כפי שהוא.
+export default function LandingBooking({ slug, services, staff, bookHref, labels }: Props) {
+  const serviceChips = services.slice(0, 5);
+  const staffList = staff ?? [];
+  const staffChips: StaffMember[] = [{ id: '', displayName: labels.staffAny }, ...staffList.slice(0, 3)];
 
-export default function LandingBooking({ services, staff, bookHref, labels }: Props) {
-  const treatments = services.slice(0, 5).map((s) => s.name);
-  const staffChips = [labels.staffAny, ...(staff ?? []).slice(0, 3)];
+  const now = useMemo(() => new Date(), []);
+  const todayStr = ymd(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const [treatment, setTreatment] = useState(treatments[0] ?? '');
-  const [who, setWho] = useState(labels.staffAny);
-  const [time, setTime] = useState('10:45');
+  const [serviceId, setServiceId] = useState(serviceChips[0]?.id ?? '');
+  const [selectedStaffId, setSelectedStaffId] = useState(''); // '' = כל הצוות
+  const [date, setDate] = useState(todayStr);
+  const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() });
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [time, setTime] = useState('');
+
+  // כשלא נבחר איש צוות ספציפי ("כל הצוות") — שולחים את איש הצוות הראשון כברירת מחדל לשאילתה.
+  const queryStaffId = selectedStaffId || staffList[0]?.id || '';
+
+  // שליפת שעות פנויות אמיתיות בכל שינוי של טיפול / צוות / תאריך.
+  useEffect(() => {
+    if (!serviceId || !queryStaffId || !date) {
+      setSlots([]);
+      return;
+    }
+    let cancelled = false;
+    setSlotsLoading(true);
+    setTime('');
+    fetch('/api/availability', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug, staffId: queryStaffId, serviceIds: [serviceId], date }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setSlots(d?.ok ? (d.slots as Slot[]) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSlots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, serviceId, queryStaffId, date]);
+
+  // תאי לוח החודש בתצוגה, כולל ריפוד תחילת השבוע והשבתת ימים שחלפו.
+  const cells = useMemo(() => {
+    const startOffset = new Date(view.y, view.m, 1).getDay();
+    const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
+    const arr: { key: string; day: number; dateStr: string | null; past: boolean }[] = [];
+    for (let i = 0; i < startOffset; i++) arr.push({ key: `blank-${i}`, day: 0, dateStr: null, past: true });
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = ymd(view.y, view.m, d);
+      arr.push({ key: ds, day: d, dateStr: ds, past: ds < todayStr });
+    }
+    return arr;
+  }, [view, todayStr]);
+
+  const atCurrentMonth = view.y === now.getFullYear() && view.m === now.getMonth();
+  function shiftMonth(delta: number) {
+    setView((v) => {
+      const dt = new Date(v.y, v.m + delta, 1);
+      return { y: dt.getFullYear(), m: dt.getMonth() };
+    });
+  }
+
+  const treatmentName = serviceChips.find((s) => s.id === serviceId)?.name ?? '';
+  const whoName = selectedStaffId
+    ? staffList.find((s) => s.id === selectedStaffId)?.displayName ?? labels.staffAny
+    : labels.staffAny;
+
+  function formatDateLabel(ds: string) {
+    const [y, m, d] = ds.split('-').map(Number);
+    const wd = new Date(y, m - 1, d).getDay();
+    return `${labels.weekdays[wd]} ${pad(d)}/${pad(m)}`;
+  }
 
   const summary =
-    treatment && time
-      ? `${treatment} · ${labels.weekdays[0]} 07/09 · ${time} · ${who}`
+    treatmentName && time
+      ? `${treatmentName} · ${formatDateLabel(date)} · ${time} · ${whoName}`
       : labels.summaryEmpty;
+
+  // קישור עמוק אל האשף המאובטח: השירות, איש הצוות, התאריך והשעה שנבחרו.
+  const params = new URLSearchParams();
+  if (serviceId) params.set('service', serviceId);
+  if (queryStaffId) params.set('staffId', queryStaffId);
+  if (date) params.set('date', date);
+  if (time) params.set('time', time);
+  const bookQuery = params.toString();
+  const ctaHref = bookQuery ? `${bookHref}?${bookQuery}` : bookHref;
 
   return (
     <section id="lp-book" className="mt-4 scroll-mt-24">
@@ -81,36 +153,36 @@ export default function LandingBooking({ services, staff, bookHref, labels }: Pr
           <div>
             <p className="mb-2 text-sm font-bold text-[color:var(--c-ink,#1b1715)]">{labels.treatmentLabel}</p>
             <div className="flex flex-wrap gap-2">
-              {treatments.map((name) => (
+              {serviceChips.map((s) => (
                 <button
-                  key={name}
+                  key={s.id}
                   type="button"
-                  onClick={() => setTreatment(name)}
+                  onClick={() => setServiceId(s.id)}
                   className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-                    treatment === name
+                    serviceId === s.id
                       ? 'border-transparent bg-[color:var(--c-ink,#1b1715)] text-white'
                       : 'border-[color:var(--c-gold,#c6a86a)]/40 text-[color:var(--c-ink,#1b1715)]/75 hover:border-[color:var(--c-gold,#c6a86a)]'
                   }`}
                 >
-                  {name}
+                  {s.name}
                 </button>
               ))}
             </div>
 
             <p className="mb-2 mt-5 text-sm font-bold text-[color:var(--c-ink,#1b1715)]">{labels.staffLabel}</p>
             <div className="flex flex-wrap gap-2">
-              {staffChips.map((name) => (
+              {staffChips.map((m) => (
                 <button
-                  key={name}
+                  key={m.id || 'any'}
                   type="button"
-                  onClick={() => setWho(name)}
+                  onClick={() => setSelectedStaffId(m.id)}
                   className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-                    who === name
+                    selectedStaffId === m.id
                       ? 'border-transparent bg-[color:var(--c-ink,#1b1715)] text-white'
                       : 'border-[color:var(--c-gold,#c6a86a)]/40 text-[color:var(--c-ink,#1b1715)]/75 hover:border-[color:var(--c-gold,#c6a86a)]'
                   }`}
                 >
-                  {name}
+                  {m.displayName}
                 </button>
               ))}
             </div>
@@ -120,26 +192,55 @@ export default function LandingBooking({ services, staff, bookHref, labels }: Pr
           <div>
             <p className="mb-2 text-sm font-bold text-[color:var(--c-ink,#1b1715)]">{labels.dateLabel}</p>
             <div className="rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-[color:var(--c-cream,#faf6ef)] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => shiftMonth(-1)}
+                  disabled={atCurrentMonth}
+                  aria-label={labels.prevMonth}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-[color:var(--c-ink,#1b1715)]/70 transition enabled:hover:bg-white disabled:opacity-30"
+                >
+                  <ArrowLeftIcon className="h-4 w-4 rotate-180" />
+                </button>
+                <span className="text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
+                  {labels.months[view.m]} {view.y}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => shiftMonth(1)}
+                  aria-label={labels.nextMonth}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-[color:var(--c-ink,#1b1715)]/70 transition hover:bg-white"
+                >
+                  <ArrowLeftIcon className="h-4 w-4" />
+                </button>
+              </div>
               <div className="grid grid-cols-7 gap-1 text-center">
                 {labels.weekdays.map((d) => (
                   <span key={d} className="py-1 text-[11px] font-bold text-[color:var(--c-ink,#1b1715)]/50">
                     {d}
                   </span>
                 ))}
-                {CAL_DAYS.map((d, i) => (
-                  <span
-                    key={`${d.n}-${i}`}
-                    className={`flex h-8 items-center justify-center rounded-lg text-sm ${
-                      d.active
-                        ? 'bg-[color:var(--c-ink,#1b1715)] font-bold text-white'
-                        : d.muted
-                          ? 'text-[color:var(--c-ink,#1b1715)]/30'
-                          : 'text-[color:var(--c-ink,#1b1715)]/80'
-                    }`}
-                  >
-                    {d.n}
-                  </span>
-                ))}
+                {cells.map((c) =>
+                  c.dateStr === null ? (
+                    <span key={c.key} className="h-8" />
+                  ) : (
+                    <button
+                      key={c.key}
+                      type="button"
+                      disabled={c.past}
+                      onClick={() => setDate(c.dateStr as string)}
+                      className={`flex h-8 items-center justify-center rounded-lg text-sm transition ${
+                        date === c.dateStr
+                          ? 'bg-[color:var(--c-ink,#1b1715)] font-bold text-white'
+                          : c.past
+                            ? 'cursor-default text-[color:var(--c-ink,#1b1715)]/25'
+                            : 'text-[color:var(--c-ink,#1b1715)]/80 hover:bg-white'
+                      }`}
+                    >
+                      {c.day}
+                    </button>
+                  ),
+                )}
               </div>
             </div>
           </div>
@@ -147,30 +248,36 @@ export default function LandingBooking({ services, staff, bookHref, labels }: Pr
           {/* שעה */}
           <div>
             <p className="mb-2 text-sm font-bold text-[color:var(--c-ink,#1b1715)]">{labels.timeLabel}</p>
-            <div className="flex flex-wrap gap-2">
-              {TIME_SLOTS.map((slot) => (
-                <button
-                  key={slot}
-                  type="button"
-                  dir="ltr"
-                  onClick={() => setTime(slot)}
-                  className={`rounded-xl border px-3.5 py-2 text-sm font-semibold tabular-nums transition ${
-                    time === slot
-                      ? 'border-transparent bg-[color:var(--c-gold,#c6a86a)] text-[color:var(--c-ink,#1b1715)]'
-                      : 'border-[color:var(--c-gold,#c6a86a)]/40 text-[color:var(--c-ink,#1b1715)]/75 hover:border-[color:var(--c-gold,#c6a86a)]'
-                  }`}
-                >
-                  {slot}
-                </button>
-              ))}
-            </div>
+            {slotsLoading ? (
+              <p className="py-3 text-sm text-[color:var(--c-ink,#1b1715)]/50">{labels.loadingSlots}</p>
+            ) : slots.length === 0 ? (
+              <p className="py-3 text-sm text-[color:var(--c-ink,#1b1715)]/50">{labels.noSlots}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {slots.map((slot) => (
+                  <button
+                    key={slot.startAtUtc}
+                    type="button"
+                    dir="ltr"
+                    onClick={() => setTime(slot.label)}
+                    className={`rounded-xl border px-3.5 py-2 text-sm font-semibold tabular-nums transition ${
+                      time === slot.label
+                        ? 'border-transparent bg-[color:var(--c-gold,#c6a86a)] text-[color:var(--c-ink,#1b1715)]'
+                        : 'border-[color:var(--c-gold,#c6a86a)]/40 text-[color:var(--c-ink,#1b1715)]/75 hover:border-[color:var(--c-gold,#c6a86a)]'
+                    }`}
+                  >
+                    {slot.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[color:var(--c-gold,#c6a86a)]/20 bg-[color:var(--c-cream,#faf6ef)] px-6 py-5">
           <p className="text-sm text-[color:var(--c-ink,#1b1715)]/75">{summary}</p>
           <Link
-            href={bookHref}
+            href={ctaHref}
             className="group inline-flex items-center gap-2 rounded-full px-7 py-3 text-base font-bold text-white shadow-elevated transition hover:-translate-y-0.5"
             style={{ backgroundImage: 'linear-gradient(to left, #c08f86, #a06c63)' }}
           >

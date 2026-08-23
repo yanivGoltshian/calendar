@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
@@ -25,6 +25,10 @@ type Props = {
   services: Service[];
   staff: Staff[];
   preselectedServiceId?: string | null;
+  // קישור עמוק מלא מהווידג'ט: איש צוות, תאריך ושעה שנבחרו (מאומתים בצד השרת של העמוד).
+  preselectedStaffId?: string | null;
+  preselectedDate?: string | null;
+  preselectedTime?: string | null;
   plan: 'basic' | 'premium' | 'exclusive';
   // לקוח מחובר (עוגיית client_session): מאפשר מילוי מוקדם והסתרת שדה המייל.
   customer?: { name: string; phone: string; email: string } | null;
@@ -42,6 +46,9 @@ export default function BookingStepper({
   services,
   staff,
   preselectedServiceId,
+  preselectedStaffId,
+  preselectedDate,
+  preselectedTime,
   plan,
   customer = null,
   googleEnabled = false,
@@ -49,15 +56,59 @@ export default function BookingStepper({
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
   const hasPreselected = !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
-  const [step, setStep] = useState<Step>(hasPreselected ? (singleStaff ? 2 : 1) : 0);
+  // קישור עמוק מלא: שירות + איש צוות + תאריך + שעה תקינים → נטען זמינות ונקפוץ לסיכום.
+  const dlStaffId =
+    preselectedStaffId && staff.some((m) => m.id === preselectedStaffId) ? preselectedStaffId : null;
+  const deepLink = hasPreselected && !!dlStaffId && !!preselectedDate && !!preselectedTime;
+  const [step, setStep] = useState<Step>(
+    deepLink ? 3 : hasPreselected ? (singleStaff ? 2 : 1) : 0,
+  );
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
     hasPreselected ? [preselectedServiceId as string] : [],
   );
-  const [staffId, setStaffId] = useState<string>(singleStaff ? staff[0].id : '');
-  const [date, setDate] = useState<string>(todayDateString());
+  const [staffId, setStaffId] = useState<string>(
+    dlStaffId ?? (singleStaff ? staff[0].id : ''),
+  );
+  const [date, setDate] = useState<string>(deepLink ? (preselectedDate as string) : todayDateString());
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsLoading, setSlotsLoading] = useState(deepLink);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+
+  // מילוי מוקדם מקישור עמוק: בטעינה, טוענים זמינות אמיתית ליום שנבחר ומדלגים לסיכום אם השעה עדיין פנויה.
+  const deepLinkInit = useRef(false);
+  useEffect(() => {
+    if (deepLinkInit.current) return;
+    deepLinkInit.current = true;
+    if (!deepLink) return;
+    fetch('/api/availability', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        slug,
+        staffId: dlStaffId,
+        serviceIds: [preselectedServiceId as string],
+        date: preselectedDate,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        const list: Slot[] = d?.ok ? d.slots : [];
+        setSlots(list);
+        const match = list.find((s) => s.label === preselectedTime);
+        if (match) {
+          setSelectedSlot(match);
+          setStep(4);
+        } else {
+          setStep(3);
+        }
+      })
+      .catch(() => {
+        setSlots([]);
+        setStep(3);
+      })
+      .finally(() => setSlotsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // מצב אישור הזמנת אורח (ללא OTP). מדיניות פרטי הקשר נגזרת ממסלול העסק:
   // בכל המסלולים שם וטלפון חובה. מייל נדרש רק בפרימיום/אקסקלוסיב (לאישור, תזכורות

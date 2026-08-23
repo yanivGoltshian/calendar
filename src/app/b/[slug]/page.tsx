@@ -388,6 +388,8 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
             content={landing}
             type={business.type}
             services={services}
+            staff={staff.map((m) => ({ id: m.id, displayName: m.displayName }))}
+            slug={slug}
             workingHours={business.workingHours}
             address={business.address}
             phone={business.phone}

@@ -25,6 +25,8 @@ type Props = {
   content: LandingContent | null;
   type: string | null;
   services: LandingService[];
+  staff: { id: string; displayName: string }[];
+  slug: string;
   workingHours: WorkingHour[];
   address?: string | null;
   phone?: string | null;
@@ -39,6 +41,8 @@ export default function LandingSections({
   content,
   type,
   services,
+  staff,
+  slug,
   workingHours,
   address,
   phone,
@@ -63,7 +67,7 @@ export default function LandingSections({
       {/* ווידג'ט קביעת תור אינליין — חלון ראווה יוקרתי במרכז העמוד, מוצג רק בפרימיום.
           הבחירה מודגמת כאן והאישור הסופי מתבצע באשף קביעת התור המאובטח. */}
       {isClinicPremium && services.length > 0 ? (
-        <LandingBooking services={services} bookHref={bookHref} labels={clinic.booking} />
+        <LandingBooking slug={slug} services={services} staff={staff} bookHref={bookHref} labels={clinic.booking} />
       ) : null}
       {sections.map((section) => {
         switch (section) {
