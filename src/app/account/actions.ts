@@ -56,6 +56,12 @@ export async function cancelAppointmentAction(
 
   await updateAppointmentStatus(id, 'CANCELLED');
   revalidatePath('/account');
+  // ריענון אופציונלי של עמוד העסק הציבורי כשהביטול מתבצע מתוך מקטע "שלום .."
+  // (חייב להתחיל ב-/b/ כדי למנוע ריענון נתיב שרירותי).
+  const extra = String(formData.get('revalidate') || '');
+  if (extra.startsWith('/b/')) {
+    revalidatePath(extra);
+  }
   return { ok: true };
 }
 

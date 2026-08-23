@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { t } from '@/i18n';
 import {
   resolveLandingSections,
@@ -33,6 +34,8 @@ type Props = {
   bookHref: string;
   iconKey: SectionIconKey;
   todayIdx: number;
+  // מקטע "שלום .." ללקוח מזוהה — מוזרק בין ווידג'ט קביעת התור למקטע המבצעים.
+  returning?: ReactNode;
 };
 
 // מנצח המקטעים של עמוד הנחיתה — מרנדר את המקטעים (מלבד ההירו) בסדר שנפתר
@@ -49,6 +52,7 @@ export default function LandingSections({
   bookHref,
   iconKey,
   todayIdx,
+  returning,
 }: Props) {
   const sections = resolveLandingSections({ content, type }).filter((s) => s !== 'hero');
   const defaults = landingDefaults(type);
@@ -69,6 +73,8 @@ export default function LandingSections({
       {isClinicPremium && services.length > 0 ? (
         <LandingBooking slug={slug} services={services} staff={staff} bookHref={bookHref} labels={clinic.booking} />
       ) : null}
+      {/* מקטע "שלום .." ללקוח מזוהה — בין ווידג'ט קביעת התור למבצעים (סדר המוקאפ). */}
+      {isClinicPremium ? returning : null}
       {/* מבצעים חמים — קובייה כהה מיד אחרי ווידג'ט קביעת התור, לפני שאר המקטעים,
           בהתאם לסדר המוקאפ המאושר (הירו → קביעת תור → מבצעים → שאר המקטעים). */}
       {isClinicPremium && content?.hotDeals ? (

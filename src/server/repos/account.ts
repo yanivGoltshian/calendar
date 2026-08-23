@@ -55,6 +55,45 @@ export async function getAppointmentsForUser(identity: UserIdentity) {
 }
 
 /**
+ * תורים עתידיים של הלקוח בעסק מסוים בלבד (למקטע "שלום .." בעמוד העסק הציבורי).
+ * מזוהה לפי userId / phone / email — כך גם תורים שנקבעו לפני ההתחברות משויכים.
+ * מוחזרים רק תורים שטרם התחילו ושאינם מבוטלים, ממוינים מהקרוב לרחוק.
+ */
+export async function getUpcomingAppointmentsForUserAtBusiness(
+  identity: UserIdentity,
+  businessId: string,
+) {
+  const clientOr: Prisma.ClientWhereInput[] = [{ userId: identity.userId }];
+  if (identity.phone) clientOr.push({ phone: identity.phone });
+  if (identity.email) clientOr.push({ email: identity.email });
+
+  const now = new Date();
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      businessId,
+      startAt: { gte: now },
+      status: { in: ['PENDING', 'CONFIRMED'] },
+      client: { OR: clientOr },
+    },
+    include: {
+      services: { select: { nameSnapshot: true, durationMinSnapshot: true } },
+      staff: { select: { displayName: true } },
+      business: {
+        select: {
+          name: true,
+          timezone: true,
+          address: true,
+          settings: { select: { cancellationWindowHours: true } },
+        },
+      },
+    },
+    orderBy: { startAt: 'asc' },
+  });
+
+  return appointments;
+}
+
+/**
  * מידע לצורך מחיקת חשבון: כמה עסקים בבעלות המשתמש וכמה שיוכי-צוות יש לו.
  * חשבון שהוא בעל עסק או איש צוות אינו נמחק אוטומטית (הגנה על נתוני העסק).
  */

@@ -1,12 +1,14 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { getBusinessBySlug } from '@/server/repos/business';
 import { getClientSession } from '@/lib/session';
+import { getUpcomingAppointmentsForUserAtBusiness } from '@/server/repos/account';
+import { buildGoogleCalendarUrl } from '@/lib/googleCalendar';
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
-import { formatDuration, formatMinutes } from '@/lib/time';
+import { formatDuration, formatMinutes, formatDateString, formatLongDate, formatTime } from '@/lib/time';
 import { localBusinessJsonLd, absoluteUrl } from '@/lib/seo';
 import { buildBusinessPageMetadata } from './metadata';
 import { JsonLd } from '@/components/JsonLd';
@@ -29,6 +31,9 @@ import {
 } from '@/components/publicLanding/icons';
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
+import ReturningCustomer, {
+  type ReturningAppointmentView,
+} from '@/components/publicLanding/ReturningCustomer';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
 import { visualLevelForPublicPage } from '@/server/onboardingProgress';
 import ShareBusiness from '@/components/publicLanding/ShareBusiness';
@@ -59,6 +64,45 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
     ? { name: clientSession.name ?? null, email: clientSession.email ?? null }
     : null;
   const loginHref = `/login?redirect=${encodeURIComponent(`/b/${slug}`)}`;
+
+  // מקטע "שלום .." — תורים עתידיים של לקוח מזוהה בעסק זה, עם הוספה ליומן Google וביטול.
+  // מחושב כולו בשרת (כולל אזור זמן) ומוזרק בין ווידג'ט קביעת התור למקטע המבצעים.
+  let returningNode: ReactNode = null;
+  if (clientSession) {
+    const upcoming = await getUpcomingAppointmentsForUserAtBusiness(
+      { userId: clientSession.userId, phone: clientSession.phone, email: clientSession.email },
+      business.id,
+    );
+    if (upcoming.length > 0) {
+      const nowMs = Date.now();
+      const tz = business.timezone;
+      const views: ReturningAppointmentView[] = upcoming.map((appt) => {
+        const clinic = t.premiumLanding.clinic.returning;
+        const title =
+          appt.services.map((s) => s.nameSnapshot).filter(Boolean).join(' + ') || business.name;
+        const staffLabel = appt.staff?.displayName
+          ? `${clinic.withStaff} ${appt.staff.displayName}`
+          : '';
+        const whenLabel = `${formatLongDate(formatDateString(appt.startAt, tz), tz)} • ${formatTime(
+          appt.startAt,
+          tz,
+        )}`;
+        const googleUrl = buildGoogleCalendarUrl({
+          title,
+          start: appt.startAt,
+          end: appt.endAt,
+          details: appt.staff?.displayName ? `${business.name} — ${appt.staff.displayName}` : business.name,
+          location: business.address ?? undefined,
+        });
+        const windowHours = appt.business.settings?.cancellationWindowHours ?? 0;
+        const canCancel = nowMs < appt.startAt.getTime() - windowHours * 3_600_000;
+        return { id: appt.id, title, staffLabel, whenLabel, googleUrl, canCancel };
+      });
+      returningNode = (
+        <ReturningCustomer name={clientSession.name ?? ''} slug={slug} appointments={views} />
+      );
+    }
+  }
 
   const services = business.services;
   const staff = business.staff;
@@ -409,6 +453,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
             bookHref={bookHref}
             iconKey={iconKey}
             todayIdx={todayIdx}
+            returning={returningNode}
           />
         ) : (
           <>

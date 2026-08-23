@@ -136,6 +136,15 @@ const he = {
         connectedLabel: 'מחובר/ת',
         guestLabel: 'אורח/ת',
       },
+      // מקטע "שלום .." ללקוח מזוהה — התורים הקרובים שלו בעסק זה, עם הוספה ליומן וביטול.
+      returning: {
+        greeting: 'שלום',
+        subtitle: 'אלה התורים הקרובים שלך אצלנו',
+        withStaff: 'עם',
+        addToCalendar: 'הוספה ליומן Google',
+        addToCalendarAria: 'הוספת התור ליומן Google',
+        empty: 'אין לך תורים קרובים אצלנו כרגע',
+      },
       booking: {
         title: 'קביעת תור אונליין',
         pill: 'זמין 24/7 · אישור מיידי',
