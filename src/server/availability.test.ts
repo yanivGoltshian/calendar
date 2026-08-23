@@ -165,6 +165,34 @@ test('תור קיים חוסם משבצות: 10:00–11:00 תפוס', () => {
   assert.ok(labels.includes('11:00'));
 });
 
+test('תור באורך לא-עגול לא יוצר זמן מת: תור 10:00–10:20 → המשבצת הבאה 10:20 (גב-אל-גב)', () => {
+  // התרחיש שדיווח עליו בעל העסק: תור שאינו מסתיים בחצי שעה עגולה. לפני התיקון
+  // המשבצת הבאה קפצה ל-10:30 (זמן מת 10:20–10:30). כעת היא נפתחת בדיוק ב-10:20.
+  const busy: BusyInterval[] = [
+    {
+      startAt: localWallTimeToUtc(2026, 6, 15, 10 * 60, TZ),
+      endAt: localWallTimeToUtc(2026, 6, 15, 10 * 60 + 20, TZ),
+    },
+  ];
+  const slots = computeSlots({
+    dateStr: SUMMER_DATE,
+    workingHours: [hoursForDate(SUMMER_DATE, 9 * 60, 17 * 60)],
+    busy,
+    durationMin: 30,
+    slotGranularityMin: 30,
+    timeZone: TZ,
+    now: FAR_PAST,
+  });
+  const labels = slots.map((s) => s.label);
+  // המשבצת הבאה מתחילה בדיוק כשהתור הקודם הסתיים — בלי זמן מת.
+  assert.ok(labels.includes('10:20'));
+  // אין משבצת בתוך התור התפוס.
+  assert.ok(!labels.includes('10:00'));
+  // שעת פתיחה עגולה נשמרת מיושרת לרשת (09:00, 09:30 ...).
+  assert.equal(slots[0].label, '09:00');
+  assert.ok(labels.includes('09:30'));
+});
+
 test('זמן מינימלי מראש (min-lead) חותך משבצות מוקדמות', () => {
   // "עכשיו" = 09:00 מקומי; lead=120 דק׳ → המשבצת הראשונה האפשרית 11:00.
   const now = localWallTimeToUtc(2026, 6, 15, 9 * 60, TZ);

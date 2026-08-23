@@ -115,15 +115,20 @@ export function computeSlots(params: SlotComputationParams): Slot[] {
 
   for (const wh of todaysHours) {
     const breaks: Interval[] = (wh.breaks || []).map(([s, e]) => ({ start: s, end: e }));
+    // מיישרים לרשת הרזולוציה פעם אחת — את תחילת חלון העבודה בלבד, כדי ששעת
+    // פתיחה לא-עגולה (למשל 09:07) תתחיל במשבצת עגולה (09:15). לעומת זאת, חלון
+    // שנפתח אחרי תור או הפסקה מתחיל מהרגע הפנוי עצמו (גב-אל-גב, בלי זמן מת).
+    const alignedStart = Math.ceil(wh.startMinute / slotGranularityMin) * slotGranularityMin;
+    if (alignedStart >= wh.endMinute) continue;
     const freeWindows = subtractIntervals(
-      { start: wh.startMinute, end: wh.endMinute },
+      { start: alignedStart, end: wh.endMinute },
       [...breaks, ...busyLocal],
     );
 
     for (const win of freeWindows) {
-      // ראשית המשבצת מיושרת לרשת הרזולוציה.
-      let start = Math.ceil(win.start / slotGranularityMin) * slotGranularityMin;
-      for (; start + durationMin <= win.end; start += slotGranularityMin) {
+      // כל חלון פנוי מתחיל מהרגע הפנוי עצמו: חלון תחילת היום כבר מיושר לרשת,
+      // וחלון שאחרי תור מתחיל בדיוק כשהתור הקודם הסתיים.
+      for (let start = win.start; start + durationMin <= win.end; start += slotGranularityMin) {
         const startAtUtc = localWallTimeToUtc(y, m, d, start, timeZone);
         if (startAtUtc < earliestStartUtc) continue; // כיבוד זמן מינימלי מראש
         const endAtUtc = new Date(startAtUtc.getTime() + durationMin * 60_000);
