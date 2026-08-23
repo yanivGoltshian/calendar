@@ -353,7 +353,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
               />
             ) : null}
             <div
-              className="relative mx-auto max-w-3xl px-5 pb-9 pt-10 sm:pb-12 sm:pt-16"
+              className={`relative mx-auto px-5 pb-9 pt-10 sm:pb-12 sm:pt-16 ${isLanding ? 'max-w-[1120px]' : 'max-w-3xl'}`}
               style={{ color: 'var(--biz-ink)' }}
             >
               {logoTile}
@@ -378,7 +378,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
         </header>
       )}
 
-      <div className="mx-auto max-w-3xl px-5">
+      <div className={`mx-auto px-5 ${isLanding ? 'max-w-[1120px]' : 'max-w-3xl'}`}>
         {/* שורת עדכון חי — נשלטת מעמוד ניהול העסק, לדוגמה הודעת חופשה. בפרימיום מוצגת ברצועת הכותרת */}
         {isLanding && !isClinicPremium && landing?.announcement ? (
           <AnnouncementBar text={landing.announcement} dismissAria={t.publicPage.landing.announcementDismiss} />
@@ -443,7 +443,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
 
       {/* CTA קבוע בתחתית — בצבע המותג של העסק */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 p-4 backdrop-blur">
-        <div className="mx-auto max-w-3xl">
+        <div className={`mx-auto ${isLanding ? 'max-w-[1120px]' : 'max-w-3xl'}`}>
           <Link
             href={bookHref}
             style={{ backgroundImage: 'linear-gradient(90deg, var(--biz) 0%, var(--biz-strong) 100%)', color: 'var(--biz-ink)' }}

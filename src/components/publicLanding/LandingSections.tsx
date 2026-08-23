@@ -93,7 +93,6 @@ export default function LandingSections({
               <LandingServices
                 key={section}
                 eyebrow={eyebrows.services}
-                lede={t.premiumLanding.servicesLede}
                 title={t.publicPage.servicesTitle}
                 services={services}
                 bookHref={bookHref}

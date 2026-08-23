@@ -50,14 +50,6 @@ function LinkIcon({ className }: { className?: string }) {
   );
 }
 
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231L18.244 2.25Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
-    </svg>
-  );
-}
-
 /**
  * מקטע "שיתוף" לעמוד העסק הציבורי.
  * משתמש ב-Web Share API במובייל כשקיים, עם נפילה חיננית: העתקת קישור
@@ -131,44 +123,30 @@ export default function ShareBusiness({ shareUrl, businessName }: ShareBusinessP
 
   const waHref = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
   const fbHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
-  const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
 
-  const tileClass =
-    'flex flex-col items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-3 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400';
+  const pill =
+    'inline-flex items-center gap-2 rounded-full border border-[#e7ddcd] bg-[#fbf7f0] px-4 py-2.5 text-sm font-bold text-[#4a423c] transition hover:bg-[#f3ece0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b0855f]/40';
 
   return (
     <section
       dir="rtl"
       aria-label={s.ariaShare.replace('{name}', businessName)}
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="rounded-[22px] border border-[#e7ddcd] bg-[#faf6ef] px-5 py-8 text-center shadow-[0_18px_40px_-30px_rgba(40,28,18,0.5)] sm:px-8"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
-            <ShareIcon className="h-5 w-5 text-slate-500" />
-            {s.title}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">{s.subtitle}</p>
-        </div>
-        {canShare ? (
-          <button
-            type="button"
-            onClick={handleNativeShare}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
-          >
-            <ShareIcon className="h-4 w-4" />
-            {s.button}
-          </button>
-        ) : null}
-      </div>
+      {/* כותרת מקטע — פס זהב ממורכז כמו בעיצוב */}
+      <div className="text-[0.85rem] font-extrabold text-[#c6a86a]">{s.eyebrow}</div>
+      <h2 className="mt-1 text-2xl font-extrabold text-[#211c1a]">{s.title}</h2>
+      <div className="mx-auto mt-3 h-[3px] w-20 rounded-full bg-[linear-gradient(90deg,transparent,#c6a86a,transparent)]" />
 
-      {/* כרטיס "לינק בביו" קומפקטי — נוח לצילום מסך ולשיתוף */}
-      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-        <p className="mb-1 text-xs font-medium text-slate-500">{s.linkInBioTitle}</p>
-        <div className="flex items-center gap-2">
+      {/* כרטיס השיתוף */}
+      <div className="mx-auto mt-7 max-w-[560px]">
+        <p className="text-sm font-semibold text-[#6e655f]">{s.subtitle}</p>
+
+        {/* שורת הקישור — הצגת הכתובת + כפתור העתקה במותג */}
+        <div className="mx-auto mt-4 flex max-w-[520px] items-center gap-2">
           <span
             dir="ltr"
-            className="min-w-0 flex-1 truncate text-left text-sm font-medium text-slate-800"
+            className="min-w-0 flex-1 truncate rounded-xl border border-[#e7ddcd] bg-[#fbf7f0] px-3.5 py-2.5 text-left text-sm font-medium text-[#4a423c]"
           >
             {shareUrl}
           </span>
@@ -176,72 +154,50 @@ export default function ShareBusiness({ shareUrl, businessName }: ShareBusinessP
             type="button"
             onClick={handleCopy}
             aria-label={s.copyLink}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#b0855f] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#8c6748] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b0855f]/50"
           >
             {copied ? (
-              <CheckIcon className="h-3.5 w-3.5 text-emerald-600" />
+              <CheckIcon className="h-4 w-4" />
             ) : (
-              <LinkIcon className="h-3.5 w-3.5" />
+              <LinkIcon className="h-4 w-4" />
             )}
             {copied ? s.copied : s.copyLink}
           </button>
         </div>
-        <p className="mt-1.5 text-[11px] text-slate-400">{s.linkInBioHint}</p>
-      </div>
 
-      {/* כפתורי רשתות חברתיות מפורשים (נפילה חיננית ל-Web Share) */}
-      <div className="mt-4 grid grid-cols-4 gap-2">
-        <a
-          href={waHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={tileClass}
-        >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#25D366]/10 text-[#25D366]">
-            <WhatsappIcon className="h-5 w-5" />
-          </span>
-          {s.whatsapp}
-        </a>
-        <a
-          href={fbHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={tileClass}
-        >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2]/10 text-[#1877F2]">
-            <FacebookIcon className="h-5 w-5" />
-          </span>
-          {s.facebook}
-        </a>
-        <a
-          href={xHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={tileClass}
-        >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/5 text-slate-900">
-            <XIcon className="h-4 w-4" />
-          </span>
-          {s.x}
-        </a>
-        <button type="button" onClick={handleInstagram} className={tileClass}>
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#E4405F]/10 text-[#E4405F]">
-            <InstagramIcon className="h-5 w-5" />
-          </span>
-          {s.instagram}
-        </button>
-      </div>
+        {/* כפתורי רשתות — גלולות בפלטת הקרם */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+          {canShare ? (
+            <button type="button" onClick={handleNativeShare} className={pill}>
+              <ShareIcon className="h-4 w-4 text-[#b0855f]" />
+              {s.button}
+            </button>
+          ) : null}
+          <a href={waHref} target="_blank" rel="noopener noreferrer" className={pill}>
+            <WhatsappIcon className="h-4 w-4 text-[#25D366]" />
+            {s.whatsapp}
+          </a>
+          <a href={fbHref} target="_blank" rel="noopener noreferrer" className={pill}>
+            <FacebookIcon className="h-4 w-4 text-[#1877F2]" />
+            {s.facebook}
+          </a>
+          <button type="button" onClick={handleInstagram} className={pill}>
+            <InstagramIcon className="h-4 w-4 text-[#E4405F]" />
+            {s.instagram}
+          </button>
+        </div>
 
-      {copyFailed ? (
-        <p role="alert" className="mt-3 text-sm text-rose-600">
-          {s.copyFailed}
-        </p>
-      ) : null}
-      {igHint ? (
-        <p role="status" className="mt-3 text-sm text-slate-600">
-          {s.instagramHint}
-        </p>
-      ) : null}
+        {copyFailed ? (
+          <p role="alert" className="mt-3 text-sm text-rose-600">
+            {s.copyFailed}
+          </p>
+        ) : null}
+        {igHint ? (
+          <p role="status" className="mt-3 text-sm text-[#6e655f]">
+            {s.instagramHint}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }

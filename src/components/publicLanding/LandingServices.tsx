@@ -22,22 +22,20 @@ type Props = {
   iconKey: SectionIconKey;
   bookLabel: string;
   eyebrow?: string;
-  lede?: string;
 };
 
 // מקטע השירותים — קלפים אלגנטיים; כל קלף מקשר ישירות לזרימת קביעת התור הקיימת.
 // עוגן lp-services מאפשר גלילה חלקה מכפתור המשני שבהירו.
-export default function LandingServices({ title, services, bookHref, iconKey, bookLabel, eyebrow, lede }: Props) {
+export default function LandingServices({ title, services, bookHref, iconKey, bookLabel, eyebrow }: Props) {
   if (services.length === 0) return null;
   return (
     <section id="lp-services" className="mt-16 scroll-mt-24 sm:mt-24">
       <SectionHeading
         eyebrow={eyebrow}
         title={title}
-        lede={lede}
         icon={<SectionIcon iconKey={iconKey} className="h-4 w-4" />}
       />
-      <div className="mt-10 flex flex-col gap-3.5">
+      <div className="mx-auto mt-10 flex max-w-[940px] flex-col gap-3.5">
         {services.map((s) => (
           <Link
             key={s.id}
@@ -49,7 +47,7 @@ export default function LandingServices({ title, services, bookHref, iconKey, bo
                 {s.name}
               </h3>
               {s.description ? (
-                <p className="mt-1 line-clamp-1 text-sm leading-relaxed text-slate-500">{s.description}</p>
+                <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-500">{s.description}</p>
               ) : null}
             </div>
             {!s.hideDuration ? (

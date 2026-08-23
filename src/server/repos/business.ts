@@ -105,6 +105,7 @@ export async function getBusinessBranding(slug: string) {
     select: {
       slug: true,
       name: true,
+      description: true,
       logoUrl: true,
       brandColor: true,
       coverImageUrl: true,

@@ -3,22 +3,21 @@ import { getBusinessBranding } from '@/server/repos/business';
 import { loadHebrewFont, loadImage, loadLogo } from '@/lib/og/assets';
 import { buildBusinessOgModel } from '@/lib/og/model';
 import { toVisualOrder } from '@/lib/og/bidi';
-import { absoluteUrl } from '@/lib/seo';
 
 /**
- * כרטיס שיתוף (Open Graph) דינמי לכל עסק — 1200x630, נחיתה (landscape).
- * מתקן את הבאג שבו שיתוף לינק עסק ב-WhatsApp/רשתות הראה את לוגו הפלטפורמה:
- * כשלעסק יש לוגו — משתפים את קובץ הלוגו עצמו בלבד (בייטים גולמיים, ללא
- * כרטיס מורכב, ללא שם/סוג/שירותים/קריאה לפעולה), כדי ש-WhatsApp/פייסבוק
- * יראו את הלוגו הנקי. רק כשאין לוגו נופלים לכרטיס מרונדר: תמונת העסק
- * (coverImageUrl) במילוי מלא, ואחרת אות ראשונה על רקע צבע המותג. בכרטיס
- * הזה כל טקסט עברי מומר לסדר ויזואלי (toVisualOrder) לפני הרינדור, כי
- * Satori לא מבצע bidi ומתעלם מ-direction:rtl.
+ * כרטיס שיתוף (Open Graph) דינמי לכל עסק — תמיד 1200x630 נחיתה (landscape),
+ * מרונדר דרך ImageResponse ומוגש כ-PNG כדי שהמטא-דאטה המוצהרת
+ * (og:image:type=image/png, width=1200, height=630, וכן twitter:image)
+ * תהיה זהה למה שמוגש בפועל — כך WhatsApp/פייסבוק/טוויטר מציגים כרטיס תקין.
+ *
+ * הרכב הכרטיס: רקע קרם (#faf6ef) עם פסי מותג, בצד אחד קופסת לוגו לבנה
+ * (או אות ראשונה על רקע צבע המותג כשאין לוגו), ובצד השני שם העסק, תיאור
+ * קצר שנגזר מהתיאור המלא, וגלולת קריאה לפעולה. כשאין לוגו אך יש תמונת עסק
+ * (coverImageUrl) נופלים לכרטיס מלא-תמונה. כל טקסט עברי מומר לסדר ויזואלי
+ * (toVisualOrder) לפני הרינדור, כי Satori לא מבצע bidi ומתעלם מ-direction:rtl.
  *
  * זהו קובץ file-convention של Next: כשעמוד העסק אינו קובע openGraph.images
  * במפורש, Next מזריק אוטומטית את התגית המצביעה לתמונה זו (וגם ל-Twitter).
- * שומרים על תמונה קלה ונשענים על מטמון Next כדי ש-WhatsApp/פייסבוק
- * (שמוותרים על תמונת OG כבדה/איטית) יציגו אותה.
  */
 export const runtime = 'nodejs';
 
@@ -28,34 +27,25 @@ export const contentType = 'image/png';
 
 type Props = { params: Promise<{ slug: string }> };
 
+/**
+ * גוזר תיאור קצר (tagline) לכרטיס השיתוף מתוך תיאור העסק: לוקח את הטקסט
+ * שאחרי המקף הראשון (אם קיים) ואז את המשפט הראשון. נופל ל-typeLabel כשאין
+ * תיאור מתאים או כשהתוצאה ארוכה מדי (מעל 52 תווים) כדי לא לשבור את הפריסה.
+ */
+function deriveOgTagline(description: string | null, typeLabel: string): string {
+  const raw = (description ?? '').trim();
+  if (raw) {
+    const dash = raw.search(/[–—-]/);
+    let t = dash >= 0 ? raw.slice(dash + 1) : raw;
+    t = t.split(/[.!?\n]/)[0].trim();
+    if (t.length >= 2 && t.length <= 52) return t;
+  }
+  return typeLabel;
+}
+
 export default async function BusinessOpengraphImage({ params }: Props) {
   const { slug } = await params;
   const business = await getBusinessBranding(slug);
-
-  // כשלעסק יש לוגו — מגישים את קובץ הלוגו עצמו כתגובת התמונה ומדלגים לגמרי
-  // על Satori/ImageResponse, כדי שהשיתוף יהיה הלוגו הנקי בלבד (ללא כרטיס,
-  // ללא שם/סוג/שירותים/קריאה לפעולה). לוגו גובר על cover בראוט הזה. נפילה
-  // בטוחה: אם ה-fetch נכשל ממשיכים להתנהגות הקיימת (cover, ואחרת אות ראשונה).
-  if (business?.logoUrl) {
-    try {
-      const abs = business.logoUrl.startsWith('/')
-        ? absoluteUrl(business.logoUrl)
-        : business.logoUrl;
-      const res = await fetch(abs);
-      const ct = res.headers.get('content-type') ?? '';
-      if (res.ok && ct.startsWith('image/')) {
-        const buf = await res.arrayBuffer();
-        return new Response(buf, {
-          headers: {
-            'Content-Type': ct || 'image/jpeg',
-            'Cache-Control': 'public, max-age=3600, s-maxage=86400',
-          },
-        });
-      }
-    } catch {
-      // נמשיך למסלול הכרטיס המרונדר למטה
-    }
-  }
 
   // טעינת הלוגו ותמונת העסק לפני בניית המודל: כשהלוגו נטען בהצלחה המודל
   // בוחר mode='logo'; אחרת נופל לתמונת העסק (cover), ואם גם היא חסרה — לאות
@@ -75,7 +65,8 @@ export default async function BusinessOpengraphImage({ params }: Props) {
   const vName = model.name ? toVisualOrder(model.name) : '';
   const vType = model.typeLabel ? toVisualOrder(model.typeLabel) : '';
   const vCta = toVisualOrder(model.cta);
-  const vServices = model.services.map((s) => toVisualOrder(s));
+  const tagline = deriveOgTagline(business?.description ?? null, model.typeLabel ?? '');
+  const vTagline = tagline ? toVisualOrder(tagline) : '';
 
   const bold = await loadHebrewFont(700);
   const fonts = bold
@@ -220,48 +211,62 @@ export default async function BusinessOpengraphImage({ params }: Props) {
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
-          background: model.background,
+          justifyContent: 'space-between',
+          background: '#faf6ef',
           fontFamily: 'Assistant, sans-serif',
-          padding: '72px',
+          padding: '72px 84px',
           boxSizing: 'border-box',
         }}
       >
-        {/* שכבת ברק עדינה כדי שהרקע לא ייראה שטוח; מרונדרת לפני התוכן. */}
+        {/* פסי מבטא מותג למעלה ולמטה — קושרים את הכרטיס למותג העסק. */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '1200px',
-            height: '630px',
+            height: '10px',
             display: 'flex',
-            background:
-              'linear-gradient(135deg, rgba(255,255,255,0.14), rgba(0,0,0,0.22))',
+            background: model.background,
           }}
         />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '1200px',
+            height: '16px',
+            display: 'flex',
+            background: model.background,
+          }}
+        />
+
+        {/* צד שמאל: קופסת לוגו לבנה, או אות ראשונה על רקע צבע המותג. */}
         {model.mode === 'logo' ? (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '300px',
-              height: '300px',
+              width: '340px',
+              height: '340px',
               background: '#ffffff',
-              borderRadius: '56px',
-              boxShadow: '0 24px 70px rgba(0,0,0,0.28)',
+              borderRadius: '48px',
+              border: '1px solid #ece3d6',
+              boxShadow: '0 30px 60px -30px rgba(40,28,18,0.5)',
+              flexShrink: 0,
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={logo ?? ''}
               alt=""
-              width={236}
-              height={236}
-              style={{ width: '236px', height: '236px', objectFit: 'contain' }}
+              width={244}
+              height={244}
+              style={{ width: '244px', height: '244px', objectFit: 'contain' }}
             />
           </div>
         ) : (
@@ -270,83 +275,66 @@ export default async function BusinessOpengraphImage({ params }: Props) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '300px',
-              height: '300px',
-              background: 'rgba(255,255,255,0.14)',
-              borderRadius: '56px',
+              width: '340px',
+              height: '340px',
+              background: model.background,
+              borderRadius: '48px',
+              boxShadow: '0 30px 60px -30px rgba(40,28,18,0.5)',
               color: model.fg,
-              fontSize: '180px',
+              fontSize: '190px',
               fontWeight: 700,
               lineHeight: 1,
+              flexShrink: 0,
             }}
           >
             {model.initial}
           </div>
         )}
 
-        {vName ? (
-          <div
-            style={{
-              display: 'flex',
-              marginTop: '44px',
-              maxWidth: '1040px',
-              color: model.fg,
-              fontSize: '66px',
-              fontWeight: 700,
-              lineHeight: 1.08,
-              textAlign: 'center',
-            }}
-          >
-            {vName}
-          </div>
-        ) : null}
+        {/* צד ימין: שם העסק, תיאור קצר, וגלולת קריאה לפעולה. */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            textAlign: 'right',
+            maxWidth: '660px',
+          }}
+        >
+          {vName ? (
+            <div
+              style={{
+                display: 'flex',
+                color: '#2a211c',
+                fontSize: '72px',
+                fontWeight: 700,
+                lineHeight: 1.08,
+                textAlign: 'right',
+              }}
+            >
+              {vName}
+            </div>
+          ) : null}
 
-        {vType ? (
-          <div
-            style={{
-              display: 'flex',
-              marginTop: '10px',
-              color: model.fg,
-              opacity: 0.86,
-              fontSize: '34px',
-              fontWeight: 700,
-            }}
-          >
-            {vType}
-          </div>
-        ) : null}
+          {vTagline ? (
+            <div
+              style={{
+                display: 'flex',
+                marginTop: '22px',
+                color: model.background,
+                fontSize: '36px',
+                fontWeight: 700,
+                lineHeight: 1.2,
+                textAlign: 'right',
+              }}
+            >
+              {vTagline}
+            </div>
+          ) : null}
 
-        {vServices.length ? (
-          <div
-            style={{
-              display: 'flex',
-              marginTop: '26px',
-              gap: '14px',
-              flexWrap: 'nowrap',
-              justifyContent: 'center',
-            }}
-          >
-            {vServices.map((s, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: 'rgba(255,255,255,0.18)',
-                  color: model.fg,
-                  fontSize: '26px',
-                  fontWeight: 700,
-                  padding: '10px 22px',
-                  borderRadius: '999px',
-                }}
-              >
-                {s}
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        <div style={{ display: 'flex', marginTop: '30px' }}>{ctaPill}</div>
+          <div style={{ display: 'flex', marginTop: '36px' }}>{ctaPill}</div>
+        </div>
       </div>
     );
 

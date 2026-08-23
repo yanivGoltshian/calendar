@@ -37,35 +37,51 @@ export default function LandingTestimonials({ title, items, eyebrow, googleRevie
           {googleLabel ? (
             <span className="text-sm font-semibold text-[color:var(--biz-ink-strong)]">{googleLabel}</span>
           ) : null}
-          <span className="flex gap-0.5 text-[color:var(--biz-strong)]" aria-hidden>
+          <span className="flex gap-0.5" style={{ color: '#f5b301' }} aria-hidden>
             {[0, 1, 2, 3, 4].map((n) => (
               <StarIcon key={n} className="h-4 w-4" />
             ))}
           </span>
         </div>
       ) : null}
-      <div className="mt-10 grid gap-4 sm:grid-cols-2">
+      <div className="mt-10 grid gap-5 min-[821px]:grid-cols-3">
         {items.map((tm, i) => (
-          <figure key={i} className="rounded-3xl border border-[color:var(--biz-border)] bg-white p-7 shadow-soft">
-            <div className="mb-3 flex gap-0.5 text-[color:var(--biz-strong)]" aria-hidden>
+          <figure
+            key={i}
+            className="rounded-[20px] border border-[color:var(--biz-border)] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(40,28,18,0.5)]"
+          >
+            <div className="flex gap-0.5" style={{ color: '#f5b301', letterSpacing: '2px' }} aria-hidden>
               {[0, 1, 2, 3, 4].map((n) => (
                 <StarIcon key={n} className="h-4 w-4" />
               ))}
             </div>
-            <blockquote className="font-display text-base leading-relaxed text-slate-700">{tm.quote}</blockquote>
+            <blockquote className="mt-3 font-display text-[0.98rem] leading-relaxed text-[#463f3a]">{tm.quote}</blockquote>
             {tm.name ? (
-              <figcaption className="mt-4 text-sm font-semibold text-[color:var(--biz-ink-strong)]">{tm.name}</figcaption>
+              <figcaption className="mt-4 flex items-center gap-3">
+                <span
+                  aria-hidden
+                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full font-display text-base font-extrabold text-white"
+                  style={{ background: 'linear-gradient(160deg, var(--biz), var(--biz-strong))' }}
+                >
+                  {tm.name.trim().charAt(0)}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[0.95rem] font-extrabold text-[color:var(--biz-ink-strong)]">{tm.name}</span>
+                  {isGoogle ? <span className="mt-0.5 block text-xs text-slate-500">🟢 ביקורת מגוגל</span> : null}
+                </span>
+              </figcaption>
             ) : null}
           </figure>
         ))}
       </div>
       {isGoogle && googleCta ? (
-        <div className="mt-8 text-center">
+        <div className="mt-9 text-center">
           <a
             href={googleReviewsUrl}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--biz-border)] bg-white px-6 py-3 text-sm font-semibold text-[color:var(--biz-ink-strong)] shadow-soft transition hover:shadow-md"
+            className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold shadow-soft transition hover:opacity-95"
+            style={{ background: 'linear-gradient(90deg, var(--biz), var(--biz-strong))', color: 'var(--biz-ink)' }}
           >
             <GoogleGlyph className="h-4 w-4" />
             {googleCta}

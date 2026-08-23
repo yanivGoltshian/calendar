@@ -27,7 +27,8 @@ export default function SectionHeading({ eyebrow, title, lede, icon, align = 'ce
       </h2>
       <span
         aria-hidden
-        className={`mt-4 block h-0.5 w-16 rounded-full bg-gradient-to-l from-[color:var(--biz)] to-[color:var(--biz-strong)] ${centered ? 'mx-auto' : ''}`}
+        style={{ background: 'linear-gradient(90deg, transparent, var(--c-gold, var(--biz-strong)), transparent)' }}
+        className={`mt-3.5 block h-[3px] w-20 rounded-full ${centered ? 'mx-auto' : ''}`}
       />
       {lede ? (
         <p
