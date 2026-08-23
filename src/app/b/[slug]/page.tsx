@@ -312,6 +312,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
           heroEyebrow={heroEyebrow}
           heroHeadline={heroHeadline}
           heroSubtext={heroSubtext}
+          heroTagline={clinicLabels.heroTagline}
           heroCtaLabel={heroCtaLabel}
           updatesText={landing?.announcement ?? null}
           launchOffer={landing?.launchOffer}

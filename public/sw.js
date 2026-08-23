@@ -3,7 +3,7 @@
  * אסטרטגיה: network-first עבור ניווטים, עם נפילה למטמון (cache) בעת כשל רשת.
  * דחיפת התראות (push) תמומש מאחורי ממשק בהמשך.
  */
-const CACHE = 'torchick-shell-v2';
+const CACHE = 'torchick-shell-v3';
 const SHELL = ['/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {

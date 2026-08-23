@@ -50,6 +50,7 @@ type Props = {
   heroEyebrow?: string;
   heroHeadline: string;
   heroSubtext: string;
+  heroTagline?: string | null; // תת־כותרת מותגית מתחת לפס הזהב (צבע המותג)
   heroCtaLabel: string;
   updatesText?: string | null;
   launchOffer?: LandingLaunchOffer | null;
@@ -74,6 +75,7 @@ export default function PremiumClinicHeader({
   heroEyebrow,
   heroHeadline,
   heroSubtext,
+  heroTagline,
   heroCtaLabel,
   updatesText,
   launchOffer,
@@ -296,6 +298,14 @@ export default function PremiumClinicHeader({
               aria-hidden
               className="mt-5 block h-[3px] w-24 rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)]"
             />
+            {heroTagline ? (
+              <p
+                className="mt-4 text-sm font-bold tracking-wide sm:text-base"
+                style={{ color: 'var(--c-brand,#b0855f)' }}
+              >
+                {heroTagline}
+              </p>
+            ) : null}
             <p className="mt-5 max-w-lg text-base leading-relaxed text-white/85 sm:text-lg">
               {heroSubtext}
             </p>

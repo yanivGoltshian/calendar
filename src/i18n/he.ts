@@ -100,6 +100,8 @@ const he = {
       location: 'הגעה ושעות',
     },
     whatsappAria: 'פתיחת שיחת וואטסאפ',
+    // תוויות שבבי הנתונים במקטע "קצת עלינו" (המספרים עצמם נבנים מנתוני העסק).
+    aboutStats: { treatments: 'טיפולים מובילים', testimonials: 'לקוחות ממליצים' },
     // מחרוזות ייעודיות לעמוד הקליניקה הפרימיום בלבד (סקין ביוטי קליניק).
     // אין לגעת ב-nav.cta / finalCta / hero / publicPage.landing.
     clinic: {
@@ -118,6 +120,8 @@ const he = {
       instagramAria: 'עמוד האינסטגרם של הקליניקה',
       facebookAria: 'עמוד הפייסבוק של הקליניקה',
       heroImageAlt: 'הקליניקה של סקין ביוטי',
+      // תת־כותרת מותגית מתחת לפס הזהב בהירו (צבע המותג #b0855f).
+      heroTagline: 'טיפולי יופי ואסתטיקה רפואית ביבנה',
       countdown: { days: 'ימים', hours: 'שעות', minutes: 'דקות', seconds: 'שניות' },
       updatesLabel: 'עדכונים',
       booking: {

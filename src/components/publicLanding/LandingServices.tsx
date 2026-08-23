@@ -37,43 +37,36 @@ export default function LandingServices({ title, services, bookHref, iconKey, bo
         lede={lede}
         icon={<SectionIcon iconKey={iconKey} className="h-4 w-4" />}
       />
-      <div className="mt-10 grid gap-4 sm:grid-cols-2">
+      <div className="mt-10 flex flex-col gap-3.5">
         {services.map((s) => (
           <Link
             key={s.id}
             href={`${bookHref}?service=${s.id}`}
-            className="group flex flex-col justify-between rounded-3xl border border-[color:var(--biz-border)] bg-white p-6 shadow-soft transition duration-200 hover:-translate-y-1 hover:shadow-elevated"
+            className="group flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-[color:var(--biz-border)] bg-white px-5 py-4 shadow-soft transition duration-200 hover:-translate-y-0.5 hover:shadow-elevated sm:px-6"
           >
-            <div className="min-w-0">
-              <div className="flex items-start justify-between gap-3">
-                <p className="font-display text-lg font-bold leading-snug text-slate-900">{s.name}</p>
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--biz-soft)] text-[color:var(--biz-strong)] transition group-hover:bg-[var(--biz)] group-hover:text-[color:var(--biz-ink)]">
-                  <SectionIcon iconKey={iconKey} className="h-5 w-5" />
-                </span>
-              </div>
+            <div className="min-w-[210px] flex-1">
+              <h3 className="font-display text-[1.08rem] font-extrabold leading-snug text-slate-900 sm:text-lg">
+                {s.name}
+              </h3>
               {s.description ? (
-                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">{s.description}</p>
+                <p className="mt-1 line-clamp-1 text-sm leading-relaxed text-slate-500">{s.description}</p>
               ) : null}
             </div>
-            <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-              <div className="flex items-center gap-3 text-sm text-slate-500">
-                {!s.hideDuration ? (
-                  <span className="inline-flex items-center gap-1">
-                    <ClockIcon className="h-3.5 w-3.5 shrink-0" />
-                    {formatDuration(s.durationMin)}
-                  </span>
-                ) : null}
-                {!s.hidePrice ? (
-                  <span className="font-display text-base font-bold text-[color:var(--biz-ink-strong)]">
-                    {formatAgorot(s.priceAgorot)}
-                  </span>
-                ) : null}
-              </div>
-              <span className="inline-flex items-center gap-1 text-sm font-semibold text-[color:var(--biz-strong)]">
-                {bookLabel}
-                <ArrowLeftIcon className="h-3.5 w-3.5 transition group-hover:-translate-x-0.5" />
+            {!s.hideDuration ? (
+              <span className="inline-flex items-center gap-1 whitespace-nowrap text-sm text-slate-500">
+                <ClockIcon className="h-3.5 w-3.5 shrink-0" />
+                {formatDuration(s.durationMin)}
               </span>
-            </div>
+            ) : null}
+            {!s.hidePrice ? (
+              <span className="min-w-[76px] text-center font-display text-lg font-black text-[color:var(--biz-ink-strong)]">
+                {formatAgorot(s.priceAgorot)}
+              </span>
+            ) : null}
+            <span className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[color:var(--biz-border)] bg-[var(--biz-soft)] px-5 py-2.5 text-sm font-extrabold text-[color:var(--biz-strong)] transition group-hover:bg-[var(--biz)] group-hover:text-[color:var(--biz-ink)] max-[560px]:w-full">
+              {bookLabel}
+              <ArrowLeftIcon className="h-3.5 w-3.5 transition group-hover:-translate-x-0.5" />
+            </span>
           </Link>
         ))}
       </div>
