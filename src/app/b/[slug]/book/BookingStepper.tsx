@@ -132,6 +132,92 @@ export default function BookingStepper({
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.priceAgorot, 0);
   const selectedStaff = staff.find((m) => m.id === staffId) ?? null;
 
+  // שחזור טיוטת הזמנה אחרי הפניית התחברות גוגל (#c): כניסת גוגל היא ניווט-עמוד מלא
+  // שמאפס את מצב הרכיב (useState), ולכן לפני ההפניה שומרים את הבחירה ב-sessionStorage
+  // (שורד את מסע ההלוך-חזור לגוגל באותו טאב) וכאן משחזרים אותה וחוזרים ישירות לשלב
+  // האישור, במקום להתחיל את כל תהליך ההזמנה מחדש.
+  const draftKey = `torchick:booking-draft:${slug}`;
+  const draftRestored = useRef(false);
+  useEffect(() => {
+    if (draftRestored.current) return;
+    draftRestored.current = true;
+    if (deepLink) return; // קישור עמוק מה-URL גובר על טיוטה שמורה.
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(draftKey);
+      if (raw) sessionStorage.removeItem(draftKey);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    let d: {
+      v?: number;
+      ts?: number;
+      selectedServiceIds?: unknown;
+      staffId?: unknown;
+      date?: unknown;
+      selectedSlot?: unknown;
+      name?: unknown;
+      phone?: unknown;
+      email?: unknown;
+    };
+    try {
+      d = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    // תוקף קצר: מתעלמים מטיוטה בת יותר מ-30 דקות.
+    if (d.v !== 1 || typeof d.ts !== 'number' || Date.now() - d.ts > 30 * 60 * 1000) return;
+    const svc = Array.isArray(d.selectedServiceIds)
+      ? (d.selectedServiceIds as unknown[]).filter(
+          (id): id is string => typeof id === 'string' && services.some((s) => s.id === id),
+        )
+      : [];
+    if (svc.length === 0) return;
+    setSelectedServiceIds(svc);
+    if (typeof d.staffId === 'string' && staff.some((m) => m.id === d.staffId)) {
+      setStaffId(d.staffId);
+    }
+    if (typeof d.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
+      setDate(d.date);
+    }
+    const slot = d.selectedSlot as Slot | undefined;
+    const hasSlot =
+      !!slot && typeof slot.startAtUtc === 'string' && typeof slot.label === 'string';
+    if (hasSlot) setSelectedSlot(slot as Slot);
+    // פרטי קשר שהוקלדו נשמרים רק אם המשתמש עדיין לא מחובר; אצל מחובר פרטי הלקוח גוברים.
+    if (!authed) {
+      if (typeof d.name === 'string' && d.name) setName(d.name);
+      if (typeof d.phone === 'string' && d.phone) setPhone(d.phone);
+      if (typeof d.email === 'string' && d.email) setEmail(d.email);
+    }
+    // חוזרים בדיוק לשלב האישור עם המשבצת המשוחזרת (או לשלב השעה אם לא נשמרה משבצת).
+    setStep(hasSlot ? 5 : 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // נשמר בלחיצה על כניסת גוגל בשלב האישור, רגע לפני ההפניה שמאפסת את מצב הרכיב.
+  function saveBookingDraftForAuth() {
+    try {
+      sessionStorage.setItem(
+        draftKey,
+        JSON.stringify({
+          v: 1,
+          ts: Date.now(),
+          selectedServiceIds,
+          staffId,
+          date,
+          selectedSlot,
+          name,
+          phone,
+          email,
+        }),
+      );
+    } catch {
+      // sessionStorage לא זמין (גלישה פרטית/חסימה): נכשלים בשקט, ההתחברות עדיין תעבוד.
+    }
+  }
+
   function toggleService(id: string) {
     setSelectedServiceIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -470,7 +556,10 @@ export default function BookingStepper({
           {!authed && googleEnabled ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-center">
               <p className="mb-3 text-sm text-slate-600">{t.account.googlePrompt}</p>
-              <CustomerGoogleSignIn callbackUrl={`/account/continue?next=${encodeURIComponent(`/b/${slug}/book`)}`} />
+              <CustomerGoogleSignIn
+                callbackUrl={`/account/continue?next=${encodeURIComponent(`/b/${slug}/book`)}`}
+                onBeforeSignIn={saveBookingDraftForAuth}
+              />
             </div>
           ) : null}
           <p className="text-slate-600">{requireEmail ? t.booking.guestHintPremium : t.booking.guestHintStandard}</p>

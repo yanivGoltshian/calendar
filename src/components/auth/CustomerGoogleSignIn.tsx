@@ -16,15 +16,19 @@ import { t } from '@/i18n';
 export function CustomerGoogleSignIn({
   callbackUrl,
   className,
+  onBeforeSignIn,
 }: {
   callbackUrl: string;
   className?: string;
+  onBeforeSignIn?: () => void;
 }) {
   const [pending, setPending] = useState(false);
 
   async function handleGoogle() {
     setPending(true);
     try {
+      // הזדמנות לשומר קריאה לשמור מצב מקומי (למשל טיוטת הזמנה) לפני ההפניה המלאה לגוגל.
+      onBeforeSignIn?.();
       await signIn('google', { callbackUrl });
     } catch {
       setPending(false);
