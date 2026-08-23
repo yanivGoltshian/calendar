@@ -28,6 +28,9 @@ import {
 } from '@/components/publicLanding/icons';
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
+import { getClientSession } from '@/lib/session';
+import { authProviderStatus } from '@/auth';
+import CustomerGoogleSignIn from '@/components/auth/CustomerGoogleSignIn';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
 import { visualLevelForPublicPage } from '@/server/onboardingProgress';
 import ShareBusiness from '@/components/publicLanding/ShareBusiness';
@@ -107,6 +110,9 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
   const heroCtaLabel = landing?.ctaLabel || t.publicPage.bookCta;
 
   const bookHref = `/b/${business.slug}/book`;
+  // כניסת לקוח עם גוגל: מוצגת בכל המסלולים כשהמבקר אינו מחובר כלקוח.
+  const clientSession = await getClientSession();
+  const showCustomerGoogle = !clientSession && authProviderStatus.google;
   // הכתובת הקנונית לשיתוף — https://<host>/b/<slug>. ה-OG card מנוהל בקובץ נפרד.
   const shareUrl = absoluteUrl(`/b/${business.slug}`);
 
@@ -377,6 +383,14 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
         <div className="pt-4">
           <BackButton />
         </div>
+
+        {/* כניסת לקוח חוזר עם גוגל — זמין בכל המסלולים, מפנה דרך גשר הזהות */}
+        {showCustomerGoogle ? (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white/70 p-4 text-center shadow-sm">
+            <p className="mb-3 text-sm text-slate-600">{t.account.googlePrompt}</p>
+            <CustomerGoogleSignIn callbackUrl={`/account/continue?next=${encodeURIComponent(bookHref)}`} />
+          </div>
+        ) : null}
 
         {/* שורת עדכון חי — נשלטת מעמוד ניהול העסק, לדוגמה הודעת חופשה. בפרימיום מוצגת ברצועת הכותרת */}
         {isLanding && !isClinicPremium && landing?.announcement ? (

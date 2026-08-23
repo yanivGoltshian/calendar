@@ -22,7 +22,16 @@ const sectionLinks: NavLink[] = [
 ];
 
 /** Navbar — כותרת עליונה דביקה, אלגנטית, עם CTA וקישורי שער לניהול ולעמוד לדוגמה. */
-export function Navbar({ demoSlug, absoluteLinks = false }: { demoSlug?: string; absoluteLinks?: boolean }) {
+export function Navbar({
+  demoSlug,
+  absoluteLinks = false,
+  showAccount = false,
+}: {
+  demoSlug?: string;
+  absoluteLinks?: boolean;
+  // מוצג רק ללקוח מחובר (עוגיית client_session קיימת): קישור לאזור האישי.
+  showAccount?: boolean;
+}) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
@@ -83,12 +92,21 @@ export function Navbar({ demoSlug, absoluteLinks = false }: { demoSlug?: string;
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-sand-600 transition-colors hover:text-brand-700 dark:text-sand-300 dark:hover:text-brand-200"
-          >
-            {t.marketing.nav.clientLogin}
-          </Link>
+          {showAccount ? (
+            <Link
+              href="/account"
+              className="text-sm font-medium text-sand-600 transition-colors hover:text-brand-700 dark:text-sand-300 dark:hover:text-brand-200"
+            >
+              {t.marketing.nav.account}
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="text-sm font-medium text-sand-600 transition-colors hover:text-brand-700 dark:text-sand-300 dark:hover:text-brand-200"
+            >
+              {t.marketing.nav.clientLogin}
+            </Link>
+          )}
           <Link
             href="/business/login"
             className="text-sm font-medium text-sand-600 transition-colors hover:text-brand-700 dark:text-sand-300 dark:hover:text-brand-200"
@@ -160,9 +178,15 @@ export function Navbar({ demoSlug, absoluteLinks = false }: { demoSlug?: string;
                 </a>
               )}
               <div className="mt-3 flex flex-col gap-2 border-t border-sand-200/70 pt-4 dark:border-sand-800/70">
-                <Button href="/login" variant="ghost" size="md" onClick={() => setOpen(false)}>
-                  {t.marketing.nav.clientLogin}
-                </Button>
+                {showAccount ? (
+                  <Button href="/account" variant="ghost" size="md" onClick={() => setOpen(false)}>
+                    {t.marketing.nav.account}
+                  </Button>
+                ) : (
+                  <Button href="/login" variant="ghost" size="md" onClick={() => setOpen(false)}>
+                    {t.marketing.nav.clientLogin}
+                  </Button>
+                )}
                 <Button href="/business/login" variant="secondary" size="md" onClick={() => setOpen(false)}>
                   {t.marketing.nav.login}
                 </Button>

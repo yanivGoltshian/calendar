@@ -1,5 +1,6 @@
 import { getFirstBusiness, getBusinessesOwnedByEmail } from '@/server/repos/business';
 import { auth } from '@/auth';
+import { getClientSession } from '@/lib/session';
 import { buildMetadata, SITE_URL } from '@/lib/seo';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
@@ -45,6 +46,9 @@ export default async function HomePage() {
   const ownerEmail = session?.user?.email;
   const owned = ownerEmail ? await getBusinessesOwnedByEmail(ownerEmail) : [];
   const isReturningOwner = owned.length > 0;
+  // לקוח מחובר (עוגיית client_session): מציג קישור לאזור האישי בסרגל הניווט.
+  const clientSession = await getClientSession();
+  const showAccount = Boolean(clientSession);
   const heroCta = homeHeroCta(isReturningOwner);
   const ctaPrimaryHref = ownerPrimaryHref(isReturningOwner);
 
@@ -66,7 +70,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
-      <Navbar demoSlug={demoSlug} />
+      <Navbar demoSlug={demoSlug} showAccount={showAccount} />
 
       <main className="flex-1">
         {/* HERO */}
