@@ -361,9 +361,42 @@ model StaffMember {
   serviceLinks    ServiceStaff[]
   waitlistEntries WaitlistEntry[]
 
+  calendarConnection StaffCalendarConnection? // חיבור יומן Google אישי (מודול סנכרון)
+
   sales Sale[] // מודול קופה — קשר אדיטיבי (מי הפעיל את הקופה)
 
   @@unique([businessId, userId])
+  @@index([businessId])
+}
+
+// חיבור יומן Google אישי של איש צוות (בדרך כלל בעל העסק) — מודול סנכרון דו-כיווני.
+// ייבוא: אירועי היומן האישי חוסמים זמינות אצלנו (freeBusy). ייצוא: תורים שנקבעים
+// אצלנו נכתבים כאירועים ביומן האישי. הטוקנים נשמרים מוצפנים (AES-256-GCM) בלבד.
+model StaffCalendarConnection {
+  id         String      @id @default(cuid())
+  staffId    String      @unique
+  staff      StaffMember @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  // דנורמליזציה של businessId לשאילתות מהירות ולאכיפת שיוך.
+  businessId String
+  provider   String      @default("google")
+
+  // טוקנים מוצפנים (ciphertext בפורמט iv:tag:data ב-base64). לעולם לא בטקסט גלוי.
+  accessTokenEnc       String
+  refreshTokenEnc      String
+  accessTokenExpiresAt DateTime?
+  calendarId           String    @default("primary")
+  googleEmail          String? // כתובת חשבון Google המחובר (לתצוגה בלבד)
+
+  // מתגי סנכרון: ייבוא עומס (חסימת זמינות) וייצוא תורים ליומן האישי.
+  importBusy     Boolean @default(true)
+  exportBookings Boolean @default(true)
+
+  lastSyncedAt DateTime?
+  lastError    String? // הודעת השגיאה האחרונה (best-effort), לאבחון בממשק הניהול.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([businessId])
 }
 
@@ -468,6 +501,10 @@ model Appointment {
   reminderSentAt     DateTime? // מתי נשלחה תזכורת ה-24 שעות (ריק = טרם נשלחה)
   confirmationStatus ConfirmationStatus @default(PENDING) // אישור ההגעה מצד הלקוח
   confirmToken       String             @unique @default(cuid()) // מזהה ציבורי לקישור האישור /c/<token>
+
+  // מזהה האירוע ביומן Google של בעל העסק (מודול סנכרון יומן). ריק כשאין ייצוא/חיבור.
+  // משמש לעדכון/מחיקה של האירוע המיוצא כשהתור מבוטל. אדיטיבי, אופציונלי.
+  googleCalendarEventId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

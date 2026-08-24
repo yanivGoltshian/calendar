@@ -10,6 +10,7 @@ import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
 import { notifyOwnerOfBooking } from '@/server/notifications/ownerBooking';
 import { notifyClientOfBooking } from '@/server/notifications/bookingConfirmation';
+import { exportOnCreate } from '@/server/google/appointmentSync';
 import { getBusinessAccess, canAcceptPublicBookings } from '@/server/subscription';
 import { absoluteUrl } from '@/lib/seo';
 import { getClientSession } from '@/lib/session';
@@ -233,6 +234,10 @@ export async function POST(req: Request) {
       // ההזמנה כבר נוצרה והוחזרה בהצלחה; כשל התראה אינו משפיע על התשובה.
     }
   }
+
+  // ייצוא ליומן Google של הבעלים (fire-and-forget, לעולם לא חוסם את התשובה).
+  // מגודר פנימית ב-env ומדלג כשאין חיבור/כיבוי; מוגן במלואו ולא זורק.
+  void exportOnCreate(appointment.id).catch(() => {});
 
   return NextResponse.json({ ok: true, appointmentId: appointment.id, status });
 }

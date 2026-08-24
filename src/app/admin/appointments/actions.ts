@@ -8,6 +8,7 @@ import {
 } from '@/server/repos/appointments';
 import { getBusinessAccess } from '@/server/subscription';
 import { notifyClientOfApproval } from '@/server/notifications/clientApproval';
+import { exportOnCreate, exportOnCancel } from '@/server/google/appointmentSync';
 import { canEmailClients, canWhatsappClients } from '@/server/tier';
 import { absoluteUrl } from '@/lib/seo';
 
@@ -41,6 +42,8 @@ export async function approveAppointmentAction(formData: FormData) {
   const wasPending = appt.status === 'PENDING';
 
   await updateAppointmentStatus(id, 'CONFIRMED');
+  // ייצוא/עדכון האירוע ביומן הבעלים (fire-and-forget, אידמפוטנטי).
+  void exportOnCreate(id).catch(() => {});
   revalidatePath('/admin/appointments');
   revalidatePath('/admin');
 
@@ -76,6 +79,8 @@ export async function cancelAppointmentAction(formData: FormData) {
   const id = String(formData.get('appointmentId') || '');
   if (!(await assertBelongsToBusiness(id))) return;
   await updateAppointmentStatus(id, 'CANCELLED');
+  // מחיקת האירוע המיוצא מיומן הבעלים (fire-and-forget, מדלג אם אין).
+  void exportOnCancel(id).catch(() => {});
   revalidatePath('/admin/appointments');
   revalidatePath('/admin');
 }

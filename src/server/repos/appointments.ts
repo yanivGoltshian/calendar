@@ -177,6 +177,17 @@ export function getAppointmentById(id: string) {
 }
 
 /**
+ * עדכון מזהה אירוע יומן Google על תור (מודול סנכרון יומן). מקבל מזהה או null
+ * (איפוס לאחר מחיקה). אדיטיבי ובטוח; משמש את מודול הייצוא בלבד.
+ */
+export function setGoogleCalendarEventId(id: string, eventId: string | null) {
+  return prisma.appointment.update({
+    where: { id },
+    data: { googleCalendarEventId: eventId },
+  });
+}
+
+/**
  * שליפת תור לצורך ביטול בצד הלקוח: כולל זהות הלקוח (userId/phone) לאימות בעלות,
  * ואת חלון הביטול של העסק לאכיפת המדיניות.
  */

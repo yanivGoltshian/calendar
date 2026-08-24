@@ -12,6 +12,7 @@ import {
   getAccountDeletionInfo,
 } from '@/server/repos/account';
 import { notifyOwnerOfCancellation } from '@/server/notifications/ownerCancellation';
+import { exportOnCancel } from '@/server/google/appointmentSync';
 import { absoluteUrl } from '@/lib/seo';
 
 /** התנתקות: ניקוי עוגיית ה-session והפניה למסך ההתחברות. */
@@ -57,6 +58,9 @@ export async function cancelAppointmentAction(
   }
 
   await updateAppointmentStatus(id, 'CANCELLED', { cancelledBy: 'CLIENT' });
+
+  // מחיקת האירוע המיוצא מיומן הבעלים (fire-and-forget, מדלג אם אין).
+  void exportOnCancel(id).catch(() => {});
 
   // התראת בעל העסק על ביטול שיזם הלקוח (best-effort, לעולם לא חוסמת את הביטול).
   // היעד הוא מייל העסק עצמו (ownerEmail / owner.email) — לא מייל הפלטפורמה.

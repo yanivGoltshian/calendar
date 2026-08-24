@@ -7,10 +7,16 @@ import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
 import SettingsForm from './SettingsForm';
 import DeleteAccountSection from './DeleteAccountSection';
+import CalendarSyncSection from './CalendarSyncSection';
 
 export const metadata: Metadata = { title: t.admin.settings.title };
 
-export default async function AdminSettingsPage() {
+type Props = {
+  searchParams: Promise<{ calendar?: string }>;
+};
+
+export default async function AdminSettingsPage({ searchParams }: Props) {
+  const sp = await searchParams;
   const business = await getActiveBusiness();
   if (!business) notFound();
 
@@ -40,6 +46,11 @@ export default async function AdminSettingsPage() {
         business={business}
         settings={settings}
         onboardingCompleted={settings.onboardingCompleted}
+      />
+
+      <CalendarSyncSection
+        business={{ id: business.id, name: business.name, ownerEmail: business.ownerEmail }}
+        resultCode={sp.calendar}
       />
 
       <DeleteAccountSection />

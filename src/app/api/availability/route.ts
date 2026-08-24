@@ -4,6 +4,7 @@ import { getBusinessBySlug } from '@/server/repos/business';
 import { getServicesByIds } from '@/server/repos/services';
 import { getEffectiveStaffWorkingHours } from '@/server/repos/workingHours';
 import { getBlockingAppointments } from '@/server/repos/appointments';
+import { getGoogleBusyIntervals } from '@/server/google/importBusy';
 import { computeSlots } from '@/server/availability';
 import { canAcceptPublicBookings } from '@/server/subscription';
 import { localWallTimeToUtc, addDaysToDateString } from '@/lib/time';
@@ -68,6 +69,12 @@ export async function POST(request: Request) {
 
   const busy = await getBlockingAppointments(staffId, dayStartUtc, dayEndUtc);
 
+  // שילוב עומס מיומן Google של הבעלים (best-effort, fail-open). כשהסנכרון כבוי
+  // ב-env הפונקציה חוזרת מיד עם [] וללא גישת DB. מרווחי Google נספחים לתורים
+  // הקיימים ומטופלים זהה בחישוב המשבצות (שניהם נקראים לפי startAt/endAt בלבד).
+  const googleBusy = await getGoogleBusyIntervals(staffId, dayStartUtc, dayEndUtc);
+  const busyAll = googleBusy.length > 0 ? [...busy, ...googleBusy] : busy;
+
   const slots = computeSlots({
     dateStr: date,
     workingHours: workingHours.map((w) => ({
@@ -76,7 +83,7 @@ export async function POST(request: Request) {
       endMinute: w.endMinute,
       breaks: (w.breaks as [number, number][]) ?? [],
     })),
-    busy,
+    busy: busyAll,
     durationMin,
     slotGranularityMin: business.settings?.slotGranularityMinutes ?? 15,
     timeZone: business.timezone,
