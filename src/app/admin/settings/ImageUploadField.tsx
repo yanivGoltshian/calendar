@@ -305,7 +305,7 @@ export function ImageUploadField({
         <div className="flex flex-wrap items-center gap-3">
           {value ? (
             <span
-              className={`relative block overflow-hidden border border-slate-200 bg-slate-50 ${previewBox} ${previewWidth}`}
+              className={`relative block overflow-hidden border border-[#e7ddcd] bg-[#f7f2ea] ${previewBox} ${previewWidth}`}
               style={{ aspectRatio: String(targetAspect) }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -317,7 +317,7 @@ export function ImageUploadField({
             </span>
           ) : (
             <span
-              className={`flex items-center justify-center border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-400 ${previewBox} ${previewWidth}`}
+              className={`flex items-center justify-center border border-dashed border-[#d6c8b4] bg-[#f7f2ea] text-xs text-[#b3a690] ${previewBox} ${previewWidth}`}
               style={{ aspectRatio: String(targetAspect) }}
             >
               {labels.empty}
@@ -328,7 +328,7 @@ export function ImageUploadField({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-[#d6c8b4] px-3 py-1.5 text-sm font-medium text-[#4a4038] hover:bg-[#f7f2ea]"
             >
               {value ? labels.change : labels.choose}
             </button>
@@ -355,8 +355,8 @@ export function ImageUploadField({
       )}
 
       {editing && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <p className="mb-2 text-sm font-medium text-slate-700">
+        <div className="rounded-xl border border-[#e7ddcd] bg-[#f7f2ea] p-3">
+          <p className="mb-2 text-sm font-medium text-[#4a4038]">
             {labels.cropTitle}
           </p>
           <div className="flex justify-center">
@@ -366,14 +366,14 @@ export function ImageUploadField({
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerUp}
-              className={`max-w-full cursor-move touch-none border border-slate-300 bg-white ${previewBox}`}
+              className={`max-w-full cursor-move touch-none border border-[#d6c8b4] bg-white ${previewBox}`}
             />
           </div>
-          <p className="mt-2 text-center text-xs text-slate-500">
+          <p className="mt-2 text-center text-xs text-[#8f8478]">
             {labels.dragHint}
           </p>
 
-          <label className="mt-3 flex items-center gap-2 text-xs text-slate-600">
+          <label className="mt-3 flex items-center gap-2 text-xs text-[#6e655f]">
             <span className="shrink-0">{labels.zoom}</span>
             <input
               type="range"
@@ -396,7 +396,7 @@ export function ImageUploadField({
             <button
               type="button"
               onClick={cancel}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-white"
+              className="rounded-lg border border-[#d6c8b4] px-3 py-1.5 text-sm text-[#6e655f] hover:bg-white"
             >
               {labels.cancel}
             </button>

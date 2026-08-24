@@ -51,7 +51,7 @@ const STATUS_LABEL: Record<SaleStatus, string> = {
 const STATUS_CLASS: Record<SaleStatus, string> = {
   OPEN: 'bg-amber-100 text-amber-800',
   COMPLETED: 'bg-green-100 text-green-700',
-  VOIDED: 'bg-slate-200 text-slate-600',
+  VOIDED: 'bg-[#e7ddcd] text-[#6e655f]',
   REFUNDED: 'bg-red-100 text-red-700',
 };
 
@@ -68,13 +68,13 @@ const ISSUABLE_TYPES: DocumentType[] = ['RECEIPT', 'TAX_INVOICE', 'INVOICE_RECEI
 const PAYMENT_METHODS: PaymentMethod[] = ['CASH', 'CARD', 'BIT', 'BANK_TRANSFER', 'OTHER'];
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 const selectClass = inputClass;
-const cardClass = 'rounded-xl border border-slate-200 bg-white p-4 shadow-sm';
+const cardClass = 'rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm';
 const primaryBtn =
   'rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700';
 const subtleBtn =
-  'rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50';
+  'rounded-lg border border-[#d6c8b4] px-3 py-1.5 text-sm text-[#4a4038] hover:bg-[#f7f2ea]';
 
 export default async function SaleEditorPage({ params }: Props) {
   const { saleId } = await params;
@@ -106,8 +106,8 @@ export default async function SaleEditorPage({ params }: Props) {
 
       <header className="mb-6 flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-500">{BRAND.name}</p>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+          <h1 className="text-2xl font-bold text-[#1b1715]">
             {t.admin.pos.saleNumber} #{sale.id.slice(-6)}
           </h1>
         </div>
@@ -135,16 +135,16 @@ export default async function SaleEditorPage({ params }: Props) {
 
       {/* פריטים */}
       <section className={`${cardClass} mb-5`}>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">{t.admin.pos.itemsTitle}</h2>
+        <h2 className="mb-3 text-lg font-semibold text-[#1b1715]">{t.admin.pos.itemsTitle}</h2>
         {sale.items.length === 0 ? (
-          <p className="text-sm text-slate-500">{t.admin.pos.noItems}</p>
+          <p className="text-sm text-[#8f8478]">{t.admin.pos.noItems}</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-[#efe6d8]">
             {sale.items.map((item) => (
               <li key={item.id} className="flex items-center gap-3 py-2">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-900">{item.nameSnapshot}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="truncate text-sm font-medium text-[#1b1715]">{item.nameSnapshot}</p>
+                  <p className="text-xs text-[#8f8478]">
                     {formatAgorot(item.unitPriceAgorot)} · {t.admin.pos.lineTotal}:{' '}
                     {formatAgorot(item.lineTotalAgorot)}
                   </p>
@@ -160,7 +160,7 @@ export default async function SaleEditorPage({ params }: Props) {
                         defaultValue={item.quantity}
                         min={1}
                         step={1}
-                        className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-center text-sm text-slate-900"
+                        className="w-16 rounded-lg border border-[#d6c8b4] px-2 py-1 text-center text-sm text-[#1b1715]"
                         aria-label={t.admin.pos.quantity}
                       />
                       <button type="submit" className={subtleBtn}>
@@ -179,7 +179,7 @@ export default async function SaleEditorPage({ params }: Props) {
                     </form>
                   </div>
                 ) : (
-                  <span className="text-sm text-slate-600">× {item.quantity}</span>
+                  <span className="text-sm text-[#6e655f]">× {item.quantity}</span>
                 )}
               </li>
             ))}
@@ -193,7 +193,7 @@ export default async function SaleEditorPage({ params }: Props) {
           {/* מוצר */}
           <form action={addProductItemAction} className={cardClass}>
             <input type="hidden" name="saleId" value={sale.id} />
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
               {t.admin.pos.addProduct}
             </label>
             <select name="productId" className={selectClass} required defaultValue="">
@@ -215,7 +215,7 @@ export default async function SaleEditorPage({ params }: Props) {
           {/* שירות */}
           <form action={addServiceItemAction} className={cardClass}>
             <input type="hidden" name="saleId" value={sale.id} />
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
               {t.admin.pos.addService}
             </label>
             <select name="serviceId" className={selectClass} required defaultValue="">
@@ -237,7 +237,7 @@ export default async function SaleEditorPage({ params }: Props) {
           {/* פריט חופשי */}
           <form action={addCustomItemAction} className={cardClass}>
             <input type="hidden" name="saleId" value={sale.id} />
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
               {t.admin.pos.addCustom}
             </label>
             <input
@@ -268,28 +268,28 @@ export default async function SaleEditorPage({ params }: Props) {
       <section className={`${cardClass} mb-5`}>
         <dl className="space-y-1 text-sm">
           <div className="flex justify-between">
-            <dt className="text-slate-600">{t.admin.pos.subtotal}</dt>
-            <dd className="font-medium text-slate-900">{formatAgorot(sale.subtotalAgorot)}</dd>
+            <dt className="text-[#6e655f]">{t.admin.pos.subtotal}</dt>
+            <dd className="font-medium text-[#1b1715]">{formatAgorot(sale.subtotalAgorot)}</dd>
           </div>
           {sale.discountAgorot > 0 && (
             <div className="flex justify-between">
-              <dt className="text-slate-600">{t.admin.pos.discount}</dt>
+              <dt className="text-[#6e655f]">{t.admin.pos.discount}</dt>
               <dd className="font-medium text-red-600">−{formatAgorot(sale.discountAgorot)}</dd>
             </div>
           )}
-          <div className="flex justify-between border-t border-slate-100 pt-1">
-            <dt className="font-semibold text-slate-900">{t.admin.pos.total}</dt>
-            <dd className="font-bold text-slate-900">{formatAgorot(sale.totalAgorot)}</dd>
+          <div className="flex justify-between border-t border-[#efe6d8] pt-1">
+            <dt className="font-semibold text-[#1b1715]">{t.admin.pos.total}</dt>
+            <dd className="font-bold text-[#1b1715]">{formatAgorot(sale.totalAgorot)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-600">{t.admin.pos.paid}</dt>
-            <dd className="font-medium text-slate-900">{formatAgorot(sale.paidAgorot)}</dd>
+            <dt className="text-[#6e655f]">{t.admin.pos.paid}</dt>
+            <dd className="font-medium text-[#1b1715]">{formatAgorot(sale.paidAgorot)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-slate-600">
+            <dt className="text-[#6e655f]">
               {dueAgorot >= 0 ? t.admin.pos.due : t.admin.pos.change}
             </dt>
-            <dd className="font-semibold text-slate-900">{formatAgorot(Math.abs(dueAgorot))}</dd>
+            <dd className="font-semibold text-[#1b1715]">{formatAgorot(Math.abs(dueAgorot))}</dd>
           </div>
         </dl>
 
@@ -297,7 +297,7 @@ export default async function SaleEditorPage({ params }: Props) {
           <form action={setDiscountAction} className="mt-4 flex items-end gap-2">
             <input type="hidden" name="saleId" value={sale.id} />
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-[#6e655f]">
                 {t.admin.pos.discountAmount}
               </label>
               <input
@@ -318,11 +318,11 @@ export default async function SaleEditorPage({ params }: Props) {
 
       {/* שיוך */}
       <section className={`${cardClass} mb-5`}>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">{t.admin.pos.linksTitle}</h2>
+        <h2 className="mb-3 text-lg font-semibold text-[#1b1715]">{t.admin.pos.linksTitle}</h2>
         <form action={setSaleLinksAction} className="space-y-3">
           <input type="hidden" name="saleId" value={sale.id} />
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
               {t.admin.pos.clientLabel}
             </label>
             <select name="clientId" className={selectClass} defaultValue={sale.clientId ?? ''}>
@@ -335,7 +335,7 @@ export default async function SaleEditorPage({ params }: Props) {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
               {t.admin.pos.appointmentLabel}
             </label>
             <select
@@ -353,7 +353,7 @@ export default async function SaleEditorPage({ params }: Props) {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
               {t.admin.pos.staffLabel}
             </label>
             <select name="staffId" className={selectClass} defaultValue={sale.staffId ?? ''}>
@@ -373,19 +373,19 @@ export default async function SaleEditorPage({ params }: Props) {
 
       {/* תשלומים */}
       <section className={`${cardClass} mb-5`}>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">{t.admin.pos.paymentsTitle}</h2>
+        <h2 className="mb-3 text-lg font-semibold text-[#1b1715]">{t.admin.pos.paymentsTitle}</h2>
         {sale.payments.length === 0 ? (
-          <p className="text-sm text-slate-500">{t.admin.pos.noPayments}</p>
+          <p className="text-sm text-[#8f8478]">{t.admin.pos.noPayments}</p>
         ) : (
-          <ul className="mb-4 divide-y divide-slate-100">
+          <ul className="mb-4 divide-y divide-[#efe6d8]">
             {sale.payments.map((p) => (
               <li key={p.id} className="flex items-center justify-between py-2 text-sm">
-                <span className="text-slate-700">
+                <span className="text-[#4a4038]">
                   {METHOD_LABEL[p.method]}
                   {p.reference ? ` · ${p.reference}` : ''}
                 </span>
                 <span className="flex items-center gap-3">
-                  <span className="font-medium text-slate-900">{formatAgorot(p.amountAgorot)}</span>
+                  <span className="font-medium text-[#1b1715]">{formatAgorot(p.amountAgorot)}</span>
                   {isOpen && (
                     <form action={removePaymentAction}>
                       <input type="hidden" name="saleId" value={sale.id} />
@@ -408,7 +408,7 @@ export default async function SaleEditorPage({ params }: Props) {
           <form action={addPaymentAction} className="grid gap-2 sm:grid-cols-4 sm:items-end">
             <input type="hidden" name="saleId" value={sale.id} />
             <div className="sm:col-span-1">
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-[#6e655f]">
                 {t.admin.pos.paymentMethod}
               </label>
               <select name="method" className={selectClass} defaultValue="CASH">
@@ -420,13 +420,13 @@ export default async function SaleEditorPage({ params }: Props) {
               </select>
             </div>
             <div className="sm:col-span-1">
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-[#6e655f]">
                 {t.admin.pos.paymentAmount}
               </label>
               <input type="number" name="amount" min={0} step="0.01" className={inputClass} required />
             </div>
             <div className="sm:col-span-1">
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-1 block text-xs font-medium text-[#6e655f]">
                 {t.admin.pos.paymentReference}
               </label>
               <input type="text" name="reference" className={inputClass} />
@@ -462,14 +462,14 @@ export default async function SaleEditorPage({ params }: Props) {
       {/* הפקת מסמך + מסמכים שהופקו */}
       {sale.status !== 'VOIDED' && (
         <section className={`${cardClass} mb-5`}>
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          <h2 className="mb-3 text-lg font-semibold text-[#1b1715]">
             {t.admin.pos.issueDocument}
           </h2>
           {sale.items.length > 0 ? (
             <form action={issueDocumentFromSaleAction} className="flex items-end gap-2">
               <input type="hidden" name="saleId" value={sale.id} />
               <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium text-slate-600">
+                <label className="mb-1 block text-xs font-medium text-[#6e655f]">
                   {t.admin.pos.documentType}
                 </label>
                 <select name="type" className={selectClass} defaultValue="RECEIPT">
@@ -485,15 +485,15 @@ export default async function SaleEditorPage({ params }: Props) {
               </button>
             </form>
           ) : (
-            <p className="text-sm text-slate-500">{t.admin.pos.noItems}</p>
+            <p className="text-sm text-[#8f8478]">{t.admin.pos.noItems}</p>
           )}
 
           {sale.documents.length > 0 && (
             <div className="mt-4">
-              <h3 className="mb-2 text-sm font-semibold text-slate-700">
+              <h3 className="mb-2 text-sm font-semibold text-[#4a4038]">
                 {t.admin.pos.issuedDocuments}
               </h3>
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-[#efe6d8]">
                 {sale.documents.map((d) => (
                   <li key={d.id} className="py-2 text-sm">
                     <Link

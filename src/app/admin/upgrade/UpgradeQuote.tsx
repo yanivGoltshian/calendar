@@ -71,11 +71,11 @@ export default async function UpgradeQuote({
     <section dir="rtl" className={dark ? 'text-right' : 'text-right'}>
       {!dark ? (
         <header className="mb-6">
-          <h1 className="text-2xl font-extrabold text-[#0A182D]">{t.quote.page.title}</h1>
-          <p className="mt-2 text-slate-600">{t.quote.page.subtitle}</p>
+          <h1 className="text-2xl font-extrabold text-[#1c1512]">{t.quote.page.title}</h1>
+          <p className="mt-2 text-[#6e655f]">{t.quote.page.subtitle}</p>
         </header>
       ) : (
-        <h2 className="mb-2 text-xl font-extrabold text-[#0A182D]">{t.quote.form.heading}</h2>
+        <h2 className="mb-2 text-xl font-extrabold text-[#1c1512]">{t.quote.form.heading}</h2>
       )}
 
       <p
@@ -101,16 +101,16 @@ export default async function UpgradeQuote({
             return (
               <div
                 key={key}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                className="rounded-2xl border border-[#e7ddcd] bg-white p-5 shadow-sm"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-lg font-bold text-[#0A182D]">{plan.name}</h3>
-                  <span className="rounded-full bg-[#0A182D] px-3 py-1 text-xs font-semibold text-[#F2D695]">
+                  <h3 className="text-lg font-bold text-[#1c1512]">{plan.name}</h3>
+                  <span className="rounded-full bg-[#1c1512] px-3 py-1 text-xs font-semibold text-[#F2D695]">
                     {t.quote.plans.contactTag}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-slate-600">{plan.tagline}</p>
-                <ul className="mt-3 space-y-1.5 text-sm text-slate-700">
+                <p className="mt-1 text-sm text-[#6e655f]">{plan.tagline}</p>
+                <ul className="mt-3 space-y-1.5 text-sm text-[#4a4038]">
                   {plan.features.map((feat) => (
                     <li key={feat} className="flex gap-2">
                       <span className="text-[#C59D5F]">✓</span>
@@ -125,7 +125,7 @@ export default async function UpgradeQuote({
       ) : null}
 
       <div className="mb-4">
-        <p className="text-sm text-slate-600">{t.quote.form.intro}</p>
+        <p className="text-sm text-[#6e655f]">{t.quote.form.intro}</p>
       </div>
 
       <QuoteRequestForm defaults={defaults} />

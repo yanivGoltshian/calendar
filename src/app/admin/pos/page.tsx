@@ -53,7 +53,7 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_CLASS: Record<string, string> = {
   OPEN: 'bg-amber-100 text-amber-800',
   COMPLETED: 'bg-green-100 text-green-700',
-  VOIDED: 'bg-slate-200 text-slate-600',
+  VOIDED: 'bg-[#e7ddcd] text-[#6e655f]',
   REFUNDED: 'bg-red-100 text-red-700',
 };
 
@@ -161,45 +161,45 @@ export default async function AdminPosPage({ searchParams }: Props) {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-4">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {t.admin.pos.title} · {business.name}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">{t.admin.pos.subtitle}</p>
+        <p className="mt-1 text-sm text-[#8f8478]">{t.admin.pos.subtitle}</p>
       </header>
 
       {/* סיכום קופה */}
-      <section className="mb-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-1 text-lg font-bold text-slate-900">
+      <section className="mb-5 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
+        <h2 className="mb-1 text-lg font-bold text-[#1b1715]">
           {t.admin.pos.registerTitle}
         </h2>
-        <p className="mb-3 text-xs text-slate-500">{registerScope}</p>
+        <p className="mb-3 text-xs text-[#8f8478]">{registerScope}</p>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t.admin.pos.registerSalesCount}</p>
-            <p className="text-xl font-bold text-slate-900">{register.salesCount}</p>
+          <div className="rounded-lg bg-[#f7f2ea] p-3">
+            <p className="text-xs text-[#8f8478]">{t.admin.pos.registerSalesCount}</p>
+            <p className="text-xl font-bold text-[#1b1715]">{register.salesCount}</p>
           </div>
-          <div className="rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t.admin.pos.registerTotal}</p>
-            <p className="text-xl font-bold text-slate-900">
+          <div className="rounded-lg bg-[#f7f2ea] p-3">
+            <p className="text-xs text-[#8f8478]">{t.admin.pos.registerTotal}</p>
+            <p className="text-xl font-bold text-[#1b1715]">
               {formatAgorot(register.totalAgorot)}
             </p>
           </div>
         </div>
         {register.byMethod.length > 0 ? (
           <div className="mt-3">
-            <p className="mb-2 text-xs font-medium text-slate-500">
+            <p className="mb-2 text-xs font-medium text-[#8f8478]">
               {t.admin.pos.registerByMethod}
             </p>
             <ul className="space-y-1">
               {register.byMethod.map((row) => (
                 <li
                   key={row.method}
-                  className="flex items-center justify-between text-sm text-slate-700"
+                  className="flex items-center justify-between text-sm text-[#4a4038]"
                 >
                   <span>
                     {METHOD_LABEL[row.method]}{' '}
-                    <span className="text-slate-400">({row.count})</span>
+                    <span className="text-[#b3a690]">({row.count})</span>
                   </span>
                   <span className="font-medium">{formatAgorot(row.amountAgorot)}</span>
                 </li>
@@ -221,7 +221,7 @@ export default async function AdminPosPage({ searchParams }: Props) {
         </form>
         <Link
           href="/admin/pos/products"
-          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          className="rounded-lg border border-[#e7ddcd] px-4 py-2 text-sm font-medium text-[#6e655f] transition hover:bg-[#f7f2ea]"
         >
           {t.admin.pos.tabs.products}
         </Link>
@@ -239,7 +239,7 @@ export default async function AdminPosPage({ searchParams }: Props) {
               className={
                 active
                   ? 'rounded-full bg-brand-600 px-3 py-1.5 text-sm font-medium text-white'
-                  : 'rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50'
+                  : 'rounded-full border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#6e655f] transition hover:bg-[#f7f2ea]'
               }
             >
               {f.label}
@@ -249,28 +249,28 @@ export default async function AdminPosPage({ searchParams }: Props) {
       </div>
 
       {/* סינון לפי תאריך */}
-      <section className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-bold text-slate-900">
+      <section className="mb-5 rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-sm font-bold text-[#1b1715]">
           {t.admin.pos.dateFilterTitle}
         </h2>
         <form method="get" className="flex flex-wrap items-end gap-3">
           {tab !== 'open' ? <input type="hidden" name="tab" value={tab} /> : null}
-          <label className="flex flex-col gap-1 text-xs text-slate-500">
+          <label className="flex flex-col gap-1 text-xs text-[#8f8478]">
             {t.admin.pos.dateFrom}
             <input
               type="date"
               name="from"
               defaultValue={range.from ?? ''}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900"
+              className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm text-[#1b1715]"
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-500">
+          <label className="flex flex-col gap-1 text-xs text-[#8f8478]">
             {t.admin.pos.dateTo}
             <input
               type="date"
               name="to"
               defaultValue={range.to ?? ''}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900"
+              className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm text-[#1b1715]"
             />
           </label>
           <button
@@ -281,24 +281,24 @@ export default async function AdminPosPage({ searchParams }: Props) {
           </button>
           <Link
             href={buildPosHref({ tab, from: today, to: today })}
-            className="rounded-lg border border-slate-200 px-4 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            className="rounded-lg border border-[#e7ddcd] px-4 py-1.5 text-sm font-medium text-[#6e655f] transition hover:bg-[#f7f2ea]"
           >
             {t.admin.pos.dateToday}
           </Link>
           {hasDateFilter ? (
             <Link
               href={buildPosHref({ tab, from: null, to: null })}
-              className="rounded-lg border border-slate-200 px-4 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+              className="rounded-lg border border-[#e7ddcd] px-4 py-1.5 text-sm font-medium text-[#6e655f] transition hover:bg-[#f7f2ea]"
             >
               {t.admin.pos.dateClear}
             </Link>
           ) : null}
         </form>
-        <p className="mt-3 text-xs text-slate-500">{listScope}</p>
+        <p className="mt-3 text-xs text-[#8f8478]">{listScope}</p>
       </section>
 
       {sales.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
+        <p className="rounded-xl border border-[#e7ddcd] bg-white p-6 text-center text-[#8f8478]">
           {emptyText}
         </p>
       ) : (
@@ -307,32 +307,32 @@ export default async function AdminPosPage({ searchParams }: Props) {
             <li key={s.id}>
               <Link
                 href={`/admin/pos/${s.id}`}
-                className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
+                className="block rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-2 font-bold text-slate-900">
+                    <p className="flex flex-wrap items-center gap-2 font-bold text-[#1b1715]">
                       {t.admin.pos.saleNumber} #{s.id.slice(-6)}
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          STATUS_CLASS[s.status] ?? 'bg-slate-100 text-slate-600'
+                          STATUS_CLASS[s.status] ?? 'bg-[#efe6d8] text-[#6e655f]'
                         }`}
                       >
                         {STATUS_LABEL[s.status] ?? s.status}
                       </span>
                     </p>
-                    <p className="mt-0.5 text-sm text-slate-500">
+                    <p className="mt-0.5 text-sm text-[#8f8478]">
                       {s.client ? s.client.name : t.admin.pos.noClient} ·{' '}
                       {s._count.items} {t.admin.pos.itemsCount} ·{' '}
                       {formatTime(s.createdAt, tz)}
                     </p>
                   </div>
                   <div className="shrink-0 text-left">
-                    <p className="font-bold text-slate-900">
+                    <p className="font-bold text-[#1b1715]">
                       {formatAgorot(s.totalAgorot)}
                     </p>
                     {s._count.documents > 0 ? (
-                      <p className="mt-0.5 text-xs text-slate-400">
+                      <p className="mt-0.5 text-xs text-[#b3a690]">
                         {s._count.documents} {t.admin.pos.issuedDocuments}
                       </p>
                     ) : null}

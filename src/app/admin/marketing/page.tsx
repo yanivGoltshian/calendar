@@ -24,7 +24,7 @@ function formatWhen(instant: Date): string {
 }
 
 const STATUS_STYLE: Record<CampaignStatus, string> = {
-  DRAFT: 'bg-slate-100 text-slate-600',
+  DRAFT: 'bg-[#efe6d8] text-[#6e655f]',
   SCHEDULED: 'bg-blue-100 text-blue-700',
   SENDING: 'bg-amber-100 text-amber-700',
   SENT: 'bg-green-100 text-green-700',
@@ -55,11 +55,11 @@ export default async function AdminMarketingPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-4">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {m.title} · {business.name}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">{m.subtitle}</p>
+        <p className="mt-1 text-sm text-[#8f8478]">{m.subtitle}</p>
       </header>
 
       {delivery.anyLive ? (
@@ -72,10 +72,10 @@ export default async function AdminMarketingPage() {
         </p>
       )}
 
-      <h2 className="mb-3 text-lg font-bold text-slate-900">{m.listTitle}</h2>
+      <h2 className="mb-3 text-lg font-bold text-[#1b1715]">{m.listTitle}</h2>
 
       {campaigns.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
+        <p className="rounded-xl border border-[#e7ddcd] bg-white p-6 text-center text-[#8f8478]">
           {m.empty}
         </p>
       ) : (
@@ -83,12 +83,12 @@ export default async function AdminMarketingPage() {
           {campaigns.map((c) => (
             <li
               key={c.id}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              className="rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-slate-900">{c.name}</p>
-                  <p className="mt-0.5 text-sm text-slate-500">{m.segments[c.segment as CampaignSegment] ?? m.segments.all}</p>
+                  <p className="font-bold text-[#1b1715]">{c.name}</p>
+                  <p className="mt-0.5 text-sm text-[#8f8478]">{m.segments[c.segment as CampaignSegment] ?? m.segments.all}</p>
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[c.status]}`}
@@ -97,25 +97,25 @@ export default async function AdminMarketingPage() {
                 </span>
               </div>
 
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-700">
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm text-[#4a4038]">
                 {c.body}
               </p>
 
               <div className="mt-2 flex flex-wrap items-center gap-1">
-                <span className="text-xs text-slate-400">{m.channelsLabel}:</span>
+                <span className="text-xs text-[#b3a690]">{m.channelsLabel}:</span>
                 {parseCampaignChannels(c.channels).map((ch) => (
                   <span
                     key={ch}
-                    className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                    className="rounded-full bg-[#efe6d8] px-2 py-0.5 text-xs text-[#6e655f]"
                   >
                     {m.channels[ch]}
                   </span>
                 ))}
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#8f8478]">
                 <span>
-                  {m.recipients}: <span className="font-semibold text-slate-700">{c.recipientCount}</span>
+                  {m.recipients}: <span className="font-semibold text-[#4a4038]">{c.recipientCount}</span>
                 </span>
                 <span>
                   {m.sent}: <span className="font-semibold text-green-700">{c.sentCount}</span>
@@ -153,9 +153,9 @@ export default async function AdminMarketingPage() {
 
       {/* יומן הודעות */}
       <section className="mt-8">
-        <h2 className="mb-3 text-lg font-bold text-slate-900">{m.logTitle}</h2>
+        <h2 className="mb-3 text-lg font-bold text-[#1b1715]">{m.logTitle}</h2>
         {messageLog.length === 0 ? (
-          <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
+          <p className="rounded-xl border border-[#e7ddcd] bg-white p-6 text-center text-[#8f8478]">
             {m.logEmpty}
           </p>
         ) : (
@@ -163,13 +163,13 @@ export default async function AdminMarketingPage() {
             {messageLog.map((log) => (
               <li
                 key={log.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-sm"
+                className="flex items-center justify-between gap-3 rounded-lg border border-[#e7ddcd] bg-white px-4 py-2.5 text-sm shadow-sm"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-800">
+                  <p className="truncate font-medium text-[#2a2320]">
                     {log.client?.name ?? log.campaign?.name ?? m.logUnknown}
                   </p>
-                  <p className="text-slate-400" dir="ltr">
+                  <p className="text-[#b3a690]" dir="ltr">
                     {(log.channel === 'email' ? log.address : displayPhone(log.phone)) || log.address || ''} · {formatWhen(log.createdAt)}
                   </p>
                 </div>

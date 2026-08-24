@@ -31,13 +31,13 @@ function statusBadgeClass(status: string): string {
     case 'PENDING':
       return 'bg-amber-100 text-amber-800';
     case 'DONE':
-      return 'bg-slate-200 text-slate-700';
+      return 'bg-[#e7ddcd] text-[#4a4038]';
     case 'NO_SHOW':
       return 'bg-red-100 text-red-800';
     case 'CANCELLED':
       return 'bg-red-100 text-red-800';
     default:
-      return 'bg-slate-100 text-slate-600';
+      return 'bg-[#efe6d8] text-[#6e655f]';
   }
 }
 
@@ -49,7 +49,7 @@ function confirmationBadgeClass(status: string): string {
     case 'DECLINED':
       return 'bg-red-50 text-red-700 ring-1 ring-red-200';
     default:
-      return 'bg-slate-100 text-slate-600';
+      return 'bg-[#efe6d8] text-[#6e655f]';
   }
 }
 
@@ -90,11 +90,11 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-4">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {m.title} · {business.name}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">{m.subtitle}</p>
+        <p className="mt-1 text-sm text-[#8f8478]">{m.subtitle}</p>
       </header>
 
       {/* טאבים */}
@@ -109,7 +109,7 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
               className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 active
                   ? 'bg-brand-600 text-white'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  : 'bg-[#efe6d8] text-[#4a4038] hover:bg-[#e7ddcd]'
               }`}
             >
               {item.label}
@@ -140,28 +140,28 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
             return (
               <li
                 key={appt.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-lg font-bold text-slate-900">
+                    <p className="text-lg font-bold text-[#1b1715]">
                       {formatTime(appt.startAt, tz)}
-                      <span className="mx-1 text-slate-400">–</span>
+                      <span className="mx-1 text-[#b3a690]">–</span>
                       {formatTime(appt.endAt, tz)}
                     </p>
-                    <p className="text-sm text-slate-500">{formatLongDate(dateStr, tz)}</p>
-                    <p className="mt-1 font-medium text-slate-800">{appt.client.name}</p>
-                    <p className="text-sm text-slate-500" dir="ltr">
+                    <p className="text-sm text-[#8f8478]">{formatLongDate(dateStr, tz)}</p>
+                    <p className="mt-1 font-medium text-[#2a2320]">{appt.client.name}</p>
+                    <p className="text-sm text-[#8f8478]" dir="ltr">
                       {displayPhone(appt.client.phone)}
                     </p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      <span className="text-slate-400">{m.staff}: </span>
+                    <p className="mt-1 text-sm text-[#6e655f]">
+                      <span className="text-[#b3a690]">{m.staff}: </span>
                       {appt.staff.displayName}
                     </p>
-                    <p className="mt-0.5 text-sm text-slate-600">
+                    <p className="mt-0.5 text-sm text-[#6e655f]">
                       {appt.services.map((s) => s.nameSnapshot).join(' + ')}
                       {appt.totalPriceAgorot > 0 ? (
-                        <span className="text-slate-400">
+                        <span className="text-[#b3a690]">
                           {' · '}
                           {formatAgorot(appt.totalPriceAgorot)}
                         </span>
@@ -192,7 +192,7 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
 
                 {/* פעולות */}
                 {appt.status !== 'CANCELLED' && appt.status !== 'DONE' ? (
-                  <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
+                  <div className="mt-3 flex gap-2 border-t border-[#efe6d8] pt-3">
                     {appt.status === 'PENDING' ? (
                       <form action={approveAppointmentAction}>
                         <input type="hidden" name="appointmentId" value={appt.id} />

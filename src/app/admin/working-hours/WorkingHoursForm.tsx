@@ -33,7 +33,7 @@ const WEEKDAY_KEYS = [
 const initialState: SaveWorkingHoursState = { ok: false };
 
 const timeInputClass =
-  'rounded-lg border border-slate-300 px-2 py-1.5 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+  'rounded-lg border border-[#d6c8b4] px-2 py-1.5 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
 export default function WorkingHoursForm({ scope, staffId, rows }: Props) {
   const [state, formAction, pending] = useActionState(
@@ -60,7 +60,7 @@ export default function WorkingHoursForm({ scope, staffId, rows }: Props) {
         <input type="hidden" name="staffId" value={staffId} />
       ) : null}
 
-      <p className="text-sm text-slate-500">{t.admin.workingHours.intro}</p>
+      <p className="text-sm text-[#8f8478]">{t.admin.workingHours.intro}</p>
 
       <ul className="space-y-3">
         {rows.map((row) => {
@@ -68,21 +68,21 @@ export default function WorkingHoursForm({ scope, staffId, rows }: Props) {
           return (
             <li
               key={d}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              className="rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm"
             >
-              <label className="flex items-center gap-2 font-medium text-slate-900">
+              <label className="flex items-center gap-2 font-medium text-[#1b1715]">
                 <input
                   type="checkbox"
                   name={`open_${d}`}
                   defaultChecked={row.open}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  className="h-4 w-4 rounded border-[#d6c8b4] text-brand-600 focus:ring-brand-500"
                 />
                 {t.admin.workingHours.weekdays[WEEKDAY_KEYS[d]]}
               </label>
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                  <label className="mb-1 block text-xs font-medium text-[#8f8478]">
                     {t.admin.workingHours.startLabel}
                   </label>
                   <input
@@ -94,7 +94,7 @@ export default function WorkingHoursForm({ scope, staffId, rows }: Props) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-slate-500">
+                  <label className="mb-1 block text-xs font-medium text-[#8f8478]">
                     {t.admin.workingHours.endLabel}
                   </label>
                   <input
@@ -107,7 +107,7 @@ export default function WorkingHoursForm({ scope, staffId, rows }: Props) {
                 </div>
               </div>
 
-              <p className="mt-3 mb-1 text-xs font-medium text-slate-500">
+              <p className="mt-3 mb-1 text-xs font-medium text-[#8f8478]">
                 {t.admin.workingHours.breakLabel}
               </p>
               <div className="grid grid-cols-2 gap-3">

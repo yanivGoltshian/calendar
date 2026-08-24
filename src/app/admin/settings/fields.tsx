@@ -25,11 +25,11 @@ import {
  */
 
 export { inputClass };
-const labelClass = 'mb-1 block text-sm font-medium text-slate-700';
-const hintClass = 'mt-1 text-xs text-slate-500';
-const checkRowClass = 'flex items-start gap-2 text-sm text-slate-700';
+const labelClass = 'mb-1 block text-sm font-medium text-[#4a4038]';
+const hintClass = 'mt-1 text-xs text-[#8f8478]';
+const checkRowClass = 'flex items-start gap-2 text-sm text-[#4a4038]';
 const checkboxClass =
-  'mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500';
+  'mt-0.5 h-4 w-4 rounded border-[#d6c8b4] text-brand-600 focus:ring-brand-500';
 
 export type ProfileValues = Pick<
   Business,
@@ -239,17 +239,17 @@ export function PublicPageFields({
     label: string,
     hint: string,
   ) => (
-    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/60">
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#e7ddcd] bg-white p-3 hover:border-brand-300 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/60">
       <input
         type="radio"
         name="publicPageStyle"
         value={value}
         defaultChecked={style === value}
-        className="mt-1 h-4 w-4 border-slate-300 text-brand-600 focus:ring-brand-500"
+        className="mt-1 h-4 w-4 border-[#d6c8b4] text-brand-600 focus:ring-brand-500"
       />
       <span className="block">
-        <span className="block text-sm font-semibold text-slate-800">{label}</span>
-        <span className="mt-0.5 block text-xs text-slate-500">{hint}</span>
+        <span className="block text-sm font-semibold text-[#2a2320]">{label}</span>
+        <span className="mt-0.5 block text-xs text-[#8f8478]">{hint}</span>
       </span>
     </label>
   );
@@ -263,11 +263,11 @@ export function PublicPageFields({
         </div>
       )}
 
-      <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+      <div className="space-y-4 rounded-xl border border-[#e7ddcd] bg-[#f7f2ea]/60 p-4">
         {!hideSections && (
           <>
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">{s.landingSectionTitle}</h3>
+              <h3 className="text-sm font-semibold text-[#2a2320]">{s.landingSectionTitle}</h3>
               <p className={hintClass}>{s.landingSectionHint}</p>
             </div>
 
@@ -412,7 +412,7 @@ export function PublicPageFields({
             return (
               <div
                 key={i}
-                className="space-y-2 rounded-lg border border-slate-200 bg-white p-3"
+                className="space-y-2 rounded-lg border border-[#e7ddcd] bg-white p-3"
               >
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
@@ -461,7 +461,7 @@ export function PublicPageFields({
             return (
               <div
                 key={i}
-                className="space-y-2 rounded-lg border border-slate-200 bg-white p-3"
+                className="space-y-2 rounded-lg border border-[#e7ddcd] bg-white p-3"
               >
                 <input
                   name={`landingTestimonial${i}Name`}
@@ -491,7 +491,7 @@ export function PublicPageFields({
             return (
               <div
                 key={i}
-                className="space-y-2 rounded-lg border border-slate-200 bg-white p-3"
+                className="space-y-2 rounded-lg border border-[#e7ddcd] bg-white p-3"
               >
                 <input
                   name={`landingFaq${i}Question`}
@@ -670,7 +670,7 @@ export function TransparencyFields({ s }: { s: TransparencyValues }) {
   const c = t.admin.settings.transparency;
   return (
     <>
-      <div className="space-y-2 rounded-lg bg-slate-50 p-3">
+      <div className="space-y-2 rounded-lg bg-[#f7f2ea] p-3">
         <label className={checkRowClass}>
           <input
             type="checkbox"

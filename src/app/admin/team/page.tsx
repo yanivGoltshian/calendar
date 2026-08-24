@@ -39,18 +39,18 @@ export default async function AdminTeamPage({ searchParams }: Props) {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-4">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {t.admin.team.title} · {business.name}
         </h1>
       </header>
 
-      <h2 className="mb-3 text-lg font-bold text-slate-900">
+      <h2 className="mb-3 text-lg font-bold text-[#1b1715]">
         {t.admin.team.listTitle}
       </h2>
 
       {staff.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
+        <p className="rounded-xl border border-[#e7ddcd] bg-white p-6 text-center text-[#8f8478]">
           {t.admin.team.empty}
         </p>
       ) : (
@@ -60,13 +60,13 @@ export default async function AdminTeamPage({ searchParams }: Props) {
             return (
               <li
                 key={m.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm"
               >
                 <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-2 font-bold text-slate-900">
+                  <p className="flex flex-wrap items-center gap-2 font-bold text-[#1b1715]">
                     {m.displayName}
                     {!m.active ? (
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      <span className="rounded-full bg-[#e7ddcd] px-2 py-0.5 text-xs font-medium text-[#6e655f]">
                         {t.admin.team.inactiveBadge}
                       </span>
                     ) : null}
@@ -77,21 +77,21 @@ export default async function AdminTeamPage({ searchParams }: Props) {
                     ) : null}
                   </p>
                   {m.title ? (
-                    <p className="mt-0.5 text-sm text-slate-500">{m.title}</p>
+                    <p className="mt-0.5 text-sm text-[#8f8478]">{m.title}</p>
                   ) : null}
-                  <p className="mt-1 text-sm text-slate-600" dir="ltr">
+                  <p className="mt-1 text-sm text-[#6e655f]" dir="ltr">
                     {displayPhone(m.user.phone)}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-[#8f8478]">
                     {t.admin.team.appointmentsCount}: {m._count.appointments}
                   </p>
                 </div>
 
                 {/* פעולות */}
-                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-[#efe6d8] pt-3">
                   <Link
                     href={`/admin/team?edit=${m.id}`}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
                   >
                     {t.admin.team.edit}
                   </Link>
@@ -101,14 +101,14 @@ export default async function AdminTeamPage({ searchParams }: Props) {
                     <input type="hidden" name="active" value={m.active ? '0' : '1'} />
                     <button
                       type="submit"
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                      className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
                     >
                       {m.active ? t.admin.team.deactivate : t.admin.team.activate}
                     </button>
                   </form>
 
                   {inUse ? (
-                    <span className="rounded-lg px-3 py-1.5 text-sm text-slate-400">
+                    <span className="rounded-lg px-3 py-1.5 text-sm text-[#b3a690]">
                       {t.admin.team.inUse}
                     </span>
                   ) : (

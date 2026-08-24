@@ -51,8 +51,8 @@ export default async function ProductsPage({ searchParams }: Props) {
       </div>
 
       <header className="mb-6">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {t.admin.pos.products.title} · {business.name}
         </h1>
       </header>
@@ -65,7 +65,7 @@ export default async function ProductsPage({ searchParams }: Props) {
           defaultValue={q}
           aria-label={t.admin.pos.products.searchLabel}
           placeholder={t.admin.pos.products.searchPlaceholder}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         {activeOnly ? <input type="hidden" name="filter" value="active" /> : null}
         <button
@@ -80,7 +80,7 @@ export default async function ProductsPage({ searchParams }: Props) {
         <Link
           href={q ? `/admin/pos/products?q=${encodeURIComponent(q)}` : '/admin/pos/products'}
           className={`rounded-full px-3 py-1 text-sm ${
-            !activeOnly ? 'bg-brand-600 text-white' : 'border border-slate-300 text-slate-600'
+            !activeOnly ? 'bg-brand-600 text-white' : 'border border-[#d6c8b4] text-[#6e655f]'
           }`}
         >
           {t.admin.pos.products.filterAll}
@@ -92,7 +92,7 @@ export default async function ProductsPage({ searchParams }: Props) {
               : '/admin/pos/products?filter=active'
           }
           className={`rounded-full px-3 py-1 text-sm ${
-            activeOnly ? 'bg-brand-600 text-white' : 'border border-slate-300 text-slate-600'
+            activeOnly ? 'bg-brand-600 text-white' : 'border border-[#d6c8b4] text-[#6e655f]'
           }`}
         >
           {t.admin.pos.products.filterActive}
@@ -100,12 +100,12 @@ export default async function ProductsPage({ searchParams }: Props) {
       </div>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">
+        <h2 className="mb-3 text-lg font-semibold text-[#1b1715]">
           {t.admin.pos.products.listTitle}
         </h2>
         {products.length === 0 ? (
           isSearching ? (
-            <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+            <p className="rounded-xl border border-dashed border-[#d6c8b4] bg-white p-6 text-center text-sm text-[#8f8478]">
               {t.admin.pos.products.emptySearch}
             </p>
           ) : (
@@ -119,18 +119,18 @@ export default async function ProductsPage({ searchParams }: Props) {
             {products.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="flex items-center justify-between gap-3 rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="truncate font-medium text-slate-900">{p.name}</p>
+                    <p className="truncate font-medium text-[#1b1715]">{p.name}</p>
                     {!p.active ? (
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
+                      <span className="rounded-full bg-[#e7ddcd] px-2 py-0.5 text-xs text-[#6e655f]">
                         {t.admin.pos.products.inactiveBadge}
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[#8f8478]">
                     {formatAgorot(p.priceAgorot)}
                     {p.sku ? ` · ${p.sku}` : ''}
                     {p.category ? ` · ${p.category}` : ''}
@@ -139,7 +139,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                 <div className="flex shrink-0 items-center gap-2">
                   <Link
                     href={`/admin/pos/products?edit=${p.id}`}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-[#d6c8b4] px-3 py-1.5 text-sm text-[#4a4038] hover:bg-[#f7f2ea]"
                   >
                     {t.common.edit}
                   </Link>
@@ -148,7 +148,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                     <input type="hidden" name="active" value={p.active ? '0' : '1'} />
                     <button
                       type="submit"
-                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                      className="rounded-lg border border-[#d6c8b4] px-3 py-1.5 text-sm text-[#4a4038] hover:bg-[#f7f2ea]"
                     >
                       {p.active ? t.admin.pos.products.deactivate : t.admin.pos.products.activate}
                     </button>

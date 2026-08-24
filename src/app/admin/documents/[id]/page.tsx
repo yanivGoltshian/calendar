@@ -59,57 +59,57 @@ export default async function DocumentDetailPage({ params }: Props) {
 
       <DocumentToolbar documentId={doc.id} isCreditNote={isCredit} />
 
-      <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm print:border-0 print:shadow-none">
+      <article className="rounded-xl border border-[#e7ddcd] bg-white p-6 shadow-sm print:border-0 print:shadow-none">
         {/* כותרת: פרטי העסק וסוג המסמך */}
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+        <div className="flex items-start justify-between gap-4 border-b border-[#e7ddcd] pb-4">
           <div>
-            <p className="text-sm text-slate-500">{BRAND.name}</p>
-            <h1 className="text-xl font-bold text-slate-900">{business.name}</h1>
+            <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+            <h1 className="text-xl font-bold text-[#1b1715]">{business.name}</h1>
             {business.phone ? (
-              <p className="text-sm text-slate-500" dir="ltr">
+              <p className="text-sm text-[#8f8478]" dir="ltr">
                 {business.phone}
               </p>
             ) : null}
             {business.address ? (
-              <p className="text-sm text-slate-500">{business.address}</p>
+              <p className="text-sm text-[#8f8478]">{business.address}</p>
             ) : null}
           </div>
           <div className="text-left">
-            <p className="text-lg font-bold text-slate-900">{TYPE_LABEL[doc.type]}</p>
-            <p className="text-sm text-slate-500" dir="ltr">
+            <p className="text-lg font-bold text-[#1b1715]">{TYPE_LABEL[doc.type]}</p>
+            <p className="text-sm text-[#8f8478]" dir="ltr">
               {doc.documentNumber}
             </p>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-[#8f8478]">
               {formatLongDate(formatDateString(doc.issuedAt))}
             </p>
           </div>
         </div>
 
         {/* פרטי הלקוח */}
-        <div className="border-b border-slate-200 py-4">
-          <h2 className="mb-1 text-sm font-semibold text-slate-700">
+        <div className="border-b border-[#e7ddcd] py-4">
+          <h2 className="mb-1 text-sm font-semibold text-[#4a4038]">
             {t.admin.documents.clientDetails}
           </h2>
           {doc.clientName || doc.clientPhone ? (
-            <div className="text-sm text-slate-600">
+            <div className="text-sm text-[#6e655f]">
               {doc.clientName ? <p>{doc.clientName}</p> : null}
               {doc.clientPhone ? (
                 <p dir="ltr">{doc.clientPhone}</p>
               ) : null}
             </div>
           ) : (
-            <p className="text-sm text-slate-400">{t.admin.documents.noClient}</p>
+            <p className="text-sm text-[#b3a690]">{t.admin.documents.noClient}</p>
           )}
         </div>
 
         {/* פירוט השורות */}
         <div className="py-4">
-          <h2 className="mb-2 text-sm font-semibold text-slate-700">
+          <h2 className="mb-2 text-sm font-semibold text-[#4a4038]">
             {t.admin.documents.itemsTitle}
           </h2>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
+              <tr className="border-b border-[#e7ddcd] text-[#8f8478]">
                 <th className="py-1 text-right font-medium">{t.admin.documents.description}</th>
                 <th className="py-1 text-center font-medium">{t.admin.documents.quantity}</th>
                 <th className="py-1 text-left font-medium">{t.admin.documents.unitPrice}</th>
@@ -119,23 +119,23 @@ export default async function DocumentDetailPage({ params }: Props) {
             <tbody>
               {items.length > 0 ? (
                 items.map((item) => (
-                  <tr key={item.id} className="border-b border-slate-100">
-                    <td className="py-1.5 text-right text-slate-800">{item.nameSnapshot}</td>
-                    <td className="py-1.5 text-center text-slate-600">{item.quantity}</td>
-                    <td className="py-1.5 text-left text-slate-600">
+                  <tr key={item.id} className="border-b border-[#efe6d8]">
+                    <td className="py-1.5 text-right text-[#2a2320]">{item.nameSnapshot}</td>
+                    <td className="py-1.5 text-center text-[#6e655f]">{item.quantity}</td>
+                    <td className="py-1.5 text-left text-[#6e655f]">
                       {formatAgorot(item.unitPriceAgorot)}
                     </td>
-                    <td className="py-1.5 text-left text-slate-800">
+                    <td className="py-1.5 text-left text-[#2a2320]">
                       {formatAgorot(item.lineTotalAgorot)}
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr className="border-b border-slate-100">
-                  <td className="py-1.5 text-right text-slate-800" colSpan={3}>
+                <tr className="border-b border-[#efe6d8]">
+                  <td className="py-1.5 text-right text-[#2a2320]" colSpan={3}>
                     {TYPE_LABEL[doc.type]}
                   </td>
-                  <td className="py-1.5 text-left text-slate-800">
+                  <td className="py-1.5 text-left text-[#2a2320]">
                     {formatAgorot(doc.totalAgorot)}
                   </td>
                 </tr>
@@ -145,34 +145,34 @@ export default async function DocumentDetailPage({ params }: Props) {
         </div>
 
         {/* סיכום מע"מ */}
-        <div className="border-t border-slate-200 pt-4">
+        <div className="border-t border-[#e7ddcd] pt-4">
           <dl className="ms-auto max-w-xs space-y-1 text-sm">
             <div className="flex justify-between">
-              <dt className="text-slate-500">{t.admin.documents.subtotal}</dt>
-              <dd className="text-slate-800">{formatAgorot(doc.subtotalAgorot)}</dd>
+              <dt className="text-[#8f8478]">{t.admin.documents.subtotal}</dt>
+              <dd className="text-[#2a2320]">{formatAgorot(doc.subtotalAgorot)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-500">
+              <dt className="text-[#8f8478]">
                 {t.admin.documents.vat} ({vatPercent}%)
               </dt>
-              <dd className="text-slate-800">{formatAgorot(doc.vatAgorot)}</dd>
+              <dd className="text-[#2a2320]">{formatAgorot(doc.vatAgorot)}</dd>
             </div>
-            <div className="flex justify-between border-t border-slate-200 pt-1 text-base font-bold">
-              <dt className="text-slate-900">{t.admin.documents.totalDue}</dt>
-              <dd className="text-slate-900">{formatAgorot(doc.totalAgorot)}</dd>
+            <div className="flex justify-between border-t border-[#e7ddcd] pt-1 text-base font-bold">
+              <dt className="text-[#1b1715]">{t.admin.documents.totalDue}</dt>
+              <dd className="text-[#1b1715]">{formatAgorot(doc.totalAgorot)}</dd>
             </div>
           </dl>
         </div>
 
         {/* תשלומים */}
         {payments.length > 0 ? (
-          <div className="border-t border-slate-200 pt-4">
-            <h2 className="mb-2 text-sm font-semibold text-slate-700">
+          <div className="border-t border-[#e7ddcd] pt-4">
+            <h2 className="mb-2 text-sm font-semibold text-[#4a4038]">
               {t.admin.documents.paymentsTitle}
             </h2>
             <ul className="space-y-1 text-sm">
               {payments.map((p) => (
-                <li key={p.id} className="flex justify-between text-slate-600">
+                <li key={p.id} className="flex justify-between text-[#6e655f]">
                   <span>
                     {METHOD_LABEL[p.method]}
                     {p.reference ? ` · ${p.reference}` : ''}
@@ -186,8 +186,8 @@ export default async function DocumentDetailPage({ params }: Props) {
 
         {/* מסמך מקור (בזיכוי) */}
         {doc.relatedDocument ? (
-          <div className="no-print border-t border-slate-200 pt-4">
-            <h2 className="mb-1 text-sm font-semibold text-slate-700">
+          <div className="no-print border-t border-[#e7ddcd] pt-4">
+            <h2 className="mb-1 text-sm font-semibold text-[#4a4038]">
               {t.admin.documents.relatedDocument}
             </h2>
             <Link
@@ -202,8 +202,8 @@ export default async function DocumentDetailPage({ params }: Props) {
 
         {/* זיכויים שהופקו כנגד מסמך זה */}
         {doc.credits.length > 0 ? (
-          <div className="no-print border-t border-slate-200 pt-4">
-            <h2 className="mb-1 text-sm font-semibold text-slate-700">
+          <div className="no-print border-t border-[#e7ddcd] pt-4">
+            <h2 className="mb-1 text-sm font-semibold text-[#4a4038]">
               {t.admin.documents.creditsTitle}
             </h2>
             <ul className="space-y-1 text-sm">
@@ -216,7 +216,7 @@ export default async function DocumentDetailPage({ params }: Props) {
                   >
                     {c.documentNumber}
                   </Link>
-                  <span className="text-slate-500"> · {formatAgorot(c.totalAgorot)}</span>
+                  <span className="text-[#8f8478]"> · {formatAgorot(c.totalAgorot)}</span>
                 </li>
               ))}
             </ul>
@@ -225,8 +225,8 @@ export default async function DocumentDetailPage({ params }: Props) {
 
         {/* הערה */}
         {doc.note ? (
-          <div className="border-t border-slate-200 pt-4">
-            <p className="text-sm text-slate-500">
+          <div className="border-t border-[#e7ddcd] pt-4">
+            <p className="text-sm text-[#8f8478]">
               <span className="font-semibold">{t.admin.documents.note}: </span>
               {doc.note}
             </p>

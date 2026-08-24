@@ -22,7 +22,7 @@ const emptyState: SaveClientState = { ok: false, mode: 'add' };
 const editState: SaveClientState = { ok: false, mode: 'edit' };
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
 export default function ClientForm({ initial }: Props) {
   const isEdit = Boolean(initial);
@@ -57,9 +57,9 @@ export default function ClientForm({ initial }: Props) {
     : null;
 
   return (
-    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="mt-8 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">
+        <h2 className="text-lg font-bold text-[#1b1715]">
           {isEdit ? t.admin.clients.editTitle : t.admin.clients.addTitle}
         </h2>
       </div>
@@ -68,7 +68,7 @@ export default function ClientForm({ initial }: Props) {
         {isEdit ? <input type="hidden" name="id" value={initial!.id} /> : null}
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">
             {t.admin.clients.nameLabel}
           </label>
           <input
@@ -82,7 +82,7 @@ export default function ClientForm({ initial }: Props) {
 
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex-1">
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
               {t.admin.clients.phoneLabel}
             </label>
             <input
@@ -96,7 +96,7 @@ export default function ClientForm({ initial }: Props) {
             />
           </div>
           <div className="flex-1">
-            <label className="mb-1 block text-sm font-medium text-slate-700">
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
               {t.admin.clients.emailLabel}
             </label>
             <input
@@ -111,7 +111,7 @@ export default function ClientForm({ initial }: Props) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">
             {t.admin.clients.notesLabel}
           </label>
           <textarea

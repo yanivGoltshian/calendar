@@ -95,7 +95,7 @@ export default function DeleteAccountSection() {
               </h3>
             </div>
 
-            <ul className="mt-2 flex flex-col gap-2 text-sm leading-relaxed text-slate-800">
+            <ul className="mt-2 flex flex-col gap-2 text-sm leading-relaxed text-[#2a2320]">
               <li className="flex gap-2">
                 <span aria-hidden className="text-red-600">•</span>
                 <span>{c.line14Days}</span>
@@ -111,14 +111,14 @@ export default function DeleteAccountSection() {
               onSubmit={() => setSubmitting(true)}
               className="mt-5"
             >
-              <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-medium text-slate-800">
+              <label className="flex items-start gap-2 rounded-lg border border-[#e7ddcd] bg-[#f7f2ea] p-3 text-sm font-medium text-[#2a2320]">
                 <input
                   type="checkbox"
                   name="confirm"
                   value="yes"
                   checked={understood}
                   onChange={(e) => setUnderstood(e.target.checked)}
-                  className="mt-0.5 h-5 w-5 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                  className="mt-0.5 h-5 w-5 rounded border-[#d6c8b4] text-red-600 focus:ring-red-500"
                 />
                 <span>{c.checkboxLabel}</span>
               </label>
@@ -127,7 +127,7 @@ export default function DeleteAccountSection() {
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="min-h-[44px] rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                  className="min-h-[44px] rounded-lg border border-[#d6c8b4] bg-white px-4 py-2 text-sm font-medium text-[#4a4038] transition hover:bg-[#efe6d8]"
                 >
                   {c.cancelButton}
                 </button>

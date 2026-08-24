@@ -12,21 +12,21 @@ const base =
   'inline-flex items-center justify-center gap-2 rounded-xl font-semibold ' +
   'transition-all duration-200 select-none whitespace-nowrap ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59D5F] ' +
-  'focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B1526] ' +
+  'focus-visible:ring-offset-2 focus-visible:ring-offset-[#241a15] ' +
   'disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
 
 const variants: Record<Variant, string> = {
   // זהב מלא על נייבי — פעולה ראשית
   primary:
-    'bg-[#F2D695] text-[#0B1526] shadow-sm hover:bg-[#C59D5F] hover:-translate-y-0.5',
+    'bg-[#F2D695] text-[#241a15] shadow-sm hover:bg-[#C59D5F] hover:-translate-y-0.5',
   // משטח נייבי בהיר עם מסגרת זהב עדינה
   secondary:
-    'bg-[#16233A] text-[#E8ECF3] border border-[#C59D5F]/40 hover:border-[#C59D5F] hover:-translate-y-0.5',
+    'bg-[#2f241d] text-[#f3ece0] border border-[#C59D5F]/40 hover:border-[#C59D5F] hover:-translate-y-0.5',
   // מתאר זהב בלבד
   outline:
-    'border border-[#C59D5F] text-[#F2D695] hover:bg-[#16233A]',
+    'border border-[#C59D5F] text-[#F2D695] hover:bg-[#2f241d]',
   // שקוף
-  ghost: 'text-[#E8ECF3] hover:bg-[#16233A]',
+  ghost: 'text-[#f3ece0] hover:bg-[#2f241d]',
   // מסוכן — אדום מאופק על נייבי
   danger:
     'bg-transparent text-[#F2B8B8] border border-[#F2B8B8]/40 hover:bg-[#F2B8B8]/10',

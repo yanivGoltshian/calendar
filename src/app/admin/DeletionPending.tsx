@@ -33,12 +33,12 @@ export default function DeletionPending({
   return (
     <main
       dir="rtl"
-      className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10"
+      className="flex min-h-screen items-center justify-center bg-[#f7f2ea] px-4 py-10"
     >
       <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-lg">
         <div className="mb-4 flex items-center gap-2">
           <Mascot pose="head" size={30} className="drop-shadow-sm" />
-          <p className="text-lg font-bold text-slate-900">{BRAND.name}</p>
+          <p className="text-lg font-bold text-[#1b1715]">{BRAND.name}</p>
         </div>
 
         <div className="rounded-xl border border-red-200 bg-red-50 p-4">
@@ -53,15 +53,15 @@ export default function DeletionPending({
         </div>
 
         <div className="mt-5">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-[#6e655f]">
             {businessName}
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-slate-700">
+          <p className="mt-2 text-sm leading-relaxed text-[#4a4038]">
             {c.restoreHint}
           </p>
 
           <form action={formAction} className="mt-4 flex flex-col gap-3">
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-800">
+            <label className="flex flex-col gap-1 text-sm font-medium text-[#2a2320]">
               {c.phoneLabel}
               <input
                 type="tel"
@@ -69,7 +69,7 @@ export default function DeletionPending({
                 inputMode="tel"
                 autoComplete="tel"
                 placeholder={c.phonePlaceholder}
-                className="min-h-[44px] rounded-lg border border-slate-300 px-3 py-2 text-base text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                className="min-h-[44px] rounded-lg border border-[#d6c8b4] px-3 py-2 text-base text-[#1b1715] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
               />
             </label>
 
@@ -92,7 +92,7 @@ export default function DeletionPending({
         <form action={ownerLogout} className="mt-4">
           <button
             type="submit"
-            className="min-h-[44px] w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            className="min-h-[44px] w-full rounded-lg border border-[#d6c8b4] px-4 py-2 text-sm font-medium text-[#4a4038] transition hover:bg-[#efe6d8]"
           >
             {c.logout}
           </button>

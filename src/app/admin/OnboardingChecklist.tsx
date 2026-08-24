@@ -36,16 +36,16 @@ export default function OnboardingChecklist({
     .replace('{total}', String(total));
 
   return (
-    <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="mb-5 rounded-2xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">{c.heading}</h2>
-          <p className="mt-1 text-sm text-slate-500">{c.subtitle}</p>
+          <h2 className="text-lg font-bold text-[#1b1715]">{c.heading}</h2>
+          <p className="mt-1 text-sm text-[#8f8478]">{c.subtitle}</p>
         </div>
         <form action={dismissOnboardingChecklistAction}>
           <button
             type="submit"
-            className="shrink-0 rounded-lg px-2 py-1 text-sm text-slate-400 transition hover:text-slate-600"
+            className="shrink-0 rounded-lg px-2 py-1 text-sm text-[#b3a690] transition hover:text-[#6e655f]"
           >
             {c.dismiss}
           </button>
@@ -58,20 +58,20 @@ export default function OnboardingChecklist({
         {items.map((item) => (
           <li
             key={item.key}
-            className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"
+            className="flex items-center justify-between gap-3 rounded-xl border border-[#efe6d8] bg-[#f7f2ea] px-4 py-3"
           >
-            <span className="flex items-center gap-2 text-sm text-slate-700">
+            <span className="flex items-center gap-2 text-sm text-[#4a4038]">
               <span
                 aria-hidden
                 className={
                   item.done
                     ? 'flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-xs text-white'
-                    : 'flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-xs text-transparent'
+                    : 'flex h-5 w-5 items-center justify-center rounded-full border border-[#d6c8b4] text-xs text-transparent'
                 }
               >
                 ✓
               </span>
-              <span className={item.done ? 'text-slate-400 line-through' : ''}>
+              <span className={item.done ? 'text-[#b3a690] line-through' : ''}>
                 {c.items[item.key]}
               </span>
             </span>

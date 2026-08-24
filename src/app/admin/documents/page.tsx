@@ -51,11 +51,11 @@ export default async function DocumentsPage({ searchParams }: Props) {
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16 pt-6">
       <header className="mb-6">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {t.admin.documents.title} · {business.name}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">{t.admin.documents.subtitle}</p>
+        <p className="mt-1 text-sm text-[#8f8478]">{t.admin.documents.subtitle}</p>
       </header>
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -68,7 +68,7 @@ export default async function DocumentsPage({ searchParams }: Props) {
               key={tab.key}
               href={href}
               className={`rounded-full px-3 py-1 text-sm ${
-                active ? 'bg-brand-600 text-white' : 'border border-slate-300 text-slate-600'
+                active ? 'bg-brand-600 text-white' : 'border border-[#d6c8b4] text-[#6e655f]'
               }`}
             >
               {tab.label}
@@ -78,7 +78,7 @@ export default async function DocumentsPage({ searchParams }: Props) {
       </div>
 
       {documents.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+        <p className="rounded-xl border border-dashed border-[#d6c8b4] bg-white p-6 text-center text-sm text-[#8f8478]">
           {t.admin.documents.empty}
         </p>
       ) : (
@@ -87,23 +87,23 @@ export default async function DocumentsPage({ searchParams }: Props) {
             <li key={doc.id}>
               <Link
                 href={`/admin/documents/${doc.id}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
+                className="flex items-center justify-between gap-3 rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-900" dir="ltr">
+                    <span className="font-semibold text-[#1b1715]" dir="ltr">
                       {doc.documentNumber}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                    <span className="rounded-full bg-[#efe6d8] px-2 py-0.5 text-xs text-[#6e655f]">
                       {TYPE_LABEL[doc.type]}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-sm text-slate-500">
+                  <p className="mt-0.5 text-sm text-[#8f8478]">
                     {doc.clientName || t.admin.documents.noClient} ·{' '}
                     {formatDateString(doc.issuedAt)}
                   </p>
                 </div>
-                <span className="shrink-0 font-semibold text-slate-900">
+                <span className="shrink-0 font-semibold text-[#1b1715]">
                   {formatAgorot(doc.totalAgorot)}
                 </span>
               </Link>

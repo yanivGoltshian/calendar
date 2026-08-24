@@ -13,7 +13,7 @@ export function Card({ className, children, ...rest }: CardProps) {
   return (
     <div
       className={cn(
-        'rounded-2xl bg-[#0B1526] border border-[#16233A] shadow-lg shadow-black/20',
+        'rounded-2xl bg-[#241a15] border border-[#2f241d] shadow-lg shadow-black/20',
         className,
       )}
       {...rest}
@@ -27,7 +27,7 @@ export function CardHeader({ className, children, ...rest }: CardProps) {
   return (
     <div
       className={cn(
-        'px-5 py-4 border-b border-[#16233A] flex items-center justify-between gap-3',
+        'px-5 py-4 border-b border-[#2f241d] flex items-center justify-between gap-3',
         className,
       )}
       {...rest}
@@ -47,7 +47,7 @@ export function CardTitle({ className, children, ...rest }: HTMLAttributes<HTMLH
 
 export function CardBody({ className, children, ...rest }: CardProps) {
   return (
-    <div className={cn('px-5 py-4 text-[#E8ECF3]', className)} {...rest}>
+    <div className={cn('px-5 py-4 text-[#f3ece0]', className)} {...rest}>
       {children}
     </div>
   );
@@ -56,7 +56,7 @@ export function CardBody({ className, children, ...rest }: CardProps) {
 export function CardFooter({ className, children, ...rest }: CardProps) {
   return (
     <div
-      className={cn('px-5 py-4 border-t border-[#16233A] flex items-center gap-3', className)}
+      className={cn('px-5 py-4 border-t border-[#2f241d] flex items-center gap-3', className)}
       {...rest}
     >
       {children}

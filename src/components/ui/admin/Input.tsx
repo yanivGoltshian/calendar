@@ -13,8 +13,8 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 };
 
 const fieldClasses =
-  'w-full rounded-xl bg-[#08101C] text-[#E8ECF3] placeholder:text-[#9AA7BD]/70 ' +
-  'border border-[#16233A] px-4 py-2.5 text-base text-right ' +
+  'w-full rounded-xl bg-[#1c1512] text-[#f3ece0] placeholder:text-[#c9b79f]/70 ' +
+  'border border-[#2f241d] px-4 py-2.5 text-base text-right ' +
   'transition-colors duration-200 outline-none ' +
   'focus:border-[#C59D5F] focus:ring-2 focus:ring-[#C59D5F]/40 ' +
   'disabled:opacity-50 disabled:pointer-events-none ' +
@@ -25,7 +25,7 @@ export function Input({ label, error, hint, id, className, containerClassName, .
   return (
     <div className={cn('flex flex-col gap-1.5', containerClassName)}>
       {label ? (
-        <label htmlFor={inputId} className="text-sm font-medium text-[#E8ECF3]">
+        <label htmlFor={inputId} className="text-sm font-medium text-[#f3ece0]">
           {label}
         </label>
       ) : null}
@@ -38,7 +38,7 @@ export function Input({ label, error, hint, id, className, containerClassName, .
       {error ? (
         <span className="text-sm text-[#F2B8B8]">{error}</span>
       ) : hint ? (
-        <span className="text-sm text-[#9AA7BD]">{hint}</span>
+        <span className="text-sm text-[#c9b79f]">{hint}</span>
       ) : null}
     </div>
   );

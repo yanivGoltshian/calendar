@@ -182,14 +182,14 @@ export default function CalendarBoard({
     <div dir="rtl">
       {/* סרגל ניווט */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+        <div className="inline-flex rounded-lg border border-[#e7ddcd] bg-white p-0.5">
           <button
             type="button"
             onClick={() => go({ view: 'day' })}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
               view === 'day'
                 ? 'bg-brand-600 text-white'
-                : 'text-slate-600 hover:bg-slate-50'
+                : 'text-[#6e655f] hover:bg-[#f7f2ea]'
             }`}
           >
             {cal.dayView}
@@ -200,7 +200,7 @@ export default function CalendarBoard({
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
               view === 'week'
                 ? 'bg-brand-600 text-white'
-                : 'text-slate-600 hover:bg-slate-50'
+                : 'text-[#6e655f] hover:bg-[#f7f2ea]'
             }`}
           >
             {cal.weekView}
@@ -219,14 +219,14 @@ export default function CalendarBoard({
               })
             }
             aria-label={view === 'day' ? t.admin.prevDay : cal.prevWeek}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-600 transition hover:bg-slate-50"
+            className="rounded-lg border border-[#e7ddcd] bg-white px-2.5 py-1.5 text-[#6e655f] transition hover:bg-[#f7f2ea]"
           >
             ›
           </button>
           <button
             type="button"
             onClick={() => go({ date: today })}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="rounded-lg border border-[#e7ddcd] bg-white px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
           >
             {t.admin.today}
           </button>
@@ -241,13 +241,13 @@ export default function CalendarBoard({
               })
             }
             aria-label={view === 'day' ? t.admin.nextDay : cal.nextWeek}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-slate-600 transition hover:bg-slate-50"
+            className="rounded-lg border border-[#e7ddcd] bg-white px-2.5 py-1.5 text-[#6e655f] transition hover:bg-[#f7f2ea]"
           >
             ‹
           </button>
         </div>
 
-        <span className="text-base font-semibold text-slate-900">
+        <span className="text-base font-semibold text-[#1b1715]">
           {headerLabel}
         </span>
 
@@ -256,7 +256,7 @@ export default function CalendarBoard({
             aria-label={cal.staffPickerLabel}
             value={activeStaffId}
             onChange={(e) => go({ staffId: e.target.value })}
-            className="ms-auto rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="ms-auto rounded-lg border border-[#d6c8b4] bg-white px-3 py-1.5 text-sm text-[#4a4038] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           >
             {staff.map((s) => (
               <option key={s.id} value={s.id}>
@@ -270,13 +270,13 @@ export default function CalendarBoard({
       {/* מקרא צבעים */}
       {hasServices ? (
         <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          <span className="text-xs font-medium text-slate-400">
+          <span className="text-xs font-medium text-[#b3a690]">
             {cal.legendTitle}:
           </span>
           {services.map((s) => {
             const color = serviceColor(s.colorIndex);
             return (
-              <span key={s.id} className="inline-flex items-center gap-1.5 text-xs text-slate-600">
+              <span key={s.id} className="inline-flex items-center gap-1.5 text-xs text-[#6e655f]">
                 <span
                   className="inline-block h-3 w-3 rounded-sm"
                   style={{ backgroundColor: color.bg, border: `1px solid ${color.border}` }}
@@ -299,7 +299,7 @@ export default function CalendarBoard({
       )}
 
       {staff.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
+        <div className="rounded-xl border border-[#e7ddcd] bg-white p-8 text-center text-[#8f8478]">
           <p>{cal.noStaff}</p>
           <Link
             href="/admin/team"
@@ -311,31 +311,31 @@ export default function CalendarBoard({
       ) : (
         <>
           {appts.length === 0 ? (
-            <p className="mb-2 text-sm text-slate-400">{cal.empty}</p>
+            <p className="mb-2 text-sm text-[#b3a690]">{cal.empty}</p>
           ) : hasServices ? (
-            <p className="mb-2 text-xs text-slate-400">{cal.dragHint}</p>
+            <p className="mb-2 text-xs text-[#b3a690]">{cal.dragHint}</p>
           ) : null}
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto rounded-xl border border-[#e7ddcd] bg-white">
             <div className="min-w-max">
               {/* כותרות עמודות */}
-              <div className="flex border-b border-slate-200">
+              <div className="flex border-b border-[#e7ddcd]">
                 <div style={{ width: AXIS_W }} className="shrink-0" />
                 {columns.map((col) => (
                   <div
                     key={col.key}
                     style={{ width: COL_W }}
-                    className="shrink-0 border-s border-slate-100 px-2 py-2 text-center"
+                    className="shrink-0 border-s border-[#efe6d8] px-2 py-2 text-center"
                   >
                     <div
                       className={`text-sm font-semibold ${
-                        col.isToday ? 'text-brand-600' : 'text-slate-800'
+                        col.isToday ? 'text-brand-600' : 'text-[#2a2320]'
                       }`}
                     >
                       {col.title}
                     </div>
                     {col.subtitle ? (
-                      <div className="text-xs text-slate-400">{col.subtitle}</div>
+                      <div className="text-xs text-[#b3a690]">{col.subtitle}</div>
                     ) : null}
                   </div>
                 ))}
@@ -348,7 +348,7 @@ export default function CalendarBoard({
                   {hourLines.map((m) => (
                     <div
                       key={m}
-                      className="absolute inset-x-0 -translate-y-1/2 pe-1 text-left text-[11px] text-slate-400"
+                      className="absolute inset-x-0 -translate-y-1/2 pe-1 text-left text-[11px] text-[#b3a690]"
                       style={{ top: (m - gridStartMinute) * PX_PER_MIN }}
                     >
                       <span dir="ltr">{formatMinutes(m)}</span>
@@ -374,7 +374,7 @@ export default function CalendarBoard({
                     <div
                       key={col.key}
                       style={{ width: COL_W, height: bodyHeight }}
-                      className={`relative shrink-0 border-s border-slate-100 ${
+                      className={`relative shrink-0 border-s border-[#efe6d8] ${
                         col.isToday ? 'bg-brand-50/30' : ''
                       } ${hasServices ? 'cursor-crosshair' : ''}`}
                       onPointerDown={(e) => onDown(e, col)}
@@ -384,7 +384,7 @@ export default function CalendarBoard({
                       {hourLines.map((m) => (
                         <div
                           key={m}
-                          className="pointer-events-none absolute inset-x-0 border-t border-slate-100"
+                          className="pointer-events-none absolute inset-x-0 border-t border-[#efe6d8]"
                           style={{ top: (m - gridStartMinute) * PX_PER_MIN }}
                         />
                       ))}

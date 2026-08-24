@@ -14,7 +14,7 @@ type Props = {
 const initialState: AddWaitlistState = { ok: false };
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
 export default function WaitlistForm({ services, staff }: Props) {
   const w = t.admin.waitlistModule;
@@ -35,17 +35,17 @@ export default function WaitlistForm({ services, staff }: Props) {
           : null;
 
   return (
-    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="mb-4 text-lg font-bold text-slate-900">{w.addTitle}</h2>
+    <section className="mt-8 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
+      <h2 className="mb-4 text-lg font-bold text-[#1b1715]">{w.addTitle}</h2>
 
       <form ref={formRef} action={formAction} className="space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex-1">
-            <label className="mb-1 block text-sm font-medium text-slate-700">{w.nameLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">{w.nameLabel}</label>
             <input name="name" required maxLength={120} placeholder={w.namePlaceholder} className={inputClass} />
           </div>
           <div className="flex-1">
-            <label className="mb-1 block text-sm font-medium text-slate-700">{w.phoneLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">{w.phoneLabel}</label>
             <input
               name="phone"
               required
@@ -59,7 +59,7 @@ export default function WaitlistForm({ services, staff }: Props) {
 
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex-1">
-            <label className="mb-1 block text-sm font-medium text-slate-700">{w.serviceLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">{w.serviceLabel}</label>
             <select name="serviceId" defaultValue="" className={inputClass}>
               <option value="">{w.serviceNone}</option>
               {services.map((s) => (
@@ -70,7 +70,7 @@ export default function WaitlistForm({ services, staff }: Props) {
             </select>
           </div>
           <div className="flex-1">
-            <label className="mb-1 block text-sm font-medium text-slate-700">{w.staffLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">{w.staffLabel}</label>
             <select name="staffId" defaultValue="" className={inputClass}>
               <option value="">{w.staffNone}</option>
               {staff.map((s) => (
@@ -83,12 +83,12 @@ export default function WaitlistForm({ services, staff }: Props) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{w.desiredDateLabel}</label>
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">{w.desiredDateLabel}</label>
           <input name="desiredDate" type="date" dir="ltr" className={inputClass} />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{w.noteLabel}</label>
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">{w.noteLabel}</label>
           <textarea name="note" rows={2} maxLength={500} className={inputClass} />
         </div>
 

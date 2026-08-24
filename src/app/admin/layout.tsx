@@ -108,7 +108,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   });
 
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col bg-slate-50 md:flex-row">
+    <div
+      dir="rtl"
+      className="flex min-h-screen flex-col md:flex-row"
+      style={{ background: 'linear-gradient(180deg, #faf6ef 0%, #f5efe4 100%)' }}
+    >
       <AdminSidebar pendingCount={pendingCount} notifications={notifications} />
       <div
         className="min-w-0 flex-1"

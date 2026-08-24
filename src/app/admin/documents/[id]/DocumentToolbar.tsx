@@ -33,7 +33,7 @@ export default function DocumentToolbar({ documentId, isCreditNote }: Props) {
           <input type="hidden" name="documentId" value={documentId} />
           <button
             type="submit"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-lg border border-[#d6c8b4] px-4 py-2 text-sm font-semibold text-[#4a4038] transition hover:bg-[#f7f2ea]"
           >
             {t.admin.documents.issueCreditNote}
           </button>

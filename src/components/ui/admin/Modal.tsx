@@ -42,25 +42,25 @@ export function Modal({ open, onClose, title, children, footer, className }: Mod
       dir="rtl"
     >
       <div
-        className="absolute inset-0 bg-[#08101C]/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#1c1512]/70 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         className={cn(
-          'relative w-full max-w-lg rounded-2xl bg-[#0B1526] border border-[#16233A] ' +
-            'shadow-2xl shadow-black/40 text-[#E8ECF3]',
+          'relative w-full max-w-lg rounded-2xl bg-[#241a15] border border-[#2f241d] ' +
+            'shadow-2xl shadow-black/40 text-[#f3ece0]',
           className,
         )}
       >
         {title ? (
-          <div className="px-5 py-4 border-b border-[#16233A]">
+          <div className="px-5 py-4 border-b border-[#2f241d]">
             <h2 className="text-lg font-semibold text-[#F2D695]">{title}</h2>
           </div>
         ) : null}
         <div className="px-5 py-4">{children}</div>
         {footer ? (
-          <div className="px-5 py-4 border-t border-[#16233A] flex items-center justify-end gap-3">
+          <div className="px-5 py-4 border-t border-[#2f241d] flex items-center justify-end gap-3">
             {footer}
           </div>
         ) : null}

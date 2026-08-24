@@ -84,10 +84,10 @@ export function TimezoneField({
         className={inputClass}
       />
 
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-xs text-[#8f8478]">
         {selectedLabel}{' '}
-        <span className="font-medium text-slate-700">{selectedLabelText}</span>{' '}
-        <span dir="ltr" className="text-slate-400">
+        <span className="font-medium text-[#4a4038]">{selectedLabelText}</span>{' '}
+        <span dir="ltr" className="text-[#b3a690]">
           {selected}
         </span>
       </p>
@@ -96,10 +96,10 @@ export function TimezoneField({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-[#e7ddcd] bg-white py-1 shadow-lg"
         >
           {results.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-slate-400">
+            <li className="px-3 py-2 text-sm text-[#b3a690]">
               {noResultsLabel}
             </li>
           ) : (
@@ -113,11 +113,11 @@ export function TimezoneField({
                   className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-right text-sm hover:bg-brand-50 ${
                     tz.id === selected
                       ? 'bg-brand-50 font-medium text-brand-700'
-                      : 'text-slate-700'
+                      : 'text-[#4a4038]'
                   }`}
                 >
                   <span>{tz.label}</span>
-                  <span dir="ltr" className="text-xs text-slate-400">
+                  <span dir="ltr" className="text-xs text-[#b3a690]">
                     {tz.id}
                   </span>
                 </button>

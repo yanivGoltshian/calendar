@@ -59,7 +59,7 @@ export default function NotificationsBell({
 
   const buttonRing =
     placement === 'mobile'
-      ? 'h-11 w-11 border border-[#233047]'
+      ? 'h-11 w-11 border border-[#3a2c22]'
       : 'h-10 w-10 border border-transparent';
 
   return (
@@ -72,7 +72,7 @@ export default function NotificationsBell({
         aria-haspopup="dialog"
         aria-label={count > 0 ? n.countAria.replace('{count}', String(count)) : n.bellAria}
         className={[
-          'relative inline-flex items-center justify-center rounded-lg text-[#F2D695] transition hover:bg-[#16233A]',
+          'relative inline-flex items-center justify-center rounded-lg text-[#F2D695] transition hover:bg-[#2f241d]',
           buttonRing,
         ].join(' ')}
       >
@@ -92,7 +92,7 @@ export default function NotificationsBell({
         {count > 0 ? (
           <span
             aria-hidden="true"
-            className="absolute -top-0.5 -right-0.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-400 px-1 py-0.5 text-[0.65rem] font-bold leading-none text-[#0A182D]"
+            className="absolute -top-0.5 -right-0.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-400 px-1 py-0.5 text-[0.65rem] font-bold leading-none text-[#1c1512]"
           >
             {count}
           </span>
@@ -111,26 +111,26 @@ export default function NotificationsBell({
             role="dialog"
             aria-label={n.title}
             dir="rtl"
-            className="fixed z-50 overflow-hidden rounded-xl border border-[#233047] bg-[#0B1524] text-right shadow-2xl"
+            className="fixed z-50 overflow-hidden rounded-xl border border-[#3a2c22] bg-[#1c1512] text-right shadow-2xl"
             style={
               pos
                 ? { top: pos.top, left: pos.left, width: pos.width }
                 : { top: -9999, left: -9999, width: PANEL_MAX_WIDTH }
             }
           >
-            <div className="border-b border-[#16233A] px-4 py-3">
+            <div className="border-b border-[#2f241d] px-4 py-3">
               <p className="text-sm font-bold text-[#F2D695]">{n.title}</p>
             </div>
             {count === 0 ? (
-              <p className="px-4 py-6 text-center text-sm text-[#9AA7BD]">{n.empty}</p>
+              <p className="px-4 py-6 text-center text-sm text-[#c9b79f]">{n.empty}</p>
             ) : (
-              <ul className="max-h-[70vh] divide-y divide-[#16233A] overflow-y-auto">
+              <ul className="max-h-[70vh] divide-y divide-[#2f241d] overflow-y-auto">
                 {notifications.map((item) => (
                   <li key={item.id}>
                     <Link
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className="flex items-start gap-2 px-4 py-3 text-sm text-[#E8ECF3] transition hover:bg-[#16233A]"
+                      className="flex items-start gap-2 px-4 py-3 text-sm text-[#f3ece0] transition hover:bg-[#2f241d]"
                     >
                       <span
                         aria-hidden="true"

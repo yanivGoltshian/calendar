@@ -25,7 +25,7 @@ type Mode = 'count' | 'purchase' | 'adjustment' | 'return';
 const initialState: StockMovementState = { ok: false };
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
 export default function StockForm({ product }: Props) {
   const [state, formAction, pending] = useActionState(saveStockMovementAction, initialState);
@@ -56,20 +56,20 @@ export default function StockForm({ product }: Props) {
           : null;
 
   return (
-    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="mt-8 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">{t.admin.inventory.panelTitle}</h2>
+        <h2 className="text-lg font-bold text-[#1b1715]">{t.admin.inventory.panelTitle}</h2>
         <Link href="/admin/inventory" className="text-sm text-brand-700 hover:underline">
           {t.common.close}
         </Link>
       </div>
 
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mb-4 text-sm text-[#6e655f]">
         {t.admin.inventory.productLabel}:{' '}
-        <span className="font-medium text-slate-900">{product.name}</span>
+        <span className="font-medium text-[#1b1715]">{product.name}</span>
         {' · '}
         {t.admin.inventory.currentQuantityLabel}:{' '}
-        <span className="font-medium text-slate-900">
+        <span className="font-medium text-[#1b1715]">
           {product.tracked ? product.quantity : t.admin.inventory.quantityUntracked}
         </span>
       </p>
@@ -79,7 +79,7 @@ export default function StockForm({ product }: Props) {
         <input type="hidden" name="productId" value={product.id} />
 
         <div>
-          <label htmlFor="stock-mode" className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="stock-mode" className="mb-1 block text-sm font-medium text-[#4a4038]">
             {t.admin.inventory.modeLabel}
           </label>
           <select
@@ -94,12 +94,12 @@ export default function StockForm({ product }: Props) {
             <option value="adjustment">{t.admin.inventory.modeAdjustment}</option>
             <option value="return">{t.admin.inventory.modeReturn}</option>
           </select>
-          <p className="mt-1 text-xs text-slate-500">{hint}</p>
+          <p className="mt-1 text-xs text-[#8f8478]">{hint}</p>
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex-1">
-            <label htmlFor="stock-amount" className="mb-1 block text-sm font-medium text-slate-700">
+            <label htmlFor="stock-amount" className="mb-1 block text-sm font-medium text-[#4a4038]">
               {t.admin.inventory.amountLabel}
             </label>
             <input
@@ -115,7 +115,7 @@ export default function StockForm({ product }: Props) {
           </div>
           {mode === 'purchase' ? (
             <div className="flex-1">
-              <label htmlFor="stock-unit-cost" className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="stock-unit-cost" className="mb-1 block text-sm font-medium text-[#4a4038]">
                 {t.admin.inventory.unitCostLabel}
               </label>
               <input
@@ -133,7 +133,7 @@ export default function StockForm({ product }: Props) {
         </div>
 
         <div>
-          <label htmlFor="stock-note" className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="stock-note" className="mb-1 block text-sm font-medium text-[#4a4038]">
             {t.admin.inventory.noteLabel}
           </label>
           <input
@@ -157,9 +157,9 @@ export default function StockForm({ product }: Props) {
       </form>
 
       {/* טופס סף התראת מלאי נמוך — נפרד, ללא מצב */}
-      <form action={saveThresholdAction} className="mt-6 border-t border-slate-200 pt-4">
+      <form action={saveThresholdAction} className="mt-6 border-t border-[#e7ddcd] pt-4">
         <input type="hidden" name="productId" value={product.id} />
-        <label htmlFor="stock-threshold" className="mb-1 block text-sm font-medium text-slate-700">
+        <label htmlFor="stock-threshold" className="mb-1 block text-sm font-medium text-[#4a4038]">
           {t.admin.inventory.thresholdInputLabel}
         </label>
         <div className="flex gap-2">
@@ -181,7 +181,7 @@ export default function StockForm({ product }: Props) {
             {t.admin.inventory.submitThreshold}
           </button>
         </div>
-        <p className="mt-1 text-xs text-slate-500">{t.admin.inventory.thresholdInputHint}</p>
+        <p className="mt-1 text-xs text-[#8f8478]">{t.admin.inventory.thresholdInputHint}</p>
       </form>
     </section>
   );

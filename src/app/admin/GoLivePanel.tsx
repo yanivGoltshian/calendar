@@ -78,31 +78,31 @@ export default function GoLivePanel({
             </svg>
           </span>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">{g.heading}</h2>
-            <p className="text-sm text-slate-600">{g.subtitle}</p>
+            <h2 className="text-lg font-bold text-[#1b1715]">{g.heading}</h2>
+            <p className="text-sm text-[#6e655f]">{g.subtitle}</p>
           </div>
         </div>
         <button
           type="button"
           onClick={dismiss}
-          className="shrink-0 rounded-lg px-2 py-1 text-sm text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+          className="shrink-0 rounded-lg px-2 py-1 text-sm text-[#8f8478] transition hover:bg-[#efe6d8] hover:text-[#4a4038]"
         >
           {g.dismiss}
         </button>
       </div>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mt-4 rounded-xl border border-[#e7ddcd] bg-white p-4">
         <BookingLinkShare url={url} qrSvg={qrSvg} businessName={businessName} />
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <InstallApp variant="admin" />
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-base font-bold text-slate-900">
+        <div className="rounded-2xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
+          <h3 className="text-base font-bold text-[#1b1715]">
             {g.customer.heading}
           </h3>
-          <p className="mt-1 text-sm text-slate-600">{g.customer.subtitle}</p>
+          <p className="mt-1 text-sm text-[#6e655f]">{g.customer.subtitle}</p>
           <a
             href={bookingPath}
             target="_blank"
@@ -111,7 +111,7 @@ export default function GoLivePanel({
           >
             {g.customer.openButton}
           </a>
-          <p className="mt-3 text-xs text-slate-500">{g.customer.hint}</p>
+          <p className="mt-3 text-xs text-[#8f8478]">{g.customer.hint}</p>
         </div>
       </div>
     </section>

@@ -47,8 +47,8 @@ export default async function AdminServicesPage({ searchParams }: Props) {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-4">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {t.admin.services.title} · {business.name}
         </h1>
       </header>
@@ -59,12 +59,12 @@ export default async function AdminServicesPage({ searchParams }: Props) {
         </p>
       ) : null}
 
-      <h2 className="mb-3 text-lg font-bold text-slate-900">
+      <h2 className="mb-3 text-lg font-bold text-[#1b1715]">
         {t.admin.services.listTitle}
       </h2>
 
       {services.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
+        <p className="rounded-xl border border-[#e7ddcd] bg-white p-6 text-center text-[#8f8478]">
           {t.admin.services.empty}
         </p>
       ) : (
@@ -74,36 +74,36 @@ export default async function AdminServicesPage({ searchParams }: Props) {
             return (
               <li
                 key={s.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-2 font-bold text-slate-900">
+                    <p className="flex flex-wrap items-center gap-2 font-bold text-[#1b1715]">
                       {s.name}
                       {s.hidden ? (
-                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        <span className="rounded-full bg-[#e7ddcd] px-2 py-0.5 text-xs font-medium text-[#6e655f]">
                           {t.admin.services.hiddenBadge}
                         </span>
                       ) : null}
                     </p>
                     {s.description ? (
-                      <p className="mt-0.5 truncate text-sm text-slate-500">
+                      <p className="mt-0.5 truncate text-sm text-[#8f8478]">
                         {s.description}
                       </p>
                     ) : null}
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-[#6e655f]">
                       {s.hideDuration
                         ? t.admin.services.durationHidden
                         : formatDuration(s.durationMin)}
-                      <span className="mx-1 text-slate-300">·</span>
+                      <span className="mx-1 text-[#d6c8b4]">·</span>
                       {s.hidePrice
                         ? t.admin.services.priceHidden
                         : formatAgorot(s.priceAgorot)}
                     </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                    <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-[#8f8478]">
                       <span>{t.admin.services.staffBadgePrefix}</span>
                       {s.staffLinks.length === 0 ? (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
+                        <span className="rounded-full bg-[#efe6d8] px-2 py-0.5 text-[#8f8478]">
                           {t.admin.services.staffNoneBadge}
                         </span>
                       ) : (
@@ -121,10 +121,10 @@ export default async function AdminServicesPage({ searchParams }: Props) {
                 </div>
 
                 {/* פעולות */}
-                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-[#efe6d8] pt-3">
                   <Link
                     href={`/admin/services?edit=${s.id}`}
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
                   >
                     {t.admin.services.edit}
                   </Link>
@@ -134,14 +134,14 @@ export default async function AdminServicesPage({ searchParams }: Props) {
                     <input type="hidden" name="hidden" value={s.hidden ? '0' : '1'} />
                     <button
                       type="submit"
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                      className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
                     >
                       {s.hidden ? t.admin.services.show : t.admin.services.hide}
                     </button>
                   </form>
 
                   {inUse ? (
-                    <span className="rounded-lg px-3 py-1.5 text-sm text-slate-400">
+                    <span className="rounded-lg px-3 py-1.5 text-sm text-[#b3a690]">
                       {t.admin.services.inUse}
                     </span>
                   ) : (
@@ -167,7 +167,7 @@ export default async function AdminServicesPage({ searchParams }: Props) {
           <h3 className="text-base font-bold text-brand-700">
             {t.admin.services.loadTemplatesCta}
           </h3>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-[#6e655f]">
             {t.admin.services.loadTemplatesHint}
           </p>
           <form action={loadServiceTemplatesAction} className="mt-3">

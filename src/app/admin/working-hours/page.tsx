@@ -81,20 +81,20 @@ export default async function AdminWorkingHoursPage({ searchParams }: Props) {
   const chipBase =
     'rounded-full px-3 py-1.5 text-sm font-medium transition border';
   const chipActive = 'border-brand-600 bg-brand-50 text-brand-700';
-  const chipIdle = 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50';
+  const chipIdle = 'border-[#e7ddcd] bg-white text-[#6e655f] hover:bg-[#f7f2ea]';
 
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-4">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {t.admin.workingHours.title} · {business.name}
         </h1>
       </header>
 
       {/* בורר טווח: כל העסק או איש צוות ספציפי */}
       <section>
-        <p className="mb-2 text-sm font-medium text-slate-700">
+        <p className="mb-2 text-sm font-medium text-[#4a4038]">
           {t.admin.workingHours.scopeLabel}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -117,7 +117,7 @@ export default async function AdminWorkingHoursPage({ searchParams }: Props) {
           ))}
         </div>
         {staff.length === 0 ? (
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-[#8f8478]">
             {t.admin.workingHours.staffEmpty}
           </p>
         ) : null}

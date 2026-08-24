@@ -91,15 +91,15 @@ export default function AdminSidebar({
             className={[
               'flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-medium transition',
               active
-                ? 'bg-[#16233A] text-[#F2D695] shadow-inner'
-                : 'text-[#E8ECF3] hover:bg-[#16233A]/60 hover:text-[#F2D695]',
+                ? 'bg-[#2f241d] text-[#F2D695] shadow-inner'
+                : 'text-[#f3ece0] hover:bg-[#2f241d]/60 hover:text-[#F2D695]',
             ].join(' ')}
           >
             {item.label}
             {showBadge ? (
               <span
                 aria-label={t.admin.pendingApprovals.badgeAria}
-                className="ms-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-400 px-1.5 py-0.5 text-xs font-bold text-[#0A182D]"
+                className="ms-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-400 px-1.5 py-0.5 text-xs font-bold text-[#1c1512]"
               >
                 {pendingCount}
               </span>
@@ -129,7 +129,7 @@ export default function AdminSidebar({
       {/* סרגל עליון קומפקטי למובייל (< md) */}
       <div
         dir="rtl"
-        className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-[#16233A] bg-[#08101C] px-4 py-3 md:hidden"
+        className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-[#2f241d] bg-[#1c1512] px-4 py-3 md:hidden"
         style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
       >
         {brand}
@@ -141,7 +141,7 @@ export default function AdminSidebar({
             aria-expanded={open}
             aria-controls="admin-mobile-drawer"
             aria-label={t.admin.openMenu}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#233047] text-[#F2D695] transition hover:bg-[#16233A]"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#3a2c22] text-[#F2D695] transition hover:bg-[#2f241d]"
           >
             <svg
               aria-hidden="true"
@@ -173,7 +173,7 @@ export default function AdminSidebar({
             aria-modal="true"
             aria-label={t.admin.menuLabel}
             dir="rtl"
-            className="absolute inset-y-0 right-0 flex w-[82%] max-w-xs flex-col gap-4 overflow-y-auto bg-[#08101C] p-4 shadow-2xl"
+            className="absolute inset-y-0 right-0 flex w-[82%] max-w-xs flex-col gap-4 overflow-y-auto bg-[#1c1512] p-4 shadow-2xl"
             style={{
               paddingTop: 'max(1rem, env(safe-area-inset-top))',
               paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
@@ -185,7 +185,7 @@ export default function AdminSidebar({
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label={t.admin.closeMenu}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#233047] text-[#F2D695] transition hover:bg-[#16233A]"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#3a2c22] text-[#F2D695] transition hover:bg-[#2f241d]"
               >
                 <svg
                   aria-hidden="true"
@@ -209,13 +209,13 @@ export default function AdminSidebar({
       {/* סרגל צד קבוע (md+) — ללא שינוי מהתצוגה הקיימת */}
       <aside
         dir="rtl"
-        className="relative hidden shrink-0 flex-col gap-4 bg-[#08101C] p-4 md:flex md:sticky md:top-0 md:h-screen md:w-64 md:overflow-y-auto"
+        className="relative hidden shrink-0 flex-col gap-4 bg-[#1c1512] p-4 md:flex md:sticky md:top-0 md:h-screen md:w-64 md:overflow-y-auto"
         style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
       >
         <div className="flex items-start justify-between px-2 pt-1">
           <div>
             {brand}
-            <p className="text-xs text-[#9AA7BD]">{t.admin.panelTitle}</p>
+            <p className="text-xs text-[#c9b79f]">{t.admin.panelTitle}</p>
           </div>
           <NotificationsBell notifications={notifications} placement="desktop" />
         </div>

@@ -250,8 +250,8 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
       <header className="mb-5">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {t.admin.calendarTitle} · {business.name}
         </h1>
       </header>

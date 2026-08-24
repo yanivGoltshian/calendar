@@ -59,7 +59,7 @@ const initialSaveState: SaveState = { ok: false };
 /** ששת גווני המותג המוצעים (תואם למוקאפ המאושר). */
 /** גווני מותג ראשיים אצורים (פיקס) — קובעים brandColor בלבד; שאר גווני --biz-* נגזרים אוטומטית. */
 const PRIMARY_SWATCHES = [
-  '#0a182d', '#12b886', '#7c3aed', '#e11d48', '#f59e0b', '#0ea5e9',
+  '#1c1512', '#12b886', '#7c3aed', '#e11d48', '#f59e0b', '#0ea5e9',
   '#b0855f', '#d98ca3', '#3f9d8a', '#3b82c4', '#9b3b57', '#2fa9a2',
 ];
 
@@ -115,7 +115,7 @@ export default function OnboardingWizard({
   >([]);
 
   // מצב מקומי לצעד המיתוג: צבע חי לתצוגה המקדימה + בחירת תבנית שעות.
-  const [color, setColor] = useState(brandColor || '#0a182d');
+  const [color, setColor] = useState(brandColor || '#1c1512');
   const [preset, setPreset] = useState<HoursPresetKey>('sun-thu');
   // בחירת ימים ושעות ידנית, מוצגת כשנבחר "מותאם אישית" (ראשון–חמישי פתוחים כברירת מחדל).
   const [customDays, setCustomDays] = useState(() =>
@@ -232,12 +232,12 @@ export default function OnboardingWizard({
             <path d="M4 12.5l5 5L20 6" />
           </svg>
         </span>
-        <h2 className="mt-4 text-2xl font-bold text-slate-900">{su.title}</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
+        <h2 className="mt-4 text-2xl font-bold text-[#1b1715]">{su.title}</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-[#6e655f]">
           {su.subtitle.replace('{name}', businessName)}
         </p>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 text-start sm:p-5">
+        <div className="mt-6 rounded-2xl border border-[#e7ddcd] bg-white p-4 text-start sm:p-5">
           <BookingLinkShare url={bookingUrl} qrSvg={bookingQr} businessName={businessName} />
         </div>
 
@@ -269,9 +269,9 @@ export default function OnboardingWizard({
    */
   function renderPremium() {
     const p = o.premium;
-    const inputCls = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm';
-    const labelCls = 'mb-1 block text-sm font-medium text-slate-700';
-    const cardCls = 'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6';
+    const inputCls = 'w-full rounded-xl border border-[#d6c8b4] bg-white px-3 py-2.5 text-sm';
+    const labelCls = 'mb-1 block text-sm font-medium text-[#4a4038]';
+    const cardCls = 'rounded-3xl border border-[#e7ddcd] bg-white p-5 shadow-sm sm:p-6';
     const err = errorText(premiumState);
 
     // עדכון נקודתי של הטיוטה (מקור האמת היחיד לתוכן הפרימיום).
@@ -331,8 +331,8 @@ export default function OnboardingWizard({
               ✨
             </span>
             <p className="mt-4 text-sm font-medium text-emerald-600">{g.eyebrow}</p>
-            <h2 className="mt-1 text-2xl font-bold text-slate-900">{g.title}</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">{g.subtitle}</p>
+            <h2 className="mt-1 text-2xl font-bold text-[#1b1715]">{g.title}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-[#6e655f]">{g.subtitle}</p>
             <div className="mt-6 flex flex-col items-center gap-3">
               {/* המשך: שומר טיוטה ריקה ומעביר לתת-השלב הראשון */}
               <form action={premiumFormAction} className="w-full sm:w-auto">
@@ -343,7 +343,7 @@ export default function OnboardingWizard({
                   onClick={() => {
                     nextTargetRef.current = 0;
                   }}
-                  className="w-full rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
+                  className="w-full rounded-xl bg-[#1b1715] px-6 py-2.5 font-semibold text-white transition hover:bg-[#2a2320] disabled:opacity-60 sm:w-auto"
                 >
                   {premiumPending ? p.nav.saving : g.build}
                 </button>
@@ -352,7 +352,7 @@ export default function OnboardingWizard({
               <button
                 type="button"
                 onClick={() => setDone(true)}
-                className="text-sm font-medium text-slate-500 transition hover:text-slate-700"
+                className="text-sm font-medium text-[#8f8478] transition hover:text-[#4a4038]"
               >
                 {g.skip}
               </button>
@@ -376,8 +376,8 @@ export default function OnboardingWizard({
               ✨
             </span>
             <p className="mt-4 text-sm font-medium text-emerald-600">{s.eyebrow}</p>
-            <h2 className="mt-1 text-2xl font-bold text-slate-900">{s.title}</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
+            <h2 className="mt-1 text-2xl font-bold text-[#1b1715]">{s.title}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-[#6e655f]">
               {s.subtitle.replace('{name}', businessName)}
             </p>
             <div className="mt-6 flex flex-col items-center gap-3">
@@ -385,7 +385,7 @@ export default function OnboardingWizard({
                 href={`/b/${slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full rounded-xl border border-slate-300 px-6 py-2.5 text-center font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+                className="w-full rounded-xl border border-[#d6c8b4] px-6 py-2.5 text-center font-semibold text-[#4a4038] transition hover:bg-[#f7f2ea] sm:w-auto"
               >
                 {s.previewCta}
               </a>
@@ -397,13 +397,13 @@ export default function OnboardingWizard({
                   onClick={() => {
                     nextTargetRef.current = 'done';
                   }}
-                  className="w-full rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 sm:w-auto"
+                  className="w-full rounded-xl bg-[#1b1715] px-6 py-2.5 font-semibold text-white transition hover:bg-[#2a2320] disabled:opacity-60 sm:w-auto"
                 >
                   {premiumPending ? p.nav.saving : s.finishCta}
                 </button>
               </form>
             </div>
-            <p className="mt-4 text-xs text-slate-400">{s.editHint}</p>
+            <p className="mt-4 text-xs text-[#b3a690]">{s.editHint}</p>
             {err && <p className="mt-3 text-sm text-rose-600">{err}</p>}
           </section>
         </div>
@@ -493,9 +493,9 @@ export default function OnboardingWizard({
       <div dir="rtl">
         <div className="mb-5">
           <p className="text-sm font-medium text-emerald-600">{sk.eyebrow}</p>
-          <h2 className="mt-1 text-xl font-bold text-slate-900">{sk.title}</h2>
-          <p className="mt-1 text-sm text-slate-500">{sk.subtitle}</p>
-          <p className="mt-2 text-xs font-medium text-slate-400">{progress}</p>
+          <h2 className="mt-1 text-xl font-bold text-[#1b1715]">{sk.title}</h2>
+          <p className="mt-1 text-sm text-[#8f8478]">{sk.subtitle}</p>
+          <p className="mt-2 text-xs font-medium text-[#b3a690]">{progress}</p>
         </div>
 
         <form action={premiumFormAction} onInput={handlePremiumInput} className={cardCls}>
@@ -540,15 +540,15 @@ export default function OnboardingWizard({
                   placeholder: p.steps.hero.videoUrlPlaceholder,
                   onChange: (v) => patchDraft({ heroVideoUrl: v }),
                 })}
-                <p className="-mt-2 text-xs text-slate-400">{p.steps.hero.videoUrlHint}</p>
+                <p className="-mt-2 text-xs text-[#b3a690]">{p.steps.hero.videoUrlHint}</p>
                 <div>
-                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                  <span className="mb-2 block text-sm font-medium text-[#4a4038]">
                     {p.steps.hero.imagesTitle}
                   </span>
                   <div className="grid grid-cols-2 gap-4">
                     {Array.from({ length: 2 }).map((_, i) => (
                       <div key={i}>
-                        <span className="mb-1 block text-xs font-medium text-slate-500">
+                        <span className="mb-1 block text-xs font-medium text-[#8f8478]">
                           {p.steps.hero.imageLabel.replace('{n}', String(i + 1))}
                         </span>
                         <ImageUploadField
@@ -564,7 +564,7 @@ export default function OnboardingWizard({
                       </div>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs text-slate-400">{p.steps.hero.imagesHint}</p>
+                  <p className="mt-2 text-xs text-[#b3a690]">{p.steps.hero.imagesHint}</p>
                 </div>
               </>
             )}
@@ -603,13 +603,13 @@ export default function OnboardingWizard({
                   onChange: (v) => patchHotDeals({ ctaLabel: v }),
                 })}
                 <div>
-                  <span className="mb-2 block text-sm font-medium text-slate-700">
+                  <span className="mb-2 block text-sm font-medium text-[#4a4038]">
                     {p.steps.hotDeals.imagesTitle}
                   </span>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, i) => (
                       <div key={i}>
-                        <span className="mb-1 block text-xs font-medium text-slate-500">
+                        <span className="mb-1 block text-xs font-medium text-[#8f8478]">
                           {p.steps.hotDeals.imageLabel.replace('{n}', String(i + 1))}
                         </span>
                         <ImageUploadField
@@ -625,13 +625,13 @@ export default function OnboardingWizard({
                       </div>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs text-slate-400">{p.steps.hotDeals.imagesHint}</p>
+                  <p className="mt-2 text-xs text-[#b3a690]">{p.steps.hotDeals.imagesHint}</p>
                 </div>
-                <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-700">
+                <div className="space-y-3 rounded-2xl border border-[#e7ddcd] bg-[#f7f2ea] p-4">
+                  <p className="text-sm font-semibold text-[#4a4038]">
                     {p.steps.hotDeals.offerTitle}
                   </p>
-                  <p className="text-xs text-slate-400">{p.steps.hotDeals.offerHint}</p>
+                  <p className="text-xs text-[#b3a690]">{p.steps.hotDeals.offerHint}</p>
                   {textField({
                     id: 'prem-offer-text',
                     label: p.steps.hotDeals.offerTextLabel,
@@ -671,14 +671,14 @@ export default function OnboardingWizard({
             {/* ── (2) מיקום + מפה ── */}
             {subKey === 'location' && (
               <>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-700">
+                <div className="rounded-2xl border border-[#e7ddcd] bg-[#f7f2ea] p-4">
+                  <p className="text-sm font-semibold text-[#4a4038]">
                     {p.steps.location.addressTitle}
                   </p>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm text-[#6e655f]">
                     {businessAddress.trim() !== '' ? businessAddress : p.steps.location.noAddress}
                   </p>
-                  <p className="mt-2 text-xs text-slate-400">{p.steps.location.addressHint}</p>
+                  <p className="mt-2 text-xs text-[#b3a690]">{p.steps.location.addressHint}</p>
                 </div>
                 {textField({
                   id: 'prem-location-whatsapp',
@@ -688,12 +688,12 @@ export default function OnboardingWizard({
                   onChange: (v) => setSocial('whatsapp', v),
                   dir: 'ltr',
                 })}
-                <label className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700">
+                <label className="flex items-center gap-3 rounded-xl border border-[#e7ddcd] px-3 py-2.5 text-sm text-[#4a4038]">
                   <input
                     type="checkbox"
                     checked={sections.location ?? false}
                     onChange={(e) => setSection('location', e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-emerald-600"
+                    className="h-4 w-4 rounded border-[#d6c8b4] text-emerald-600"
                   />
                   {p.steps.location.showToggle}
                 </label>
@@ -709,7 +709,7 @@ export default function OnboardingWizard({
               <button
                 type="button"
                 onClick={() => setPremiumPhase(sub === 0 ? 'gate' : sub - 1)}
-                className="rounded-xl border border-slate-300 px-5 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="rounded-xl border border-[#d6c8b4] px-5 py-2.5 font-semibold text-[#4a4038] transition hover:bg-[#f7f2ea]"
               >
                 {p.nav.back}
               </button>
@@ -718,7 +718,7 @@ export default function OnboardingWizard({
                   type="button"
                   onClick={() => setPremiumPhase(isLast ? 'summary' : sub + 1)}
                   disabled={premiumPending}
-                  className="text-sm font-medium text-slate-500 transition hover:text-slate-700 disabled:opacity-60"
+                  className="text-sm font-medium text-[#8f8478] transition hover:text-[#4a4038] disabled:opacity-60"
                 >
                   {p.nav.skip}
                 </button>
@@ -728,7 +728,7 @@ export default function OnboardingWizard({
                     nextTargetRef.current = 'summary';
                   }}
                   disabled={premiumPending}
-                  className="rounded-xl border border-slate-300 px-5 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                  className="rounded-xl border border-[#d6c8b4] px-5 py-2.5 font-semibold text-[#4a4038] transition hover:bg-[#f7f2ea] disabled:opacity-60"
                 >
                   {p.nav.saveExit}
                 </button>
@@ -738,7 +738,7 @@ export default function OnboardingWizard({
                     nextTargetRef.current = isLast ? 'summary' : sub + 1;
                   }}
                   disabled={premiumPending}
-                  className="rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                  className="rounded-xl bg-[#1b1715] px-6 py-2.5 font-semibold text-white transition hover:bg-[#2a2320] disabled:opacity-60"
                 >
                   {premiumPending ? p.nav.saving : p.nav.continue}
                 </button>
@@ -760,7 +760,7 @@ export default function OnboardingWizard({
       <button
         type="button"
         onClick={() => setStep((n) => Math.max(0, n - 1))}
-        className="rounded-xl border border-slate-300 px-5 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-50"
+        className="rounded-xl border border-[#d6c8b4] px-5 py-2.5 font-semibold text-[#4a4038] transition hover:bg-[#f7f2ea]"
       >
         {o.back}
       </button>
@@ -771,12 +771,12 @@ export default function OnboardingWizard({
     <div dir="rtl">
       <div className="mb-5">
         <p className="text-sm font-medium text-emerald-600">{o[stepKey].eyebrow}</p>
-        <h2 className="mt-1 text-xl font-bold text-slate-900">{o[stepKey].title}</h2>
-        <p className="mt-1 text-sm text-slate-500">{o[stepKey].subtitle}</p>
-        <p className="mt-2 text-xs font-medium text-slate-400">{progress}</p>
+        <h2 className="mt-1 text-xl font-bold text-[#1b1715]">{o[stepKey].title}</h2>
+        <p className="mt-1 text-sm text-[#8f8478]">{o[stepKey].subtitle}</p>
+        <p className="mt-2 text-xs font-medium text-[#b3a690]">{progress}</p>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="rounded-3xl border border-[#e7ddcd] bg-white p-5 shadow-sm sm:p-6">
         {/* ── צעד שירותים ─────────────────────────────── */}
         {step === 0 ? (
           <form action={servicesFormAction} className="space-y-4">
@@ -794,14 +794,14 @@ export default function OnboardingWizard({
                         'flex cursor-pointer items-center justify-between gap-3 rounded-2xl border p-3.5 transition-colors ' +
                         (on
                           ? 'border-emerald-300 bg-emerald-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300')
+                          : 'border-[#e7ddcd] bg-white hover:border-[#d6c8b4]')
                       }
                     >
                       <span className="min-w-0">
-                        <span className="block truncate font-semibold text-slate-800">
+                        <span className="block truncate font-semibold text-[#2a2320]">
                           {s.name}
                         </span>
-                        <span className="mt-0.5 block text-xs text-slate-500">
+                        <span className="mt-0.5 block text-xs text-[#8f8478]">
                           {s.durationMin} {o.services.minutesSuffix} · {priceLabel}
                         </span>
                       </span>
@@ -829,8 +829,8 @@ export default function OnboardingWizard({
                     className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-3.5"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate font-semibold text-slate-800">{svc.name}</span>
-                      <span className="mt-0.5 block text-xs text-slate-500">
+                      <span className="block truncate font-semibold text-[#2a2320]">{svc.name}</span>
+                      <span className="mt-0.5 block text-xs text-[#8f8478]">
                         {svc.durationMin} {o.services.minutesSuffix} ·{' '}
                         {svc.priceAgorot > 0
                           ? `₪${(svc.priceAgorot / 100).toLocaleString('he-IL')}`
@@ -840,7 +840,7 @@ export default function OnboardingWizard({
                     <button
                       type="button"
                       onClick={() => removeNewService(idx)}
-                      className="shrink-0 text-sm font-medium text-slate-500 hover:text-red-600"
+                      className="shrink-0 text-sm font-medium text-[#8f8478] hover:text-red-600"
                     >
                       {o.services.removeAdded}
                     </button>
@@ -853,9 +853,9 @@ export default function OnboardingWizard({
             <input type="hidden" name="newServices" value={JSON.stringify(newServices)} />
 
             {addingService ? (
-              <div className="space-y-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+              <div className="space-y-3 rounded-2xl border border-dashed border-[#d6c8b4] bg-[#f7f2ea] p-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                  <label className="mb-1 block text-sm font-medium text-[#4a4038]">
                     {o.services.newNameLabel}
                   </label>
                   <input
@@ -864,12 +864,12 @@ export default function OnboardingWizard({
                     value={draftName}
                     onChange={(e) => setDraftName(e.target.value)}
                     placeholder={o.services.newNamePlaceholder.replace('{example}', serviceExample)}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                    className="w-full rounded-xl border border-[#d6c8b4] bg-white px-3 py-2.5 text-sm"
                   />
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                    <label className="mb-1 block text-sm font-medium text-[#4a4038]">
                       {o.services.newDurationLabel}
                     </label>
                     <input
@@ -880,11 +880,11 @@ export default function OnboardingWizard({
                       step={5}
                       value={draftDuration}
                       onChange={(e) => setDraftDuration(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                      className="w-full rounded-xl border border-[#d6c8b4] bg-white px-3 py-2.5 text-sm"
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                    <label className="mb-1 block text-sm font-medium text-[#4a4038]">
                       {o.services.newPriceLabel}
                     </label>
                     <input
@@ -896,7 +896,7 @@ export default function OnboardingWizard({
                       placeholder="0"
                       value={draftPrice}
                       onChange={(e) => setDraftPrice(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                      className="w-full rounded-xl border border-[#d6c8b4] bg-white px-3 py-2.5 text-sm"
                     />
                   </div>
                 </div>
@@ -917,7 +917,7 @@ export default function OnboardingWizard({
                       setDraftDuration('30');
                       setDraftPrice('');
                     }}
-                    className="text-sm font-medium text-slate-500 hover:text-slate-700"
+                    className="text-sm font-medium text-[#8f8478] hover:text-[#4a4038]"
                   >
                     {o.services.cancelAdd}
                   </button>
@@ -927,7 +927,7 @@ export default function OnboardingWizard({
               <button
                 type="button"
                 onClick={() => setAddingService(true)}
-                className="w-full rounded-2xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-500 transition hover:border-emerald-300 hover:text-emerald-600"
+                className="w-full rounded-2xl border border-dashed border-[#d6c8b4] py-3 text-sm font-semibold text-[#8f8478] transition hover:border-emerald-300 hover:text-emerald-600"
               >
                 + {o.services.addOwn}
               </button>
@@ -944,7 +944,7 @@ export default function OnboardingWizard({
               <button
                 type="submit"
                 disabled={servicesPending || totalSelected === 0}
-                className="rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                className="rounded-xl bg-[#1b1715] px-6 py-2.5 font-semibold text-white transition hover:bg-[#2a2320] disabled:opacity-60"
               >
                 {servicesPending
                   ? o.saving
@@ -970,7 +970,7 @@ export default function OnboardingWizard({
                       'flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition-colors ' +
                       (on
                         ? 'border-emerald-400 bg-emerald-50'
-                        : 'border-slate-200 bg-white hover:border-slate-300')
+                        : 'border-[#e7ddcd] bg-white hover:border-[#d6c8b4]')
                     }
                   >
                     <input
@@ -982,8 +982,8 @@ export default function OnboardingWizard({
                       className="h-5 w-5 shrink-0 accent-emerald-500"
                     />
                     <span className="min-w-0">
-                      <span className="block font-semibold text-slate-800">{p.label}</span>
-                      <span className="mt-0.5 block text-xs text-slate-500">{p.hint}</span>
+                      <span className="block font-semibold text-[#2a2320]">{p.label}</span>
+                      <span className="mt-0.5 block text-xs text-[#8f8478]">{p.hint}</span>
                     </span>
                   </label>
                 );
@@ -991,8 +991,8 @@ export default function OnboardingWizard({
             </div>
 
             {preset === 'custom' ? (
-              <div className="space-y-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
-                <p className="text-sm font-medium text-slate-700">{o.hours.custom.title}</p>
+              <div className="space-y-2 rounded-2xl border border-dashed border-[#d6c8b4] bg-[#f7f2ea] p-4">
+                <p className="text-sm font-medium text-[#4a4038]">{o.hours.custom.title}</p>
                 {customDays.map((day) => (
                   <div key={day.weekday} className="flex flex-wrap items-center gap-3">
                     <label className="flex min-w-[4.5rem] items-center gap-2">
@@ -1002,7 +1002,7 @@ export default function OnboardingWizard({
                         onChange={(e) => updateCustomDay(day.weekday, { open: e.target.checked })}
                         className="h-4 w-4 accent-emerald-500"
                       />
-                      <span className="text-sm font-medium text-slate-700">
+                      <span className="text-sm font-medium text-[#4a4038]">
                         {o.hours.custom.days[day.weekday]}
                       </span>
                     </label>
@@ -1012,18 +1012,18 @@ export default function OnboardingWizard({
                           type="time"
                           value={day.start}
                           onChange={(e) => updateCustomDay(day.weekday, { start: e.target.value })}
-                          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                          className="rounded-lg border border-[#d6c8b4] bg-white px-2 py-1.5 text-sm"
                         />
-                        <span className="text-slate-400">–</span>
+                        <span className="text-[#b3a690]">–</span>
                         <input
                           type="time"
                           value={day.end}
                           onChange={(e) => updateCustomDay(day.weekday, { end: e.target.value })}
-                          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                          className="rounded-lg border border-[#d6c8b4] bg-white px-2 py-1.5 text-sm"
                         />
                       </div>
                     ) : (
-                      <span className="text-sm text-slate-400">{o.hours.custom.closed}</span>
+                      <span className="text-sm text-[#b3a690]">{o.hours.custom.closed}</span>
                     )}
                   </div>
                 ))}
@@ -1031,10 +1031,10 @@ export default function OnboardingWizard({
               </div>
             ) : null}
 
-            <p className="rounded-2xl bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-500">
+            <p className="rounded-2xl bg-[#f7f2ea] px-3 py-2.5 text-xs leading-relaxed text-[#8f8478]">
               {o.hours.staffNote}
             </p>
-            <p className="text-xs text-slate-400">{o.hours.tuneLater}</p>
+            <p className="text-xs text-[#b3a690]">{o.hours.tuneLater}</p>
             {errorText(hoursState) ? (
               <p className="text-sm text-red-600">{errorText(hoursState)}</p>
             ) : null}
@@ -1043,7 +1043,7 @@ export default function OnboardingWizard({
               <button
                 type="submit"
                 disabled={hoursPending}
-                className="rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                className="rounded-xl bg-[#1b1715] px-6 py-2.5 font-semibold text-white transition hover:bg-[#2a2320] disabled:opacity-60"
               >
                 {hoursPending ? o.saving : o.hours.continueCta}
               </button>
@@ -1055,7 +1055,7 @@ export default function OnboardingWizard({
         {step === 2 ? (
           <form action={brandingFormAction} className="space-y-5">
             <div>
-              <span className="mb-1.5 block text-sm font-medium text-slate-700">
+              <span className="mb-1.5 block text-sm font-medium text-[#4a4038]">
                 {o.branding.logoLabel}
               </span>
               <ImageUploadField
@@ -1073,10 +1073,10 @@ export default function OnboardingWizard({
             <div className="space-y-4">
               {/* גלריית פלטות מותג אצורות: כרטיס קובע brandColor + theme לעמוד הפרימיום */}
               <div>
-                <span className="mb-1.5 block text-sm font-medium text-slate-700">
+                <span className="mb-1.5 block text-sm font-medium text-[#4a4038]">
                   {o.premium.palette.presetsTitle}
                 </span>
-                <p className="mb-2 text-xs text-slate-400">{o.premium.palette.presetsHint}</p>
+                <p className="mb-2 text-xs text-[#b3a690]">{o.premium.palette.presetsHint}</p>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                   {BRAND_PRESETS.map((preset) => {
                     const on =
@@ -1101,8 +1101,8 @@ export default function OnboardingWizard({
                         className={
                           'flex flex-col gap-2 rounded-2xl border p-3 text-right transition ' +
                           (on
-                            ? 'border-slate-900 ring-2 ring-slate-900 ring-offset-1'
-                            : 'border-slate-200 hover:border-slate-400')
+                            ? 'border-[#1b1715] ring-2 ring-[#1b1715] ring-offset-1'
+                            : 'border-[#e7ddcd] hover:border-[#b3a690]')
                         }
                       >
                         <span className="flex gap-1" aria-hidden="true">
@@ -1114,7 +1114,7 @@ export default function OnboardingWizard({
                             />
                           ))}
                         </span>
-                        <span className="text-xs font-medium text-slate-700">{preset.name}</span>
+                        <span className="text-xs font-medium text-[#4a4038]">{preset.name}</span>
                       </button>
                     );
                   })}
@@ -1123,10 +1123,10 @@ export default function OnboardingWizard({
 
               {/* מסלול "צבע ראשי": גוונים קבועים אצורים; שאר --biz-* נגזרים אוטומטית */}
               <div>
-                <span className="mb-1.5 block text-sm font-medium text-slate-700">
+                <span className="mb-1.5 block text-sm font-medium text-[#4a4038]">
                   {o.premium.palette.primaryTitle}
                 </span>
-                <p className="mb-2 text-xs text-slate-400">{o.premium.palette.primaryHint}</p>
+                <p className="mb-2 text-xs text-[#b3a690]">{o.premium.palette.primaryHint}</p>
                 <div className="flex flex-wrap gap-2.5">
                   {PRIMARY_SWATCHES.map((swatch) => {
                     const on = color.toLowerCase() === swatch.toLowerCase();
@@ -1141,8 +1141,8 @@ export default function OnboardingWizard({
                         className={
                           'h-10 w-10 rounded-full ring-offset-2 transition ' +
                           (on
-                            ? 'ring-2 ring-slate-900'
-                            : 'ring-1 ring-slate-200 hover:ring-slate-400')
+                            ? 'ring-2 ring-[#1b1715]'
+                            : 'ring-1 ring-[#e7ddcd] hover:ring-[#b3a690]')
                         }
                       />
                     );
@@ -1154,13 +1154,13 @@ export default function OnboardingWizard({
 
             {/* תצוגה חיה של עמוד ההזמנות — נצבעת מיד לפי הצבע שנבחר */}
             <div>
-              <p className="mb-2 text-xs font-medium text-slate-400">{o.branding.previewTitle}</p>
-              <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+              <p className="mb-2 text-xs font-medium text-[#b3a690]">{o.branding.previewTitle}</p>
+              <div className="overflow-hidden rounded-2xl border border-[#e7ddcd] shadow-sm">
                 <div className="h-16" style={{ backgroundColor: color }} />
                 <div className="-mt-8 px-4 pb-4">
                   <div className="flex items-end gap-3">
                     <span
-                      className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-white text-xl font-bold text-slate-700 shadow"
+                      className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-white text-xl font-bold text-[#4a4038] shadow"
                       style={{ color }}
                     >
                       {logoUrl ? (
@@ -1170,9 +1170,9 @@ export default function OnboardingWizard({
                         businessName.trim().charAt(0) || '★'
                       )}
                     </span>
-                    <span className="pb-1 font-bold text-slate-800">{businessName}</span>
+                    <span className="pb-1 font-bold text-[#2a2320]">{businessName}</span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  <div className="mt-3 flex items-center justify-between rounded-xl border border-[#efe6d8] bg-[#f7f2ea] px-3 py-2 text-xs text-[#8f8478]">
                     <span>{o.branding.previewServiceSample}</span>
                     <span
                       className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
@@ -1195,14 +1195,14 @@ export default function OnboardingWizard({
                 <button
                   type="submit"
                   disabled={brandingPending}
-                  className="text-sm font-medium text-slate-500 hover:text-slate-700 disabled:opacity-60"
+                  className="text-sm font-medium text-[#8f8478] hover:text-[#4a4038] disabled:opacity-60"
                 >
                   {o.branding.skip}
                 </button>
                 <button
                   type="submit"
                   disabled={brandingPending}
-                  className="rounded-xl bg-slate-900 px-6 py-2.5 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                  className="rounded-xl bg-[#1b1715] px-6 py-2.5 font-semibold text-white transition hover:bg-[#2a2320] disabled:opacity-60"
                 >
                   {brandingPending ? o.branding.finishing : o.branding.finishCta}
                 </button>

@@ -29,7 +29,7 @@ export function BrandColorField({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <label
-        className="relative h-10 w-14 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-slate-300 shadow-inner"
+        className="relative h-10 w-14 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-[#d6c8b4] shadow-inner"
         style={{ backgroundColor: swatch }}
         aria-label={emptyLabel}
         htmlFor={inputId}
@@ -53,7 +53,7 @@ export function BrandColorField({
           const normalized = normalizeHex(e.target.value);
           setValue(normalized ?? '');
         }}
-        placeholder="#0A182D"
+        placeholder="#1c1512"
         className={`${inputClass} w-32 flex-none uppercase`}
       />
 
@@ -61,12 +61,12 @@ export function BrandColorField({
         <button
           type="button"
           onClick={() => setValue('')}
-          className="text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
+          className="text-xs font-medium text-[#8f8478] underline-offset-2 hover:text-[#4a4038] hover:underline"
         >
           {resetLabel}
         </button>
       ) : (
-        <span className="text-xs text-slate-400">{emptyLabel}</span>
+        <span className="text-xs text-[#b3a690]">{emptyLabel}</span>
       )}
     </div>
   );

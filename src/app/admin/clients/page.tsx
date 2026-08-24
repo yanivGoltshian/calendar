@@ -44,8 +44,8 @@ export default async function AdminClientsPage({ searchParams }: Props) {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-4">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">
           {t.admin.clients.title} · {business.name}
         </h1>
       </header>
@@ -58,7 +58,7 @@ export default async function AdminClientsPage({ searchParams }: Props) {
           defaultValue={q}
           aria-label={t.admin.clients.searchLabel}
           placeholder={t.admin.clients.searchPlaceholder}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+          className="w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
         />
         {filter !== 'all' ? <input type="hidden" name="filter" value={filter} /> : null}
         <button
@@ -80,7 +80,7 @@ export default async function AdminClientsPage({ searchParams }: Props) {
               className={
                 active
                   ? 'rounded-full bg-brand-600 px-3 py-1.5 text-sm font-medium text-white'
-                  : 'rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50'
+                  : 'rounded-full border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#6e655f] transition hover:bg-[#f7f2ea]'
               }
             >
               {f.label}
@@ -89,13 +89,13 @@ export default async function AdminClientsPage({ searchParams }: Props) {
         })}
       </div>
 
-      <h2 className="mb-3 text-lg font-bold text-slate-900">
+      <h2 className="mb-3 text-lg font-bold text-[#1b1715]">
         {t.admin.clients.listTitle}
       </h2>
 
       {clients.length === 0 ? (
         isSearching ? (
-          <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
+          <p className="rounded-xl border border-[#e7ddcd] bg-white p-6 text-center text-[#8f8478]">
             {t.admin.clients.emptySearch}
           </p>
         ) : (
@@ -110,11 +110,11 @@ export default async function AdminClientsPage({ searchParams }: Props) {
             <li key={c.id}>
               <Link
                 href={`/admin/clients/${c.id}`}
-                className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
+                className="block rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-2 font-bold text-slate-900">
+                    <p className="flex flex-wrap items-center gap-2 font-bold text-[#1b1715]">
                       {c.name}
                       {c.blocked ? (
                         <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
@@ -122,11 +122,11 @@ export default async function AdminClientsPage({ searchParams }: Props) {
                         </span>
                       ) : null}
                     </p>
-                    <p className="mt-0.5 text-sm text-slate-500" dir="ltr">
+                    <p className="mt-0.5 text-sm text-[#8f8478]" dir="ltr">
                       {displayPhone(c.phone)}
                     </p>
                   </div>
-                  <span className="shrink-0 whitespace-nowrap text-sm text-slate-400">
+                  <span className="shrink-0 whitespace-nowrap text-sm text-[#b3a690]">
                     {c._count.appointments} {t.admin.clients.appointmentsCount}
                   </span>
                 </div>

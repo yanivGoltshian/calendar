@@ -114,9 +114,9 @@ export default function SettingsForm({
               >
                 ✓
               </span>
-              <h2 className="text-lg font-bold text-slate-900">{s.nextStep.title}</h2>
+              <h2 className="text-lg font-bold text-[#1b1715]">{s.nextStep.title}</h2>
             </div>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-[#6e655f]">
               {onboardingCompleted ? s.nextStep.doneBody : s.nextStep.setupBody}
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
@@ -137,7 +137,7 @@ export default function SettingsForm({
                   </Link>
                   <Link
                     href="/admin"
-                    className="inline-flex items-center rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-white"
+                    className="inline-flex items-center rounded-lg border border-[#d6c8b4] px-5 py-2.5 text-sm font-medium text-[#4a4038] transition hover:bg-white"
                   >
                     {s.nextStep.setupSecondary}
                   </Link>
@@ -149,7 +149,7 @@ export default function SettingsForm({
 
         {/* רצועת שמירה נדבקת: מופיעה רק כשיש שינויים שלא נשמרו. */}
         <div
-          className={`fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/90 backdrop-blur transition-transform duration-300 ${
+          className={`fixed inset-x-0 bottom-0 z-40 border-t border-[#e7ddcd] bg-white/90 backdrop-blur transition-transform duration-300 ${
             showBar ? 'translate-y-0' : 'translate-y-full'
           }`}
         >
@@ -158,7 +158,7 @@ export default function SettingsForm({
               {errorText ? (
                 <span className="font-medium text-red-600">{errorText}</span>
               ) : (
-                <span className="text-slate-500">{s.unsavedHint}</span>
+                <span className="text-[#8f8478]">{s.unsavedHint}</span>
               )}
             </div>
             <button
@@ -180,7 +180,7 @@ export default function SettingsForm({
         role="status"
         aria-live="polite"
       >
-        <span className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
+        <span className="rounded-full bg-[#1b1715] px-4 py-2 text-sm font-medium text-white shadow-lg">
           {s.savedShort}
         </span>
       </div>

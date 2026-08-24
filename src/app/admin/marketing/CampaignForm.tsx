@@ -17,7 +17,7 @@ type Props = {
 const initialState: CreateCampaignState = { ok: false };
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
 const SEGMENTS: CampaignSegment[] = ['all', 'active', 'with_appointments'];
 
@@ -67,12 +67,12 @@ export default function CampaignForm({ counts }: Props) {
   const successText = state.ok ? (state.scheduled ? m.successScheduled : m.successCreated) : null;
 
   return (
-    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="mb-4 text-lg font-bold text-slate-900">{m.newCampaignTitle}</h2>
+    <section className="mt-8 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
+      <h2 className="mb-4 text-lg font-bold text-[#1b1715]">{m.newCampaignTitle}</h2>
 
       <form ref={formRef} action={formAction} className="space-y-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{m.nameLabel}</label>
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">{m.nameLabel}</label>
           <input
             name="name"
             required
@@ -83,7 +83,7 @@ export default function CampaignForm({ counts }: Props) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{m.bodyLabel}</label>
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">{m.bodyLabel}</label>
           <textarea
             name="body"
             required
@@ -95,7 +95,7 @@ export default function CampaignForm({ counts }: Props) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">{m.segmentLabel}</label>
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">{m.segmentLabel}</label>
           <select
             name="segment"
             value={segment}
@@ -108,67 +108,67 @@ export default function CampaignForm({ counts }: Props) {
               </option>
             ))}
           </select>
-          <p className="mt-1 text-sm text-slate-500">
-            {m.recipientsPreview}: <span className="font-semibold text-slate-700">{counts[segment]}</span>
+          <p className="mt-1 text-sm text-[#8f8478]">
+            {m.recipientsPreview}: <span className="font-semibold text-[#4a4038]">{counts[segment]}</span>
           </p>
         </div>
 
         <fieldset>
-          <legend className="mb-1 block text-sm font-medium text-slate-700">{m.channelsFieldLabel}</legend>
+          <legend className="mb-1 block text-sm font-medium text-[#4a4038]">{m.channelsFieldLabel}</legend>
           <div className="flex flex-wrap gap-4">
             {ALL_CAMPAIGN_CHANNELS.map((channel) => (
-              <label key={channel} className="flex items-center gap-2 text-sm text-slate-700">
+              <label key={channel} className="flex items-center gap-2 text-sm text-[#4a4038]">
                 <input
                   type="checkbox"
                   name="channels"
                   value={channel}
                   checked={channels.has(channel)}
                   onChange={() => toggleChannel(channel)}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  className="h-4 w-4 rounded border-[#d6c8b4] text-brand-600 focus:ring-brand-500"
                 />
                 {m.channels[channel]}
               </label>
             ))}
           </div>
-          <p className="mt-1 text-sm text-slate-500">{m.channelsHint}</p>
+          <p className="mt-1 text-sm text-[#8f8478]">{m.channelsHint}</p>
         </fieldset>
 
         <fieldset>
-          <legend className="mb-1 block text-sm font-medium text-slate-700">{m.scheduleLabel}</legend>
+          <legend className="mb-1 block text-sm font-medium text-[#4a4038]">{m.scheduleLabel}</legend>
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-[#4a4038]">
               <input
                 type="radio"
                 name="scheduleMode"
                 value="now"
                 checked={scheduleMode === 'now'}
                 onChange={() => setScheduleMode('now')}
-                className="h-4 w-4 border-slate-300 text-brand-600 focus:ring-brand-500"
+                className="h-4 w-4 border-[#d6c8b4] text-brand-600 focus:ring-brand-500"
               />
               {m.scheduleNow}
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-[#4a4038]">
               <input
                 type="radio"
                 name="scheduleMode"
                 value="later"
                 checked={scheduleMode === 'later'}
                 onChange={() => setScheduleMode('later')}
-                className="h-4 w-4 border-slate-300 text-brand-600 focus:ring-brand-500"
+                className="h-4 w-4 border-[#d6c8b4] text-brand-600 focus:ring-brand-500"
               />
               {m.scheduleLater}
             </label>
           </div>
           {scheduleMode === 'later' ? (
             <div className="mt-2">
-              <label className="mb-1 block text-sm font-medium text-slate-700">{m.scheduleAtLabel}</label>
+              <label className="mb-1 block text-sm font-medium text-[#4a4038]">{m.scheduleAtLabel}</label>
               <input
                 type="datetime-local"
                 name="scheduledAt"
                 required
                 className={inputClass}
               />
-              <p className="mt-1 text-sm text-slate-500">{m.scheduleTzHint}</p>
+              <p className="mt-1 text-sm text-[#8f8478]">{m.scheduleTzHint}</p>
             </div>
           ) : null}
         </fieldset>

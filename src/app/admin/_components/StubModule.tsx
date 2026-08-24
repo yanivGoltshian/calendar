@@ -11,15 +11,15 @@ export default function StubModule({ title }: { title: string }) {
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16 pt-6">
       <header className="mb-6">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">{title}</h1>
       </header>
 
       <Card>
         <CardBody className="flex flex-col items-start gap-3">
           <Badge tone="gold">{t.admin.stub.badge}</Badge>
-          <h2 className="text-lg font-bold text-slate-900">{t.admin.stub.title}</h2>
-          <p className="text-sm leading-relaxed text-slate-600">{t.admin.stub.body}</p>
+          <h2 className="text-lg font-bold text-[#1b1715]">{t.admin.stub.title}</h2>
+          <p className="text-sm leading-relaxed text-[#6e655f]">{t.admin.stub.body}</p>
         </CardBody>
       </Card>
     </main>

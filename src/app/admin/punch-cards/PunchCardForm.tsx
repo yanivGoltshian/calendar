@@ -14,7 +14,7 @@ type Props = {
 const initialState: CreatePunchCardState = { ok: false };
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
 export default function PunchCardForm({ clients, services }: Props) {
   const p = t.admin.punchCardsModule;
@@ -35,15 +35,15 @@ export default function PunchCardForm({ clients, services }: Props) {
           : null;
 
   return (
-    <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="mb-4 text-lg font-bold text-slate-900">{p.addTitle}</h2>
+    <section className="mt-8 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
+      <h2 className="mb-4 text-lg font-bold text-[#1b1715]">{p.addTitle}</h2>
 
       {clients.length === 0 ? (
-        <p className="text-sm text-slate-500">{p.noClients}</p>
+        <p className="text-sm text-[#8f8478]">{p.noClients}</p>
       ) : (
         <form ref={formRef} action={formAction} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">{p.clientLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">{p.clientLabel}</label>
             <select name="clientId" required defaultValue="" className={inputClass}>
               <option value="" disabled>
                 {p.clientPlaceholder}
@@ -57,12 +57,12 @@ export default function PunchCardForm({ clients, services }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">{p.titleLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">{p.titleLabel}</label>
             <input name="title" maxLength={120} placeholder={p.titlePlaceholder} className={inputClass} />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">{p.serviceLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">{p.serviceLabel}</label>
             <select name="serviceId" defaultValue="" className={inputClass}>
               <option value="">{p.serviceNone}</option>
               {services.map((s) => (
@@ -75,7 +75,7 @@ export default function PunchCardForm({ clients, services }: Props) {
 
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
-              <label className="mb-1 block text-sm font-medium text-slate-700">{p.totalLabel}</label>
+              <label className="mb-1 block text-sm font-medium text-[#4a4038]">{p.totalLabel}</label>
               <input
                 name="totalPunches"
                 type="number"
@@ -88,7 +88,7 @@ export default function PunchCardForm({ clients, services }: Props) {
               />
             </div>
             <div className="flex-1">
-              <label className="mb-1 block text-sm font-medium text-slate-700">{p.priceLabel}</label>
+              <label className="mb-1 block text-sm font-medium text-[#4a4038]">{p.priceLabel}</label>
               <input
                 name="priceShekels"
                 type="number"
@@ -102,7 +102,7 @@ export default function PunchCardForm({ clients, services }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">{p.noteLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-[#4a4038]">{p.noteLabel}</label>
             <textarea name="note" rows={2} maxLength={500} className={inputClass} />
           </div>
 

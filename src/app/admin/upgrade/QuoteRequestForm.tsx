@@ -15,7 +15,7 @@ export type QuoteFormDefaults = {
 const initialState: QuoteRequestState = { ok: false };
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:border-[#C59D5F] focus:ring-1 focus:ring-[#C59D5F]';
+  'w-full rounded-lg border border-[#d6c8b4] bg-white px-3 py-2 text-[#1b1715] outline-none focus:border-[#C59D5F] focus:ring-1 focus:ring-[#C59D5F]';
 
 /**
  * טופס בקשת הצעת מחיר (D4). מוזן מראש מפרטי העסק המחובר, וניתן לעריכה לפני שליחה.
@@ -50,8 +50,8 @@ export default function QuoteRequestForm({ defaults }: { defaults: QuoteFormDefa
         dir="rtl"
         className="rounded-2xl border border-[#E7D9B8] bg-[#FBF7EC] p-6 text-center"
       >
-        <h3 className="text-lg font-extrabold text-[#0A182D]">{t.quote.success.title}</h3>
-        <p className="mt-2 text-slate-700">{t.quote.success.body}</p>
+        <h3 className="text-lg font-extrabold text-[#1c1512]">{t.quote.success.title}</h3>
+        <p className="mt-2 text-[#4a4038]">{t.quote.success.body}</p>
       </div>
     );
   }
@@ -59,7 +59,7 @@ export default function QuoteRequestForm({ defaults }: { defaults: QuoteFormDefa
   return (
     <form action={formAction} dir="rtl" className="space-y-5">
       <div>
-        <span className="mb-2 block text-sm font-semibold text-slate-800">
+        <span className="mb-2 block text-sm font-semibold text-[#2a2320]">
           {f.planLabel}
         </span>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -69,7 +69,7 @@ export default function QuoteRequestForm({ defaults }: { defaults: QuoteFormDefa
             return (
               <label
                 key={code}
-                className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-300 bg-white p-4 transition has-[:checked]:border-[#C59D5F] has-[:checked]:bg-[#FBF7EC] has-[:checked]:ring-1 has-[:checked]:ring-[#C59D5F]"
+                className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#d6c8b4] bg-white p-4 transition has-[:checked]:border-[#C59D5F] has-[:checked]:bg-[#FBF7EC] has-[:checked]:ring-1 has-[:checked]:ring-[#C59D5F]"
               >
                 <input
                   type="radio"
@@ -79,8 +79,8 @@ export default function QuoteRequestForm({ defaults }: { defaults: QuoteFormDefa
                   className="mt-1 accent-[#C59D5F]"
                 />
                 <span>
-                  <span className="block font-bold text-[#0A182D]">{plan.name}</span>
-                  <span className="mt-0.5 block text-sm text-slate-600">{plan.tagline}</span>
+                  <span className="block font-bold text-[#1c1512]">{plan.name}</span>
+                  <span className="mt-0.5 block text-sm text-[#6e655f]">{plan.tagline}</span>
                 </span>
               </label>
             );
@@ -89,23 +89,23 @@ export default function QuoteRequestForm({ defaults }: { defaults: QuoteFormDefa
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
+        <label className="mb-1 block text-sm font-medium text-[#4a4038]">
           {f.publicPageLabel}
         </label>
-        <div className="truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+        <div className="truncate rounded-lg border border-[#e7ddcd] bg-[#f7f2ea] px-3 py-2 text-sm text-[#6e655f]">
           {defaults.publicPageUrl}
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">
             {f.nameLabel}
           </label>
           <input name="name" required defaultValue={defaults.name} className={inputClass} />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">
             {f.phoneLabel}
           </label>
           <input
@@ -119,7 +119,7 @@ export default function QuoteRequestForm({ defaults }: { defaults: QuoteFormDefa
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
+        <label className="mb-1 block text-sm font-medium text-[#4a4038]">
           {f.emailLabel}
         </label>
         <input
@@ -138,7 +138,7 @@ export default function QuoteRequestForm({ defaults }: { defaults: QuoteFormDefa
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-xl bg-[#0A182D] px-5 py-3 font-bold text-[#F2D695] transition hover:bg-[#122644] disabled:opacity-60 sm:w-auto"
+        className="w-full rounded-xl bg-[#1c1512] px-5 py-3 font-bold text-[#F2D695] transition hover:bg-[#241a15] disabled:opacity-60 sm:w-auto"
       >
         {pending ? f.submitting : f.submit}
       </button>

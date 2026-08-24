@@ -42,9 +42,9 @@ export default async function AdminOnboardingPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
       <header className="mb-6">
-        <p className="text-sm text-slate-500">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-slate-900">{t.admin.onboarding.title}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t.admin.onboarding.subtitle}</p>
+        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
+        <h1 className="text-2xl font-bold text-[#1b1715]">{t.admin.onboarding.title}</h1>
+        <p className="mt-1 text-sm text-[#8f8478]">{t.admin.onboarding.subtitle}</p>
       </header>
 
       {settings.onboardingCompleted ? (
