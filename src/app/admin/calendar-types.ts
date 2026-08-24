@@ -10,8 +10,10 @@ export type ApptBlock = {
   startMinute: number; // דקות מחצות (זמן מקומי)
   durationMin: number;
   status: string; // AppointmentStatus
+  clientId: string;
   clientName: string;
   clientPhone: string; // כבר מעוצב לתצוגה
+  clientEmail: string;
   serviceNames: string;
   colorIndex: number;
   priceAgorot: number;

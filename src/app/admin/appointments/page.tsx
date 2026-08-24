@@ -150,10 +150,22 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
                       {formatTime(appt.endAt, tz)}
                     </p>
                     <p className="text-sm text-[#8f8478]">{formatLongDate(dateStr, tz)}</p>
-                    <p className="mt-1 font-medium text-[#2a2320]">{appt.client.name}</p>
-                    <p className="text-sm text-[#8f8478]" dir="ltr">
-                      {displayPhone(appt.client.phone)}
-                    </p>
+                    <Link
+                      href={`/admin/clients/${appt.client.id}`}
+                      className="mt-1 block font-medium text-[#2a2320] hover:text-brand-700 hover:underline"
+                    >
+                      {appt.client.name}
+                    </Link>
+                    {appt.client.phone ? (
+                      <p className="text-sm text-[#8f8478]" dir="ltr">
+                        {displayPhone(appt.client.phone)}
+                      </p>
+                    ) : null}
+                    {appt.client.email ? (
+                      <p className="text-sm text-[#8f8478]" dir="ltr">
+                        {appt.client.email}
+                      </p>
+                    ) : null}
                     <p className="mt-1 text-sm text-[#6e655f]">
                       <span className="text-[#b3a690]">{m.staff}: </span>
                       {appt.staff.displayName}

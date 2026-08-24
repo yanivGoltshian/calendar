@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { t } from '@/i18n';
 import { formatDuration } from '@/lib/time';
 import { formatAgorot } from '@/lib/money';
@@ -228,12 +229,27 @@ export function AppointmentDetailModal({
         className="mb-4 rounded-xl border-r-4 bg-[#f7f2ea] p-4"
         style={{ borderColor: color.border }}
       >
-        <p className="text-lg font-semibold text-[#1b1715]">
-          {appt.clientName || c.untitledClient}
-        </p>
+        {appt.clientId ? (
+          <Link
+            href={`/admin/clients/${appt.clientId}`}
+            onClick={onClose}
+            className="text-lg font-semibold text-[#1b1715] hover:text-brand-700 hover:underline"
+          >
+            {appt.clientName || c.untitledClient}
+          </Link>
+        ) : (
+          <p className="text-lg font-semibold text-[#1b1715]">
+            {appt.clientName || c.untitledClient}
+          </p>
+        )}
         {appt.clientPhone ? (
           <p dir="ltr" className="text-left text-sm text-[#8f8478]">
             {appt.clientPhone}
+          </p>
+        ) : null}
+        {appt.clientEmail ? (
+          <p dir="ltr" className="text-left text-sm text-[#8f8478]">
+            {appt.clientEmail}
           </p>
         ) : null}
       </div>
