@@ -49,12 +49,12 @@ function AddToCalendar({ googleUrl, icsHref }: { googleUrl: string; icsHref: str
   const item =
     'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-[#2c2522] transition hover:bg-[#f3ece0]';
   return (
-    <details className="group relative">
+    <details className="group relative basis-full">
       <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full border border-[#e7ddcd] bg-white px-4 py-2 text-sm font-bold text-[#8c6748] transition hover:bg-[#f3ece0] [&::-webkit-details-marker]:hidden">
         <CalendarGlyph />
         {t.account.addToCalendar}
       </summary>
-      <div className="absolute right-0 z-20 mt-2 w-60 rounded-2xl border border-[#e7ddcd] bg-white p-1.5 shadow-[0_24px_50px_-24px_rgba(40,28,18,0.5)]">
+      <div className="mt-2 w-full rounded-2xl border border-[#e7ddcd] bg-white p-1.5 shadow-[0_24px_50px_-24px_rgba(40,28,18,0.5)] sm:w-72">
         <a href={googleUrl} target="_blank" rel="noopener noreferrer" className={item}>
           <CalendarGlyph />
           {t.account.addToGoogle}
