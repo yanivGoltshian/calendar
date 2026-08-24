@@ -6,6 +6,7 @@ import type { LandingLaunchOffer } from '@/lib/publicPageStyle';
 import { logout } from '@/app/account/actions';
 import { computeCountdown } from '@/lib/launchOffer';
 import { formatIsraeliPhoneDisplay } from '@/lib/phoneDisplay';
+import { heroVideoResolve } from '@/lib/videoEmbed';
 import {
   PhoneIcon,
   ClockIcon,
@@ -115,6 +116,7 @@ export default function PremiumClinicHeader({
 
   const primary = heroImages[0];
   const secondary = heroImages[1];
+  const hv = heroVideoResolve(heroVideoUrl);
 
   return (
     <header className="overflow-hidden bg-[color:var(--c-cream,#faf6ef)]">
@@ -474,20 +476,34 @@ export default function PremiumClinicHeader({
           ) : (
             <span aria-hidden className="absolute inset-0 bg-[color:var(--c-ink,#1b1715)]" />
           )}
-          {heroVideoUrl ? (
+          {hv ? (
             <div className="absolute inset-y-0 left-0 w-[46%] overflow-hidden sm:w-[34%]">
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <video
-                autoPlay
-                muted
-                loop
-                playsInline
-                poster={heroPosterUrl ?? secondary ?? undefined}
-                aria-label={labels.heroImageAlt}
-                className="h-full w-full object-cover"
-              >
-                <source src={heroVideoUrl} type="video/mp4" />
-              </video>
+              {hv.kind === 'embed' ? (
+                <iframe
+                  src={hv.src}
+                  className="absolute inset-0 h-full w-full"
+                  style={{ pointerEvents: 'none' }}
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  aria-hidden
+                  title={labels.heroImageAlt}
+                  frameBorder={0}
+                />
+              ) : (
+                <>
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    poster={heroPosterUrl ?? secondary ?? undefined}
+                    aria-label={labels.heroImageAlt}
+                    className="h-full w-full object-cover"
+                  >
+                    <source src={hv.src} type="video/mp4" />
+                  </video>
+                </>
+              )}
               {/* נוצת מעבר בקצה הפנימי של הווידאו */}
               <span
                 aria-hidden

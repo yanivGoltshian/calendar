@@ -503,6 +503,27 @@ export default function OnboardingWizard({
             {/* ── (0) כותרת הירו ── */}
             {subKey === 'hero' && (
               <>
+                {/* תצוגה מקדימה חיה של ראש העמוד */}
+                <div className="mb-4">
+                  <span className="mb-2 block text-sm font-medium text-[#4a4038]">{p.steps.hero.previewLabel}</span>
+                  <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-[#e7dfd2] bg-[#2c2522]">
+                    {heroImages[0] ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={heroImages[0]} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    ) : null}
+                    <span aria-hidden className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(44,37,34,0.82), rgba(44,37,34,0.25))' }} />
+                    <div className="absolute inset-0 flex flex-col justify-end gap-1 p-4 text-right">
+                      {premiumDraft.heroEyebrow ? <span className="text-[10px] uppercase tracking-wide text-[#e7d9c2]">{premiumDraft.heroEyebrow}</span> : null}
+                      <span className="text-lg font-bold leading-tight text-white">{premiumDraft.heroHeadline || p.steps.hero.headlinePlaceholder}</span>
+                      {premiumDraft.heroSubtext ? <span className="line-clamp-2 text-xs text-[#f0e9dd]">{premiumDraft.heroSubtext}</span> : null}
+                      <span className="mt-1 inline-block w-fit rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-[#2c2522]">{premiumDraft.ctaLabel || p.steps.hero.ctaLabelPlaceholder}</span>
+                    </div>
+                    {premiumDraft.heroVideoUrl ? (
+                      <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white">▶ {p.steps.hero.previewVideoBadge}</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-xs text-[#b3a690]">{p.steps.hero.previewHint}</p>
+                </div>
                 {textField({
                   id: 'prem-hero-eyebrow',
                   label: p.steps.hero.eyebrowLabel,
