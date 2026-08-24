@@ -16,6 +16,9 @@ import LandingFaq from './LandingFaq';
 import LandingAbout from './LandingAbout';
 import LandingLocation from './LandingLocation';
 import LandingSocialCta from './LandingSocialCta';
+import LandingInstagramEmbeds from './LandingInstagramEmbeds';
+import LandingSocialVideos from './LandingSocialVideos';
+import LandingFacebookFeed from './LandingFacebookFeed';
 import HotDealsCube from './HotDealsCube';
 import LandingBooking from './LandingBooking';
 import WhatsAppFab from './WhatsAppFab';
@@ -187,6 +190,29 @@ export default function LandingSections({
             return null;
         }
       })}
+      {/* הטמעות חברתיות רשמיות — כל בלוק נשען על נוכחות נתונים בלבד (self-gated),
+          לכן עסק בלי קישורים אלה לא מרנדר דבר. ממוקמים ליד הקריאה לפעולה החברתית. */}
+      {content?.instagramPostUrls?.length ? (
+        <LandingInstagramEmbeds
+          eyebrow={eyebrows.instagram}
+          title={l.instagramTitle}
+          urls={content.instagramPostUrls}
+        />
+      ) : null}
+      {content?.socialVideoUrls?.length ? (
+        <LandingSocialVideos
+          eyebrow={eyebrows.socialVideos}
+          title={l.socialVideosTitle}
+          urls={content.socialVideoUrls}
+        />
+      ) : null}
+      {content?.socialLinks?.facebook ? (
+        <LandingFacebookFeed
+          eyebrow={eyebrows.facebook}
+          title={l.facebookTitle}
+          pageUrl={content.socialLinks.facebook}
+        />
+      ) : null}
       {whatsapp ? (
         <WhatsAppFab href={socialHref('whatsapp', whatsapp)} ariaLabel={t.premiumLanding.whatsappAria} />
       ) : null}

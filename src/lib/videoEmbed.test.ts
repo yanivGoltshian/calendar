@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { heroVideoResolve } from './videoEmbed';
+import { heroVideoResolve, socialVideoResolve } from './videoEmbed';
 
 test('ריק / null / undefined → null', () => {
   assert.equal(heroVideoResolve(null), null);
@@ -57,4 +57,51 @@ test('נתיב שורש יחסי ל-mp4 → file', () => {
 test('זבל שאינו כתובת → null', () => {
   assert.equal(heroVideoResolve('just some text'), null);
   assert.equal(heroVideoResolve('ftp://example.com/x.mp4'), null);
+});
+
+// ---- socialVideoResolve (הטמעות חברתיות רשמיות בעמוד הציבורי) ----
+
+test('social: ריק / null → null', () => {
+  assert.equal(socialVideoResolve(null), null);
+  assert.equal(socialVideoResolve(undefined), null);
+  assert.equal(socialVideoResolve('   '), null);
+});
+
+test('social: youtube → iframe פרטיות (youtube-nocookie, ללא autoplay)', () => {
+  const v = socialVideoResolve('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  assert.equal(v?.platform, 'youtube');
+  assert.ok(v && v.platform === 'youtube' && v.src.startsWith('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ'));
+  assert.ok(v && v.platform === 'youtube' && !v.src.includes('autoplay'));
+});
+
+test('social: youtu.be קצר → youtube', () => {
+  const v = socialVideoResolve('https://youtu.be/dQw4w9WgXcQ');
+  assert.equal(v?.platform, 'youtube');
+});
+
+test('social: tiktok מלא → videoId מחולץ', () => {
+  const v = socialVideoResolve('https://www.tiktok.com/@some.user/video/7212345678901234567');
+  assert.deepEqual(v, {
+    platform: 'tiktok',
+    cite: 'https://www.tiktok.com/@some.user/video/7212345678901234567',
+    videoId: '7212345678901234567',
+  });
+});
+
+test('social: tiktok מקוצר (vm) → videoId null, cite=url', () => {
+  const v = socialVideoResolve('https://vm.tiktok.com/ZMabc123/');
+  assert.equal(v?.platform, 'tiktok');
+  assert.ok(v && v.platform === 'tiktok' && v.videoId === null);
+  assert.ok(v && v.platform === 'tiktok' && v.cite === 'https://vm.tiktok.com/ZMabc123/');
+});
+
+test('social: vimeo → iframe נגן', () => {
+  const v = socialVideoResolve('https://vimeo.com/123456789');
+  assert.deepEqual(v, { platform: 'vimeo', src: 'https://player.vimeo.com/video/123456789' });
+});
+
+test('social: זבל / כתובת קובץ ישירה → null', () => {
+  assert.equal(socialVideoResolve('just text'), null);
+  assert.equal(socialVideoResolve('https://cdn.example.com/promo.mp4'), null);
+  assert.equal(socialVideoResolve('/images/hero.mp4'), null);
 });

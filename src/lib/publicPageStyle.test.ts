@@ -14,6 +14,8 @@ import {
   MAX_GALLERY_IMAGES,
   MAX_FAQ,
   MAX_BEFORE_AFTER,
+  MAX_INSTAGRAM_POSTS,
+  MAX_SOCIAL_VIDEOS,
 } from './publicPageStyle';
 
 test('sectionIconKey: ממפה כל סוג עסק לאייקון הנכון', () => {
@@ -285,4 +287,50 @@ test('normalizeLandingContent: מגביל heroImages לשתי תמונות ומ�
     heroImages: ['/a.jpg', '  ', '/b.jpg', '/c.jpg'],
   });
   assert.deepEqual(res?.heroImages, ['/a.jpg', '/b.jpg']);
+});
+
+test('normalizeLandingContent: instagramPostUrls — שומר רק /p/ ו-/reel/, מסנן שאר', () => {
+  const res = normalizeLandingContent({
+    heroHeadline: 'יש',
+    instagramPostUrls: [
+      ' https://www.instagram.com/p/ABC123/ ',
+      'https://instagram.com/reel/XYZ789/',
+      'https://instagram.com/some.user/', // פרופיל — יורד
+      'https://example.com/p/notinsta/', // דומיין אחר — יורד
+      '',
+    ],
+  });
+  assert.deepEqual(res?.instagramPostUrls, [
+    'https://www.instagram.com/p/ABC123/',
+    'https://instagram.com/reel/XYZ789/',
+  ]);
+});
+
+test('normalizeLandingContent: instagramPostUrls — נחתך לתקרה (6)', () => {
+  const many = Array.from({ length: 9 }, (_, i) => `https://instagram.com/p/POST${i}/`);
+  const res = normalizeLandingContent({ heroHeadline: 'יש', instagramPostUrls: many });
+  assert.equal(res?.instagramPostUrls?.length, MAX_INSTAGRAM_POSTS);
+});
+
+test('normalizeLandingContent: socialVideoUrls — שומר רק http(s), מסנן שאר', () => {
+  const res = normalizeLandingContent({
+    heroHeadline: 'יש',
+    socialVideoUrls: [
+      ' https://www.tiktok.com/@u/video/123 ',
+      'https://youtu.be/dQw4w9WgXcQ',
+      '/local/video.mp4', // לא http(s) — יורד
+      'just text', // זבל — יורד
+      '',
+    ],
+  });
+  assert.deepEqual(res?.socialVideoUrls, [
+    'https://www.tiktok.com/@u/video/123',
+    'https://youtu.be/dQw4w9WgXcQ',
+  ]);
+});
+
+test('normalizeLandingContent: socialVideoUrls — נחתך לתקרה (6)', () => {
+  const many = Array.from({ length: 9 }, (_, i) => `https://youtu.be/vid${i}00000000`);
+  const res = normalizeLandingContent({ heroHeadline: 'יש', socialVideoUrls: many });
+  assert.equal(res?.socialVideoUrls?.length, MAX_SOCIAL_VIDEOS);
 });

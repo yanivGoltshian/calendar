@@ -170,6 +170,8 @@ export interface LandingContent {
   about?: string;
   announcement?: string; // שורת עדכון חי אופציונלית, נערכת בעמוד ניהול העסק
   googleReviewsUrl?: string; // קישור לעמוד הביקורות של העסק בגוגל (שלב רשות)
+  instagramPostUrls?: string[]; // קישורי פוסטים/ריל של אינסטגרם להטמעה רשמית בעמוד הציבורי
+  socialVideoUrls?: string[]; // קישורי סרטונים (טיקטוק/יוטיוב) להטמעה רשמית בעמוד הציבורי
   socialLinks?: LandingSocialLinks;
   ctaLabel?: string;
   sections?: LandingSectionToggles;
@@ -192,6 +194,8 @@ export const MAX_FAQ = 5;
 export const MAX_BEFORE_AFTER = 3;
 export const MAX_HOT_DEALS_IMAGES = 6;
 export const MAX_HERO_IMAGES = 2;
+export const MAX_INSTAGRAM_POSTS = 6;
+export const MAX_SOCIAL_VIDEOS = 6;
 
 /** מגבלות אורך טקסט (קיטום עדין כדי לשמור על עיצוב נקי). */
 const LIMITS = {
@@ -375,6 +379,28 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
     if (galleryImageUrls.length >= MAX_GALLERY_IMAGES) break;
   }
 
+  // קישורי פוסטים של אינסטגרם — שומרים רק כתובות פוסט/ריל תקינות (instagram.com/p/ או /reel/).
+  const instagramPostUrls: string[] = [];
+  const rawInstagram = Array.isArray(source.instagramPostUrls) ? source.instagramPostUrls : [];
+  for (const item of rawInstagram) {
+    const url = cleanString(item, LIMITS.socialUrl);
+    if (!url) continue;
+    if (!/instagram\.com\/(p|reel)\//i.test(url)) continue;
+    instagramPostUrls.push(url);
+    if (instagramPostUrls.length >= MAX_INSTAGRAM_POSTS) break;
+  }
+
+  // קישורי סרטונים חברתיים (טיקטוק/יוטיוב) — שומרים רק כתובות http(s) תקינות.
+  const socialVideoUrls: string[] = [];
+  const rawSocialVideos = Array.isArray(source.socialVideoUrls) ? source.socialVideoUrls : [];
+  for (const item of rawSocialVideos) {
+    const url = cleanString(item, LIMITS.socialUrl);
+    if (!url) continue;
+    if (!/^https?:\/\//i.test(url)) continue;
+    socialVideoUrls.push(url);
+    if (socialVideoUrls.length >= MAX_SOCIAL_VIDEOS) break;
+  }
+
   const beforeAfter: LandingBeforeAfter[] = [];
   for (const item of toRecordArray(source.beforeAfter)) {
     const beforeUrl = cleanString(item.beforeUrl, LIMITS.galleryUrl);
@@ -432,6 +458,8 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   if (heroPosterUrl) content.heroPosterUrl = heroPosterUrl;
   if (benefits.length) content.benefits = benefits;
   if (galleryImageUrls.length) content.galleryImageUrls = galleryImageUrls;
+  if (instagramPostUrls.length) content.instagramPostUrls = instagramPostUrls;
+  if (socialVideoUrls.length) content.socialVideoUrls = socialVideoUrls;
   if (beforeAfter.length) content.beforeAfter = beforeAfter;
   if (testimonials.length) content.testimonials = testimonials;
   if (faq.length) content.faq = faq;
