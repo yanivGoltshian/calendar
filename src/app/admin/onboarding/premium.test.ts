@@ -212,3 +212,55 @@ test('heroImages: נחתך לשתי תמונות לכל היותר', () => {
   assert.ok(result?.heroImages);
   assert.equal(result?.heroImages?.length, 2);
 });
+
+/* ── WAVE D: לכידת תוכן חברתי (instagramPostUrls / socialVideoUrls / facebookFeedUrl) ── */
+
+test('WAVE D: שלושת שדות הרשתות עוברים סבב מלא דרך parsePremiumDraft עם סינון וקיטום', () => {
+  const raw = JSON.stringify({
+    heroHeadline: 'x',
+    instagramPostUrls: [
+      'https://example.com/not-instagram', // לא אינסטגרם — יסונן
+      'https://instagram.com/p/AAA1/',
+      'https://instagram.com/reel/BBB2/',
+      'https://instagram.com/p/CCC3/',
+      'https://instagram.com/p/DDD4/',
+      'https://instagram.com/p/EEE5/',
+      'https://instagram.com/p/FFF6/',
+      'https://instagram.com/p/GGG7/', // מעבר לתקרה 6 — יקוצץ
+    ],
+    socialVideoUrls: [
+      'https://www.tiktok.com/@u/video/123',
+      'not a url', // יסונן
+      'https://youtu.be/abc',
+    ],
+    facebookFeedUrl: 'https://facebook.com/mypage',
+    socialLinks: { facebook: 'https://facebook.com/icononly' },
+  });
+  const result = parsePremiumDraft(raw);
+  assert.ok(result);
+  // סינון (לא-אינסטגרם הושמט) + תקרה של שישה
+  assert.equal(result?.instagramPostUrls?.length, 6);
+  assert.equal(result?.instagramPostUrls?.[0], 'https://instagram.com/p/AAA1/');
+  // רק שתי כתובות http(s) נשמרות
+  assert.equal(result?.socialVideoUrls?.length, 2);
+  // פיד הפייסבוק המפורש נשמר
+  assert.equal(result?.facebookFeedUrl, 'https://facebook.com/mypage');
+  // כפתור האייקון נשאר נפרד ולא נגזר לפיד (משמר את הניתוק מ-C.1)
+  assert.equal(result?.socialLinks?.facebook, 'https://facebook.com/icononly');
+});
+
+test('WAVE D: אינווריאנט C.1 — socialLinks.facebook לבדו אינו מזין facebookFeedUrl', () => {
+  // רק כפתור האייקון קיים, ללא facebookFeedUrl מפורש → הפיד לא נדלק
+  const iconOnly = parsePremiumDraft(
+    JSON.stringify({ heroHeadline: 'x', socialLinks: { facebook: 'https://facebook.com/icononly' } }),
+  );
+  assert.ok(iconOnly);
+  assert.equal(iconOnly?.facebookFeedUrl, undefined);
+  assert.equal(iconOnly?.socialLinks?.facebook, 'https://facebook.com/icononly');
+  // facebookFeedUrl שאינו facebook.com מושמט
+  const nonFacebook = parsePremiumDraft(
+    JSON.stringify({ heroHeadline: 'x', facebookFeedUrl: 'https://instagram.com/p/AAA1/' }),
+  );
+  assert.ok(nonFacebook);
+  assert.equal(nonFacebook?.facebookFeedUrl, undefined);
+});

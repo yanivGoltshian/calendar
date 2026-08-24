@@ -355,6 +355,13 @@ export default function OnboardingWizard({
       </div>
     );
 
+    // עדכון קישור רשת חברתית בטיוטה. מוגדר כאן כדי להיות זמין גם בשער וגם בתת-שלב המיקום.
+    const setSocial = (key: keyof LandingSocialLinks, v: string) =>
+      setPremiumDraft((prev) => ({
+        ...prev,
+        socialLinks: { ...(prev.socialLinks ?? {}), [key]: v },
+      }));
+
     // ── שער הבחירה: שאלה מפורשת עם המשך/דילוג ──
     if (premiumPhase === 'gate') {
       const g = p.gate;
@@ -370,6 +377,52 @@ export default function OnboardingWizard({
             <p className="mt-4 text-sm font-medium text-emerald-600">{g.eyebrow}</p>
             <h2 className="mt-1 text-2xl font-bold text-[#1b1715]">{g.title}</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-[#6e655f]">{g.subtitle}</p>
+            {/* רשתות חברתיות (אופציונלי): קישורים אלה מדליקים את כפתורי הרשתות ומחזקים את העמוד. */}
+            <div className="mx-auto mt-6 max-w-md rounded-2xl border border-[#e7ddcd] bg-[#f7f2ea] p-4 text-right sm:p-5">
+              <p className="text-sm font-semibold text-[#4a4038]">{g.social.title}</p>
+              <p className="mt-1 text-xs text-[#6e655f]">{g.social.lead}</p>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label htmlFor="gate-social-ig" className={labelCls}>{g.social.instagramLabel}</label>
+                  <input
+                    id="gate-social-ig"
+                    type="text"
+                    dir="ltr"
+                    value={premiumDraft.socialLinks?.instagram ?? ''}
+                    onChange={(e) => setSocial('instagram', e.target.value)}
+                    placeholder={g.social.instagramPlaceholder}
+                    className={inputCls}
+                  />
+                  <p className="mt-1 text-xs text-[#b3a690]">{g.social.instagramHint}</p>
+                </div>
+                <div>
+                  <label htmlFor="gate-social-tt" className={labelCls}>{g.social.tiktokLabel}</label>
+                  <input
+                    id="gate-social-tt"
+                    type="text"
+                    dir="ltr"
+                    value={premiumDraft.socialLinks?.tiktok ?? ''}
+                    onChange={(e) => setSocial('tiktok', e.target.value)}
+                    placeholder={g.social.tiktokPlaceholder}
+                    className={inputCls}
+                  />
+                  <p className="mt-1 text-xs text-[#b3a690]">{g.social.tiktokHint}</p>
+                </div>
+                <div>
+                  <label htmlFor="gate-social-fb" className={labelCls}>{g.social.facebookLabel}</label>
+                  <input
+                    id="gate-social-fb"
+                    type="text"
+                    dir="ltr"
+                    value={premiumDraft.socialLinks?.facebook ?? ''}
+                    onChange={(e) => setSocial('facebook', e.target.value)}
+                    placeholder={g.social.facebookPlaceholder}
+                    className={inputCls}
+                  />
+                  <p className="mt-1 text-xs text-[#b3a690]">{g.social.facebookHint}</p>
+                </div>
+              </div>
+            </div>
             <div className="mt-6 flex flex-col items-center gap-3">
               {/* המשך: שומר טיוטה ריקה ומעביר לתת-השלב הראשון */}
               <form action={premiumFormAction} className="w-full sm:w-auto">
@@ -463,6 +516,8 @@ export default function OnboardingWizard({
     const hotDealsImages = hotDeals.images ?? [];
     const launchOffer: LandingLaunchOffer | undefined = premiumDraft.launchOffer;
     const social: LandingSocialLinks = premiumDraft.socialLinks ?? {};
+    const instagramPosts = premiumDraft.instagramPostUrls ?? [];
+    const socialVideos = premiumDraft.socialVideoUrls ?? [];
     const sections = premiumDraft.sections ?? buildDefaultSectionToggles(businessType);
 
     // ── עוזרי עריכה (פונקציונליים, בטוחים לעדכונים עוקבים) ──
@@ -491,6 +546,34 @@ export default function OnboardingWizard({
         return { ...prev, hotDeals: { ...cur, images: next } };
       });
 
+    // WAVE D: לכידת תוכן חברתי לעמוד הציבורי (מערכים, עדכונים פונקציונליים בטוחים, תקרה 6).
+    const setInstaPost = (i: number, url: string) =>
+      setPremiumDraft((prev) => {
+        const next = [...(prev.instagramPostUrls ?? [])];
+        while (next.length <= i) next.push('');
+        next[i] = url;
+        return { ...prev, instagramPostUrls: next };
+      });
+    const addInstaPost = () =>
+      setPremiumDraft((prev) => {
+        const cur = prev.instagramPostUrls ?? [];
+        if (cur.length >= 6) return prev;
+        return { ...prev, instagramPostUrls: [...cur, ''] };
+      });
+    const setSocialVideo = (i: number, url: string) =>
+      setPremiumDraft((prev) => {
+        const next = [...(prev.socialVideoUrls ?? [])];
+        while (next.length <= i) next.push('');
+        next[i] = url;
+        return { ...prev, socialVideoUrls: next };
+      });
+    const addSocialVideo = () =>
+      setPremiumDraft((prev) => {
+        const cur = prev.socialVideoUrls ?? [];
+        if (cur.length >= 6) return prev;
+        return { ...prev, socialVideoUrls: [...cur, ''] };
+      });
+
     // מבצע השקה אופציונלי בתוך המבצעים החמים (טקסט + מקומות שנותרו + מועד סיום).
     const patchLaunchOffer = (patch: Partial<LandingLaunchOffer>) =>
       setPremiumDraft((prev) => {
@@ -498,12 +581,7 @@ export default function OnboardingWizard({
         return { ...prev, launchOffer: { ...cur, ...patch } };
       });
 
-    // מיקום: עריכת וואטסאפ + הדלקת/כיבוי מקטע המיקום בעמוד הציבורי.
-    const setSocial = (key: keyof LandingSocialLinks, v: string) =>
-      setPremiumDraft((prev) => ({
-        ...prev,
-        socialLinks: { ...(prev.socialLinks ?? {}), [key]: v },
-      }));
+    // מיקום: הדלקת/כיבוי מקטע המיקום בעמוד הציבורי (עריכת וואטסאפ דרך setSocial שהוגדר למעלה).
     const setSection = (key: LandingSectionKey, on: boolean) =>
       setPremiumDraft((prev) => ({
         ...prev,
@@ -779,6 +857,86 @@ export default function OnboardingWizard({
                   />
                   {p.steps.location.showToggle}
                 </label>
+                {/* ── WAVE D: לכידת תוכן חברתי שמזין את מקטעי הרשתות בעמוד הציבורי ── */}
+                <div className="space-y-4 rounded-2xl border border-[#e7ddcd] bg-white p-4">
+                  {/* פוסטים מאינסטגרם */}
+                  <div>
+                    <label className={labelCls}>{p.steps.location.instagramPostsLabel}</label>
+                    <p className="-mt-0.5 mb-2 text-xs text-[#b3a690]">{p.steps.location.instagramPostsHint}</p>
+                    <div className="space-y-2">
+                      {(instagramPosts.length ? instagramPosts : ['']).map((v, i) => (
+                        <input
+                          key={i}
+                          type="text"
+                          dir="ltr"
+                          value={v}
+                          onChange={(e) => setInstaPost(i, e.target.value)}
+                          placeholder={p.steps.location.instagramPostPlaceholder}
+                          className={inputCls}
+                        />
+                      ))}
+                    </div>
+                    {instagramPosts.length < 6 ? (
+                      <button
+                        type="button"
+                        onClick={addInstaPost}
+                        className="mt-2 inline-flex items-center gap-1 rounded-xl border border-[#d6c8b4] bg-white px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#faf6ef]"
+                      >
+                        {p.steps.location.addMore}
+                      </button>
+                    ) : null}
+                  </div>
+                  {/* סרטונים מטיקטוק או יוטיוב */}
+                  <div>
+                    <label className={labelCls}>{p.steps.location.socialVideosLabel}</label>
+                    <p className="-mt-0.5 mb-2 text-xs text-[#b3a690]">{p.steps.location.socialVideosHint}</p>
+                    <div className="space-y-2">
+                      {(socialVideos.length ? socialVideos : ['']).map((v, i) => (
+                        <input
+                          key={i}
+                          type="text"
+                          dir="ltr"
+                          value={v}
+                          onChange={(e) => setSocialVideo(i, e.target.value)}
+                          placeholder={p.steps.location.socialVideoPlaceholder}
+                          className={inputCls}
+                        />
+                      ))}
+                    </div>
+                    {socialVideos.length < 6 ? (
+                      <button
+                        type="button"
+                        onClick={addSocialVideo}
+                        className="mt-2 inline-flex items-center gap-1 rounded-xl border border-[#d6c8b4] bg-white px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#faf6ef]"
+                      >
+                        {p.steps.location.addMore}
+                      </button>
+                    ) : null}
+                  </div>
+                  {/* פיד פייסבוק: שדה מפורש בלבד, נפרד מכפתור האייקון (משמר את הניתוק מ-C.1) */}
+                  <div>
+                    <label htmlFor="prem-location-fbfeed" className={labelCls}>{p.steps.location.facebookFeedLabel}</label>
+                    <p className="-mt-0.5 mb-2 text-xs text-[#b3a690]">{p.steps.location.facebookFeedHint}</p>
+                    <input
+                      id="prem-location-fbfeed"
+                      type="text"
+                      dir="ltr"
+                      value={premiumDraft.facebookFeedUrl ?? ''}
+                      onChange={(e) => patchDraft({ facebookFeedUrl: e.target.value })}
+                      placeholder={p.steps.location.facebookFeedPlaceholder}
+                      className={inputCls}
+                    />
+                    {social.facebook ? (
+                      <button
+                        type="button"
+                        onClick={() => patchDraft({ facebookFeedUrl: social.facebook ?? '' })}
+                        className="mt-2 inline-flex items-center gap-1 rounded-xl border border-[#d6c8b4] bg-white px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#faf6ef]"
+                      >
+                        {p.steps.location.facebookUseIconLink}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               </>
             )}
 
