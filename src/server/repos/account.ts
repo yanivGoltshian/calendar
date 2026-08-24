@@ -36,6 +36,7 @@ export async function getAppointmentsForUser(identity: UserIdentity) {
           name: true,
           slug: true,
           timezone: true,
+          address: true,
           settings: { select: { cancellationWindowHours: true } },
         },
       },

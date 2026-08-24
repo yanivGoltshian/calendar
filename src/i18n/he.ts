@@ -1606,6 +1606,7 @@ const he = {
   },
   account: {
     title: 'החשבון שלי',
+    greeting: 'שלום',
     subtitle: 'ניהול התורים והפרטים שלך',
     upcomingTitle: 'התורים הקרובים',
     pastTitle: 'היסטוריית תורים',
@@ -1627,6 +1628,10 @@ const he = {
     cancelError: 'ביטול התור נכשל. אנא נסו שוב.',
     cancelWindowPassed: 'לא ניתן לבטל בטווח הזמן שלפני התור. אנא צרו קשר עם העסק.',
     cancelling: 'מבטל...',
+    duration: 'משך',
+    addToCalendar: 'הוספה ליומן',
+    addToGoogle: 'Google Calendar',
+    addToIcs: 'יומן אחר (Apple / Outlook)',
     googleCta: 'התחבר עם גוגל',
     googlePrompt: 'לקוחות חוזרים מתחברים במהירות עם חשבון גוגל',
     // פרטי החשבון המחובר + מחיקת רישום (חוק הגנת הפרטיות).

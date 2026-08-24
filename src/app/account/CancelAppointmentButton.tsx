@@ -1,9 +1,9 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { Button } from '@/components/ui/admin';
 import { t } from '@/i18n';
 import { cancelAppointmentAction, type CancelState } from './actions';
+import { btnDangerGhostSm, btnDangerSm, btnWhiteSm } from './premium';
 
 const INITIAL: CancelState = { ok: false };
 
@@ -18,16 +18,11 @@ export function CancelAppointmentButton({ appointmentId }: { appointmentId: stri
   if (!confirming) {
     return (
       <div className="flex flex-col gap-1.5">
-        <Button
-          type="button"
-          variant="danger"
-          size="sm"
-          onClick={() => setConfirming(true)}
-        >
+        <button type="button" className={btnDangerGhostSm} onClick={() => setConfirming(true)}>
           {t.account.cancelCta}
-        </Button>
+        </button>
         {state.error ? (
-          <p className="text-xs text-[#F2A0A0]">
+          <p className="text-xs text-[#a06c63]">
             {state.error === 'window_passed'
               ? t.account.cancelWindowPassed
               : t.account.cancelError}
@@ -38,23 +33,25 @@ export function CancelAppointmentButton({ appointmentId }: { appointmentId: stri
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-2">
+    <form
+      action={formAction}
+      className="flex flex-col gap-2 rounded-2xl border border-[#e2c9c3] bg-[#fbf3f1] p-3"
+    >
       <input type="hidden" name="appointmentId" value={appointmentId} />
-      <p className="text-sm font-semibold text-[#E8ECF3]">{t.account.cancelConfirmTitle}</p>
-      <p className="text-xs text-[#9AA7BD]">{t.account.cancelConfirmBody}</p>
+      <p className="text-sm font-bold text-[#a06c63]">{t.account.cancelConfirmTitle}</p>
+      <p className="text-xs text-[#6e655f]">{t.account.cancelConfirmBody}</p>
       <div className="flex items-center gap-2">
-        <Button type="submit" variant="danger" size="sm" disabled={pending}>
+        <button type="submit" className={btnDangerSm} disabled={pending}>
           {pending ? t.account.cancelling : t.account.cancelConfirm}
-        </Button>
-        <Button
+        </button>
+        <button
           type="button"
-          variant="outline"
-          size="sm"
+          className={btnWhiteSm}
           disabled={pending}
           onClick={() => setConfirming(false)}
         >
           {t.account.cancelKeep}
-        </Button>
+        </button>
       </div>
     </form>
   );
