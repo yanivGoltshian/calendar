@@ -8,11 +8,12 @@ import { t } from '@/i18n';
 import { Card, CardBody, Button, Input } from '@/components/ui/admin';
 import { firebaseEnabled } from '@/lib/firebase/client';
 import { sendFirebasePhoneCode, toE164Israel } from '@/lib/firebase/phone';
+import { CustomerGoogleSignIn } from '@/components/auth/CustomerGoogleSignIn';
 
 type Step = 'contact' | 'code';
 type Channel = 'phone' | 'email';
 
-export default function LoginForm() {
+export default function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/account';
@@ -182,6 +183,18 @@ export default function LoginForm() {
 
         {step === 'contact' ? (
           <>
+            {googleEnabled ? (
+              <div className="flex flex-col gap-3">
+                <CustomerGoogleSignIn
+                  callbackUrl={`/account/continue?next=${encodeURIComponent(redirectTo)}`}
+                />
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <span className="h-px flex-1 bg-slate-700" />
+                  {t.auth.orDivider}
+                  <span className="h-px flex-1 bg-slate-700" />
+                </div>
+              </div>
+            ) : null}
             <div className="flex gap-2">
               <button
                 type="button"
