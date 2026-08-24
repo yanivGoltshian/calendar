@@ -74,3 +74,20 @@ test('computeTrialHashes: hash של מייל ושל טלפון נבדלים זה
   const r = computeTrialHashes('same@example.com', '050-123-4567');
   assert.notEqual(r.emailHash, r.phoneHash);
 });
+
+test('computeTrialHashes: googleSub ריק/חסר מחזיר googleSubHash=null', () => {
+  assert.equal(computeTrialHashes('x@example.com', null).googleSubHash, null);
+  assert.equal(computeTrialHashes('x@example.com', null, null).googleSubHash, null);
+  assert.equal(computeTrialHashes('x@example.com', null, '').googleSubHash, null);
+});
+
+test('computeTrialHashes: googleSub זהה נותן hash דטרמיניסטי; שונה נותן hash שונה', () => {
+  const a = computeTrialHashes('a@example.com', null, '  118273645  ');
+  const b = computeTrialHashes('b@example.com', null, '118273645');
+  assert.ok(a.googleSubHash);
+  assert.match(a.googleSubHash, /^[0-9a-f]{64}$/);
+  // אותו sub של גוגל -> אותו hash, גם עם מייל שונה (זיהוי אותו אדם עם מייל חדש).
+  assert.equal(a.googleSubHash, b.googleSubHash);
+  const c = computeTrialHashes('a@example.com', null, '999999999');
+  assert.notEqual(a.googleSubHash, c.googleSubHash);
+});

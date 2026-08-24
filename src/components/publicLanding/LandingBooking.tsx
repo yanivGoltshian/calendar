@@ -21,6 +21,8 @@ export type BookingLabels = {
   summaryEmpty: string;
   cta: string;
   note: string;
+  unavailableTitle: string;
+  unavailableBody: string;
 };
 
 type StaffMember = { id: string; displayName: string };
@@ -58,6 +60,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
   const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const [time, setTime] = useState('');
 
   // כשלא נבחר איש צוות ספציפי ("כל הצוות") — שולחים את איש הצוות הראשון כברירת מחדל לשאילתה.
@@ -79,7 +82,9 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
     })
       .then((r) => r.json())
       .then((d) => {
-        if (!cancelled) setSlots(d?.ok ? (d.slots as Slot[]) : []);
+        if (cancelled) return;
+        setBlocked(!!d?.blocked);
+        setSlots(d?.ok && !d?.blocked ? (d.slots as Slot[]) : []);
       })
       .catch(() => {
         if (!cancelled) setSlots([]);
@@ -150,6 +155,15 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
           </span>
         </div>
 
+        {blocked ? (
+          <div className="mt-[18px] rounded-2xl border border-[#e7ddcd] bg-[#faf6ef] p-7 text-center">
+            <p className="text-lg font-black text-[color:var(--c-ink,#1b1715)]">{labels.unavailableTitle}</p>
+            <p className="mx-auto mt-2 max-w-md text-[0.95rem] leading-relaxed text-[color:var(--c-muted,#6e655f)]">
+              {labels.unavailableBody}
+            </p>
+          </div>
+        ) : (
+          <>
         <div className="mt-[18px] grid grid-cols-1 gap-[18px] min-[821px]:grid-cols-[1.1fr_1fr_1fr]">
           {/* טיפול + צוות */}
           <div>
@@ -286,6 +300,8 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
             <ArrowLeftIcon className="h-4 w-4 transition group-hover:-translate-x-1" />
           </Link>
         </div>
+          </>
+        )}
       </div>
       <p className="mt-3 px-1 text-center text-xs text-[color:var(--c-ink,#1b1715)]/55">{labels.note}</p>
     </section>

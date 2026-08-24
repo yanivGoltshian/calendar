@@ -6,9 +6,10 @@ import { t } from '@/i18n';
 /**
  * התראות מייל אוטומטיות לבעל העסק סביב סוף תקופת הניסיון החינמית (cron יומי).
  *
- * שתי שכבות:
- *  - 'warn'    — כשלושה ימים לפני סוף הניסיון (תזכורת עדינה לבחור חבילה).
- *  - 'expired' — ביום שבו הניסיון פג (אזור הניהול ננעל; העמוד הציבורי ממשיך).
+ * חמש שכבות (קצב 7/3/1/0 ואחרי):
+ *  - 'warn7' / 'warn' / 'warn1' — 7 / 3 / 1 ימים לפני סוף הניסיון (תזכורות לבחור חבילה).
+ *  - 'expired'                  — ביום הפקיעה (אזור הניהול וההזמנות הציבוריות ננעלים).
+ *  - 'postExpired'              — כשלושה ימים לאחר הפקיעה (הזמנה לחדש ולהפעיל מחדש).
  *
  * אידמפוטנטיות ללא עמודת DB: ה-cron רץ פעם ביום, והמסווג משתמש בחלון סבילות של
  * ±12 שעות סביב כל יעד. מכיוון שריצות עוקבות מרוחקות ~24 שעות, כל עסק חוצה כל
@@ -20,17 +21,40 @@ import { t } from '@/i18n';
  * זורקת — כל ערוץ עטוף ומחזיר תוצאה מובנית.
  */
 
-export type TrialNoticeTier = 'warn' | 'expired';
+export type TrialNoticeTier = 'warn7' | 'warn' | 'warn1' | 'expired' | 'postExpired';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** מספר הימים לפני סוף הניסיון שבו נשלחת שכבת האזהרה. */
+/** מספר הימים לפני סוף הניסיון בשכבת האזהרה הראשית (נשמר לתאימות לאחור). */
 export const TRIAL_WARN_DAYS = 3;
 /** חצי רוחב חלון הסבילות סביב כל יעד שכבה (±12ש׳ → פגיעה אחת לכל ריצה יומית). */
 const TOLERANCE_MS = 12 * 60 * 60 * 1000;
 
 /**
+ * מפת השכבות: לכל שכבה היסט ימים של trialEndsAt מרגע הריצה (חיובי=עתיד, שלילי=עבר)
+ * וכמות הימים ({days}) לשיבוץ בקופי. סדר יורד לפי היסט כדי שהמסווג יבחר את השכבה
+ * המוקדמת ביותר בגבול. הקצב: 7/3/1 ימים לפני, ביום הפקיעה, ו-3 ימים אחרי (חידוש).
+ */
+const TRIAL_NOTICE_TIERS: ReadonlyArray<{
+  tier: TrialNoticeTier;
+  offsetDays: number;
+  days: number;
+}> = [
+  { tier: 'warn7', offsetDays: 7, days: 7 },
+  { tier: 'warn', offsetDays: 3, days: 3 },
+  { tier: 'warn1', offsetDays: 1, days: 1 },
+  { tier: 'expired', offsetDays: 0, days: 0 },
+  { tier: 'postExpired', offsetDays: -3, days: 3 },
+];
+
+/** ממפה שכבה לכמות הימים ({days}) לשיבוץ בקופי המייל. */
+function tierDays(tier: TrialNoticeTier): number {
+  return TRIAL_NOTICE_TIERS.find((x) => x.tier === tier)?.days ?? TRIAL_WARN_DAYS;
+}
+
+/**
  * מסווג טהור: לאיזו שכבת התראה (אם בכלל) שייך עסק לפי מועד סוף הניסיון ורגע הריצה.
- * מחזיר null כשאין מה לשלוח (אין תאריך, או שהעסק אינו בחלון של אף שכבה).
+ * מחזיר null כשאין מה לשלוח (אין תאריך, או שהעסק אינו בחלון של אף שכבה). נבדק לפי סדר
+ * TRIAL_NOTICE_TIERS (היסט יורד) והחלונות אינם חופפים, כך שכל עסק שייך לכל היותר לשכבה אחת.
  */
 export function classifyTrialNotice(
   trialEndsAt: Date | null | undefined,
@@ -39,10 +63,9 @@ export function classifyTrialNotice(
   if (!trialEndsAt) return null;
   const diff = trialEndsAt.getTime() - now.getTime();
   if (Number.isNaN(diff)) return null;
-  // שכבת אזהרה: כ-TRIAL_WARN_DAYS ימים לפני הסוף.
-  if (Math.abs(diff - TRIAL_WARN_DAYS * DAY_MS) <= TOLERANCE_MS) return 'warn';
-  // שכבת פקיעה: רגע סוף הניסיון עצמו.
-  if (Math.abs(diff) <= TOLERANCE_MS) return 'expired';
+  for (const { tier, offsetDays } of TRIAL_NOTICE_TIERS) {
+    if (Math.abs(diff - offsetDays * DAY_MS) <= TOLERANCE_MS) return tier;
+  }
   return null;
 }
 
@@ -50,18 +73,26 @@ export type TrialEmailContent = { subject: string; text: string; html: string };
 
 /**
  * בונה את תוכן מייל ההתראה (נושא + טקסט + HTML) לשכבה נתונה. טהור וניתן לבדיקה.
- * {days} בשכבת האזהרה תמיד שווה ל-TRIAL_WARN_DAYS (סמנטיקת השכבה), לכן הקופי יציב.
+ * {days} נגזר מהשכבה (tierDays) — 7/3/1 לפני, 0 בפקיעה, 3 לאחריה — כך שהקופי יציב.
  */
 export function buildTrialExpiryEmail(
   tier: TrialNoticeTier,
   input: { ownerName: string; businessName: string; ctaUrl: string },
 ): TrialEmailContent {
-  const copy = tier === 'warn' ? t.billing.trialEmail.warn : t.billing.trialEmail.expired;
+  type TrialCopy = { subject: string; heading: string; body: string; cta: string };
+  const copyByTier: Record<TrialNoticeTier, TrialCopy> = {
+    warn7: t.billing.trialEmail.warn7,
+    warn: t.billing.trialEmail.warn,
+    warn1: t.billing.trialEmail.warn1,
+    expired: t.billing.trialEmail.expired,
+    postExpired: t.billing.trialEmail.postExpired,
+  };
+  const copy = copyByTier[tier];
   const fill = (s: string) =>
     s
-      .replace('{days}', String(TRIAL_WARN_DAYS))
-      .replace('{name}', input.ownerName)
-      .replace('{business}', input.businessName);
+      .replace(/\{days\}/g, String(tierDays(tier)))
+      .replace(/\{name\}/g, input.ownerName)
+      .replace(/\{business\}/g, input.businessName);
 
   const subject = fill(copy.subject);
   const heading = fill(copy.heading);
@@ -92,6 +123,24 @@ export function buildTrialExpiryEmail(
   return { subject, text, html };
 }
 
+export type WhatsAppStubResult = {
+  channel: 'whatsapp';
+  tier: TrialNoticeTier;
+  sent: false;
+  reason: 'pending-meta-approval';
+};
+
+/**
+ * ערוץ WhatsApp להתראות הניסיון — stub מכוון מאחורי אותו טריגר של המייל.
+ * אינטגרציית WhatsApp/ACS חסומה על אישור Meta (בהמתנה), ולכן זו פעולת no-op שמחזירה
+ * תוצאה מובנית בלבד ואינה שולחת דבר. כשה-ACS יעלה יש להחליף את גוף הפונקציה בשליחה
+ * בפועל (למשל sendWhatsApp(phone, buildTrialExpiryWhatsApp(tier, ...))) — הטריגר,
+ * השכבות והקצב כבר קיימים, כך שהערוץ "נדלק" ללא שינוי בלוגיקת ההפעלה.
+ */
+export function notifyOwnerViaWhatsAppStub(tier: TrialNoticeTier): WhatsAppStubResult {
+  return { channel: 'whatsapp', tier, sent: false, reason: 'pending-meta-approval' };
+}
+
 /** יעד התראה בודד (פרימיטיבים בלבד — עצמאי מטיפוסי Prisma לבדיקות קלות). */
 export type TrialExpiryTarget = {
   businessId: string;
@@ -113,6 +162,11 @@ export type TrialExpiryDispatchResult = {
   skipped: boolean;
   /** תקציר שגיאה (אם הייתה) לתיעוד. */
   error?: string;
+  /**
+   * האם הופעל ה-stub של ערוץ WhatsApp מאחורי אותו טריגר (Meta בהמתנה ⇒ לא נשלח בפועל).
+   * דגל דיאגנוסטי בלבד; יתחלף בשליחה אמיתית כשה-ACS יעלה.
+   */
+  whatsappStubbed?: boolean;
 };
 
 export type TrialExpiryNotifyDeps = {
@@ -141,9 +195,19 @@ export async function notifyOwnerOfTrialExpiry(
     return { businessId: target.businessId, tier: null, emailed: false, skipped: true };
   }
 
+  // ערוץ WhatsApp מאחורי אותו טריגר: כרגע stub (Meta בהמתנה) — no-op שמסמן שהערוץ קיים
+  // ויידלק כשה-ACS יעלה. אינו מעכב את מסלול המייל ואינו זורק.
+  notifyOwnerViaWhatsAppStub(tier);
+
   const to = target.ownerEmail?.trim();
   if (!to) {
-    return { businessId: target.businessId, tier, emailed: false, skipped: true };
+    return {
+      businessId: target.businessId,
+      tier,
+      emailed: false,
+      skipped: true,
+      whatsappStubbed: true,
+    };
   }
 
   const origin = deps.canonicalOrigin() ?? '';
@@ -156,9 +220,22 @@ export async function notifyOwnerOfTrialExpiry(
 
   try {
     await deps.sendEmail(to, subject, text, html);
-    return { businessId: target.businessId, tier, emailed: true, skipped: false };
+    return {
+      businessId: target.businessId,
+      tier,
+      emailed: true,
+      skipped: false,
+      whatsappStubbed: true,
+    };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { businessId: target.businessId, tier, emailed: false, skipped: false, error: msg };
+    return {
+      businessId: target.businessId,
+      tier,
+      emailed: false,
+      skipped: false,
+      error: msg,
+      whatsappStubbed: true,
+    };
   }
 }

@@ -957,6 +957,10 @@ model TrialLedger {
   emailHash           String?  @unique
   // hash של הטלפון המנורמל (E.164). ייחודי; nullable כשלא נמסר טלפון.
   phoneHash           String?  @unique
+  // hash של מזהה גוגל היציב (OAuth sub / providerAccountId). מזהה "אותו אדם עם מייל
+  // חדש": מנצל שמוחק ונרשם שוב עם כתובת אחרת אך אותו חשבון גוגל ייתפס כהרשמה חוזרת.
+  // additive + nullable + ייחודי; שורות קיימות = NULL (Postgres מתיר ריבוי NULL תחת UNIQUE).
+  googleSubHash       String?  @unique
   // מתי התחילה תקופת הניסיון הראשונה של המזהה הזה.
   firstTrialStartedAt DateTime @default(now())
   // מועד סיום הניסיון המקורי. הרשמה חוזרת מקבלת את הערך הזה (ללא הארכה); אם עבר,
@@ -969,4 +973,5 @@ model TrialLedger {
 
   @@index([emailHash])
   @@index([phoneHash])
+  @@index([googleSubHash])
 }

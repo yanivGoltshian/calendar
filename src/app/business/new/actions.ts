@@ -48,6 +48,7 @@ export async function createBusinessAction(
       address,
       ownerEmail: email,
       ownerName: session.user?.name ?? null,
+      ownerGoogleSub: (session.user as { googleSub?: string } | undefined)?.googleSub ?? null,
       priorCalendar,
       referralSource,
     });

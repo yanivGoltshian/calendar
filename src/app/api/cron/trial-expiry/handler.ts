@@ -93,8 +93,9 @@ export async function handleTrialExpiryCron(
         },
         now,
       );
-      if (result.tier === 'warn') warned += 1;
-      if (result.tier === 'expired') expired += 1;
+      // קיבוץ למשפחות: warn7/warn/warn1 → אזהרות; expired/postExpired → פקיעה.
+      if (result.tier === 'warn7' || result.tier === 'warn' || result.tier === 'warn1') warned += 1;
+      if (result.tier === 'expired' || result.tier === 'postExpired') expired += 1;
       if (result.emailed) emailed += 1;
       if (result.skipped) skipped += 1;
       if (result.error) failed += 1;

@@ -116,10 +116,16 @@ export const authConfig: NextAuthConfig = {
     error: '/business/login',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user?.email) {
         token.email = user.email;
         if (user.name) token.name = user.name;
+      }
+      // לכידת מזהה גוגל היציב (sub) בכניסה ראשונית בלבד. account קיים רק בעת ה-sign-in;
+      // הוא נשמר על ה-token להמשך. משמש anti-abuse בלבד (זיהוי אותו אדם עם מייל חדש)
+      // ואינו משנה בשום צורה את זיהוי/ניתוב הבעלים, שנשאר מבוסס-מייל.
+      if (account?.provider === 'google' && account.providerAccountId) {
+        token.googleSub = account.providerAccountId;
       }
       return token;
     },
@@ -127,6 +133,9 @@ export const authConfig: NextAuthConfig = {
       if (session.user) {
         if (token.email) session.user.email = token.email as string;
         if (token.name) session.user.name = token.name as string;
+        if (token.googleSub) {
+          (session.user as { googleSub?: string }).googleSub = token.googleSub as string;
+        }
       }
       return session;
     },

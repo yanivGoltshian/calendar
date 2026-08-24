@@ -42,8 +42,21 @@ test('classifyTrialNotice: just before and just after expiry (±11h) → expired
   assert.equal(classifyTrialNotice(at(11 * HOUR), NOW), 'expired');
 });
 
-test('classifyTrialNotice: between tiers (1 day left) → null', () => {
-  assert.equal(classifyTrialNotice(at(1 * DAY), NOW), null);
+test('classifyTrialNotice: exactly 7 days out → warn7', () => {
+  assert.equal(classifyTrialNotice(at(7 * DAY), NOW), 'warn7');
+});
+
+test('classifyTrialNotice: exactly 1 day left → warn1', () => {
+  assert.equal(classifyTrialNotice(at(1 * DAY), NOW), 'warn1');
+});
+
+test('classifyTrialNotice: warn1 window edges (±11h around 1d) → warn1', () => {
+  assert.equal(classifyTrialNotice(at(1 * DAY - 11 * HOUR), NOW), 'warn1');
+  assert.equal(classifyTrialNotice(at(1 * DAY + 11 * HOUR), NOW), 'warn1');
+});
+
+test('classifyTrialNotice: exactly 3 days after expiry → postExpired', () => {
+  assert.equal(classifyTrialNotice(at(-3 * DAY), NOW), 'postExpired');
 });
 
 test('classifyTrialNotice: long past expiry (2 days ago) → null', () => {
@@ -140,7 +153,7 @@ test('notifyOwnerOfTrialExpiry: sends warn email to owner in window', async () =
 test('notifyOwnerOfTrialExpiry: no tier → skip, no email', async () => {
   const { deps, sent } = makeDeps();
   const r = await notifyOwnerOfTrialExpiry(
-    { businessId: 'b1', businessName: 'X', ownerEmail: 'o@e.com', trialEndsAt: at(1 * DAY) },
+    { businessId: 'b1', businessName: 'X', ownerEmail: 'o@e.com', trialEndsAt: at(5 * DAY) },
     NOW,
     deps,
   );

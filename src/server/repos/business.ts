@@ -56,8 +56,9 @@ export async function getBusinessById(id: string) {
  */
 export async function getBusinessesForTrialExpiryNotice(now: Date) {
   const DAY_MS = 24 * 60 * 60 * 1000;
-  const from = new Date(now.getTime() - 2 * DAY_MS);
-  const to = new Date(now.getTime() + 4 * DAY_MS);
+  // חלון רחב דיו לכל חמש השכבות: warn7 (+7 ימים) עד postExpired (-3 ימים), עם מרווח סבילות.
+  const from = new Date(now.getTime() - 4 * DAY_MS);
+  const to = new Date(now.getTime() + 8 * DAY_MS);
   return prisma.business.findMany({
     where: {
       plan: 'basic',
@@ -262,6 +263,7 @@ export async function createBusiness(input: {
   address?: string | null;
   ownerEmail: string;
   ownerName?: string | null;
+  ownerGoogleSub?: string | null;
   priorCalendar?: string | null;
   referralSource?: string | null;
 }) {
@@ -277,7 +279,12 @@ export async function createBusiness(input: {
   // החלטת ניסיון חינם מול דג׳ר טביעות-האצבע (anti-abuse): הרשמה ראשונה מקבלת 30 יום;
   // הרשמה חוזרת (אחרי מחיקת חשבון) מקבלת את מועד הסיום המקורי ללא הארכה — ואם עבר,
   // העסק נוצר כבר-פג (subscriptionStatus=expired) וייחסם מיד על-ידי אכיפת המנוי.
-  const trialDecision = await decideTrialForRegistration(input.ownerEmail, input.phone ?? null);
+  const trialDecision = await decideTrialForRegistration(
+    input.ownerEmail,
+    input.phone ?? null,
+    new Date(),
+    input.ownerGoogleSub ?? null,
+  );
   const trialEndsAt = trialDecision.trialEndsAt;
   const business = await prisma.business.create({
     data: {

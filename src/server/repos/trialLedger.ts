@@ -31,13 +31,15 @@ export interface TrialDecision {
 export function computeTrialHashes(
   ownerEmail: string,
   phone: string | null,
-): { emailHash: string; phoneHash: string | null } {
+  googleSub?: string | null,
+): { emailHash: string; phoneHash: string | null; googleSubHash: string | null } {
   const emailHash = fingerprintHash(normalizeEmail(ownerEmail));
   let phoneHash: string | null = null;
   if (phone && isValidIsraeliMobile(phone)) {
     phoneHash = fingerprintHash(normalizePhone(phone));
   }
-  return { emailHash, phoneHash };
+  const googleSubHash = googleSub ? fingerprintHash(googleSub.trim()) : null;
+  return { emailHash, phoneHash, googleSubHash };
 }
 
 /**
@@ -65,9 +67,12 @@ export function resolveTrialDecision(
 }
 
 /** בניית תנאי OR לחיפוש לפי אחד מה-hashים, בלי להכניס תנאי null שיתפוס רשומות ריקות. */
-function buildHashOr(emailHash: string, phoneHash: string | null) {
-  const or: Array<{ emailHash: string } | { phoneHash: string }> = [{ emailHash }];
+function buildHashOr(emailHash: string, phoneHash: string | null, googleSubHash: string | null) {
+  const or: Array<{ emailHash: string } | { phoneHash: string } | { googleSubHash: string }> = [
+    { emailHash },
+  ];
   if (phoneHash) or.push({ phoneHash });
+  if (googleSubHash) or.push({ googleSubHash });
   return or;
 }
 
@@ -81,9 +86,10 @@ export async function decideTrialForRegistration(
   ownerEmail: string,
   phone: string | null,
   now: Date = new Date(),
+  googleSub: string | null = null,
 ): Promise<TrialDecision> {
-  const { emailHash, phoneHash } = computeTrialHashes(ownerEmail, phone);
-  const or = buildHashOr(emailHash, phoneHash);
+  const { emailHash, phoneHash, googleSubHash } = computeTrialHashes(ownerEmail, phone, googleSub);
+  const or = buildHashOr(emailHash, phoneHash, googleSubHash);
 
   let existing: { id: string; originalTrialEndsAt: Date } | null = null;
   try {
@@ -114,7 +120,13 @@ export async function decideTrialForRegistration(
   // הרשמה ראשונה: רישום רשומת דג׳ר חדשה עם מועד הסיום שנקבע.
   try {
     await prisma.trialLedger.create({
-      data: { emailHash, phoneHash, originalTrialEndsAt: decision.trialEndsAt, firstTrialStartedAt: now },
+      data: {
+        emailHash,
+        phoneHash,
+        googleSubHash,
+        originalTrialEndsAt: decision.trialEndsAt,
+        firstTrialStartedAt: now,
+      },
     });
   } catch {
     // מרוץ: רשומה נוצרה במקביל תחת אותו hash. קריאה חוזרת ושימוש בערך הקיים.
