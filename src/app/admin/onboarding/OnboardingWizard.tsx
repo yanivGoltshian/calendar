@@ -127,6 +127,11 @@ export default function OnboardingWizard({
     })),
   );
 
+  // העלאת סרטון ראש-העמוד מהמכשיר (בנוסף לקישור יוטיוב/וימאו).
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
+  const heroVideoInputRef = useRef<HTMLInputElement | null>(null);
+
   const [servicesState, servicesFormAction, servicesPending] = useActionState(
     saveServices,
     initialSaveState,
@@ -277,6 +282,38 @@ export default function OnboardingWizard({
     // עדכון נקודתי של הטיוטה (מקור האמת היחיד לתוכן הפרימיום).
     const patchDraft = (patch: Partial<LandingContent>) =>
       setPremiumDraft((prev) => ({ ...prev, ...patch }));
+
+    // העלאת קובץ וידאו מהמכשיר: אימות סוג/גודל בצד הלקוח, שליחה לנתיב המאובטח,
+    // ובהצלחה שמירת כתובת ה-blob הציבורית כ-heroVideoUrl.
+    const MAX_HERO_VIDEO_BYTES = 30 * 1024 * 1024;
+    const handleHeroVideoFile = async (file: File | null | undefined) => {
+      if (!file) return;
+      setVideoUploadError(null);
+      if (file.type !== 'video/mp4' && file.type !== 'video/webm') {
+        setVideoUploadError(p.steps.hero.videoBadType);
+        return;
+      }
+      if (file.size > MAX_HERO_VIDEO_BYTES) {
+        setVideoUploadError(p.steps.hero.videoTooLarge);
+        return;
+      }
+      setUploadingVideo(true);
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch('/api/upload/hero-video', { method: 'POST', body: fd });
+        const data = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+        if (!res.ok || !data?.url) {
+          setVideoUploadError(data?.error ?? 'אירעה תקלה בהעלאה. אפשר לנסות שוב.');
+          return;
+        }
+        patchDraft({ heroVideoUrl: data.url });
+      } catch {
+        setVideoUploadError('אירעה תקלה בהעלאה. אפשר לנסות שוב.');
+      } finally {
+        setUploadingVideo(false);
+      }
+    };
 
     // שדה טקסט/מרובה-שורות מבוקר, ללא name (נשמר לטיוטה, לא נכנס לשליחת הטופס).
     const textField = (opts: {
@@ -562,6 +599,30 @@ export default function OnboardingWizard({
                   onChange: (v) => patchDraft({ heroVideoUrl: v }),
                 })}
                 <p className="-mt-2 text-xs text-[#b3a690]">{p.steps.hero.videoUrlHint}</p>
+                <div className="-mt-1">
+                  <input
+                    ref={heroVideoInputRef}
+                    type="file"
+                    accept="video/mp4,video/webm"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      void handleHeroVideoFile(f);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => heroVideoInputRef.current?.click()}
+                    disabled={uploadingVideo}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[#d6c8b4] bg-white px-3 py-2 text-sm font-medium text-[#4a4038] hover:bg-[#faf6ef] disabled:opacity-60"
+                  >
+                    {uploadingVideo ? p.steps.hero.uploadingVideo : p.steps.hero.uploadVideo}
+                  </button>
+                  {videoUploadError ? (
+                    <p className="mt-1 text-xs text-[#b3453b]">{videoUploadError}</p>
+                  ) : null}
+                </div>
                 <div>
                   <span className="mb-2 block text-sm font-medium text-[#4a4038]">
                     {p.steps.hero.imagesTitle}
