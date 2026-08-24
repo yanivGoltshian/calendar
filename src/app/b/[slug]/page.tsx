@@ -99,7 +99,15 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
         return { id: appt.id, title, staffLabel, whenLabel, googleUrl, canCancel };
       });
       returningNode = (
-        <ReturningCustomer name={clientSession.name ?? ''} slug={slug} appointments={views} />
+        <ReturningCustomer
+          name={
+            clientSession.name?.trim() ||
+            clientSession.email?.split('@')[0]?.trim() ||
+            ''
+          }
+          slug={slug}
+          appointments={views}
+        />
       );
     }
   }

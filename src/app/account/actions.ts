@@ -11,6 +11,8 @@ import {
   deleteUserAccount,
   getAccountDeletionInfo,
 } from '@/server/repos/account';
+import { notifyOwnerOfCancellation } from '@/server/notifications/ownerCancellation';
+import { absoluteUrl } from '@/lib/seo';
 
 /** התנתקות: ניקוי עוגיית ה-session והפניה למסך ההתחברות. */
 export async function logout() {
@@ -54,7 +56,27 @@ export async function cancelAppointmentAction(
     return { ok: false, error: 'window_passed' };
   }
 
-  await updateAppointmentStatus(id, 'CANCELLED');
+  await updateAppointmentStatus(id, 'CANCELLED', { cancelledBy: 'CLIENT' });
+
+  // התראת בעל העסק על ביטול שיזם הלקוח (best-effort, לעולם לא חוסמת את הביטול).
+  // היעד הוא מייל העסק עצמו (ownerEmail / owner.email) — לא מייל הפלטפורמה.
+  try {
+    await notifyOwnerOfCancellation({
+      appointmentId: appt.id,
+      businessName: appt.business.name,
+      ownerEmail: appt.business.ownerEmail,
+      ownerUserEmail: appt.business.owner?.email ?? null,
+      clientName: appt.client.name,
+      clientPhone: appt.client.phone ?? null,
+      services: appt.services.map((s) => ({ name: s.nameSnapshot })),
+      startAt: appt.startAt,
+      timezone: appt.business.timezone,
+      manageUrl: absoluteUrl('/admin/appointments'),
+    });
+  } catch {
+    // הביטול כבר בוצע והוחזר בהצלחה; כשל התראה אינו משפיע על התשובה.
+  }
+
   revalidatePath('/account');
   // ריענון אופציונלי של עמוד העסק הציבורי כשהביטול מתבצע מתוך מקטע "שלום .."
   // (חייב להתחיל ב-/b/ כדי למנוע ריענון נתיב שרירותי).

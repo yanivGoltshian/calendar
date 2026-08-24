@@ -136,7 +136,11 @@ export default function NotificationsBell({
                         aria-hidden="true"
                         className={[
                           'mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full',
-                          item.kind === 'approval' ? 'bg-amber-400' : 'bg-[#C59D5F]',
+                          item.kind === 'approval'
+                            ? 'bg-amber-400'
+                            : item.kind === 'cancellation'
+                              ? 'bg-rose-400'
+                              : 'bg-[#C59D5F]',
                         ].join(' ')}
                       />
                       <span className="leading-snug">{item.title}</span>

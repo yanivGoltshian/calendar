@@ -530,6 +530,8 @@ const he = {
       close: 'סגירת ההתראות',
       approvalOne: 'תור אחד ממתין לאישור',
       approvalMany: '{count} תורים ממתינים לאישור',
+      cancellationOne: 'לקוח ביטל תור, המשבצת התפנתה',
+      cancellationMany: '{count} תורים בוטלו על ידי לקוחות',
       renewalTrialToday: 'תקופת הניסיון מסתיימת היום',
       renewalTrialTomorrow: 'תקופת הניסיון מסתיימת מחר',
       renewalTrialDays: 'תקופת הניסיון מסתיימת בעוד {days} ימים',

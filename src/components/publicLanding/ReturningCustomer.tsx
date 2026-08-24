@@ -127,7 +127,7 @@ export default function ReturningCustomer({ name, slug, appointments }: Props) {
         <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#c6a86a,#c08f86,#b0855f)]" />
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-2xl font-black text-[color:var(--c-ink,#1b1715)]">
-            {r.greeting} {name}
+            {name ? `${r.greeting} ${name}` : r.greeting}
           </h2>
           <span className="inline-flex items-center rounded-full bg-[#c08f86]/15 px-3.5 py-1.5 text-xs font-extrabold text-[#a06c63]">
             {r.subtitle}

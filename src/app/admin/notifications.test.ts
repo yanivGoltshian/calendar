@@ -81,3 +81,38 @@ test('שילוב — גם אישור וגם חידוש מופיעים יחד', (
     ['approval', 'renewal'],
   );
 });
+
+test('ביטול לקוח אחד — התראת ביטול עם קישור להזמנות', () => {
+  const items = buildAdminNotifications({
+    pendingCount: 0,
+    recentCancellations: 1,
+    access: { state: 'active', daysLeft: 30 },
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'cancellation');
+  assert.equal(items[0].href, '/admin/appointments');
+});
+
+test('כמה ביטולי לקוח — הכותרת כוללת את המספר', () => {
+  const items = buildAdminNotifications({
+    pendingCount: 0,
+    recentCancellations: 3,
+    access: { state: 'active', daysLeft: 30 },
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'cancellation');
+  assert.ok(items[0].title.includes('3'));
+});
+
+test('שילוב מלא — אישור, ביטול וחידוש לפי הסדר', () => {
+  const items = buildAdminNotifications({
+    pendingCount: 2,
+    recentCancellations: 1,
+    access: { state: 'trialing', daysLeft: 3 },
+  });
+  assert.equal(items.length, 3);
+  assert.deepEqual(
+    items.map((i) => i.kind),
+    ['approval', 'cancellation', 'renewal'],
+  );
+});

@@ -1,7 +1,7 @@
 import { t } from '@/i18n';
 import type { AccessState } from '@/server/subscription';
 
-export type AdminNotificationKind = 'approval' | 'renewal';
+export type AdminNotificationKind = 'approval' | 'renewal' | 'cancellation';
 
 export type AdminNotification = {
   id: string;
@@ -32,9 +32,11 @@ function renewalTitle(state: AccessState, daysLeft: number): string {
  */
 export function buildAdminNotifications(input: {
   pendingCount: number;
+  recentCancellations?: number;
   access: Pick<import('@/server/subscription').BusinessAccess, 'state' | 'daysLeft'>;
 }): AdminNotification[] {
   const { pendingCount, access } = input;
+  const recentCancellations = input.recentCancellations ?? 0;
   const items: AdminNotification[] = [];
 
   if (pendingCount > 0) {
@@ -48,6 +50,21 @@ export function buildAdminNotifications(input: {
       kind: 'approval',
       title,
       href: '/admin/appointments?tab=pending',
+    });
+  }
+
+  // ביטולי לקוח עדכניים לתורים עתידיים (משבצות שהתפנו) — חלון מתגלגל של 24 שעות.
+  if (recentCancellations > 0) {
+    const n = t.admin.notifications;
+    const title =
+      recentCancellations === 1
+        ? n.cancellationOne
+        : n.cancellationMany.replace('{count}', String(recentCancellations));
+    items.push({
+      id: 'recent-cancellations',
+      kind: 'cancellation',
+      title,
+      href: '/admin/appointments',
     });
   }
 

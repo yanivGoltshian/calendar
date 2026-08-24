@@ -460,6 +460,9 @@ model Appointment {
   notes            String?
   confirmedAt      DateTime?
   cancelledAt      DateTime?
+  // מי ביטל את התור: 'CLIENT' (הלקוח דרך העמוד הציבורי) או 'OWNER' (בעל העסק במודול הניהול).
+  // ריק בתורים שלא בוטלו. משמש להתראת בעל העסק בפעמון על ביטולי לקוח בלבד.
+  cancelledBy      String?
 
   // תזכורת 24 שעות ואישור הגעה של הלקוח (מודול תזכורות)
   reminderSentAt     DateTime? // מתי נשלחה תזכורת ה-24 שעות (ריק = טרם נשלחה)

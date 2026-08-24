@@ -120,16 +120,52 @@ export function createAppointment(input: CreateAppointmentInput) {
   });
 }
 
-/** עדכון סטטוס תור (אישור/ביטול/בוצע/לא הגיע). */
-export function updateAppointmentStatus(id: string, status: AppointmentStatus) {
+/** מי יזם ביטול תור: הלקוח מהעמוד הציבורי, או בעל העסק במודול הניהול. */
+export type CancellationActor = 'CLIENT' | 'OWNER';
+
+/**
+ * עדכון סטטוס תור (אישור/ביטול/בוצע/לא הגיע).
+ * בביטול מסומן גם מי יזם אותו (cancelledBy) — ברירת המחדל 'OWNER' (פעולת ניהול),
+ * ונתיב הלקוח מעביר במפורש 'CLIENT'. משמש להתראת בעל העסק על ביטולי לקוח בלבד.
+ */
+export function updateAppointmentStatus(
+  id: string,
+  status: AppointmentStatus,
+  opts?: { cancelledBy?: CancellationActor },
+) {
   const data: {
     status: AppointmentStatus;
     confirmedAt?: Date;
     cancelledAt?: Date;
+    cancelledBy?: CancellationActor;
   } = { status };
   if (status === 'CONFIRMED') data.confirmedAt = new Date();
-  if (status === 'CANCELLED') data.cancelledAt = new Date();
+  if (status === 'CANCELLED') {
+    data.cancelledAt = new Date();
+    data.cancelledBy = opts?.cancelledBy ?? 'OWNER';
+  }
   return prisma.appointment.update({ where: { id }, data });
+}
+
+/**
+ * ספירת ביטולי לקוח עדכניים לתורים עתידיים בעסק — להתראת הפעמון.
+ * חלון מתגלגל: תורים שסטטוסם CANCELLED, שבוטלו בידי הלקוח (cancelledBy='CLIENT')
+ * מאז הרגע `since`, ושמועדם עדיין עתידי (slot שהתפנה). מתאפס מעצמו כשהחלון עובר.
+ */
+export function countRecentClientCancellations(
+  businessId: string,
+  since: Date,
+  now: Date = new Date(),
+): Promise<number> {
+  return prisma.appointment.count({
+    where: {
+      businessId,
+      status: 'CANCELLED',
+      cancelledBy: 'CLIENT',
+      cancelledAt: { gte: since },
+      startAt: { gt: now },
+    },
+  });
 }
 
 /** שליפת תור בודד עם כל הפרטים. */
@@ -151,10 +187,15 @@ export function getAppointmentForOwner(id: string) {
       id: true,
       status: true,
       startAt: true,
-      client: { select: { userId: true, phone: true } },
+      client: { select: { userId: true, phone: true, name: true } },
+      services: { select: { nameSnapshot: true } },
       business: {
         select: {
+          name: true,
+          slug: true,
           timezone: true,
+          ownerEmail: true,
+          owner: { select: { email: true } },
           settings: { select: { cancellationWindowHours: true } },
         },
       },

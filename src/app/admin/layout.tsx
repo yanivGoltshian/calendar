@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getBusinessesOwnedByEmail } from '@/server/repos/business';
-import { countPendingAppointments } from '@/server/repos/appointments';
+import { countPendingAppointments, countRecentClientCancellations } from '@/server/repos/appointments';
 import { getBusinessAccess } from '@/server/subscription';
 import { isPlatformAdminEmail } from '@/server/platformAdmin';
 import AdminSidebar from './AdminSidebar';
@@ -93,8 +93,19 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // ספירת תורים הממתינים לאישור לחיווי (תג) על פריט "הזמנות" בסרגל הצד.
   const pendingCount = await countPendingAppointments(owned[0].id);
 
-  // מרכז ההתראות בפעמון: תורים הממתינים לאישור וחידוש מנוי.
-  const notifications = buildAdminNotifications({ pendingCount, access });
+  // ביטולי לקוח ב-24 השעות האחרונות לתורים עתידיים (משבצות שהתפנו) — להתראת הפעמון.
+  const cancellationSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentCancellations = await countRecentClientCancellations(
+    owned[0].id,
+    cancellationSince,
+  );
+
+  // מרכז ההתראות בפעמון: תורים הממתינים לאישור, ביטולי לקוח וחידוש מנוי.
+  const notifications = buildAdminNotifications({
+    pendingCount,
+    recentCancellations,
+    access,
+  });
 
   return (
     <div dir="rtl" className="flex min-h-screen flex-col bg-slate-50 md:flex-row">
