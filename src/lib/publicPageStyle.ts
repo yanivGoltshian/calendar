@@ -172,6 +172,7 @@ export interface LandingContent {
   googleReviewsUrl?: string; // קישור לעמוד הביקורות של העסק בגוגל (שלב רשות)
   instagramPostUrls?: string[]; // קישורי פוסטים/ריל של אינסטגרם להטמעה רשמית בעמוד הציבורי
   socialVideoUrls?: string[]; // קישורי סרטונים (טיקטוק/יוטיוב) להטמעה רשמית בעמוד הציבורי
+  facebookFeedUrl?: string; // כתובת עמוד פייסבוק להטמעת פיד רשמי (נפרד מכפתור האייקון ב-socialLinks)
   socialLinks?: LandingSocialLinks;
   ctaLabel?: string;
   sections?: LandingSectionToggles;
@@ -401,6 +402,14 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
     if (socialVideoUrls.length >= MAX_SOCIAL_VIDEOS) break;
   }
 
+  // כתובת פיד פייסבוק — הצטרפות מפורשת בלבד. שומרים רק כתובת http(s) של facebook.com,
+  // ומנותקת לחלוטין מכפתור האייקון ב-socialLinks.facebook (שאינו מטמיע פיד).
+  const rawFacebookFeed = cleanString(source.facebookFeedUrl, LIMITS.socialUrl);
+  const facebookFeedUrl =
+    rawFacebookFeed && /^https?:\/\/([^/]+\.)?facebook\.com\//i.test(rawFacebookFeed)
+      ? rawFacebookFeed
+      : '';
+
   const beforeAfter: LandingBeforeAfter[] = [];
   for (const item of toRecordArray(source.beforeAfter)) {
     const beforeUrl = cleanString(item.beforeUrl, LIMITS.galleryUrl);
@@ -460,6 +469,7 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   if (galleryImageUrls.length) content.galleryImageUrls = galleryImageUrls;
   if (instagramPostUrls.length) content.instagramPostUrls = instagramPostUrls;
   if (socialVideoUrls.length) content.socialVideoUrls = socialVideoUrls;
+  if (facebookFeedUrl) content.facebookFeedUrl = facebookFeedUrl;
   if (beforeAfter.length) content.beforeAfter = beforeAfter;
   if (testimonials.length) content.testimonials = testimonials;
   if (faq.length) content.faq = faq;

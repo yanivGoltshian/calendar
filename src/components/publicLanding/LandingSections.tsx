@@ -206,11 +206,11 @@ export default function LandingSections({
           urls={content.socialVideoUrls}
         />
       ) : null}
-      {content?.socialLinks?.facebook ? (
+      {content?.facebookFeedUrl ? (
         <LandingFacebookFeed
           eyebrow={eyebrows.facebook}
           title={l.facebookTitle}
-          pageUrl={content.socialLinks.facebook}
+          pageUrl={content.facebookFeedUrl}
         />
       ) : null}
       {whatsapp ? (

@@ -3,7 +3,8 @@ import SectionHeading from './SectionHeading';
 type Props = { title: string; pageUrl: string; eyebrow?: string };
 
 // פיד פייסבוק — Page Plugin רשמי דרך iframe אנונימי (ללא SDK או app-id).
-// מרונדר רק כשקיים קישור עמוד פייסבוק. RTL-safe, ממורכז ורספונסיבי.
+// מרונדר רק מתוך facebookFeedUrl מפורש (הצטרפות יזומה של בעל העסק), ומנותק
+// לחלוטין מכפתור האייקון ב-socialLinks.facebook. RTL-safe, ממורכז ורספונסיבי.
 export default function LandingFacebookFeed({ title, pageUrl, eyebrow }: Props) {
   const href = pageUrl.trim();
   if (!href) return null;

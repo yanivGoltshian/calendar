@@ -334,3 +334,27 @@ test('normalizeLandingContent: socialVideoUrls — נחתך לתקרה (6)', () 
   const res = normalizeLandingContent({ heroHeadline: 'יש', socialVideoUrls: many });
   assert.equal(res?.socialVideoUrls?.length, MAX_SOCIAL_VIDEOS);
 });
+
+test('normalizeLandingContent: facebookFeedUrl — שומר כתובת facebook.com תקינה בלבד', () => {
+  const res = normalizeLandingContent({
+    heroHeadline: 'יש',
+    facebookFeedUrl: ' https://www.facebook.com/mybiz ',
+  });
+  assert.equal(res?.facebookFeedUrl, 'https://www.facebook.com/mybiz');
+});
+
+test('normalizeLandingContent: facebookFeedUrl — מסנן כתובת שאינה facebook או אינה http(s)', () => {
+  const bad = normalizeLandingContent({ heroHeadline: 'יש', facebookFeedUrl: 'https://example.com/x' });
+  assert.equal(bad?.facebookFeedUrl, undefined);
+  const notHttp = normalizeLandingContent({ heroHeadline: 'יש', facebookFeedUrl: 'facebook.com/mybiz' });
+  assert.equal(notHttp?.facebookFeedUrl, undefined);
+});
+
+test('normalizeLandingContent: socialLinks.facebook לבדו אינו מפעיל facebookFeedUrl (ניתוק כוונות)', () => {
+  const res = normalizeLandingContent({
+    heroHeadline: 'יש',
+    socialLinks: { facebook: 'https://www.facebook.com/profile.php?id=61587016828234' },
+  });
+  assert.equal(res?.facebookFeedUrl, undefined);
+  assert.equal(res?.socialLinks?.facebook, 'https://www.facebook.com/profile.php?id=61587016828234');
+});
