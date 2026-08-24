@@ -101,7 +101,13 @@ export default function PremiumClinicHeader({
   labels,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const phoneDisplay = formatIsraeliPhoneDisplay(phone);
+  // שם ואווטאר הלקוח לצ'יפ החשבון (דסקטופ) ולכותרת המגירה (מובייל).
+  // ראשי־התיבות נופלים חלופית לשם, למייל, ולבסוף לעיגול ריק — לעולם לא קורסים.
+  const accountName = account?.name?.trim() || account?.email?.split('@')[0]?.trim() || '';
+  const accountFirstName = accountName ? accountName.split(/\s+/)[0] : '';
+  const accountInitial = (accountName || account?.email?.trim() || '').charAt(0).toUpperCase();
   // פס המבצע מוצג רק כשיש מבצע תקין ולא הסתיים. הספירה מחושבת פעם אחת (ימים בלבד),
   // בלי טיימר מתקתק — כך אין קפיצה, אין לחץ, ואין אי-התאמת הידרציה.
   const countdown = launchOffer ? computeCountdown(launchOffer.endsAt) : null;
@@ -207,6 +213,108 @@ export default function PremiumClinicHeader({
               {labels.bookCta}
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
+
+            {/* בקרת חשבון לדסקטופ — צ'יפ אווטאר + שם שנפתח לתפריט (אזור אישי/התנתקות),
+                או כפתור התחברות לאורח. מוסתרת במובייל, שם המגירה תופסת את מקומה. */}
+            <div
+              className="relative hidden sm:block"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setAccountOpen(false);
+              }}
+            >
+              {account ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setAccountOpen((v) => !v)}
+                    aria-expanded={accountOpen}
+                    aria-haspopup="menu"
+                    className="inline-flex items-center gap-2 rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 py-1.5 pe-3 ps-1.5 text-sm font-semibold text-[color:var(--c-ink,#1b1715)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
+                  >
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
+                      {accountInitial}
+                    </span>
+                    {accountFirstName ? (
+                      <span className="max-w-[8rem] truncate">{accountFirstName}</span>
+                    ) : null}
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      className={`h-4 w-4 transition ${accountOpen ? 'rotate-180' : ''}`}
+                      aria-hidden
+                    >
+                      <path
+                        d="M6 9l6 6 6-6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  {accountOpen ? (
+                    <>
+                      <button
+                        type="button"
+                        aria-hidden
+                        tabIndex={-1}
+                        onClick={() => setAccountOpen(false)}
+                        className="fixed inset-0 z-40 cursor-default"
+                      />
+                      <div
+                        role="menu"
+                        className="absolute end-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white p-2 shadow-elevated"
+                      >
+                        <div className="flex items-center gap-2.5 px-2 py-2">
+                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
+                            {accountInitial}
+                          </span>
+                          <span className="flex min-w-0 flex-col">
+                            {accountName ? (
+                              <span className="truncate text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
+                                {accountName}
+                              </span>
+                            ) : null}
+                            {account.email ? (
+                              <span
+                                dir="ltr"
+                                className="truncate text-start text-xs text-[color:var(--c-ink,#1b1715)]/65"
+                              >
+                                {account.email}
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                        <Link
+                          href={accountHref}
+                          role="menuitem"
+                          onClick={() => setAccountOpen(false)}
+                          className="mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/12"
+                        >
+                          {labels.menu.account}
+                        </Link>
+                        <form action={logout}>
+                          <button
+                            type="submit"
+                            role="menuitem"
+                            className="block w-full rounded-xl px-3 py-2.5 text-start text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:bg-[color:var(--c-ink,#1b1715)]/5"
+                          >
+                            {labels.menu.logout}
+                          </button>
+                        </form>
+                      </div>
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <Link
+                  href={loginHref}
+                  className="inline-flex items-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 px-4 py-2 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
+                >
+                  {labels.menu.login}
+                </Link>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
@@ -259,20 +367,25 @@ export default function PremiumClinicHeader({
               <div className="mt-3 rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white/60 p-3">
                 {account ? (
                   <>
-                    <div className="flex flex-col gap-0.5 px-1 pb-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-[color:var(--biz-strong)]">
-                        {labels.menu.connectedLabel}
+                    <div className="flex items-center gap-2.5 px-1 pb-2">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-base font-bold text-[color:var(--c-ink,#1b1715)]">
+                        {accountInitial}
                       </span>
-                      {account.name ? (
-                        <span className="truncate text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
-                          {account.name}
+                      <span className="flex min-w-0 flex-col">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--biz-strong)]">
+                          {labels.menu.connectedLabel}
                         </span>
-                      ) : null}
-                      {account.email ? (
-                        <span dir="ltr" className="truncate text-start text-xs text-[color:var(--c-ink,#1b1715)]/70">
-                          {account.email}
-                        </span>
-                      ) : null}
+                        {account.name ? (
+                          <span className="truncate text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
+                            {account.name}
+                          </span>
+                        ) : null}
+                        {account.email ? (
+                          <span dir="ltr" className="truncate text-start text-xs text-[color:var(--c-ink,#1b1715)]/70">
+                            {account.email}
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                     <Link
                       href={accountHref}
