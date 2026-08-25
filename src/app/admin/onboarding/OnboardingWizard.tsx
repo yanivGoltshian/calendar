@@ -11,6 +11,9 @@ import { buildDefaultSectionToggles, BRAND_PRESETS, type BrandPreset } from './p
 import {
   landingDefaults,
   MAX_BENEFITS,
+  MAX_HERO_IMAGES,
+  MAX_GALLERY_IMAGES,
+  MAX_HOT_DEALS_IMAGES,
   type LandingContent,
   type LandingHotDeals,
   type LandingLaunchOffer,
@@ -193,6 +196,83 @@ function InlineText(props: {
     <span {...commonProps} className={`group/inline inline-block cursor-text ${className ?? ''}`}>
       {inner}
     </span>
+  );
+}
+
+/**
+ * משבצת מדיה עם העלאה במקום: מציגה את התמונה או ממלא הרקע, וכפתור צף להעלאה או החלפה.
+ * הקובץ נשלח ל-/api/upload/media, וכתובת ה-URL שחוזרת נכתבת לטיוטה דרך onUploaded.
+ * שגיאה בעברית מהשרת מוצגת מתחת למסגרת. הרכיב מנהל מצב העלאה ושגיאה בעצמו.
+ */
+function MediaSlot(props: {
+  url?: string;
+  accept: string;
+  labels: { upload: string; replace: string; uploading: string; error: string };
+  onUploaded: (url: string) => void;
+  frameClassName: string;
+  tone?: 'light' | 'dark';
+  children: React.ReactNode;
+}) {
+  const { url, accept, labels, onUploaded, frameClassName, tone = 'dark', children } = props;
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onFile = async (file: File | null | undefined) => {
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload/media', { method: 'POST', body: fd });
+      const data = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+      if (!res.ok || !data?.url) {
+        setError(data?.error ?? labels.error);
+        return;
+      }
+      onUploaded(data.url);
+    } catch {
+      setError(labels.error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const btnTone =
+    tone === 'dark'
+      ? 'bg-black/60 text-white hover:bg-black/75'
+      : 'bg-white/90 text-[#4a4038] hover:bg-white';
+  const label = uploading ? labels.uploading : url ? labels.replace : labels.upload;
+
+  return (
+    <div>
+      <div className={frameClassName}>
+        {children}
+        <div className="absolute inset-x-0 bottom-0 flex justify-center p-2">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className={`rounded-full px-3 py-1 text-[11px] font-semibold shadow-sm backdrop-blur transition disabled:opacity-60 ${btnTone}`}
+          >
+            {label}
+          </button>
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            void onFile(f);
+          }}
+        />
+      </div>
+      {error ? <p className="mt-1 text-center text-[10px] text-[#d05b52]">{error}</p> : null}
+    </div>
   );
 }
 
@@ -715,6 +795,37 @@ export default function OnboardingWizard({
         const next = base.slice(0, MAX_BENEFITS).map((b, idx) => (idx === i ? { ...b, ...patch } : b));
         return { ...prev, benefits: next };
       });
+    // מגדירי מדיה: כותבים כתובת שהוחזרה מההעלאה לשדה הנכון, עם שמירה על התקרות.
+    const setHeroImage = (i: number, url: string) =>
+      setPremiumDraft((prev) => {
+        const next = [...(prev.heroImages ?? [])];
+        while (next.length <= i) next.push('');
+        next[i] = url;
+        return { ...prev, heroImages: next.slice(0, MAX_HERO_IMAGES) };
+      });
+    const setGalleryImage = (i: number, url: string) =>
+      setPremiumDraft((prev) => {
+        const next = [...(prev.galleryImageUrls ?? [])];
+        while (next.length <= i) next.push('');
+        next[i] = url;
+        return { ...prev, galleryImageUrls: next.slice(0, MAX_GALLERY_IMAGES) };
+      });
+    const setHotDealImage = (i: number, url: string) =>
+      setPremiumDraft((prev) => {
+        const cur: LandingHotDeals = prev.hotDeals ?? { images: [] };
+        const next = [...(cur.images ?? [])];
+        while (next.length <= i) next.push('');
+        next[i] = url;
+        return { ...prev, hotDeals: { ...cur, images: next.slice(0, MAX_HOT_DEALS_IMAGES) } };
+      });
+    // תוויות אחידות לכל משבצות התמונה בעורך.
+    const mediaImageLabels = {
+      upload: ed.uploadLabel,
+      replace: ed.replaceLabel,
+      uploading: ed.uploading,
+      error: ed.uploadError,
+    };
+    const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
 
     return (
       <div dir="rtl">
@@ -797,12 +908,17 @@ export default function OnboardingWizard({
                   />
                 </span>
               </div>
-              {/* תמונות הירו, לקריאה בלבד בשלב זה */}
+              {/* תמונות הירו, ניתנות להעלאה והחלפה */}
               <div className="mt-6 grid grid-cols-2 gap-3">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <div
+                {Array.from({ length: MAX_HERO_IMAGES }).map((_, i) => (
+                  <MediaSlot
                     key={i}
-                    className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/20 bg-black/20"
+                    url={heroImages[i]}
+                    accept={IMAGE_ACCEPT}
+                    tone="dark"
+                    labels={mediaImageLabels}
+                    onUploaded={(url) => setHeroImage(i, url)}
+                    frameClassName="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/20 bg-black/20"
                   >
                     {heroImages[i] ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -818,10 +934,10 @@ export default function OnboardingWizard({
                         {p.steps.hero.previewVideoBadge}
                       </span>
                     ) : null}
-                  </div>
+                  </MediaSlot>
                 ))}
               </div>
-              <p className="mt-2 text-[11px] text-white/60">{ed.imageReadOnly}</p>
+              <p className="mt-2 text-[11px] text-white/60">{ed.imageLimits}</p>
             </div>
 
             {/* העלאת וידאו מהמכשיר, פתוח כברירת מחדל */}
@@ -893,12 +1009,17 @@ export default function OnboardingWizard({
                 block
                 className="mx-auto mt-2 max-w-md text-center text-sm text-white/80"
               />
-              {/* תמונות מבצעים, לקריאה בלבד */}
+              {/* תמונות מבצעים, ניתנות להעלאה והחלפה */}
               <div className="mt-5 grid grid-cols-3 gap-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div
+                  <MediaSlot
                     key={i}
-                    className="relative aspect-square overflow-hidden rounded-xl border border-white/15 bg-white/5"
+                    url={hotDealsImages[i]}
+                    accept={IMAGE_ACCEPT}
+                    tone="dark"
+                    labels={mediaImageLabels}
+                    onUploaded={(url) => setHotDealImage(i, url)}
+                    frameClassName="relative aspect-square overflow-hidden rounded-xl border border-white/15 bg-white/5"
                   >
                     {hotDealsImages[i] ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -908,9 +1029,10 @@ export default function OnboardingWizard({
                         {ed.hotDealsImagePlaceholder}
                       </span>
                     )}
-                  </div>
+                  </MediaSlot>
                 ))}
               </div>
+              <p className="mt-2 text-center text-[11px] text-white/60">{ed.imageLimits}</p>
               <div className="mt-4 text-center">
                 <span
                   className="inline-block rounded-full px-5 py-2 text-sm font-semibold"
@@ -1006,14 +1128,19 @@ export default function OnboardingWizard({
               />
             </div>
 
-            {/* גלריה, לקריאה בלבד */}
+            {/* גלריה, ניתנת להעלאה והחלפה */}
             <div className="bg-white px-5 py-8">
               <p className="mb-3 text-center text-sm font-semibold text-[#4a4038]">{ed.sectionGallery}</p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div
+                {Array.from({ length: MAX_GALLERY_IMAGES }).map((_, i) => (
+                  <MediaSlot
                     key={i}
-                    className="relative aspect-square overflow-hidden rounded-xl border border-[#eee3d2] bg-[#f4ede1]"
+                    url={galleryImages[i]}
+                    accept={IMAGE_ACCEPT}
+                    tone="light"
+                    labels={mediaImageLabels}
+                    onUploaded={(url) => setGalleryImage(i, url)}
+                    frameClassName="relative aspect-square overflow-hidden rounded-xl border border-[#eee3d2] bg-[#f4ede1]"
                   >
                     {galleryImages[i] ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -1023,10 +1150,10 @@ export default function OnboardingWizard({
                         {ed.galleryPlaceholder}
                       </span>
                     )}
-                  </div>
+                  </MediaSlot>
                 ))}
               </div>
-              <p className="mt-2 text-center text-[11px] text-[#b3a690]">{ed.imageReadOnly}</p>
+              <p className="mt-2 text-center text-[11px] text-[#b3a690]">{ed.imageLimits}</p>
             </div>
 
             {/* מיקום ווואטסאפ */}
