@@ -176,16 +176,16 @@ export default function PremiumClinicHeader({
       {/* שורת ניווט בגוון קרם — לוגו ושם לצד עוגני ניווט וכפתור זהב לקביעת תור */}
       <div className="border-b border-[color:var(--c-gold,#c6a86a)]/30">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[color:var(--c-gold,#c6a86a)]/40 bg-white shadow-soft sm:h-12 sm:w-12">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-[color:var(--c-gold,#c6a86a)]/40 bg-[color:var(--c-cream,#faf6ef)] shadow-soft sm:h-12 sm:w-12">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt={name} className="h-full w-full object-contain p-1" />
+                <img src={logoUrl} alt={name} className="h-full w-full object-cover" />
               ) : (
                 <span className="text-lg font-bold text-[color:var(--biz-strong)]">{name.charAt(0)}</span>
               )}
             </span>
-            <span className="font-display text-lg font-bold text-[color:var(--c-ink,#1b1715)] sm:text-xl">
+            <span className="truncate font-display text-base font-bold text-[color:var(--c-ink,#1b1715)] sm:text-xl">
               {name}
             </span>
           </div>
@@ -210,7 +210,7 @@ export default function PremiumClinicHeader({
             </a>
             <Link
               href={bookHref}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] px-5 py-2.5 text-sm font-bold text-[color:var(--c-ink,#1b1715)] shadow-soft transition hover:-translate-y-0.5"
+              className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] px-3.5 py-2 text-xs font-bold text-[color:var(--c-ink,#1b1715)] shadow-soft transition hover:-translate-y-0.5 sm:px-5 sm:py-2.5 sm:text-sm"
             >
               {labels.bookCta}
               <ArrowLeftIcon className="h-4 w-4" />
