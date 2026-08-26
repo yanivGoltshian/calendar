@@ -17,11 +17,14 @@ import { resolveGuestIdentity } from '@/server/booking/guestIdentity';
  * בהן, וחוקת הזהות עצמה מיובאת כפונקציה האמיתית `resolveGuestIdentity`
  * מ-`@/server/booking/guestIdentity` (אותה פונקציה שהמסלול קורא לה, ללא שכפול). הסכימה
  * ושאר החלטות המדיניות משוכפלות במדויק מ-route.ts וחייבות להישמר מסונכרנות עם:
- *   - bodySchema            → route.ts:16-24
- *   - חוקת זהות אורח        → route.ts:72-92
- *   - שיוך staff לעסק       → route.ts:100-104
- *   - שער זמן (lead/advance)→ route.ts:112-130
- *   - סטטוס לפי מדיניות      → route.ts:118-121, 151
+ *   - bodySchema            → route.ts:18-26
+ *   - מדיניות קשר לפי מסלול → route.ts:71
+ *   - מתגי משפך האורח       → route.ts:74-75 (allowNoPhone / requireVerification)
+ *   - חוקת זהות אורח        → route.ts:93-96
+ *   - שער אימות טלפון       → route.ts:107-109 (guest → verification_required)
+ *   - שיוך staff לעסק       → route.ts:113-116
+ *   - שער זמן (lead/advance)→ route.ts:124-142
+ *   - סטטוס לפי מדיניות      → route.ts:133, 164
  */
 
 // --- חוזה גוף הבקשה (מראה של bodySchema, route.ts:16-24) ---
@@ -106,16 +109,70 @@ test('זהות אורח: טלפון לא-תקין → invalid_phone; מייל ל
   assert.deepEqual(resolveGuestIdentity('דנה', undefined, 'no-at-sign'), { ok: false, error: 'invalid_email' });
 });
 
-// --- מדיניות פרטי קשר לפי מסלול (route.ts: business.plan !== 'premium' → requireBoth) ---
-
-// מראה של החלטת המסלול: סטנדרט (basic) מחייב שני פרטים, פרימיום מתיר אחד.
-function requireBothForPlan(plan: string): boolean {
-  return plan !== 'premium';
+// --- מדיניות פרטי קשר בשליטת הבעלים (route.ts: requireEmailContact + requirePhoneContact) ---
+// מנותקת מהמסלול. מראה של החלטת השרת: המייל חובה לפי מתג הבעלים requireEmail (ברירת
+// מחדל true), והטלפון חובה אלא אם הבעלים איפשר הזמנה ללא טלפון (allowBookingWithoutPhone).
+function requireEmailForOwner(requireEmail: boolean | undefined): boolean {
+  return requireEmail ?? true;
+}
+function requirePhoneForOwner(allowBookingWithoutPhone: boolean): boolean {
+  return !allowBookingWithoutPhone;
 }
 
-test('מדיניות מסלול: basic דורש שני פרטים, premium דורש אחד', () => {
-  assert.equal(requireBothForPlan('basic'), true);
-  assert.equal(requireBothForPlan('premium'), false);
+test('מדיניות בעלים: המייל חובה כברירת מחדל (requireEmail לא מוגדר → true)', () => {
+  assert.equal(requireEmailForOwner(undefined), true);
+  assert.equal(requireEmailForOwner(true), true);
+  assert.equal(requireEmailForOwner(false), false);
+});
+
+test('מדיניות בעלים: הטלפון חובה אלא אם מותרת הזמנה ללא טלפון', () => {
+  assert.equal(requirePhoneForOwner(false), true); // ברירת מחדל: טלפון חובה
+  assert.equal(requirePhoneForOwner(true), false); // הזמנה ללא טלפון מותרת → רשות
+});
+
+// מטריצת ארבעת הצירופים שהבעלים שולט בהם, כפי ש-route.ts מרכיב אותם ומעביר לפותר.
+test('מטריצת בעלים [allowNoPhone=false, requireEmail=true] → phone+email', () => {
+  const opts = {
+    requirePhone: requirePhoneForOwner(false),
+    requireEmail: requireEmailForOwner(true),
+    allowNoContact: false,
+  };
+  assert.deepEqual(resolveGuestIdentity('דנה', '0501234567', undefined, opts), { ok: false, error: 'email_required' });
+  assert.deepEqual(resolveGuestIdentity('דנה', undefined, 'dana@example.com', opts), { ok: false, error: 'phone_required' });
+  assert.equal(resolveGuestIdentity('דנה', '0501234567', 'dana@example.com', opts).ok, true);
+});
+
+test('מטריצת בעלים [allowNoPhone=false, requireEmail=false] → phone בלבד', () => {
+  const opts = {
+    requirePhone: requirePhoneForOwner(false),
+    requireEmail: requireEmailForOwner(false),
+    allowNoContact: false,
+  };
+  assert.equal(resolveGuestIdentity('דנה', '0501234567', undefined, opts).ok, true);
+  assert.deepEqual(resolveGuestIdentity('דנה', undefined, 'dana@example.com', opts), { ok: false, error: 'phone_required' });
+});
+
+test('מטריצת בעלים [allowNoPhone=true, requireEmail=true] → מייל חובה, טלפון רשות', () => {
+  const opts = {
+    requirePhone: requirePhoneForOwner(true),
+    requireEmail: requireEmailForOwner(true),
+    allowNoContact: true,
+  };
+  assert.deepEqual(resolveGuestIdentity('דנה', undefined, undefined, opts), { ok: false, error: 'email_required' });
+  const r = resolveGuestIdentity('דנה', undefined, 'dana@example.com', opts);
+  assert.equal(r.ok, true);
+  assert.equal(r.ok && r.verificationStatus, 'NONE');
+});
+
+test('מטריצת בעלים [allowNoPhone=true, requireEmail=false] → שם בלבד', () => {
+  const opts = {
+    requirePhone: requirePhoneForOwner(true),
+    requireEmail: requireEmailForOwner(false),
+    allowNoContact: true,
+  };
+  const r = resolveGuestIdentity('סבתא רבקה', undefined, undefined, opts);
+  assert.equal(r.ok, true);
+  assert.equal(r.ok && r.verificationStatus, 'NONE');
 });
 
 test('מדיניות סטנדרט (requireBoth): חובה גם טלפון וגם מייל', () => {
@@ -162,7 +219,110 @@ test('מדיניות פרימיום (requireBoth=false): מייל בלבד עד�
   }
 });
 
-// --- שיוך איש צוות לעסק (מראה של route.ts:100-104) ---
+// --- משפך "אורח תחילה": רמות זהות ומתגי העסק (route.ts:74-75, 93-109) ---
+
+// מראה של שער האימות במסלול: כשהעסק דורש אימות טלפון, מסלול האורח (ללא OTP) חסום.
+// לקוח מחובר (session) עוקף את השער כי הוא מאומת דרך OTP/Firebase → VERIFIED.
+type VerificationLevel = 'VERIFIED' | 'UNVERIFIED' | 'NONE';
+function guestVerificationGate(
+  requireVerification: boolean,
+  hasSession: boolean,
+): { ok: true; verification: VerificationLevel } | { ok: false; error: 'verification_required' } {
+  if (hasSession) return { ok: true, verification: 'VERIFIED' };
+  if (requireVerification) return { ok: false, error: 'verification_required' };
+  return { ok: true, verification: 'UNVERIFIED' };
+}
+
+test('שער אימות: העסק דורש אימות + אורח ללא התחברות → verification_required', () => {
+  assert.deepEqual(guestVerificationGate(true, false), { ok: false, error: 'verification_required' });
+});
+
+test('שער אימות: לקוח מחובר עוקף את הדרישה → VERIFIED', () => {
+  assert.deepEqual(guestVerificationGate(true, true), { ok: true, verification: 'VERIFIED' });
+});
+
+test('שער אימות: אימות כבוי → אורח מתקבל (זהות תיקבע לפי פרטי הקשר)', () => {
+  assert.deepEqual(guestVerificationGate(false, false), { ok: true, verification: 'UNVERIFIED' });
+});
+
+test('רמת זהות: אורח עם טלפון (ללא OTP) → UNVERIFIED', () => {
+  const r = resolveGuestIdentity('דנה', '0501234567');
+  assert.equal(r.ok, true);
+  assert.equal(r.ok && r.verificationStatus, 'UNVERIFIED');
+});
+
+test('רמת זהות NONE: העסק מתיר הזמנה ללא טלפון (allowNoContact) → שם בלבד, NONE', () => {
+  const r = resolveGuestIdentity('סבתא רבקה', undefined, undefined, { allowNoContact: true });
+  assert.deepEqual(r, {
+    ok: true,
+    name: 'סבתא רבקה',
+    phone: undefined,
+    email: undefined,
+    verificationStatus: 'NONE',
+  });
+});
+
+test('מתג allowNoContact גובר על requireBoth: אורח ללא פרטי קשר עובר', () => {
+  const r = resolveGuestIdentity('סבתא רבקה', undefined, undefined, {
+    requireBoth: true,
+    allowNoContact: true,
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.ok && r.verificationStatus, 'NONE');
+});
+
+// --- אמון בעל העסק: הזמנות/לקוחות שנוצרו מהאדמין (admin/actions.ts, clients/actions.ts) ---
+
+// מראה של החלטת האמון המתועדת: בעל העסק יוצר תור/כרטיס עבור לקוח — יש טלפון → VERIFIED,
+// אין טלפון → NONE (בעל העסק מהימן ואינו צריך OTP).
+function ownerCreatedVerification(phone: string | null | undefined): VerificationLevel {
+  return phone && phone.trim() ? 'VERIFIED' : 'NONE';
+}
+
+test('אמון בעל העסק: יצירה עם טלפון → VERIFIED', () => {
+  assert.equal(ownerCreatedVerification('0501234567'), 'VERIFIED');
+});
+
+test('אמון בעל העסק: יצירה ללא טלפון → NONE', () => {
+  assert.equal(ownerCreatedVerification(null), 'NONE');
+  assert.equal(ownerCreatedVerification('   '), 'NONE');
+});
+
+// --- שדרוג-בלבד של רמת האימות (מראה של findOrCreateClient, clients.ts:8-9, 55-59) ---
+
+// דירוג הרמות; שדרוג מוחל רק כאשר הנכנס גבוה מהקיים (לעולם לא מורידים רמה).
+const verificationRank: Record<VerificationLevel, number> = { NONE: 0, UNVERIFIED: 1, VERIFIED: 2 };
+function upgradeVerification(current: VerificationLevel, incoming: VerificationLevel): VerificationLevel {
+  return verificationRank[incoming] > verificationRank[current] ? incoming : current;
+}
+
+test('שדרוג-בלבד: NONE→UNVERIFIED→VERIFIED משדרגים כלפי מעלה', () => {
+  assert.equal(upgradeVerification('NONE', 'UNVERIFIED'), 'UNVERIFIED');
+  assert.equal(upgradeVerification('UNVERIFIED', 'VERIFIED'), 'VERIFIED');
+  assert.equal(upgradeVerification('NONE', 'VERIFIED'), 'VERIFIED');
+});
+
+test('שדרוג-בלבד: לעולם לא מורידים רמה קיימת', () => {
+  assert.equal(upgradeVerification('VERIFIED', 'UNVERIFIED'), 'VERIFIED');
+  assert.equal(upgradeVerification('VERIFIED', 'NONE'), 'VERIFIED');
+  assert.equal(upgradeVerification('UNVERIFIED', 'NONE'), 'UNVERIFIED');
+});
+
+// --- פרדיקט ההתראה: אילו רמות מסומנות לבעל העסק (badge + ספירה) ---
+
+// מראה של סימון ההתראה: לקוחות/תורים ברמת UNVERIFIED או NONE דורשים תשומת לב;
+// VERIFIED אינו מסומן. תואם ל-countUnverifiedUpcomingAppointments ולתגי האדמין.
+function needsAttention(level: VerificationLevel): boolean {
+  return level === 'UNVERIFIED' || level === 'NONE';
+}
+
+test('פרדיקט התראה: UNVERIFIED ו-NONE מסומנים; VERIFIED אינו מסומן', () => {
+  assert.equal(needsAttention('UNVERIFIED'), true);
+  assert.equal(needsAttention('NONE'), true);
+  assert.equal(needsAttention('VERIFIED'), false);
+});
+
+// --- שיוך איש צוות לעסק (מראה של route.ts:113-116) ---
 type StaffLite = { id: string };
 function resolveStaffOrError(staff: StaffLite[], staffId: string): { ok: true } | { ok: false; error: 'invalid_staff' } {
   const found = staff.find((m) => m.id === staffId);

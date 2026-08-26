@@ -122,11 +122,10 @@ export function CreateAppointmentModal({
 
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">
-            {t.admin.form.clientPhone}
+            {t.admin.clients.phoneOptionalLabel}
           </label>
           <input
             name="clientPhone"
-            required
             inputMode="tel"
             dir="ltr"
             placeholder={t.auth.phonePlaceholder}
@@ -231,6 +230,14 @@ export function AppointmentDetailModal({
         <p className="text-lg font-semibold text-slate-900">
           {appt.clientName || c.untitledClient}
         </p>
+        {appt.verificationStatus === 'UNVERIFIED' ||
+        appt.verificationStatus === 'NONE' ? (
+          <span className="mt-1 inline-block rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800">
+            {appt.verificationStatus === 'NONE'
+              ? t.admin.verification.badgeNone
+              : t.admin.verification.badgeUnverified}
+          </span>
+        ) : null}
         {appt.clientPhone ? (
           <p dir="ltr" className="text-left text-sm text-slate-500">
             {appt.clientPhone}

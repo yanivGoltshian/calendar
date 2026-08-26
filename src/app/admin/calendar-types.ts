@@ -12,6 +12,7 @@ export type ApptBlock = {
   status: string; // AppointmentStatus
   clientName: string;
   clientPhone: string; // כבר מעוצב לתצוגה
+  verificationStatus: string; // VERIFIED · UNVERIFIED · NONE
   serviceNames: string;
   colorIndex: number;
   priceAgorot: number;

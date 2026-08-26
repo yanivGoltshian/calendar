@@ -83,12 +83,11 @@ export default function ClientForm({ initial }: Props) {
         <div className="flex flex-col gap-4 sm:flex-row">
           <div className="flex-1">
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              {t.admin.clients.phoneLabel}
+              {t.admin.clients.phoneOptionalLabel}
             </label>
             <input
               name="phone"
               type="tel"
-              required
               dir="ltr"
               defaultValue={initial?.phone ?? ''}
               placeholder={t.admin.clients.phonePlaceholder}

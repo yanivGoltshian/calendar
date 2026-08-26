@@ -48,6 +48,16 @@ enum ConfirmationStatus {
   DECLINED // הודיע שלא יגיע
 }
 
+// רמת אימות הזהות של לקוח עבור משפך "אורח תחילה". שלוש רמות:
+// VERIFIED = טלפון מאומת (OTP עבר, או נוצר/אושר ידנית על ידי בעל העסק);
+// UNVERIFIED = נמסר טלפון אך לא אומת (הזמנת אורח ללא OTP);
+// NONE = ללא טלפון כלל (מותר רק כשהעסק איפשר הזמנה ללא טלפון).
+enum VerificationStatus {
+  VERIFIED
+  UNVERIFIED
+  NONE
+}
+
 enum ReminderStatus {
   SCHEDULED
   SENT
@@ -293,6 +303,13 @@ model BusinessSettings {
   // מדיניות/הודעה חופשית לתצוגה ללקוח
   policyText              String?
 
+  // מדיניות זהות לקוח במשפך ההזמנה (אורח תחילה). ברירת מחדל: חיכוך מינימלי.
+  requirePhoneVerification Boolean @default(false) // דרוש אימות טלפון (OTP) לפני הזמנה
+  allowBookingWithoutPhone Boolean @default(false) // אפשר הזמנה ללא מספר טלפון כלל
+  // דרוש כתובת מייל בקביעת תור. ברירת מחדל דלוקה (מומלץ: טלפון + מייל). המייל גם משמש
+  // כערוץ החיבור עם גוגל. הבעלים קובע זאת נפרדות מהמסלול (basic/premium).
+  requireEmail             Boolean @default(true)
+
   // מתגי שקיפות בעמוד הציבורי (ברירת מחדל: הצג). נוספו במודול ההגדרות.
   showPricesPublic   Boolean @default(true) // הצגת מחירים
   showDurationPublic Boolean @default(true) // הצגת משך טיפול
@@ -424,6 +441,11 @@ model Client {
   email   String?
   notes   String?
   blocked Boolean @default(false)
+
+  // רמת אימות הזהות של הלקוח (משפך אורח תחילה). ברירת מחדל UNVERIFIED —
+  // רשומות קיימות עם טלפון נחשבות "לא מאומת" (מעולם לא עברו OTP); המיגרציה
+  // מעדכנת ל-NONE את הרשומות ללא טלפון. אדיטיבי ותואם לאחור.
+  verificationStatus VerificationStatus @default(UNVERIFIED)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

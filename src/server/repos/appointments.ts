@@ -80,6 +80,25 @@ export async function countPendingAppointments(businessId: string): Promise<numb
   });
 }
 
+/**
+ * ספירת תורים עתידיים (לא מבוטלים) של לקוחות שאינם מאומתים — כלומר לקוח עם רמת
+ * אימות UNVERIFIED ("לא מאומת") או NONE ("ללא טלפון"). משמש לחיווי סיכום באזור
+ * הניהול כדי שבעל העסק ישים לב להזמנות שדורשות השלמת פרטים.
+ */
+export async function countUnverifiedUpcomingAppointments(
+  businessId: string,
+  now: Date = new Date(),
+): Promise<number> {
+  return prisma.appointment.count({
+    where: {
+      businessId,
+      status: { not: 'CANCELLED' },
+      startAt: { gte: now },
+      client: { verificationStatus: { in: ['UNVERIFIED', 'NONE'] } },
+    },
+  });
+}
+
 export type CreateAppointmentInput = {
   businessId: string;
   clientId: string;

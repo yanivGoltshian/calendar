@@ -4,13 +4,26 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { getActiveBusiness } from '@/server/repos/business';
-import { createClient, updateClient, setClientBlocked } from '@/server/repos/clients';
+import {
+  createClient,
+  updateClient,
+  setClientBlocked,
+  setClientVerification,
+  type VerificationLevel,
+} from '@/server/repos/clients';
 import { isValidIsraeliMobile } from '@/lib/crypto';
 
 const saveSchema = z.object({
   id: z.string().trim().optional(),
   name: z.string().trim().min(1, 'name'),
-  phone: z.string().trim().refine(isValidIsraeliMobile, 'phone'),
+  // טלפון הוא רשות: מותר לשמור לקוח ללא טלפון (משפך אורח / לקוח שיושלם בהמשך).
+  // אם נמסר טלפון, הוא חייב להיות נייד ישראלי תקין.
+  phone: z
+    .string()
+    .trim()
+    .refine((v) => v === '' || isValidIsraeliMobile(v), 'phone')
+    .optional()
+    .default(''),
   email: z.string().trim().email('email').optional(),
   notes: z.string().trim().max(1000).optional(),
 });
@@ -32,7 +45,7 @@ export async function saveClientAction(
   const parsed = saveSchema.safeParse({
     id: rawId || undefined,
     name: formData.get('name'),
-    phone: formData.get('phone'),
+    phone: String(formData.get('phone') ?? '').trim(),
     email: String(formData.get('email') ?? '').trim() || undefined,
     notes: String(formData.get('notes') ?? '').trim() || undefined,
   });
@@ -47,11 +60,15 @@ export async function saveClientAction(
   if (!business) return { ok: false, mode, error: 'generic' };
 
   const data = parsed.data;
+  const phoneTrimmed = (data.phone ?? '').trim();
   const payload = {
     name: data.name,
-    phone: data.phone,
+    phone: phoneTrimmed || null,
     email: data.email ?? null,
     notes: data.notes ?? null,
+    // כרטיס שנערך ידנית בידי הבעלים: טלפון תקין => "מאומת" (הבעלים ערב),
+    // ללא טלפון => "ללא טלפון". כך סימון ההשלמה מתעדכן מיד עם השמירה.
+    verificationStatus: (phoneTrimmed ? 'VERIFIED' : 'NONE') as VerificationLevel,
   };
 
   try {
@@ -83,6 +100,24 @@ export async function toggleClientBlockedAction(formData: FormData): Promise<voi
   if (!business) return;
 
   await setClientBlocked(business.id, id, blocked);
+  revalidatePath('/admin/clients');
+  revalidatePath(`/admin/clients/${id}`);
+}
+
+/**
+ * סימון ידני של רמת אימות הזהות של לקוח בידי בעל העסק ("מאומת" / "טופל").
+ * טופס פשוט ללא מצב, בדומה לחסימה. משמש להשלמת לקוחות שהוזמנו כאורחים.
+ */
+export async function setClientVerificationAction(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '').trim();
+  const raw = String(formData.get('verificationStatus') ?? '').trim();
+  const allowed: VerificationLevel[] = ['VERIFIED', 'UNVERIFIED', 'NONE'];
+  if (!id || !allowed.includes(raw as VerificationLevel)) return;
+
+  const business = await getActiveBusiness();
+  if (!business) return;
+
+  await setClientVerification(business.id, id, raw as VerificationLevel);
   revalidatePath('/admin/clients');
   revalidatePath(`/admin/clients/${id}`);
 }

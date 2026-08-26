@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
@@ -6,7 +7,7 @@ import { getActiveBusiness } from '@/server/repos/business';
 import { listStaff, ensureOwnerStaffMember } from '@/server/repos/staff';
 import { listServices } from '@/server/repos/services';
 import { getBusinessHours } from '@/server/repos/workingHours';
-import { getAppointmentsForBusinessRange, countPendingAppointments } from '@/server/repos/appointments';
+import { getAppointmentsForBusinessRange, countPendingAppointments, countUnverifiedUpcomingAppointments } from '@/server/repos/appointments';
 import {
   todayDateString,
   addDaysToDateString,
@@ -186,6 +187,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
       status: a.status,
       clientName: a.client?.name ?? '',
       clientPhone: a.client?.phone ? displayPhone(a.client.phone) : '',
+      verificationStatus: a.client?.verificationStatus ?? 'VERIFIED',
       serviceNames,
       colorIndex,
       priceAgorot: a.totalPriceAgorot,
@@ -204,6 +206,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   // הרשימה מוצגת רק כשנותר צעד פתוח והבעלים לא בחר להסתירה.
   const businessHours = await getBusinessHours(business.id);
   const pendingCount = await countPendingAppointments(business.id);
+  const unverifiedCount = await countUnverifiedUpcomingAppointments(business.id);
   const checklistDismissed = await isOnboardingChecklistDismissed();
   const checklistItems: ChecklistItem[] = [
     { key: 'services', done: serviceRows.length > 0, href: '/admin/services' },
@@ -257,7 +260,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
       </header>
 
       {pendingCount > 0 ? (
-        <a
+        <Link
           href="/admin/appointments?tab=pending"
           className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 transition hover:bg-amber-100"
         >
@@ -270,7 +273,21 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
           <span className="whitespace-nowrap text-sm font-medium underline">
             {t.admin.pendingApprovals.cta}
           </span>
-        </a>
+        </Link>
+      ) : null}
+
+      {unverifiedCount > 0 ? (
+        <Link
+          href="/admin/clients?filter=unverified"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-orange-900 transition hover:bg-orange-100"
+        >
+          <span className="text-sm font-semibold">
+            {t.admin.verification.summaryLabel}: {unverifiedCount}
+          </span>
+          <span className="whitespace-nowrap text-sm font-medium underline">
+            {t.admin.clients.filterUnverified}
+          </span>
+        </Link>
       ) : null}
 
       {isLive ? (

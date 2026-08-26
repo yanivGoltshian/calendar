@@ -433,6 +433,14 @@ export default function CalendarBoard({
                             <span className="block truncate font-medium">
                               {block.clientName || cal.untitledClient}
                             </span>
+                            {block.verificationStatus === 'UNVERIFIED' ||
+                            block.verificationStatus === 'NONE' ? (
+                              <span className="mt-0.5 inline-block rounded bg-orange-100 px-1 text-[9px] font-semibold text-orange-800">
+                                {block.verificationStatus === 'NONE'
+                                  ? t.admin.verification.badgeNone
+                                  : t.admin.verification.badgeUnverified}
+                              </span>
+                            ) : null}
                             {height > 44 && block.serviceNames ? (
                               <span className="block truncate opacity-80">
                                 {block.serviceNames}
