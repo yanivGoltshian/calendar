@@ -4,6 +4,8 @@ import { useActionState, useState } from 'react';
 import { BusinessType } from '@prisma/client';
 import { t } from '@/i18n';
 import { Card, Button } from '@/components/ui';
+import { SectionIcon } from '@/components/publicLanding/icons';
+import { sectionIconKey } from '@/lib/publicPageStyle';
 import { createBusinessAction, type CreateBusinessState } from './actions';
 
 const initialState: CreateBusinessState = {};
@@ -12,20 +14,6 @@ const inputClass =
   'w-full rounded-xl border border-sand-300 bg-white px-4 py-3 text-sand-900 ' +
   'placeholder:text-sand-400 shadow-sm transition-colors ' +
   'focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30';
-
-/** אימוג׳י מייצג לכל תחום עסק, להצגה על אריחי הבחירה. */
-const TYPE_ICONS: Record<BusinessType, string> = {
-  BARBERSHOP: '💈',
-  HAIR_SALON: '💇',
-  NAILS: '💅',
-  BEAUTY_COSMETICS: '💄',
-  SPA_MASSAGE: '💆',
-  BROWS_LASHES: '✨',
-  TATTOO_PIERCING: '🖋️',
-  CLINIC: '🩺',
-  FITNESS: '💪',
-  OTHER: '🏪',
-};
 
 /**
  * צעד 1 בבניית העסק: מסך מינימלי אחד — שם העסק + בחירת תחום כאריחי הקשה.
@@ -83,11 +71,11 @@ export function CreateBusinessForm() {
                     <span
                       aria-hidden="true"
                       className={
-                        'flex h-10 w-10 items-center justify-center rounded-xl text-xl ' +
-                        (active ? 'bg-brand-100' : 'bg-sand-100')
+                        'flex h-10 w-10 items-center justify-center rounded-xl ' +
+                        (active ? 'bg-brand-100 text-brand-700' : 'bg-sand-100 text-sand-500')
                       }
                     >
-                      {TYPE_ICONS[bt]}
+                      <SectionIcon iconKey={sectionIconKey(bt)} className="h-5 w-5" />
                     </span>
                     <span className="text-xs font-semibold leading-tight text-sand-800">
                       {types[bt]}

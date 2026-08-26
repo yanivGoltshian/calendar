@@ -295,6 +295,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
           url={bookingLink}
           qrSvg={bookingQr}
           businessName={business.name}
+          landingPath={bookingPagePath}
         />
       ) : null}
 
@@ -306,6 +307,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
           qrSvg={bookingQr}
           businessName={business.name}
           bookingPath={bookingPagePath}
+          landingPath={bookingPagePath}
           businessId={business.id}
         />
       ) : null}

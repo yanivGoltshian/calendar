@@ -584,7 +584,8 @@ function sectionHasContent(section: LandingSectionKey, content: LandingContent |
     case 'beforeAfter':
       return Boolean(content.beforeAfter?.length);
     case 'testimonials':
-      return Boolean(content.testimonials?.length);
+      // מוצג כשיש המלצות שהוקלדו ידנית או קישור לביקורות גוגל (שלב הרשתות באשף).
+      return Boolean(content.testimonials?.length) || Boolean(content.googleReviewsUrl);
     case 'faq':
       return Boolean(content.faq?.length);
     case 'about':

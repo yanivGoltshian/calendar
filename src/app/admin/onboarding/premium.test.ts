@@ -212,3 +212,63 @@ test('heroImages: נחתך לשתי תמונות לכל היותר', () => {
   assert.ok(result?.heroImages);
   assert.equal(result?.heroImages?.length, 2);
 });
+
+/* ── שלב גלריית עבודות (galleryImageUrls) ── */
+
+test('galleryImageUrls: מסנן ערכים ריקים ואוכף מגבלה של ארבע תמונות', () => {
+  const raw = JSON.stringify({
+    heroHeadline: 'x',
+    galleryImageUrls: [
+      'https://a/1.jpg',
+      '   ', // ריק — יסונן
+      'https://a/2.jpg',
+      'https://a/3.jpg',
+      'https://a/4.jpg',
+      'https://a/5.jpg', // מעבר ל-MAX_GALLERY_IMAGES=4
+    ],
+  });
+  const result = parsePremiumDraft(raw);
+  assert.ok(result?.galleryImageUrls);
+  assert.equal(result?.galleryImageUrls?.length, 4);
+  assert.equal(result?.galleryImageUrls?.[0], 'https://a/1.jpg');
+});
+
+/* ── שלב רשתות חברתיות (socialLinks + googleReviewsUrl) ── */
+
+test('socialLinks: כל ארבעת הקישורים כולל tiktok נשמרים', () => {
+  const raw = JSON.stringify({
+    heroHeadline: 'x',
+    socialLinks: {
+      whatsapp: 'https://wa.me/972500000000',
+      instagram: 'https://instagram.com/biz',
+      facebook: 'https://facebook.com/biz',
+      tiktok: 'https://tiktok.com/@biz',
+    },
+  });
+  const result = parsePremiumDraft(raw);
+  assert.ok(result?.socialLinks);
+  assert.equal(result?.socialLinks?.whatsapp, 'https://wa.me/972500000000');
+  assert.equal(result?.socialLinks?.instagram, 'https://instagram.com/biz');
+  assert.equal(result?.socialLinks?.facebook, 'https://facebook.com/biz');
+  assert.equal(result?.socialLinks?.tiktok, 'https://tiktok.com/@biz');
+});
+
+test('socialLinks: ללא אף קישור תקין מושמט לגמרי', () => {
+  const result = parsePremiumDraft(
+    JSON.stringify({ heroHeadline: 'x', socialLinks: { instagram: '   ', tiktok: '' } }),
+  );
+  assert.ok(result);
+  assert.equal(result?.socialLinks, undefined);
+});
+
+test('googleReviewsUrl: נשמר רק כשהוא http(s), אחרת מושמט', () => {
+  const ok = parsePremiumDraft(
+    JSON.stringify({ heroHeadline: 'x', googleReviewsUrl: 'https://g.page/biz/review' }),
+  );
+  assert.equal(ok?.googleReviewsUrl, 'https://g.page/biz/review');
+  const bad = parsePremiumDraft(
+    JSON.stringify({ heroHeadline: 'x', googleReviewsUrl: 'javascript:alert(1)' }),
+  );
+  assert.ok(bad);
+  assert.equal(bad?.googleReviewsUrl, undefined);
+});

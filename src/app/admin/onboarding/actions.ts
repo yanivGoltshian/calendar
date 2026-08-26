@@ -196,11 +196,18 @@ export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promis
   // ניתוח בטוח של טיוטת הפרימיום: null כשאין תוכן ממשי (ישמור NULL במסד).
   const landingContent = parsePremiumDraft(fd.get('premiumDraft'));
 
+  // שלב "קצת על העסק" מאפשר לעדכן טלפון וכתובת — נשמרים בעמודות הפרופיל (לא ב-landingContent).
+  // ריק ⇒ שומרים על הערך הקיים, כדי ששמירה חלקית לא תמחק פרטים שכבר הוזנו.
+  const premPhoneRaw = ((fd.get('premPhone') as string | null) ?? '').trim();
+  const premAddressRaw = ((fd.get('premAddress') as string | null) ?? '').trim();
+  const hasPremPhone = fd.has('premPhone');
+  const hasPremAddress = fd.has('premAddress');
+
   const profile: BusinessProfileInput = {
     name: business.name,
     type: business.type,
-    phone: business.phone,
-    address: business.address,
+    phone: hasPremPhone ? (premPhoneRaw === '' ? null : premPhoneRaw) : business.phone,
+    address: hasPremAddress ? (premAddressRaw === '' ? null : premAddressRaw) : business.address,
     description: business.description,
     instagramUrl: business.instagramUrl,
     logoUrl: business.logoUrl,
