@@ -125,3 +125,93 @@ button {
 .tc-ticker:hover .tc-ticker-track {
   animation-play-state: paused;
 }
+
+/* ===== אשף עמוד הפרימיום: הבזק CTA, קונפטי, כרום כחול-זהב ===== */
+
+/* פס הבזק חוזר על כפתורי הנעה (המשך / פרסום / העלאת מדיה) */
+@keyframes tc-sheen {
+  0% {
+    transform: translateX(-160%) skewX(-20deg);
+  }
+  60%,
+  100% {
+    transform: translateX(320%) skewX(-20deg);
+  }
+}
+
+.tc-sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.tc-sheen::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.55) 50%,
+    transparent 100%
+  );
+  transform: translateX(-160%) skewX(-20deg);
+  animation: tc-sheen 3.2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+.tc-sheen > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* גרדיינט כרום כחול-דומיננטי עם רמז זהב, למסכי סיום וחגיגה */
+.tc-chrome {
+  background: linear-gradient(150deg, #0a182d 0%, #16233a 42%, #24406e 78%, #2d4a7a 100%);
+}
+.tc-gold-text {
+  background: linear-gradient(100deg, #e4bf6f 0%, #cea24a 55%, #c08c3c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.tc-gold-ring {
+  box-shadow: 0 0 0 1px rgb(206 162 74 / 0.55), 0 18px 40px -18px rgb(10 24 45 / 0.8);
+}
+
+/* קונפטי נצחון */
+@keyframes tc-confetti-fall {
+  0% {
+    transform: translateY(-16px) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(420px) rotate(520deg);
+    opacity: 0;
+  }
+}
+.tc-confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 9px;
+  height: 15px;
+  border-radius: 2px;
+  animation: tc-confetti-fall linear infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-sheen::after,
+  .tc-confetti-piece {
+    animation: none;
+  }
+  .tc-sheen::after {
+    display: none;
+  }
+}

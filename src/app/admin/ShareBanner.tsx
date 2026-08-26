@@ -14,9 +14,10 @@ type Props = {
   url: string;
   qrSvg: string;
   businessName: string;
+  landingPath: string;
 };
 
-export default function ShareBanner({ url, qrSvg, businessName }: Props) {
+export default function ShareBanner({ url, qrSvg, businessName, landingPath }: Props) {
   const b = t.admin.onboarding.goLive.banner;
   const [open, setOpen] = useState(false);
 
@@ -30,14 +31,24 @@ export default function ShareBanner({ url, qrSvg, businessName }: Props) {
           <h2 className="text-base font-bold text-brand-800">{b.heading}</h2>
           <p className="text-sm text-brand-700">{b.subtitle}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
-        >
-          {open ? b.close : b.open}
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href={landingPath}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center rounded-xl border border-brand-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-800 transition hover:bg-brand-50"
+          >
+            {b.viewPage}
+          </a>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+          >
+            {open ? b.close : b.open}
+          </button>
+        </div>
       </div>
 
       {open ? (

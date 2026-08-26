@@ -19,6 +19,7 @@ type Props = {
   qrSvg: string;
   businessName: string;
   bookingPath: string;
+  landingPath: string;
   businessId: string;
 };
 
@@ -27,6 +28,7 @@ export default function GoLivePanel({
   qrSvg,
   businessName,
   bookingPath,
+  landingPath,
   businessId,
 }: Props) {
   const g = t.admin.onboarding.goLive;
@@ -57,61 +59,90 @@ export default function GoLivePanel({
   return (
     <section
       dir="rtl"
-      className="mb-5 rounded-2xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-5 shadow-sm"
+      className="tc-gold-ring mb-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <span
-            aria-hidden="true"
-            className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"
-          >
-            <svg
-              viewBox="0 0 20 20"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+      <div className="tc-chrome relative px-5 pb-6 pt-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/25"
             >
-              <path d="M4 10.5l3.5 3.5L16 6" />
-            </svg>
-          </span>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">{g.heading}</h2>
-            <p className="text-sm text-slate-600">{g.subtitle}</p>
+              <svg
+                viewBox="0 0 20 20"
+                className="tc-gold-text h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 10.5l3.5 3.5L16 6" />
+              </svg>
+            </span>
+            <div>
+              <h2 className="text-lg font-extrabold text-white">{g.heading}</h2>
+              <p className="text-sm text-white/70">{g.subtitle}</p>
+            </div>
           </div>
-        </div>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="shrink-0 rounded-lg px-2 py-1 text-sm text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-        >
-          {g.dismiss}
-        </button>
-      </div>
-
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-        <BookingLinkShare url={url} qrSvg={qrSvg} businessName={businessName} />
-      </div>
-
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <InstallApp variant="admin" />
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="text-base font-bold text-slate-900">
-            {g.customer.heading}
-          </h3>
-          <p className="mt-1 text-sm text-slate-600">{g.customer.subtitle}</p>
-          <a
-            href={bookingPath}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+          <button
+            type="button"
+            onClick={dismiss}
+            className="shrink-0 rounded-lg px-2 py-1 text-sm text-white/60 transition hover:bg-white/10 hover:text-white"
           >
-            {g.customer.openButton}
-          </a>
-          <p className="mt-3 text-xs text-slate-500">{g.customer.hint}</p>
+            {g.dismiss}
+          </button>
+        </div>
+
+        <a
+          href={landingPath}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tc-sheen mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-md transition hover:bg-slate-50"
+        >
+          <svg
+            viewBox="0 0 20 20"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 5.5A1.5 1.5 0 014.5 4h11A1.5 1.5 0 0117 5.5v9a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 013 14.5z" />
+            <path d="M3 8h14" />
+          </svg>
+          {g.viewPage.openButton}
+        </a>
+        <p className="mt-2 text-center text-xs text-white/60">
+          {g.viewPage.subtitle}
+        </p>
+      </div>
+
+      <div className="p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <BookingLinkShare url={url} qrSvg={qrSvg} businessName={businessName} />
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <InstallApp variant="admin" />
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="text-base font-bold text-slate-900">
+              {g.customer.heading}
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">{g.customer.subtitle}</p>
+            <a
+              href={bookingPath}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+            >
+              {g.customer.openButton}
+            </a>
+            <p className="mt-3 text-xs text-slate-500">{g.customer.hint}</p>
+          </div>
         </div>
       </div>
     </section>

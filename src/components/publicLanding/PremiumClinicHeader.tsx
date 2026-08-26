@@ -87,6 +87,8 @@ export default function PremiumClinicHeader({
 
   const primary = heroImages[0];
   const secondary = heroImages[1];
+  // ברירת מחדל להירו כשאין מדיה: רקע בצבע המותג שנבחר באונבורדינג (ולא ink כהה).
+  const hasHeroMedia = Boolean(primary) || Boolean(heroVideoUrl);
 
   return (
     <header className="overflow-hidden bg-[color:var(--c-cream,#faf6ef)]">
@@ -243,7 +245,14 @@ export default function PremiumClinicHeader({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={primary} alt={labels.heroImageAlt} className="absolute inset-0 h-full w-full object-cover" />
           ) : (
-            <span aria-hidden className="absolute inset-0 bg-[color:var(--c-ink,#1b1715)]" />
+            <span
+              aria-hidden
+              className="absolute inset-0"
+              style={{
+                backgroundImage:
+                  'linear-gradient(135deg, var(--biz, #1b1715) 0%, var(--biz-dark, #14100e) 100%)',
+              }}
+            />
           )}
           {heroVideoUrl ? (
             <div className="absolute inset-y-0 left-0 w-[46%] overflow-hidden sm:w-[34%]">
@@ -267,17 +276,27 @@ export default function PremiumClinicHeader({
               />
             </div>
           ) : null}
-          {/* מסכת ברונזה להקראת טקסט לבן + זוהר תחתון חמים */}
-          <span
-            aria-hidden
-            className="absolute inset-0"
-            style={{ background: 'linear-gradient(to right, rgba(44,37,34,0.14), rgba(44,37,34,0.5) 52%, rgba(44,37,34,0.88))' }}
-          />
-          <span
-            aria-hidden
-            className="absolute inset-0"
-            style={{ background: 'linear-gradient(to top, rgba(140,103,72,0.38), transparent 58%)' }}
-          />
+          {/* מסכת ברונזה להקראת טקסט לבן — מלאה על מדיה, עדינה יותר על רקע צבע המותג */}
+          {hasHeroMedia ? (
+            <>
+              <span
+                aria-hidden
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(to right, rgba(44,37,34,0.14), rgba(44,37,34,0.5) 52%, rgba(44,37,34,0.88))' }}
+              />
+              <span
+                aria-hidden
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(to top, rgba(140,103,72,0.38), transparent 58%)' }}
+              />
+            </>
+          ) : (
+            <span
+              aria-hidden
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(to right, rgba(20,16,14,0.05), rgba(20,16,14,0.28) 60%, rgba(20,16,14,0.52))' }}
+            />
+          )}
         </div>
 
         <div className="mx-auto w-full max-w-5xl px-5 py-16 sm:py-20">
