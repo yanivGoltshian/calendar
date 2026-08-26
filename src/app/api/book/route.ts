@@ -66,13 +66,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
   }
 
-  // מדיניות פרטי קשר לפי מסלול: סטנדרט מחייב גם טלפון וגם מייל (בעל העסק מקבל תמיד
-  // טלפון, והמייל חינמי עד 500 ליום); פרימיום מתיר טלפון בלבד כהטבה.
-  const requireBothContacts = business.plan !== 'premium';
+  // מדיניות פרטי קשר בשליטת הבעלים, מנותקת מהמסלול: "דרוש מייל" (ברירת מחדל דלוקה,
+  // מומלץ טלפון + מייל; המייל גם ערוץ החיבור עם גוגל), ו"אפשר הזמנה ללא טלפון" שהופך
+  // את הטלפון לרשות. שערים מפורשים ובלתי-תלויים מאפשרים גם "מייל חובה, טלפון רשות".
+  const requireEmailContact = business.settings?.requireEmail ?? true;
 
   // מדיניות זהות במשפך "אורח תחילה" (ברירת מחדל: חיכוך מינימלי, שני המתגים כבויים).
   const allowNoPhone = business.settings?.allowBookingWithoutPhone ?? false;
   const requireVerification = business.settings?.requirePhoneVerification ?? false;
+  // טלפון חובה אלא אם הבעלים איפשר הזמנה ללא טלפון.
+  const requirePhoneContact = !allowNoPhone;
 
   // זהות הלקוח: מתוך ההתחברות אם קיימת (טלפון ו/או מייל), אחרת מפרטי הזמנת האורח.
   let clientPhone: string | undefined;
@@ -90,8 +93,11 @@ export async function POST(req: Request) {
     clientVerification = 'VERIFIED';
   } else {
     // חוקת זהות אורח חולצה לפונקציה טהורה `resolveGuestIdentity` (משותפת עם המבחן).
+    // שערים מפורשים לפי הגדרות הבעלים: טלפון חובה (אלא אם מותרת הזמנה ללא טלפון),
+    // ומייל חובה לפי מתג "דרוש מייל". allowNoContact מתיר שם-בלבד כשהטלפון רשות.
     const guest = resolveGuestIdentity(parsed.name, parsed.phone, parsed.email, {
-      requireBoth: requireBothContacts,
+      requirePhone: requirePhoneContact,
+      requireEmail: requireEmailContact,
       allowNoContact: allowNoPhone,
     });
     if (!guest.ok) {

@@ -64,6 +64,9 @@ export type BookingPolicyInput = {
   requirePhoneVerification: boolean;
   // אפשר קביעת תור גם ללא מספר טלפון כלל. ברירת מחדל כבויה.
   allowBookingWithoutPhone: boolean;
+  // דרוש כתובת מייל בקביעת תור. ברירת מחדל דלוקה (מומלץ טלפון + מייל; המייל גם ערוץ
+  // החיבור עם גוגל). בשליטת הבעלים ומנותק מהמסלול.
+  requireEmail: boolean;
 };
 
 /** עדכון מדיניות ההזמנה (BusinessSettings). */

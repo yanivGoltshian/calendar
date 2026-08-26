@@ -125,3 +125,75 @@ test('מסלול סטנדרט (requireBoth) ללא allowNoContact: חסר מיי
     error: 'email_required',
   });
 });
+
+// ----- מטריצת הבעלים: requirePhone / requireEmail מפורשים ובלתי-תלויים (מנותקים מהמסלול) -----
+// ארבעת הצירופים שהבעלים שולט בהם דרך requireEmail + allowBookingWithoutPhone:
+//   [allowNoPhone=false, requireEmail=true]  → phone+email (ברירת מחדל מומלצת)
+//   [allowNoPhone=false, requireEmail=false] → phone בלבד
+//   [allowNoPhone=true,  requireEmail=true]  → מייל חובה, טלפון רשות
+//   [allowNoPhone=true,  requireEmail=false] → שם בלבד (אורח תחילה מלא)
+
+test('מטריצה [phone+email]: requirePhone+requireEmail — חסר מייל → email_required', () => {
+  assert.deepEqual(
+    resolveGuestIdentity('דנה', '0521234567', undefined, { requirePhone: true, requireEmail: true }),
+    { ok: false, error: 'email_required' },
+  );
+});
+
+test('מטריצה [phone+email]: requirePhone+requireEmail — חסר טלפון → phone_required', () => {
+  assert.deepEqual(
+    resolveGuestIdentity('דנה', undefined, 'guest@mail.co', { requirePhone: true, requireEmail: true }),
+    { ok: false, error: 'phone_required' },
+  );
+});
+
+test('מטריצה [phone+email]: שניהם סופקו → מצליח (UNVERIFIED)', () => {
+  const r = resolveGuestIdentity('דנה', '0521234567', 'guest@mail.co', { requirePhone: true, requireEmail: true });
+  assert.equal(r.ok, true);
+  assert.equal(r.ok && r.verificationStatus, 'UNVERIFIED');
+});
+
+test('מטריצה [phone בלבד]: requirePhone, requireEmail=false — טלפון בלי מייל → מצליח', () => {
+  const r = resolveGuestIdentity('דנה', '0521234567', undefined, { requirePhone: true, requireEmail: false });
+  assert.equal(r.ok, true);
+  assert.equal(r.ok && r.verificationStatus, 'UNVERIFIED');
+});
+
+test('מטריצה [phone בלבד]: requirePhone — חסר טלפון → phone_required', () => {
+  assert.deepEqual(
+    resolveGuestIdentity('דנה', undefined, 'guest@mail.co', { requirePhone: true, requireEmail: false }),
+    { ok: false, error: 'phone_required' },
+  );
+});
+
+test('מטריצה [מייל חובה, טלפון רשות]: allowNoContact + requireEmail — חסר מייל → email_required', () => {
+  assert.deepEqual(
+    resolveGuestIdentity('דנה', undefined, undefined, { requirePhone: false, requireEmail: true, allowNoContact: true }),
+    { ok: false, error: 'email_required' },
+  );
+});
+
+test('מטריצה [מייל חובה, טלפון רשות]: מייל בלבד עובר, ללא טלפון → NONE', () => {
+  const r = resolveGuestIdentity('דנה', undefined, 'guest@mail.co', {
+    requirePhone: false,
+    requireEmail: true,
+    allowNoContact: true,
+  });
+  assert.deepEqual(r, {
+    ok: true,
+    name: 'דנה',
+    phone: undefined,
+    email: 'guest@mail.co',
+    verificationStatus: 'NONE',
+  });
+});
+
+test('מטריצה [שם בלבד]: allowNoContact, ללא דרישות — שם בלבד עובר → NONE', () => {
+  const r = resolveGuestIdentity('סבתא רבקה', undefined, undefined, {
+    requirePhone: false,
+    requireEmail: false,
+    allowNoContact: true,
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.ok && r.verificationStatus, 'NONE');
+});

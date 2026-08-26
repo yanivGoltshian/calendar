@@ -584,6 +584,7 @@ export type PolicyValues = Pick<
   | 'bookingRequiresApproval'
   | 'requirePhoneVerification'
   | 'allowBookingWithoutPhone'
+  | 'requireEmail'
 >;
 
 export function PolicyFields({ s }: { s: PolicyValues }) {
@@ -685,6 +686,24 @@ export function PolicyFields({ s }: { s: PolicyValues }) {
           <span className={hintClass + ' block'}>{c.allowNoPhoneHint}</span>
         </span>
       </label>
+
+      <p className={labelClass + ' mt-2'}>{c.contactRequirementsHeading}</p>
+      <label className={checkRowClass}>
+        <input
+          type="checkbox"
+          name="requireEmail"
+          defaultChecked={s.requireEmail}
+          className={checkboxClass}
+        />
+        <span>
+          {c.requireEmailLabel}
+          <span className={hintClass + ' block'}>{c.requireEmailRecommended}</span>
+          <span className={hintClass + ' block'}>{c.requireEmailGoogleHint}</span>
+        </span>
+      </label>
+      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        {c.contactFrictionWarning}
+      </p>
     </>
   );
 }

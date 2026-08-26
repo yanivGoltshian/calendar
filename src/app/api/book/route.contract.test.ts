@@ -109,16 +109,70 @@ test('זהות אורח: טלפון לא-תקין → invalid_phone; מייל ל
   assert.deepEqual(resolveGuestIdentity('דנה', undefined, 'no-at-sign'), { ok: false, error: 'invalid_email' });
 });
 
-// --- מדיניות פרטי קשר לפי מסלול (route.ts: business.plan !== 'premium' → requireBoth) ---
-
-// מראה של החלטת המסלול: סטנדרט (basic) מחייב שני פרטים, פרימיום מתיר אחד.
-function requireBothForPlan(plan: string): boolean {
-  return plan !== 'premium';
+// --- מדיניות פרטי קשר בשליטת הבעלים (route.ts: requireEmailContact + requirePhoneContact) ---
+// מנותקת מהמסלול. מראה של החלטת השרת: המייל חובה לפי מתג הבעלים requireEmail (ברירת
+// מחדל true), והטלפון חובה אלא אם הבעלים איפשר הזמנה ללא טלפון (allowBookingWithoutPhone).
+function requireEmailForOwner(requireEmail: boolean | undefined): boolean {
+  return requireEmail ?? true;
+}
+function requirePhoneForOwner(allowBookingWithoutPhone: boolean): boolean {
+  return !allowBookingWithoutPhone;
 }
 
-test('מדיניות מסלול: basic דורש שני פרטים, premium דורש אחד', () => {
-  assert.equal(requireBothForPlan('basic'), true);
-  assert.equal(requireBothForPlan('premium'), false);
+test('מדיניות בעלים: המייל חובה כברירת מחדל (requireEmail לא מוגדר → true)', () => {
+  assert.equal(requireEmailForOwner(undefined), true);
+  assert.equal(requireEmailForOwner(true), true);
+  assert.equal(requireEmailForOwner(false), false);
+});
+
+test('מדיניות בעלים: הטלפון חובה אלא אם מותרת הזמנה ללא טלפון', () => {
+  assert.equal(requirePhoneForOwner(false), true); // ברירת מחדל: טלפון חובה
+  assert.equal(requirePhoneForOwner(true), false); // הזמנה ללא טלפון מותרת → רשות
+});
+
+// מטריצת ארבעת הצירופים שהבעלים שולט בהם, כפי ש-route.ts מרכיב אותם ומעביר לפותר.
+test('מטריצת בעלים [allowNoPhone=false, requireEmail=true] → phone+email', () => {
+  const opts = {
+    requirePhone: requirePhoneForOwner(false),
+    requireEmail: requireEmailForOwner(true),
+    allowNoContact: false,
+  };
+  assert.deepEqual(resolveGuestIdentity('דנה', '0501234567', undefined, opts), { ok: false, error: 'email_required' });
+  assert.deepEqual(resolveGuestIdentity('דנה', undefined, 'dana@example.com', opts), { ok: false, error: 'phone_required' });
+  assert.equal(resolveGuestIdentity('דנה', '0501234567', 'dana@example.com', opts).ok, true);
+});
+
+test('מטריצת בעלים [allowNoPhone=false, requireEmail=false] → phone בלבד', () => {
+  const opts = {
+    requirePhone: requirePhoneForOwner(false),
+    requireEmail: requireEmailForOwner(false),
+    allowNoContact: false,
+  };
+  assert.equal(resolveGuestIdentity('דנה', '0501234567', undefined, opts).ok, true);
+  assert.deepEqual(resolveGuestIdentity('דנה', undefined, 'dana@example.com', opts), { ok: false, error: 'phone_required' });
+});
+
+test('מטריצת בעלים [allowNoPhone=true, requireEmail=true] → מייל חובה, טלפון רשות', () => {
+  const opts = {
+    requirePhone: requirePhoneForOwner(true),
+    requireEmail: requireEmailForOwner(true),
+    allowNoContact: true,
+  };
+  assert.deepEqual(resolveGuestIdentity('דנה', undefined, undefined, opts), { ok: false, error: 'email_required' });
+  const r = resolveGuestIdentity('דנה', undefined, 'dana@example.com', opts);
+  assert.equal(r.ok, true);
+  assert.equal(r.ok && r.verificationStatus, 'NONE');
+});
+
+test('מטריצת בעלים [allowNoPhone=true, requireEmail=false] → שם בלבד', () => {
+  const opts = {
+    requirePhone: requirePhoneForOwner(true),
+    requireEmail: requireEmailForOwner(false),
+    allowNoContact: true,
+  };
+  const r = resolveGuestIdentity('סבתא רבקה', undefined, undefined, opts);
+  assert.equal(r.ok, true);
+  assert.equal(r.ok && r.verificationStatus, 'NONE');
 });
 
 test('מדיניות סטנדרט (requireBoth): חובה גם טלפון וגם מייל', () => {

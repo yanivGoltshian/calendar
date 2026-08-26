@@ -306,6 +306,9 @@ model BusinessSettings {
   // מדיניות זהות לקוח במשפך ההזמנה (אורח תחילה). ברירת מחדל: חיכוך מינימלי.
   requirePhoneVerification Boolean @default(false) // דרוש אימות טלפון (OTP) לפני הזמנה
   allowBookingWithoutPhone Boolean @default(false) // אפשר הזמנה ללא מספר טלפון כלל
+  // דרוש כתובת מייל בקביעת תור. ברירת מחדל דלוקה (מומלץ: טלפון + מייל). המייל גם משמש
+  // כערוץ החיבור עם גוגל. הבעלים קובע זאת נפרדות מהמסלול (basic/premium).
+  requireEmail             Boolean @default(true)
 
   // מתגי שקיפות בעמוד הציבורי (ברירת מחדל: הצג). נוספו במודול ההגדרות.
   showPricesPublic   Boolean @default(true) // הצגת מחירים

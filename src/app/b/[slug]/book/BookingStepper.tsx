@@ -27,13 +27,14 @@ type Props = {
   plan: 'basic' | 'premium';
   requirePhoneVerification: boolean;
   allowBookingWithoutPhone: boolean;
+  requireEmail: boolean;
 };
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 const STEP_KEYS = ['services', 'staff', 'date', 'time', 'summary', 'confirm'] as const;
 
-export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId, plan, requirePhoneVerification, allowBookingWithoutPhone }: Props) {
+export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId, plan, requirePhoneVerification, allowBookingWithoutPhone, requireEmail }: Props) {
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
   const hasPreselected = !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
@@ -47,15 +48,15 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
-  // מצב אישור הזמנת אורח (ללא OTP). מדיניות פרטי הקשר נגזרת ממסלול העסק:
-  // סטנדרט מחייב גם טלפון וגם מייל; פרימיום מתיר טלפון בלבד (מייל רשות).
-  const requireBothContacts = plan !== 'premium';
+  // מצב אישור הזמנת אורח (ללא OTP). מדיניות פרטי הקשר נשלטת בידי הבעלים ומנותקת מהמסלול:
+  // מתג "דרוש מייל" (requireEmail) קובע אם המייל חובה. המסלול משמש רק לטקסט העצה בטופס.
+  const requireBothContacts = requireEmail;
   // מדיניות הטלפון בזרימת האורח: אם העסק מתיר הזמנה ללא טלפון, הטלפון הופך לרשות.
   // כאשר נדרש אימות טלפון, שומרים על הטלפון כשדה חובה כדי שהאורח יוכל להשלים אימות.
   const phoneRequired = requirePhoneVerification || !allowBookingWithoutPhone;
-  // כשהעסק מתיר הזמנה ללא טלפון, השרת מרפה גם את דרישת המייל (requireBoth נאכף כ-false),
-  // ולכן ה-UI מיישר קו ואינו כופה מייל במצב זה.
-  const emailRequired = requireBothContacts && !allowBookingWithoutPhone;
+  // דרישת המייל נגזרת ישירות ממתג הבעלים, בלתי-תלויה בדרישת הטלפון. כך "מייל חובה,
+  // טלפון רשות" (הזמנה ללא טלפון + דרוש מייל) נאכף גם ב-UI, בהתאמה לשרת.
+  const emailRequired = requireBothContacts;
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -405,7 +406,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
       {/* ----- שלב 5: אישור (הזמנת אורח, ללא OTP) ----- */}
       {step === 5 ? (
         <div className="space-y-4">
-          <p className="text-slate-600">{!phoneRequired ? t.booking.guestHintNoPhone : requireBothContacts ? t.booking.guestHintStandard : t.booking.guestHintPremium}</p>
+          <p className="text-slate-600">{!phoneRequired ? t.booking.guestHintNoPhone : plan === 'premium' ? t.booking.guestHintPremium : t.booking.guestHintStandard}</p>
           <div>
             <label className="mb-1 block text-sm text-slate-600">{t.booking.guestName}</label>
             <input

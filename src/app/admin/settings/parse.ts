@@ -180,6 +180,7 @@ export function parsePolicy(fd: FormData): ParseResult<BookingPolicyInput> {
       bookingRequiresApproval: checkbox(fd, 'bookingRequiresApproval'),
       requirePhoneVerification: checkbox(fd, 'requirePhoneVerification'),
       allowBookingWithoutPhone: checkbox(fd, 'allowBookingWithoutPhone'),
+      requireEmail: checkbox(fd, 'requireEmail'),
     },
   };
 }

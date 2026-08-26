@@ -73,6 +73,7 @@ test('parsePolicy: ממפה מספרים ותיבת אישור', () => {
     bookingRequiresApproval: true,
     requirePhoneVerification: false,
     allowBookingWithoutPhone: false,
+    requireEmail: false,
   });
 });
 
@@ -85,12 +86,14 @@ test('parsePolicy: מתגי משפך האורח נקראים מתיבות הסי
       maxAdvanceBookingDays: '60',
       requirePhoneVerification: 'on',
       allowBookingWithoutPhone: 'on',
+      requireEmail: 'on',
     }),
   );
   assert.equal(res.ok, true);
   if (!res.ok) return;
   assert.equal(res.data.requirePhoneVerification, true);
   assert.equal(res.data.allowBookingWithoutPhone, true);
+  assert.equal(res.data.requireEmail, true);
 });
 
 test('parsePolicy: מספר לא חוקי ⇐ שגיאת number', () => {
