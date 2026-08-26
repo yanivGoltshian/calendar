@@ -6,6 +6,7 @@ import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatLongDate, todayDateString, addDaysToDateString } from '@/lib/time';
+import { initialBookingStep, initialStaffId } from '@/lib/booking-prefill';
 
 type Service = {
   id: string;
@@ -24,6 +25,7 @@ type Props = {
   services: Service[];
   staff: Staff[];
   preselectedServiceId?: string | null;
+  preselectedStaffId?: string | null;
   plan: 'basic' | 'premium';
 };
 
@@ -31,15 +33,26 @@ type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 const STEP_KEYS = ['services', 'staff', 'date', 'time', 'summary', 'confirm'] as const;
 
-export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId, plan }: Props) {
+export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId, preselectedStaffId, plan }: Props) {
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
   const hasPreselected = !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
-  const [step, setStep] = useState<Step>(hasPreselected ? (singleStaff ? 2 : 1) : 0);
+  // קישור "קביעת תור חוזר": כאשר גם איש הצוות סומן מראש (?staff תקין) מדלגים גם על שלב הצוות ונוחתים ישר בבחירת המועד.
+  const hasPreselectedStaff = !!preselectedStaffId && staff.some((m) => m.id === preselectedStaffId);
+  const [step, setStep] = useState<Step>(
+    initialBookingStep({ hasPreselectedService: hasPreselected, hasPreselectedStaff, singleStaff }) as Step,
+  );
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
     hasPreselected ? [preselectedServiceId as string] : [],
   );
-  const [staffId, setStaffId] = useState<string>(singleStaff ? staff[0].id : '');
+  const [staffId, setStaffId] = useState<string>(
+    initialStaffId({
+      preselectedStaffId: preselectedStaffId ?? null,
+      isPreselectedStaffValid: hasPreselectedStaff,
+      singleStaff,
+      firstStaffId: singleStaff ? staff[0].id : null,
+    }),
+  );
   const [date, setDate] = useState<string>(todayDateString());
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
