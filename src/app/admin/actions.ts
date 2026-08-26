@@ -20,6 +20,7 @@ import {
 } from '@/server/repos/appointments';
 import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
+import { triggerWaitlistAutofillForAppointment } from '@/server/waitlist/autofill';
 import { localWallTimeToUtc } from '@/lib/time';
 import { normalizePhone } from '@/lib/crypto';
 
@@ -42,6 +43,17 @@ export async function setAppointmentStatusAction(
     return { ok: false };
   }
   await updateAppointmentStatus(appointmentId, status as AppointmentStatus);
+
+  // כשמסמנים תור כמבוטל מהיומן — מפעילים מילוי אוטומטי של רשימת ההמתנה.
+  // מיטבי בלבד; כל כשל נבלע כדי שעדכון הסטטוס לעולם לא ייחסם.
+  if (status === 'CANCELLED') {
+    try {
+      await triggerWaitlistAutofillForAppointment(appointmentId);
+    } catch {
+      // עדכון הסטטוס הצליח; כשל בהצעת רשימת ההמתנה אינו משפיע על הפעולה.
+    }
+  }
+
   revalidatePath('/admin');
   return { ok: true };
 }

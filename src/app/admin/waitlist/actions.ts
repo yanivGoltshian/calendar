@@ -5,10 +5,10 @@ import { z } from 'zod';
 import { getActiveBusiness } from '@/server/repos/business';
 import {
   addWaitlistEntry,
-  notifyWaitlistEntry,
   promoteWaitlistEntry,
   cancelWaitlistEntry,
 } from '@/server/repos/waitlist';
+import { offerWaitlistEntryManually } from '@/server/waitlist/autofill';
 import { isValidIsraeliMobile } from '@/lib/crypto';
 
 const addSchema = z.object({
@@ -76,9 +76,9 @@ async function withBusiness(
   revalidatePath('/admin/waitlist');
 }
 
-/** יידוע ממתין (SMS stub) וסימון NOTIFIED. */
+/** יידוע ידני של ממתין: יוצר החזקה + טוקן ושולח הצעה בערוץ הקיים. מסמן NOTIFIED. */
 export async function notifyAction(formData: FormData): Promise<void> {
-  await withBusiness(notifyWaitlistEntry, formData);
+  await withBusiness(offerWaitlistEntryManually, formData);
 }
 
 /** קידום ידני של ממתין (BOOKED). */

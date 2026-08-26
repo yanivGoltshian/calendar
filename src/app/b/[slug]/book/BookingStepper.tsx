@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
+import WaitlistJoinCTA from './WaitlistJoinCTA';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatLongDate, todayDateString, addDaysToDateString } from '@/lib/time';
 
@@ -334,7 +335,15 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
           {slotsLoading ? (
             <p className="py-8 text-center text-slate-400">{t.common.loading}</p>
           ) : slots.length === 0 ? (
-            <p className="py-8 text-center text-slate-500">{t.booking.noSlots}</p>
+            <div className="py-4">
+              <p className="mb-4 text-center text-slate-500">{t.booking.noSlots}</p>
+              <WaitlistJoinCTA
+                slug={slug}
+                serviceId={selectedServiceIds[0] ?? null}
+                staffId={staffId || null}
+                desiredDate={date}
+              />
+            </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {slots.map((slot) => (

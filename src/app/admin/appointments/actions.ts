@@ -8,6 +8,7 @@ import {
 } from '@/server/repos/appointments';
 import { getBusinessAccess } from '@/server/subscription';
 import { notifyClientOfApproval } from '@/server/notifications/clientApproval';
+import { triggerWaitlistAutofillForAppointment } from '@/server/waitlist/autofill';
 import { absoluteUrl } from '@/lib/seo';
 
 /**
@@ -71,6 +72,14 @@ export async function cancelAppointmentAction(formData: FormData) {
   const id = String(formData.get('appointmentId') || '');
   if (!(await assertBelongsToBusiness(id))) return;
   await updateAppointmentStatus(id, 'CANCELLED');
+
+  // מילוי אוטומטי של רשימת ההמתנה — מיטבי בלבד ולעולם אינו חוסם את הביטול.
+  try {
+    await triggerWaitlistAutofillForAppointment(id);
+  } catch {
+    // הביטול הצליח; כשל בהצעת רשימת ההמתנה אינו משפיע על הפעולה.
+  }
+
   revalidatePath('/admin/appointments');
   revalidatePath('/admin');
 }

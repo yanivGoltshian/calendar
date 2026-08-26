@@ -2209,6 +2209,57 @@ const he = {
         'שתי החבילות מתומחרות בפנייה אישית, כדי שנתאים לכם הצעה בדיוק לצרכים של העסק.',
     },
   },
+  waitlist: {
+    offer: {
+      subject: 'התפנה תור אצל {business}',
+      body: 'שלום {name}, התפנה תור אצל {business}! שמרנו לך אותו לזמן מוגבל. לתפיסת התור: {url}',
+      manualBody:
+        'שלום {name}, התפנה מקום אצל {business}. נשמח לתאם לך תור — השיבו להודעה זו.',
+    },
+    claim: {
+      metaTitle: 'תפיסת תור שהתפנה',
+      heading: 'התפנה תור!',
+      subheading: 'שמרנו לך את המשבצת הזו לזמן מוגבל. אשרו כדי לתפוס אותה.',
+      serviceLabel: 'שירות',
+      staffLabel: 'עם',
+      whenLabel: 'מתי',
+      holdNotice: 'המשבצת שמורה לך עד {time}. לאחר מכן היא תוצע לממתין הבא.',
+      confirmCta: 'אישור ותפיסת התור',
+      submitting: 'תופסים…',
+      successTitle: 'התור נתפס בהצלחה!',
+      successBody: 'קבענו לך את התור. נתראה!',
+      expiredTitle: 'ההצעה פגה',
+      expiredBody:
+        'הזמן לתפיסת המשבצת חלף והיא הוצעה לממתין הבא. אפשר להצטרף שוב לרשימת ההמתנה.',
+      notFoundTitle: 'הקישור אינו תקין',
+      notFoundBody: 'ייתכן שהקישור שגוי או שכבר נעשה בו שימוש.',
+      takenTitle: 'המשבצת כבר נתפסה',
+      takenBody:
+        'מישהו הקדים אתכם והמשבצת כבר נתפסה. אפשר להישאר ברשימת ההמתנה למשבצת הבאה.',
+      backToBusiness: 'למעבר לעמוד העסק',
+    },
+    join: {
+      cta: 'הצטרפו לרשימת המתנה',
+      title: 'היום מלא? הצטרפו לרשימת המתנה',
+      subtitle: 'נעדכן אתכם מיד כשמתפנה תור מתאים.',
+      nameLabel: 'שם מלא',
+      namePlaceholder: 'איך לפנות אליכם',
+      phoneLabel: 'טלפון נייד',
+      phonePlaceholder: '050-0000000',
+      windowLabel: 'מתי נוח לכם?',
+      windowAny: 'כל שעה',
+      windowMorning: 'בוקר (08:00–12:00)',
+      windowAfternoon: 'צהריים (12:00–16:00)',
+      windowEvening: 'ערב (16:00–20:00)',
+      submit: 'שלחו אותי לרשימה',
+      submitting: 'מצרפים…',
+      successTitle: 'נרשמתם לרשימת ההמתנה!',
+      successBody: 'נעדכן אתכם ברגע שיתפנה תור מתאים.',
+      errorName: 'נא להזין שם.',
+      errorPhone: 'נא להזין מספר נייד תקין.',
+      errorGeneric: 'לא הצלחנו לצרף אתכם כרגע. נסו שוב עוד רגע.',
+    },
+  },
 } as const;
 
 export default he;
