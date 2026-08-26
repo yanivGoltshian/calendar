@@ -32,7 +32,7 @@ export default async function DemoPage() {
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
       <Navbar demoSlug={demoSlug} />
       <main className="flex-1">
-        <Section>
+        <Section className="pt-8 sm:pt-12">
           <Container className="max-w-4xl">
             <div className="text-center">
               <FadeIn>
