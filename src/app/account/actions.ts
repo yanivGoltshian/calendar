@@ -7,6 +7,7 @@ import {
   getAppointmentForOwner,
   updateAppointmentStatus,
 } from '@/server/repos/appointments';
+import { triggerWaitlistAutofillForAppointment } from '@/server/waitlist/autofill';
 
 /** התנתקות: ניקוי עוגיית ה-session והפניה למסך ההתחברות. */
 export async function logout() {
@@ -51,6 +52,15 @@ export async function cancelAppointmentAction(
   }
 
   await updateAppointmentStatus(id, 'CANCELLED');
+
+  // מילוי אוטומטי: התפנתה משבצת — מציעים אותה למוביל ברשימת ההמתנה. מיטבי בלבד;
+  // כל כשל נבלע כדי שהביטול עצמו לעולם לא ייחסם.
+  try {
+    await triggerWaitlistAutofillForAppointment(id);
+  } catch {
+    // הביטול הצליח; כשל בהצעת רשימת ההמתנה אינו משפיע על הפעולה.
+  }
+
   revalidatePath('/account');
   return { ok: true };
 }

@@ -21,6 +21,7 @@ import {
 } from '@/server/repos/appointments';
 import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
+import { triggerWaitlistAutofillForAppointment } from '@/server/waitlist/autofill';
 import { getBusinessAccess } from '@/server/subscription';
 import { notifyClientOfVisitSummary } from '@/server/notifications/visitSummary';
 import { rebookUrl } from '@/lib/booking-link';
@@ -83,6 +84,17 @@ export async function setAppointmentStatusAction(
     status === 'DONE' ? await getAppointmentById(appointmentId) : null;
 
   await updateAppointmentStatus(appointmentId, status as AppointmentStatus);
+
+  // כשמסמנים תור כמבוטל מהיומן — מפעילים מילוי אוטומטי של רשימת ההמתנה.
+  // מיטבי בלבד; כל כשל נבלע כדי שעדכון הסטטוס לעולם לא ייחסם.
+  if (status === 'CANCELLED') {
+    try {
+      await triggerWaitlistAutofillForAppointment(appointmentId);
+    } catch {
+      // עדכון הסטטוס הצליח; כשל בהצעת רשימת ההמתנה אינו משפיע על הפעולה.
+    }
+  }
+
   revalidatePath('/admin');
 
   // סיכום ביקור נשלח רק במעבר אמיתי לתוך DONE (כשהסטטוס הקודם אינו DONE).

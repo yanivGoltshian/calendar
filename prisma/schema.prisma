@@ -578,10 +578,20 @@ model WaitlistEntry {
   status     WaitlistStatus @default(WAITING)
   notifiedAt DateTime? // מתי נשלחה הודעת עדכון ללקוח
   promotedAt DateTime? // מתי קודם ידנית (הוזמן) מהרשימה
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+
+  // מילוי אוטומטי של תור שהתפנה: טוקן חד-פעמי לקישור התפיסה (claim), ומועד
+  // פקיעת ה"החזקה" — עד אליו השמורה בלעדית לממתין שקיבל הודעה (first-come).
+  claimToken    String?   @unique
+  holdExpiresAt DateTime? // עד מתי המשבצת שמורה לממתין שקיבל הודעה
+  // מזהה התור (שבוטל) שממנו נגזרה המשבצת המוצעת — מאפשר לסֶווֹפ הפקיעה לבנות מחדש
+  // את פרטי המשבצת ולהציע אותה לממתין הבא בתור, ולזרימת התפיסה ליצור תור חדש.
+  heldAppointmentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([businessId, status])
+  @@index([holdExpiresAt])
 }
 
 // ---------- כרטיסייה (schema בלבד — ללא לוגיקה ב-MVP) ----------
