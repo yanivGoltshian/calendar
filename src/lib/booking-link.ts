@@ -16,6 +16,30 @@ export function bookingUrl(slug: string): string {
 }
 
 /**
+ * נתיב "קביעת תור חוזר": קישור עמוק לעמוד העסק עם שירות (ואופציונלית איש צוות)
+ * מסומנים מראש, שנוחת בזרימת ההזמנה ומדלג ישר לבחירת המועד. מקור אמת יחיד לקישור
+ * זה — משמש גם את הודעת הסיכום שאחרי הביקור וגם את כפתור "קבעו שוב" באזור החשבון.
+ * ערכי ה-query מקודדים (encodeURIComponent) כדי לשמור על כתובת תקינה.
+ */
+export function rebookPath(
+  slug: string,
+  serviceId: string,
+  staffId?: string | null,
+): string {
+  const base = `${bookingPath(slug)}?rebook=${encodeURIComponent(serviceId)}`;
+  return staffId ? `${base}&staff=${encodeURIComponent(staffId)}` : base;
+}
+
+/** כתובת מוחלטת ל"קביעת תור חוזר", בנויה על עוזר בסיס הכתובת המשותף. */
+export function rebookUrl(
+  slug: string,
+  serviceId: string,
+  staffId?: string | null,
+): string {
+  return absoluteUrl(rebookPath(slug, serviceId, staffId));
+}
+
+/**
  * שער "העסק חי": המינימום לקבלת הזמנות הוא לפחות שירות אחד ושעות פעילות מוגדרות.
  * מסתמך על אותם אותות השלמה שכבר מחושבים לרשימת ההקמה.
  */

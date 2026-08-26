@@ -4,7 +4,7 @@ import { getBusinessBySlug } from '@/server/repos/business';
 import { t } from '@/i18n';
 import BookingStepper from './BookingStepper';
 
-type Props = { params: Promise<{ slug: string }>; searchParams?: Promise<{ service?: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams?: Promise<{ service?: string; staff?: string }> };
 
 export const metadata: Metadata = { title: t.booking.title };
 
@@ -30,8 +30,10 @@ export default async function BookPage({ params, searchParams }: Props) {
   }));
 
   // קישור עמוק משירות: אם הגיעו עם ?service=<id> תקין, מסמנים אותו מראש ומדלגים על שלב השירותים.
-  const serviceParam = ((await searchParams) ?? {}).service;
-  const preselectedServiceId = services.find((s) => s.id === serviceParam)?.id ?? null;
+  // ?staff=<id> תקין (למשל מ"קביעת תור חוזר") מסמן גם את איש הצוות ומדלג גם על שלב הצוות.
+  const sp = (await searchParams) ?? {};
+  const preselectedServiceId = services.find((s) => s.id === sp.service)?.id ?? null;
+  const preselectedStaffId = staff.find((m) => m.id === sp.staff)?.id ?? null;
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-6">
@@ -41,6 +43,7 @@ export default async function BookPage({ params, searchParams }: Props) {
         services={services}
         staff={staff}
         preselectedServiceId={preselectedServiceId}
+        preselectedStaffId={preselectedStaffId}
         plan={business.plan === 'premium' ? 'premium' : 'basic'}
       />
     </main>

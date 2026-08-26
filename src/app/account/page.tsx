@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/admin';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatDateString, formatLongDate, formatTime } from '@/lib/time';
+import { rebookPath } from '@/lib/booking-link';
 import type { AppointmentStatus } from '@prisma/client';
 
 export const metadata: Metadata = { title: t.account.title };
@@ -33,7 +34,7 @@ const STATUS_TONE: Record<
 
 type Appointment = Awaited<ReturnType<typeof getAppointmentsForUser>>['upcoming'][number];
 
-function AppointmentCard({ appt }: { appt: Appointment }) {
+function AppointmentCard({ appt, isPast = false }: { appt: Appointment; isPast?: boolean }) {
   const tz = appt.business.timezone;
   const dateStr = formatDateString(appt.startAt, tz);
   const totalMinutes = appt.services.reduce((sum, s) => sum + s.durationMinSnapshot, 0);
@@ -45,6 +46,10 @@ function AppointmentCard({ appt }: { appt: Appointment }) {
   const canCancel =
     cancellableStatus &&
     Date.now() < appt.startAt.getTime() - windowHours * 60 * 60 * 1000;
+
+  // "קבעו שוב": בתורים שחלפו מציגים קישור עמוק לקביעת תור חוזר עם אותו שירות ואיש צוות.
+  const rebookServiceId = appt.services[0]?.serviceId ?? null;
+  const showRebook = isPast && !!rebookServiceId;
 
   return (
     <Card>
@@ -84,9 +89,18 @@ function AppointmentCard({ appt }: { appt: Appointment }) {
           </div>
         </dl>
 
-        {canCancel ? (
-          <div className="border-t border-[#16233A] pt-3">
-            <CancelAppointmentButton appointmentId={appt.id} />
+        {canCancel || showRebook ? (
+          <div className="flex flex-wrap items-center gap-2 border-t border-[#16233A] pt-3">
+            {showRebook ? (
+              <Button
+                href={rebookPath(appt.business.slug, rebookServiceId as string, appt.staff.id)}
+                variant="primary"
+                size="sm"
+              >
+                {t.account.rebookCta}
+              </Button>
+            ) : null}
+            {canCancel ? <CancelAppointmentButton appointmentId={appt.id} /> : null}
           </div>
         ) : null}
       </CardBody>
@@ -147,7 +161,7 @@ export default async function AccountPage() {
             <CardTitle className="text-[#E8ECF3]">{t.account.pastTitle}</CardTitle>
           </CardHeader>
           {past.length > 0 ? (
-            past.map((appt) => <AppointmentCard key={appt.id} appt={appt} />)
+            past.map((appt) => <AppointmentCard key={appt.id} appt={appt} isPast />)
           ) : (
             <p className="rounded-xl border border-[#16233A] bg-[#08101C] px-4 py-6 text-center text-sm text-[#9AA7BD]">
               {t.account.noPast}
