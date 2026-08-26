@@ -70,20 +70,29 @@ export async function POST(req: Request) {
   // טלפון, והמייל חינמי עד 500 ליום); פרימיום מתיר טלפון בלבד כהטבה.
   const requireBothContacts = business.plan !== 'premium';
 
+  // מדיניות זהות במשפך "אורח תחילה" (ברירת מחדל: חיכוך מינימלי, שני המתגים כבויים).
+  const allowNoPhone = business.settings?.allowBookingWithoutPhone ?? false;
+  const requireVerification = business.settings?.requirePhoneVerification ?? false;
+
   // זהות הלקוח: מתוך ההתחברות אם קיימת (טלפון ו/או מייל), אחרת מפרטי הזמנת האורח.
   let clientPhone: string | undefined;
   let clientEmail: string | undefined;
   let clientName: string;
   let clientUserId: string | undefined;
+  // רמת אימות הזהות שתירשם על הלקוח: מחובר/OTP → VERIFIED; אורח → UNVERIFIED/NONE.
+  let clientVerification: 'VERIFIED' | 'UNVERIFIED' | 'NONE';
   if (session) {
     clientPhone = session.phone;
     clientEmail = session.email;
     clientName = parsed.name ?? session.name ?? session.phone ?? session.email ?? 'לקוח';
     clientUserId = session.userId;
+    // התחברות לקוח מתבצעת דרך OTP/Firebase, ולכן היא נחשבת זהות מאומתת.
+    clientVerification = 'VERIFIED';
   } else {
     // חוקת זהות אורח חולצה לפונקציה טהורה `resolveGuestIdentity` (משותפת עם המבחן).
     const guest = resolveGuestIdentity(parsed.name, parsed.phone, parsed.email, {
       requireBoth: requireBothContacts,
+      allowNoContact: allowNoPhone,
     });
     if (!guest.ok) {
       return NextResponse.json({ ok: false, error: guest.error }, { status: 400 });
@@ -92,6 +101,12 @@ export async function POST(req: Request) {
     clientEmail = guest.email;
     clientName = guest.name;
     clientUserId = undefined;
+    clientVerification = guest.verificationStatus; // UNVERIFIED (יש טלפון) או NONE (ללא טלפון)
+
+    // כשהעסק דורש אימות טלפון, מסלול האורח (ללא OTP) חסום — יש להתחבר תחילה.
+    if (requireVerification) {
+      return NextResponse.json({ ok: false, error: 'verification_required' }, { status: 400 });
+    }
   }
 
   // אימות שאיש הצוות שייך לעסק ופעיל.
@@ -142,6 +157,7 @@ export async function POST(req: Request) {
     email: clientEmail,
     name: clientName,
     userId: clientUserId,
+    verificationStatus: clientVerification,
   });
 
   // סטטוס התחלתי לפי מדיניות: PENDING כשנדרש אישור עסק, אחרת CONFIRMED.

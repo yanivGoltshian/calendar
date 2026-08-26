@@ -51,7 +51,7 @@ const createSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),
   clientName: z.string().trim().min(1),
-  clientPhone: z.string().trim().min(1),
+  clientPhone: z.string().trim().optional().default(''),
   serviceId: z.string().min(1),
 });
 
@@ -92,10 +92,16 @@ export async function createManualAppointmentAction(
     return { ok: false, error: 'slot_taken' };
   }
 
+  const rawPhone = data.clientPhone.trim();
+  const phone = rawPhone ? normalizePhone(rawPhone) : null;
+
   const client = await findOrCreateClient({
     businessId: business.id,
-    phone: normalizePhone(data.clientPhone),
+    phone,
     name: data.clientName,
+    // תור שנוצר בידי הבעלים: אם יש טלפון הבעלים ערב לפרטים ולכן מאומת;
+    // ללא טלפון מסומן "ללא טלפון" כדי שהבעלים יוכל להשלים בהמשך.
+    verificationStatus: phone ? 'VERIFIED' : 'NONE',
   });
 
   const appointment = await createAppointment({

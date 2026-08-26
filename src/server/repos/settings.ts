@@ -60,6 +60,10 @@ export type BookingPolicyInput = {
   slotGranularityMinutes: number;
   maxAdvanceBookingDays: number;
   bookingRequiresApproval: boolean;
+  // דרוש אימות טלפון (OTP) מהלקוח לפני קביעת תור. ברירת מחדל כבויה (משפך אורח).
+  requirePhoneVerification: boolean;
+  // אפשר קביעת תור גם ללא מספר טלפון כלל. ברירת מחדל כבויה.
+  allowBookingWithoutPhone: boolean;
 };
 
 /** עדכון מדיניות ההזמנה (BusinessSettings). */

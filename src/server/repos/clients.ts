@@ -2,6 +2,12 @@ import { prisma } from '@/lib/db';
 import { normalizePhone } from '@/lib/crypto';
 import type { Prisma } from '@prisma/client';
 
+/** רמת אימות זהות של לקוח (משפך אורח תחילה). */
+export type VerificationLevel = 'VERIFIED' | 'UNVERIFIED' | 'NONE';
+
+// דירוג רמות אימות לצורך "שדרוג בלבד" (לעולם לא מורידים רמה קיימת).
+const verificationRank: Record<VerificationLevel, number> = { NONE: 0, UNVERIFIED: 1, VERIFIED: 2 };
+
 /**
  * מציאת לקוח בעסק לפי זהות (userId / טלפון / מייל), או יצירתו אוטומטית.
  * לפחות אחד מבין phone/email/userId חייב להתקבל. שומר על תאימות לאחור: כאשר
@@ -13,6 +19,7 @@ export async function findOrCreateClient(params: {
   email?: string | null;
   name: string;
   userId?: string;
+  verificationStatus?: VerificationLevel;
 }) {
   const phone = params.phone ?? undefined;
   const email = params.email ?? undefined;
@@ -45,6 +52,12 @@ export async function findOrCreateClient(params: {
     if (!existing.name && params.name) patch.name = params.name;
     if (!existing.phone && phone) patch.phone = phone;
     if (!existing.email && email) patch.email = email;
+    // רמת אימות: שדרוג בלבד (מחובר שמאמת לקוח קיים, או NONE שקיבל טלפון → UNVERIFIED).
+    if (params.verificationStatus) {
+      const current = verificationRank[existing.verificationStatus as VerificationLevel] ?? 0;
+      const incoming = verificationRank[params.verificationStatus];
+      if (incoming > current) patch.verificationStatus = params.verificationStatus;
+    }
     if (Object.keys(patch).length > 0) {
       return prisma.client.update({ where: { id: existing.id }, data: patch });
     }
@@ -58,11 +71,13 @@ export async function findOrCreateClient(params: {
       email: email ?? null,
       name: params.name,
       userId: params.userId,
+      // ברירת מחדל בסכימה היא UNVERIFIED; מעבירים במפורש כדי לתעד NONE/VERIFIED.
+      verificationStatus: params.verificationStatus ?? (phone ? 'UNVERIFIED' : 'NONE'),
     },
   });
 }
 
-export type ClientFilter = 'all' | 'active' | 'blocked';
+export type ClientFilter = 'all' | 'active' | 'blocked' | 'unverified';
 
 /** רשימת לקוחות עם חיפוש חופשי (שם/טלפון) וסינון לפי מצב חסימה. */
 export function listClients(
@@ -74,6 +89,8 @@ export function listClients(
 
   if (filter === 'active') where.blocked = false;
   else if (filter === 'blocked') where.blocked = true;
+  else if (filter === 'unverified')
+    where.verificationStatus = { in: ['UNVERIFIED', 'NONE'] };
 
   const term = q?.trim();
   if (term) {
@@ -114,20 +131,24 @@ export function getClientWithHistory(businessId: string, id: string) {
 
 export type ClientInput = {
   name: string;
-  phone: string;
+  phone?: string | null;
   email?: string | null;
   notes?: string | null;
+  verificationStatus?: VerificationLevel;
 };
 
-/** יצירת לקוח חדש. הטלפון מנורמל ל-E.164. */
+/** יצירת לקוח חדש. הטלפון מנורמל ל-E.164 (או null כשלא נמסר). */
 export function createClient(businessId: string, data: ClientInput) {
+  const phone = data.phone?.trim() ? normalizePhone(data.phone) : null;
   return prisma.client.create({
     data: {
       businessId,
       name: data.name,
-      phone: normalizePhone(data.phone),
+      phone,
       email: data.email ?? null,
       notes: data.notes ?? null,
+      // אם לא צוינה רמה: יש טלפון → UNVERIFIED, אחרת NONE ("ללא טלפון").
+      verificationStatus: data.verificationStatus ?? (phone ? 'UNVERIFIED' : 'NONE'),
     },
   });
 }
@@ -138,14 +159,18 @@ export async function updateClient(
   id: string,
   data: ClientInput,
 ) {
+  const phone = data.phone?.trim() ? normalizePhone(data.phone) : null;
+  const patch: Prisma.ClientUpdateManyMutationInput = {
+    name: data.name,
+    phone,
+    email: data.email ?? null,
+    notes: data.notes ?? null,
+  };
+  // רמת אימות מתעדכנת רק כאשר נמסרה במפורש (בעל העסק בחר לסמן/לתקן).
+  if (data.verificationStatus) patch.verificationStatus = data.verificationStatus;
   const result = await prisma.client.updateMany({
     where: { id, businessId },
-    data: {
-      name: data.name,
-      phone: normalizePhone(data.phone),
-      email: data.email ?? null,
-      notes: data.notes ?? null,
-    },
+    data: patch,
   });
   return result.count > 0;
 }
@@ -159,6 +184,22 @@ export async function setClientBlocked(
   const result = await prisma.client.updateMany({
     where: { id, businessId },
     data: { blocked },
+  });
+  return result.count > 0;
+}
+
+/**
+ * קביעת רמת אימות הזהות של לקוח ידנית על ידי בעל העסק (סימון "מאומת"/"טופל").
+ * מסונן לפי העסק כדי למנוע גישה חוצה עסקים.
+ */
+export async function setClientVerification(
+  businessId: string,
+  id: string,
+  verificationStatus: VerificationLevel,
+) {
+  const result = await prisma.client.updateMany({
+    where: { id, businessId },
+    data: { verificationStatus },
   });
   return result.count > 0;
 }

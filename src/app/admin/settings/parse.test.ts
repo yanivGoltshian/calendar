@@ -71,7 +71,26 @@ test('parsePolicy: ממפה מספרים ותיבת אישור', () => {
     slotGranularityMinutes: 15,
     maxAdvanceBookingDays: 60,
     bookingRequiresApproval: true,
+    requirePhoneVerification: false,
+    allowBookingWithoutPhone: false,
   });
+});
+
+test('parsePolicy: מתגי משפך האורח נקראים מתיבות הסימון', () => {
+  const res = parsePolicy(
+    form({
+      minLeadTimeMinutes: '30',
+      cancellationWindowHours: '24',
+      slotGranularityMinutes: '15',
+      maxAdvanceBookingDays: '60',
+      requirePhoneVerification: 'on',
+      allowBookingWithoutPhone: 'on',
+    }),
+  );
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.equal(res.data.requirePhoneVerification, true);
+  assert.equal(res.data.allowBookingWithoutPhone, true);
 });
 
 test('parsePolicy: מספר לא חוקי ⇐ שגיאת number', () => {

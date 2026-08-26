@@ -42,6 +42,8 @@ export default async function BookPage({ params, searchParams }: Props) {
         staff={staff}
         preselectedServiceId={preselectedServiceId}
         plan={business.plan === 'premium' ? 'premium' : 'basic'}
+        requirePhoneVerification={business.settings?.requirePhoneVerification ?? false}
+        allowBookingWithoutPhone={business.settings?.allowBookingWithoutPhone ?? false}
       />
     </main>
   );

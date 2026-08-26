@@ -7,6 +7,7 @@ import { MascotEmptyState } from '@/components/brand/MascotEmptyState';
 import { getActiveBusiness } from '@/server/repos/business';
 import {
   getBusinessAppointments,
+  countUnverifiedUpcomingAppointments,
   type BusinessAppointmentsOptions,
 } from '@/server/repos/appointments';
 import { formatDateString, formatLongDate, formatTime } from '@/lib/time';
@@ -81,6 +82,9 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
     statuses: ['PENDING'],
   }).then((list) => list.length);
 
+  // מספר התורים העתידיים שדורשים השלמת פרטים (לא מאומת / ללא טלפון).
+  const unverifiedCount = await countUnverifiedUpcomingAppointments(business.id);
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'pending', label: m.tabs.pending },
     { key: 'upcoming', label: m.tabs.upcoming },
@@ -96,6 +100,19 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
         </h1>
         <p className="mt-1 text-sm text-slate-500">{m.subtitle}</p>
       </header>
+
+      {/* התראת השלמת פרטים: הזמנות לא מאומתות / ללא טלפון */}
+      {unverifiedCount > 0 ? (
+        <Link
+          href="/admin/clients?filter=unverified"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800 transition hover:bg-orange-100"
+        >
+          <span className="font-medium">{t.admin.verification.summaryLabel}</span>
+          <span className="rounded-full bg-orange-200 px-2 py-0.5 text-xs font-bold text-orange-900">
+            {unverifiedCount}
+          </span>
+        </Link>
+      ) : null}
 
       {/* טאבים */}
       <nav className="mb-5 flex flex-wrap gap-2" aria-label={m.title}>
@@ -176,6 +193,15 @@ export default async function AdminAppointmentsPage({ searchParams }: Props) {
                     >
                       {t.admin.statuses[appt.status]}
                     </span>
+                    {/* התראת השלמת פרטים על התור עצמו */}
+                    {appt.client.verificationStatus === 'UNVERIFIED' ||
+                    appt.client.verificationStatus === 'NONE' ? (
+                      <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-800">
+                        {appt.client.verificationStatus === 'NONE'
+                          ? t.admin.verification.badgeNone
+                          : t.admin.verification.badgeUnverified}
+                      </span>
+                    ) : null}
                     {/* אישור הלקוח מהתזכורת — מוצג רק כאשר הלקוח הגיב בפועל. */}
                     {appt.confirmationStatus === 'CONFIRMED' ||
                     appt.confirmationStatus === 'DECLINED' ? (

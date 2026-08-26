@@ -25,13 +25,15 @@ type Props = {
   staff: Staff[];
   preselectedServiceId?: string | null;
   plan: 'basic' | 'premium';
+  requirePhoneVerification: boolean;
+  allowBookingWithoutPhone: boolean;
 };
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 const STEP_KEYS = ['services', 'staff', 'date', 'time', 'summary', 'confirm'] as const;
 
-export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId, plan }: Props) {
+export default function BookingStepper({ slug, businessName, services, staff, preselectedServiceId, plan, requirePhoneVerification, allowBookingWithoutPhone }: Props) {
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
   const hasPreselected = !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
@@ -48,6 +50,12 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
   // מצב אישור הזמנת אורח (ללא OTP). מדיניות פרטי הקשר נגזרת ממסלול העסק:
   // סטנדרט מחייב גם טלפון וגם מייל; פרימיום מתיר טלפון בלבד (מייל רשות).
   const requireBothContacts = plan !== 'premium';
+  // מדיניות הטלפון בזרימת האורח: אם העסק מתיר הזמנה ללא טלפון, הטלפון הופך לרשות.
+  // כאשר נדרש אימות טלפון, שומרים על הטלפון כשדה חובה כדי שהאורח יוכל להשלים אימות.
+  const phoneRequired = requirePhoneVerification || !allowBookingWithoutPhone;
+  // כשהעסק מתיר הזמנה ללא טלפון, השרת מרפה גם את דרישת המייל (requireBoth נאכף כ-false),
+  // ולכן ה-UI מיישר קו ואינו כופה מייל במצב זה.
+  const emailRequired = requireBothContacts && !allowBookingWithoutPhone;
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -138,11 +146,13 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
                     ? t.auth.invalidEmail
                     : code === 'phone_required'
                       ? t.booking.phoneRequired
-                      : code === 'email_required'
-                        ? t.booking.emailRequired
-                        : code === 'bad_request'
-                          ? t.booking.guestMissingFields
-                          : t.common.error,
+                        : code === 'email_required'
+                          ? t.booking.emailRequired
+                          : code === 'verification_required'
+                            ? t.booking.verificationRequired
+                            : code === 'bad_request'
+                              ? t.booking.guestMissingFields
+                              : t.common.error,
         );
         return;
       }
@@ -395,7 +405,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
       {/* ----- שלב 5: אישור (הזמנת אורח, ללא OTP) ----- */}
       {step === 5 ? (
         <div className="space-y-4">
-          <p className="text-slate-600">{requireBothContacts ? t.booking.guestHintStandard : t.booking.guestHintPremium}</p>
+          <p className="text-slate-600">{!phoneRequired ? t.booking.guestHintNoPhone : requireBothContacts ? t.booking.guestHintStandard : t.booking.guestHintPremium}</p>
           <div>
             <label className="mb-1 block text-sm text-slate-600">{t.booking.guestName}</label>
             <input
@@ -407,7 +417,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-600">{t.booking.guestPhone}</label>
+            <label className="mb-1 block text-sm text-slate-600">{phoneRequired ? t.booking.guestPhone : t.booking.guestPhoneOptional}</label>
             <input
               type="tel"
               inputMode="tel"
@@ -421,7 +431,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
           </div>
           <div>
             <label className="mb-1 block text-sm text-slate-600">
-              {requireBothContacts ? t.booking.guestEmail : t.booking.guestEmailOptional}
+              {emailRequired ? t.booking.guestEmail : t.booking.guestEmailOptional}
             </label>
             <input
               type="email"
@@ -436,7 +446,7 @@ export default function BookingStepper({ slug, businessName, services, staff, pr
           </div>
           <button
             type="button"
-            disabled={busy || !name.trim() || !phone.trim() || (requireBothContacts && !email.trim())}
+            disabled={busy || !name.trim() || (phoneRequired && !phone.trim()) || (emailRequired && !email.trim())}
             onClick={submitBooking}
             className="w-full rounded-xl bg-brand-600 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-40"
           >

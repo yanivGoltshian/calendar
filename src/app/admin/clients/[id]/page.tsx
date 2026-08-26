@@ -9,12 +9,19 @@ import { displayPhone } from '@/lib/crypto';
 import { formatAgorot } from '@/lib/money';
 import { formatTime, formatDateString, formatLongDate, DEFAULT_TZ } from '@/lib/time';
 import ClientForm, { type ClientFormValues } from '../ClientForm';
-import { toggleClientBlockedAction } from '../actions';
+import { toggleClientBlockedAction, setClientVerificationAction } from '../actions';
 
 export const metadata: Metadata = { title: t.admin.clients.title };
 
 type Props = {
   params: Promise<{ id: string }>;
+};
+
+// מיפוי רמת אימות זהות לתווית צבעונית.
+const verificationBadgeClass: Record<string, string> = {
+  UNVERIFIED: 'bg-orange-100 text-orange-800',
+  NONE: 'bg-slate-200 text-slate-600',
+  VERIFIED: 'bg-green-100 text-green-700',
 };
 
 // מיפוי סטטוס תור לצבעי תווית בהירים.
@@ -55,6 +62,18 @@ export default async function AdminClientDetailPage({ params }: Props) {
         <p className="mt-2 text-sm text-slate-500">{BRAND.name}</p>
         <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-slate-900">
           {client.name}
+          {client.verificationStatus === 'UNVERIFIED' ||
+          client.verificationStatus === 'NONE' ? (
+            <span
+              className={`rounded-full px-2 py-0.5 text-sm font-medium ${
+                verificationBadgeClass[client.verificationStatus]
+              }`}
+            >
+              {client.verificationStatus === 'NONE'
+                ? t.admin.verification.badgeNone
+                : t.admin.verification.badgeUnverified}
+            </span>
+          ) : null}
           {client.blocked ? (
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-medium text-red-700">
               {t.admin.clients.blockedBadge}
@@ -97,6 +116,31 @@ export default async function AdminClientDetailPage({ params }: Props) {
             <p className="whitespace-pre-wrap text-sm text-slate-700">{client.notes}</p>
           </div>
         ) : null}
+
+        {client.verificationStatus === 'UNVERIFIED' ||
+        client.verificationStatus === 'NONE' ? (
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <p className="mb-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">
+              {client.verificationStatus === 'NONE'
+                ? t.admin.clients.noPhoneNotice
+                : t.admin.clients.unverifiedNotice}
+            </p>
+            <form action={setClientVerificationAction}>
+              <input type="hidden" name="id" value={client.id} />
+              <input type="hidden" name="verificationStatus" value="VERIFIED" />
+              <button
+                type="submit"
+                className="rounded-lg border border-green-200 px-4 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50"
+              >
+                {t.admin.clients.verifyClient}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <p className="mt-4 border-t border-slate-100 pt-3 text-sm text-green-700">
+            {t.admin.clients.verifiedNotice}
+          </p>
+        )}
 
         <div className="mt-4 border-t border-slate-100 pt-3">
           <form action={toggleClientBlockedAction}>

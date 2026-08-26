@@ -582,6 +582,8 @@ export type PolicyValues = Pick<
   | 'slotGranularityMinutes'
   | 'maxAdvanceBookingDays'
   | 'bookingRequiresApproval'
+  | 'requirePhoneVerification'
+  | 'allowBookingWithoutPhone'
 >;
 
 export function PolicyFields({ s }: { s: PolicyValues }) {
@@ -655,6 +657,32 @@ export function PolicyFields({ s }: { s: PolicyValues }) {
         <span>
           {c.requiresApprovalLabel}
           <span className={hintClass + ' block'}>{c.requiresApprovalHint}</span>
+        </span>
+      </label>
+
+      <label className={checkRowClass}>
+        <input
+          type="checkbox"
+          name="requirePhoneVerification"
+          defaultChecked={s.requirePhoneVerification}
+          className={checkboxClass}
+        />
+        <span>
+          {c.requireVerificationLabel}
+          <span className={hintClass + ' block'}>{c.requireVerificationHint}</span>
+        </span>
+      </label>
+
+      <label className={checkRowClass}>
+        <input
+          type="checkbox"
+          name="allowBookingWithoutPhone"
+          defaultChecked={s.allowBookingWithoutPhone}
+          className={checkboxClass}
+        />
+        <span>
+          {c.allowNoPhoneLabel}
+          <span className={hintClass + ' block'}>{c.allowNoPhoneHint}</span>
         </span>
       </label>
     </>

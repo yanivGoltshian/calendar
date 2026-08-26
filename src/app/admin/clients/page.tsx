@@ -19,6 +19,7 @@ const FILTERS: { value: ClientFilter; label: string }[] = [
   { value: 'all', label: t.admin.clients.filterAll },
   { value: 'active', label: t.admin.clients.filterActive },
   { value: 'blocked', label: t.admin.clients.filterBlocked },
+  { value: 'unverified', label: t.admin.clients.filterUnverified },
 ];
 
 export default async function AdminClientsPage({ searchParams }: Props) {
@@ -28,7 +29,11 @@ export default async function AdminClientsPage({ searchParams }: Props) {
 
   const q = sp.q?.trim() ?? '';
   const filter: ClientFilter =
-    sp.filter === 'active' || sp.filter === 'blocked' ? sp.filter : 'all';
+    sp.filter === 'active' ||
+    sp.filter === 'blocked' ||
+    sp.filter === 'unverified'
+      ? sp.filter
+      : 'all';
 
   const clients = await listClients(business.id, { q, filter });
   const isSearching = q.length > 0 || filter !== 'all';
@@ -116,6 +121,14 @@ export default async function AdminClientsPage({ searchParams }: Props) {
                   <div className="min-w-0">
                     <p className="flex flex-wrap items-center gap-2 font-bold text-slate-900">
                       {c.name}
+                      {c.verificationStatus === 'UNVERIFIED' ||
+                      c.verificationStatus === 'NONE' ? (
+                        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800">
+                          {c.verificationStatus === 'NONE'
+                            ? t.admin.verification.badgeNone
+                            : t.admin.verification.badgeUnverified}
+                        </span>
+                      ) : null}
                       {c.blocked ? (
                         <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                           {t.admin.clients.blockedBadge}
