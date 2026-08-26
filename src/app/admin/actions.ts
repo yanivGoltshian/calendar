@@ -15,11 +15,15 @@ import {
 import { getServicesByIds } from '@/server/repos/services';
 import {
   createAppointment,
+  getAppointmentById,
   hasConflict,
   updateAppointmentStatus,
 } from '@/server/repos/appointments';
 import { findOrCreateClient } from '@/server/repos/clients';
 import { createReminder } from '@/server/repos/reminders';
+import { getBusinessAccess } from '@/server/subscription';
+import { notifyClientOfVisitSummary } from '@/server/notifications/visitSummary';
+import { rebookUrl } from '@/lib/booking-link';
 import { localWallTimeToUtc } from '@/lib/time';
 import { normalizePhone } from '@/lib/crypto';
 
@@ -32,6 +36,38 @@ const STATUS_VALUES = [
   'DONE',
 ] as const satisfies readonly AppointmentStatus[];
 
+/**
+ * שליחת הודעת סיכום ביקור ללקוח לאחר שהתור סומן כ"הושלם".
+ * מיטבי בלבד: לעולם אינו זורק ואינו חוסם את שינוי הסטטוס.
+ */
+async function sendVisitSummaryOnDone(
+  appt: NonNullable<Awaited<ReturnType<typeof getAppointmentById>>>,
+): Promise<void> {
+  try {
+    const business = await getActiveBusiness();
+    if (!business || business.id !== appt.businessId) return;
+
+    const serviceId = appt.services[0]?.serviceId;
+    if (!serviceId) return;
+
+    const access = getBusinessAccess(business);
+    const isPremium = business.plan === 'premium' && access.active;
+
+    await notifyClientOfVisitSummary({
+      appointmentId: appt.id,
+      businessName: business.name,
+      clientName: appt.client.name,
+      clientEmail: appt.client.email,
+      clientPhone: appt.client.phone,
+      services: appt.services.map((s) => ({ name: s.nameSnapshot })),
+      rebookUrl: rebookUrl(business.slug, serviceId, appt.staffId ?? undefined),
+      isPremium,
+    });
+  } catch {
+    // הסטטוס כבר נשמר; כשל בשליחת הסיכום אינו משפיע על הפעולה.
+  }
+}
+
 /** שינוי סטטוס תור מהיומן (מאושר/הגיע/בוטל/הברזה/הושלם/ממתין). */
 export async function setAppointmentStatusAction(
   appointmentId: string,
@@ -41,8 +77,19 @@ export async function setAppointmentStatusAction(
   if (!(STATUS_VALUES as readonly string[]).includes(status)) {
     return { ok: false };
   }
+
+  // לוכדים את התור (כולל הסטטוס הקודם) רק במעבר ל"הושלם", כדי לשלוח סיכום פעם אחת.
+  const previous =
+    status === 'DONE' ? await getAppointmentById(appointmentId) : null;
+
   await updateAppointmentStatus(appointmentId, status as AppointmentStatus);
   revalidatePath('/admin');
+
+  // סיכום ביקור נשלח רק במעבר אמיתי לתוך DONE (כשהסטטוס הקודם אינו DONE).
+  if (status === 'DONE' && previous && previous.status !== 'DONE') {
+    await sendVisitSummaryOnDone(previous);
+  }
+
   return { ok: true };
 }
 

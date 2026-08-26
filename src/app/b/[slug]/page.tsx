@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
@@ -37,7 +37,8 @@ type Props = {
   params: Promise<{ slug: string }>;
   // אפשרות תצוגה מקדימה בלבד לאורחים (בוחר ה-/demo): 'landing' או 'booking'.
   // לעולם לא נשמר ולא נכתב ל-DB, רק משפיע על הרינדור של הבקשה הנוכחית.
-  searchParams?: Promise<{ style?: string }>;
+  // rebook/staff: קישור עמוק של "קביעת תור חוזר" — מפנה ישר לזרימת ההזמנה עם קדם-בחירה.
+  searchParams?: Promise<{ style?: string; rebook?: string; staff?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -53,6 +54,20 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
 
   const services = business.services;
   const staff = business.staff;
+
+  // קישור עמוק "קביעת תור חוזר": /b/<slug>?rebook=<serviceId>&staff=<staffId>.
+  // אם השירות תקין, מפנים ישר לזרימת ההזמנה עם קדם-בחירה (ידידותי לאורחים, בלי התחברות).
+  // איש הצוות אופציונלי ומועבר רק אם קיים ברשימת הצוות של העסק.
+  const sp = (await searchParams) ?? {};
+  const rebookServiceId = services.find((s) => s.id === sp.rebook)?.id;
+  if (rebookServiceId) {
+    const rebookStaffId = staff.find((m) => m.id === sp.staff)?.id;
+    const target =
+      `/b/${business.slug}/book?service=${encodeURIComponent(rebookServiceId)}` +
+      (rebookStaffId ? `&staff=${encodeURIComponent(rebookStaffId)}` : '');
+    redirect(target);
+  }
+
   const hoursByDay = new Map<number, (typeof business.workingHours)[number]>();
   for (const wh of business.workingHours) hoursByDay.set(wh.weekday, wh);
   const todayIdx = new Date().getDay();
@@ -75,7 +90,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
   // מצב העמוד (באג 3): הזמנת תורים ממוקדת מול עמוד נחיתה עשיר, נשלט מהניהול.
   // תצוגה מקדימה בלבד: פרמטר ?style=landing|booking מאפשר לאורח לצפות בשני הסגנונות
   // (משמש את בוחר ה-/demo). זו עקיפה מקומית לרינדור בלבד, לא נשמרת ולא נכתבת ל-DB.
-  const styleParam = ((await searchParams) ?? {}).style?.toLowerCase();
+  const styleParam = sp.style?.toLowerCase();
   const pageStyle =
     styleParam === 'landing'
       ? 'LANDING'
