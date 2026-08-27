@@ -1570,6 +1570,41 @@ const he = {
           },
         },
       },
+      // ── go-live (variant-1) ──
+      // מסך «רגע ההשקה» ומרכז העסק החוזר, נאמן למוקאפ variant-1 המאושר.
+      // כותרת/תת-כותרת החגיגה משותפות עם success, וקישור ההזמנות עם goLive.share.
+      goLiveV1: {
+        celebration: {
+          eyebrow: 'תור צ׳יק',
+          ctaPremiumTitle: 'המשך ליצירת עמוד פרימיום לעסק',
+          ctaPremiumSub: 'גלריה, רשתות, מבצעים ועוד · חמישה שלבים קצרים',
+          ctaCalendarTitle: 'מעבר ליומן העסק',
+          ctaCalendarSub: 'לנהל תורים, לקוחות והגדרות',
+          ctaPageTitle: 'לעמוד שלך',
+          ctaPageSub: 'עמוד הנחיתה הציבורי · {url}',
+          bookingCardTitle: 'קישור ההזמנות',
+          bookingPill: 'קביעת תור',
+          whatsapp: 'שיתוף בוואטסאפ',
+          footnote: 'אפשר לחזור לכל אלה בכל רגע מתוך היומן.',
+        },
+        hub: {
+          brandchip: 'תור צ׳יק · {name}',
+          ribbon: 'העסק שלך חי ומקבל תורים',
+          reopen: 'פתחו שוב',
+          close: 'סגירה',
+          rowPremiumTitle: 'עריכת עמוד הפרימיום',
+          rowPremiumSub: 'להמשיך לבנות ולערוך את העמוד הציבורי',
+          rowCalendarTitle: 'יומן העסק',
+          rowCalendarSub: 'ניהול תורים, לקוחות והגדרות',
+          rowPageTitle: 'לעמוד שלך',
+          rowPageSub: 'עמוד הנחיתה הציבורי · {url}',
+          rowBookingTitle: 'קישור ההזמנות',
+          rowBookingSub: 'מה שהלקוחות פותחים כדי לקבוע',
+          footnote: 'החגיגה עברה למגירה. הגישה ליומן ולקישור נשארת ראשונה תמיד.',
+          drawerSubtitle: 'שתפו את {name} ותנו ללקוחות לקבוע תור בקלות.',
+          drawerPageCta: 'לעמוד שלך',
+        },
+      },
     },
     marketingModule: {
       title: 'דיוור',

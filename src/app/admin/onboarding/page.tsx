@@ -11,6 +11,7 @@ import { bookingQrSvg } from '@/lib/qr-svg';
 import { normalizeLandingContent } from '@/lib/publicPageStyle';
 import { resolveOnboardingEntry } from './premium';
 import OnboardingWizard, { type WizardService } from './OnboardingWizard';
+import ReturningHub from './ReturningHub';
 
 export const metadata: Metadata = { title: t.admin.onboarding.title };
 
@@ -45,6 +46,15 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
   const qr = bookingQrSvg(link, {
     label: t.admin.onboarding.goLive.share.qrAlt.replace('{name}', business.name),
   });
+  // QR נפרד לקישור ההזמנות `/b/<slug>/book` (שונה מ-QR של עמוד העסק).
+  const bookQr = bookingQrSvg(`${link}/book`, {
+    label: t.admin.onboarding.goLive.share.qrAlt.replace('{name}', business.name),
+  });
+
+  // ביקור חוזר: עסק שכבר סיים הקמה ואינו בכניסת עריכה מפורשת רואה את מרכז העסק
+  // החוזר (החגיגה מתקפלת למגירה) במקום להריץ שוב את האשף.
+  const explicitEditor = sp.edit === 'premium' || sp.phase === 'editor';
+  const showReturningHub = settings.onboardingCompleted && !explicitEditor;
 
   const wizardServices: WizardService[] = services.map((s) => ({
     id: s.id,
@@ -59,6 +69,21 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
 
   // תוכן פרימיום קיים (אם כבר מולא) — מנורמל לזריעת האשף בכניסה חוזרת.
   const premiumInitial = normalizeLandingContent(business.landingContent);
+
+  // מרכז העסק החוזר (variant-1): מסך עצמאי ללא כותרת ההקמה הגנרית.
+  if (showReturningHub) {
+    return (
+      <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
+        <ReturningHub
+          businessName={business.name}
+          slug={business.slug}
+          pageUrl={link}
+          bookingShareUrl={`${link}/book`}
+          bookingShareQr={bookQr}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
@@ -82,6 +107,7 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
         serviceExample={serviceExample}
         bookingUrl={link}
         bookingQr={qr}
+        bookingBookQr={bookQr}
         businessType={business.type ?? ''}
         businessAddress={business.address ?? ''}
         slug={business.slug}
