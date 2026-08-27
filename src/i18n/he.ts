@@ -1476,6 +1476,9 @@ const he = {
             winKicker: 'העמוד מוכן',
             // {current} מתוך {total}
             stepCounter: 'שלב {current} מתוך {total}',
+            // סיומת מונה: כמה שלבים נותרו / שלב אחרון (נאמן למוקאפ)
+            stepRemain: '· נשארו {remain}',
+            stepLast: '· שלב אחרון',
             allDone: 'כל השלבים הושלמו',
             back: 'חזרה',
             skip: 'דלג',

@@ -305,11 +305,11 @@ const PW_CSS = `
 .pw-root{--sand:#faf8f5;--surface:#fff;--ink:#2a2119;--muted:#7c6650;--border:#e8dfd4;--navy:#24406e;--navy-strong:#16233a;--navy-900:#0a182d;--navy-50:#eef3fa;--navy-100:#d9e2f1;--gold:#c08c3c;--gold-300:#e4bf6f;--gold-600:#b5873a;--emerald:#0ea86f;--emerald-50:#e9f7f0;--emerald-100:#c9ecdb;color:var(--ink);}
 .pw-phone-wrap{display:flex;justify-content:center;padding:18px 14px 40px;background:radial-gradient(120% 90% at 50% -10%,#fff 0%,var(--sand) 55%,#f4efe9 100%);}
 .pw-phone{position:relative;width:100%;max-width:400px;height:760px;max-height:86vh;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:34px;overflow:hidden;box-shadow:0 24px 60px -28px rgba(16,35,58,.5);}
-.pw-appbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px;background:var(--navy-900);color:#fff;flex:0 0 auto;}
-.pw-back{background:transparent;border:0;color:#cdd8ec;font-size:13px;font-weight:600;cursor:pointer;padding:4px 2px;}
-.pw-back:hover{color:#fff;}
-.pw-brandchip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);color:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;}
-.pw-dot{width:8px;height:8px;border-radius:50%;background:var(--gold-300);display:inline-block;}
+.pw-appbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;background:var(--surface);color:var(--navy-900);border-bottom:1px solid var(--border);flex:0 0 auto;}
+.pw-back{background:transparent;border:0;color:var(--muted);font-size:12.5px;font-weight:700;cursor:pointer;padding:4px 2px;}
+.pw-back:hover{color:var(--navy);}
+.pw-brandchip{display:inline-flex;align-items:center;gap:6px;color:var(--navy-900);font-size:13px;font-weight:800;}
+.pw-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(206,162,74,.2);display:inline-block;}
 .pw-wiz-head{flex:0 0 auto;padding:14px 18px 10px;background:linear-gradient(180deg,var(--navy),var(--navy-strong));color:#fff;}
 .pw-row1{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .pw-kicker{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-300);}
@@ -419,7 +419,7 @@ const PW_CSS = `
 .pw-skip:hover{color:var(--ink);}
 .pw-next{background:var(--navy);color:#fff;border:0;font-size:14px;font-weight:800;padding:11px 26px;border-radius:13px;cursor:pointer;box-shadow:0 10px 22px -12px rgba(36,64,110,.8);}
 .pw-next:hover{background:var(--navy-strong);}
-.pw-publish{flex:1;background:linear-gradient(180deg,var(--gold-300),var(--gold));color:var(--navy-900);border:0;font-size:15px;font-weight:800;padding:13px;border-radius:14px;cursor:pointer;box-shadow:0 12px 26px -12px rgba(192,140,60,.8);}
+.pw-publish{flex:1;background:linear-gradient(135deg,var(--navy-900) 0%,var(--navy) 100%);color:#fff;border:0;font-size:15px;font-weight:800;padding:13px;border-radius:14px;cursor:pointer;box-shadow:0 12px 26px -12px rgba(10,24,45,.7);}
 .pw-publish:disabled{opacity:.6;cursor:default;}
 .pw-ghost{background:transparent;border:0;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;padding:10px 12px;}
 .pw-ghost:hover{color:var(--ink);}
@@ -1091,9 +1091,14 @@ export default function OnboardingWizard({
     const goStepName = (name: PremiumWizardStepName) => setPremiumStep(premiumStepIndex(name));
 
     const isWin = isPremiumWinStep(premiumStep);
+    const stepsRemaining = PREMIUM_WIZARD_TOTAL - premiumStep;
     const counterText = isWin
       ? wz.allDone
-      : wz.stepCounter.replace('{current}', String(premiumStep)).replace('{total}', String(PREMIUM_WIZARD_TOTAL));
+      : `${wz.stepCounter
+          .replace('{current}', String(premiumStep))
+          .replace('{total}', String(PREMIUM_WIZARD_TOTAL))} ${
+          stepsRemaining > 0 ? wz.stepRemain.replace('{remain}', String(stepsRemaining)) : wz.stepLast
+        }`;
     const kickerText = isWin ? wz.winKicker : wz.kicker;
     const initial = (businessName || '●').trim().charAt(0) || '●';
 
