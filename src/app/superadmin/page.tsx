@@ -117,6 +117,29 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/** מדד-על מצטבר בכותרת הפרימיום (סכום לכל הפלטפורמה). */
+function HeroStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      className="rounded-2xl border px-4 py-3 text-center"
+      style={{
+        borderColor: 'rgba(197,157,95,0.35)',
+        backgroundColor: 'rgba(8,16,28,0.55)',
+      }}
+    >
+      <div className="text-[11px] font-medium" style={{ color: TEXT_MUTED }}>
+        {label}
+      </div>
+      <div
+        className="mt-1 font-display text-xl font-bold tabular-nums sm:text-2xl"
+        style={{ color: GOLD_LIGHT }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export default async function SuperadminPage() {
   // שער: רק מיילים ב-PLATFORM_ADMIN_EMAILS. כל אחר (כולל מנותק) ⇒ 404.
   const admin = await getPlatformAdminEmail();
@@ -125,6 +148,19 @@ export default async function SuperadminPage() {
   const businesses = await listAllBusinesses();
   // אגרגציה יעילה יחידה לכל המדדים (ללא N+1).
   const metricsMap = await getBusinessMetricsMap(businesses.map((b) => b.id));
+
+  // סיכום-על לכותרת הפרימיום: סכומי תורים/לקוחות/שווי, וספירת עסקים בתקופת ניסיון.
+  let totalAppointments = 0;
+  let totalClients = 0;
+  let totalValueAgorot = 0;
+  let trialingCount = 0;
+  for (const b of businesses) {
+    const bm = metricsFor(metricsMap, b.id);
+    totalAppointments += bm.appointments;
+    totalClients += bm.clients;
+    totalValueAgorot += bm.appointmentsValueAgorot;
+    if (getBusinessAccess(b).state === 'trialing') trialingCount += 1;
+  }
 
   return (
     <main
@@ -139,24 +175,64 @@ export default async function SuperadminPage() {
       }}
     >
       <div className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1
-              className="font-display text-2xl font-bold sm:text-3xl"
-              style={{ color: GOLD_LIGHT }}
-            >
-              {s.title}
-            </h1>
-            <p className="mt-1 text-sm" style={{ color: TEXT_MUTED }}>
-              {s.subtitle}
-            </p>
-            <p className="mt-2 text-xs" style={{ color: TEXT_MUTED }}>
-              {s.countLabel.replace('{count}', String(businesses.length))}
-            </p>
+        <header
+          className="mb-8 overflow-hidden rounded-3xl border p-6 sm:p-8"
+          style={{
+            borderColor: 'rgba(197,157,95,0.35)',
+            backgroundImage: `radial-gradient(120% 140% at 100% 0%, ${NAVY_GLOW} 0%, ${NAVY_CARD} 45%, ${NAVY_EDGE} 100%)`,
+            boxShadow: '0 24px 60px -30px rgba(0,0,0,0.75)',
+          }}
+        >
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div
+                className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold"
+                style={{ borderColor: 'rgba(197,157,95,0.4)', color: GOLD_LIGHT }}
+              >
+                <span aria-hidden style={{ color: GOLD_MID }}>
+                  ◆
+                </span>
+                תור צ׳יק · פלטפורמה
+              </div>
+              <h1
+                className="font-display text-3xl font-bold sm:text-4xl"
+                style={{ color: GOLD_LIGHT }}
+              >
+                {s.title}
+              </h1>
+              <p className="mt-2 max-w-xl text-sm" style={{ color: TEXT_ON_DARK }}>
+                {s.subtitle}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-xs" style={{ color: TEXT_MUTED }}>
+                  {s.countLabel.replace('{count}', String(businesses.length))}
+                </span>
+                {trialingCount > 0 && (
+                  <span
+                    className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                    style={{ backgroundColor: NAVY_GLOW, color: GOLD_LIGHT }}
+                  >
+                    {s.summary.trialing}: {trialingCount}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="shrink-0">
+              <InstallApp variant="superadmin" compact />
+            </div>
           </div>
-          <div className="shrink-0">
-            <InstallApp variant="superadmin" compact />
-          </div>
+
+          {businesses.length > 0 && (
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <HeroStat label={s.summary.businesses} value={String(businesses.length)} />
+              <HeroStat label={s.summary.appointments} value={String(totalAppointments)} />
+              <HeroStat label={s.summary.clients} value={String(totalClients)} />
+              <HeroStat
+                label={s.summary.appointmentsValue}
+                value={formatShekelFromAgorot(totalValueAgorot)}
+              />
+            </div>
+          )}
         </header>
 
         {businesses.length === 0 ? (
@@ -174,12 +250,19 @@ export default async function SuperadminPage() {
               return (
                 <section
                   key={b.id}
-                  className="flex flex-col gap-4 rounded-2xl border p-4"
-                  style={{ borderColor: NAVY_GLOW, backgroundColor: NAVY_CARD }}
+                  className="group flex flex-col gap-4 rounded-2xl border p-4 transition duration-200 hover:-translate-y-1"
+                  style={{
+                    borderColor: 'rgba(197,157,95,0.28)',
+                    backgroundColor: NAVY_CARD,
+                    boxShadow: '0 18px 42px -28px rgba(0,0,0,0.8)',
+                  }}
                 >
                   {/* כותרת: שם + תגי חבילה/סטטוס */}
                   <div className="flex flex-col gap-2">
-                    <h2 className="text-lg font-bold leading-tight" style={{ color: GOLD_LIGHT }}>
+                    <h2
+                      className="font-display text-xl font-bold leading-tight"
+                      style={{ color: GOLD_LIGHT }}
+                    >
                       {b.name}
                     </h2>
                     <div className="flex flex-wrap items-center gap-2">
@@ -210,13 +293,21 @@ export default async function SuperadminPage() {
                     </div>
                   </div>
 
-                  {/* כניסה לניהול העסק עצמו */}
+                  {/* כניסה כבעל העסק (התחזות) — נפתחת בלשונית חדשה מול /admin */}
                   <a
-                    href={`/b/${b.slug}/admin`}
-                    className="flex min-h-[44px] items-center justify-center rounded-xl px-4 py-2 text-sm font-bold transition"
-                    style={{ backgroundColor: GOLD_MID, color: NAVY_EDGE }}
+                    href={`/superadmin/impersonate/${b.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    aria-label={s.enterAsOwnerAria.replace('{name}', b.name)}
+                    className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition hover:brightness-105"
+                    style={{
+                      backgroundImage: `linear-gradient(90deg, ${GOLD_LIGHT} 0%, ${GOLD_MID} 100%)`,
+                      color: NAVY_EDGE,
+                      boxShadow: '0 10px 24px -14px rgba(197,157,95,0.9)',
+                    }}
                   >
-                    {s.manageBusiness}
+                    <span aria-hidden>↗</span>
+                    {s.enterAsOwner}
                   </a>
 
                   {/* מטריקות פעילות */}

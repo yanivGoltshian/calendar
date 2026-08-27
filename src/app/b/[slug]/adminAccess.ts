@@ -15,6 +15,14 @@ export const OWNER_ADMIN_HREF = '/admin';
 /** יעד ההפניה של מנהל פלטפורמה שאינו הבעלים של ה-slug — קונסולת ניהול-העל. */
 export const PLATFORM_CONSOLE_HREF = '/superadmin';
 
+/**
+ * נתיב כניסת ההתחזות של מנהל-על לעסק מסוים (route handler שכותב עוגייה חתומה).
+ * פונקציה טהורה כדי שהניתוב יהיה בר-בדיקה, והדף רק מבצע redirect לתוצאה.
+ */
+export function impersonateEntryHref(businessId: string): string {
+  return `/superadmin/impersonate/${businessId}`;
+}
+
 /** האם המייל המאומת תואם למייל הבעלים הרשום (השוואה חסרת רגישות לאותיות/רווחים). */
 export function isBusinessOwnerEmail(
   email: string | null | undefined,

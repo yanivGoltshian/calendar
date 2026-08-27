@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getBusinessBySlug } from '@/server/repos/business';
 import { isPlatformAdminEmail } from '@/server/platformAdmin';
-import { decideBusinessAdminRoute } from '../adminAccess';
+import { decideBusinessAdminRoute, impersonateEntryHref } from '../adminAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +21,8 @@ type Props = { params: Promise<{ slug: string }> };
  * - הבעלים הרשום של ה-slug -> אזור הניהול הקנוני (/admin). עבור בעל עסק יחיד
  *                             owned[0] הוא בדיוק העסק הזה, כך ש"הוספת /admin
  *                             לכתובת העסק" מובילה להגדרות שלו.
- * - מנהל פלטפורמה שאינו הבעלים -> קונסולת ניהול-העל (/superadmin). התחזות מלאה
- *                             לאזור הניהול של עסק ספציפי לפי slug נדחתה לפאס הבא.
+ * - מנהל פלטפורמה שאינו הבעלים -> כניסת התחזות (/superadmin/impersonate/[id]): נכתבת
+ *                             עוגייה חתומה והוא נכנס לאזור הניהול "כבעל העסק" של אותו slug.
  * - מחובר שאינו בעלים ואינו מנהל -> 404, כדי לא לדלוף קיום/פרטים של דיירים אחרים.
  */
 export default async function BusinessAdminEntryPage({ params }: Props) {
@@ -52,7 +52,7 @@ export default async function BusinessAdminEntryPage({ params }: Props) {
     redirect('/admin');
   }
   if (route === 'platform') {
-    redirect('/superadmin');
+    redirect(impersonateEntryHref(business.id));
   }
 
   notFound();
