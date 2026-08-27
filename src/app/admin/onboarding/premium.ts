@@ -257,3 +257,24 @@ export function resolveInitialPremiumPhase(initialPremiumPhase?: 'editor'): Prem
 export function seedPremiumDraft(initial: LandingContent | null | undefined): LandingContent {
   return initial ?? {};
 }
+
+/**
+ * מחשב את שלב הפרימיום ההתחלתי של דף ההקמה משילוב ה-deep-link וסטטוס ההקמה של העסק.
+ * מטרה: עסק שכבר סיים את ההקמה הבסיסית לא יחזור שוב על שלושת הצעדים
+ * (שירותים → שעות → מיתוג) — הכניסה ל-/admin/onboarding נוחתת ישר בעורך הפרימיום.
+ *
+ *  - deep-link מפורש (‎?edit=premium‎ או ‎?phase=editor‎) ⇐ 'editor' תמיד, בכל מצב.
+ *  - אחרת, אם ההקמה הבסיסית הושלמה (settings.onboardingCompleted) ⇐ 'editor'.
+ *  - אחרת ⇐ undefined: עסק חדש עובר את הזרימה הרגילה null→שער→עורך→סיכום,
+ *    בלי כניסה מוקדמת לעורך.
+ */
+export function resolveOnboardingEntry(input: {
+  editParam?: string | null;
+  phaseParam?: string | null;
+  onboardingCompleted?: boolean | null;
+}): 'editor' | undefined {
+  const explicitEditor = input.editParam === 'premium' || input.phaseParam === 'editor';
+  if (explicitEditor) return 'editor';
+  if (input.onboardingCompleted) return 'editor';
+  return undefined;
+}

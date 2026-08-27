@@ -9,14 +9,17 @@ import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
 import { bookingUrl } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
 import { normalizeLandingContent } from '@/lib/publicPageStyle';
+import { resolveOnboardingEntry } from './premium';
 import OnboardingWizard, { type WizardService } from './OnboardingWizard';
 
 export const metadata: Metadata = { title: t.admin.onboarding.title };
 
 /**
  * ‎?edit=premium‎ (או ‎?phase=editor‎) פותח את האשף ישר בעורך עמוד הפרימיום —
- * קיצור בלחיצה אחת לעריכת העמוד, למשל מיד אחרי «כניסה כבעל העסק». ב-Next 15
- * ‎searchParams‎ הוא Promise ולכן נדרש await.
+ * קיצור בלחיצה אחת לעריכת העמוד, למשל מיד אחרי «כניסה כבעל העסק». בנוסף, עסק
+ * שכבר סיים את ההקמה הבסיסית (settings.onboardingCompleted) נוחת ישר בעורך גם בלי
+ * deep-link, כדי לא לחזור על שלושת הצעדים. ב-Next 15 ‎searchParams‎ הוא Promise
+ * ולכן נדרש await.
  */
 type Props = {
   searchParams: Promise<{ edit?: string; phase?: string }>;
@@ -24,13 +27,19 @@ type Props = {
 
 export default async function AdminOnboardingPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const initialPremiumPhase = sp.edit === 'premium' || sp.phase === 'editor' ? 'editor' : undefined;
 
   const business = await getActiveBusiness();
   if (!business) notFound();
 
   const settings = await getOrCreateSettings(business.id);
   const services = await listServices(business.id);
+
+  // כניסה ישירה לעורך: deep-link מפורש, או עסק שכבר סיים את ההקמה הבסיסית.
+  const initialPremiumPhase = resolveOnboardingEntry({
+    editParam: sp.edit,
+    phaseParam: sp.phase,
+    onboardingCompleted: settings.onboardingCompleted,
+  });
 
   const link = bookingUrl(business.slug);
   const qr = bookingQrSvg(link, {
