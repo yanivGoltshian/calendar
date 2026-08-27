@@ -5,6 +5,7 @@ import type { SaveState } from '../settings/parse';
 import { t } from '@/i18n';
 import { Button } from '@/components/ui';
 import BookingLinkShare from '@/components/booking/BookingLinkShare';
+import GoLiveCelebration from './GoLiveCelebration';
 import { ImageUploadField, type ImageUploadLabels } from '../settings/ImageUploadField';
 import { saveServices, saveHours, saveBranding, savePremiumLanding } from './actions';
 import { buildDefaultSectionToggles, BRAND_PRESETS, resolveInitialPremiumPhase, seedPremiumDraft, type BrandPreset } from './premium';
@@ -47,6 +48,8 @@ type Props = {
   serviceExample: string;
   bookingUrl: string;
   bookingQr: string;
+  /** QR מוכן של קישור ההזמנות `/b/<slug>/book` למסך «רגע ההשקה». */
+  bookingBookQr?: string;
   // ── פרימיום: פרטי העסק והתוכן ההתחלתי לעמוד הנחיתה ──
   businessType: string;
   businessAddress: string;
@@ -290,6 +293,7 @@ export default function OnboardingWizard({
   serviceExample,
   bookingUrl,
   bookingQr,
+  bookingBookQr,
   businessType,
   businessAddress,
   slug,
@@ -672,50 +676,18 @@ export default function OnboardingWizard({
       );
     }
 
-    // ── מסך הסיכום: תצוגה מקדימה + סיום ──
+    // ── מסך «רגע ההשקה»: חגיגת עליית העמוד לאוויר (variant-1) ──
+    // מחליף את מסך הסיכום הישן. הטיוטה כבר נשמרה בכניסה למסך (gate→build או
+    // «שמור והמשך» בעורך), ולכן המסך טרמינלי — הקריאות לפעולה מנווטות החוצה.
     if (premiumPhase === 'summary') {
-      const s = p.summary;
       return (
-        <div dir="rtl">
-          <section className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-6 text-center shadow-sm sm:p-8">
-            <span
-              aria-hidden="true"
-              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-3xl shadow-lg"
-            >
-              ✨
-            </span>
-            <p className="mt-4 text-sm font-medium text-emerald-600">{s.eyebrow}</p>
-            <h2 className="mt-1 text-2xl font-bold text-[#1b1715]">{s.title}</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-[#6e655f]">
-              {s.subtitle.replace('{name}', businessName)}
-            </p>
-            <div className="mt-6 flex flex-col items-center gap-3">
-              <a
-                href={`/b/${slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full rounded-xl border border-[#d6c8b4] px-6 py-2.5 text-center font-semibold text-[#4a4038] transition hover:bg-[#f7f2ea] sm:w-auto"
-              >
-                {s.previewCta}
-              </a>
-              <form action={premiumFormAction} className="w-full sm:w-auto">
-                <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
-                <button
-                  type="submit"
-                  disabled={premiumPending}
-                  onClick={() => {
-                    nextTargetRef.current = 'done';
-                  }}
-                  className="w-full rounded-xl bg-[#1b1715] px-6 py-2.5 font-semibold text-white transition hover:bg-[#2a2320] disabled:opacity-60 sm:w-auto"
-                >
-                  {premiumPending ? p.nav.saving : s.finishCta}
-                </button>
-              </form>
-            </div>
-            <p className="mt-4 text-xs text-[#b3a690]">{s.editHint}</p>
-            {err && <p className="mt-3 text-sm text-rose-600">{err}</p>}
-          </section>
-        </div>
+        <GoLiveCelebration
+          businessName={businessName}
+          slug={slug}
+          pageUrl={bookingUrl}
+          bookingShareUrl={`${bookingUrl}/book`}
+          bookingShareQr={bookingBookQr ?? bookingQr}
+        />
       );
     }
 
