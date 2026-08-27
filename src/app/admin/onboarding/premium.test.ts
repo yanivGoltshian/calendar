@@ -7,6 +7,16 @@ import {
   resolveInitialPremiumPhase,
   seedPremiumDraft,
   resolveOnboardingEntry,
+  PREMIUM_WIZARD_STEPS,
+  PREMIUM_WIZARD_TOTAL,
+  PREMIUM_WIN_STEP,
+  clampPremiumStep,
+  nextPremiumStep,
+  prevPremiumStep,
+  isPremiumWinStep,
+  premiumStepName,
+  premiumStepIndex,
+  premiumPipStatus,
 } from './premium';
 
 /**
@@ -320,4 +330,74 @@ test('resolveOnboardingEntry: עסק חדש בלי deep-link שומר על הז�
   assert.equal(resolveOnboardingEntry({ onboardingCompleted: false }), undefined);
   assert.equal(resolveOnboardingEntry({ editParam: 'other', phaseParam: 'gate' }), undefined);
   assert.equal(resolveOnboardingEntry({ editParam: null, phaseParam: null, onboardingCompleted: null }), undefined);
+});
+
+/**
+ * אשף חמשת השלבים בתוך מסגרת הטלפון (המוקאפ המאושר premium-builder.html).
+ * בדיקות טהורות ללוגיקת הניווט: קיבוע טווח, המשך/חזרה, זיהוי מסך הסיום,
+ * מיפוי שם⇄מספר שלב, ומצב ה-pips. אלו מגבות את שכבת ה-UI של האשף.
+ */
+test('PREMIUM_WIZARD_STEPS: חמישה שלבים בסדר הנכון + קבועים נגזרים', () => {
+  assert.deepEqual([...PREMIUM_WIZARD_STEPS], ['gallery', 'social', 'deals', 'about', 'why']);
+  assert.equal(PREMIUM_WIZARD_TOTAL, 5);
+  assert.equal(PREMIUM_WIN_STEP, 6);
+});
+
+test('clampPremiumStep: מקבע לטווח 1..6 וממפה קלט לא-חוקי ל-1', () => {
+  assert.equal(clampPremiumStep(0), 1);
+  assert.equal(clampPremiumStep(-3), 1);
+  assert.equal(clampPremiumStep(1), 1);
+  assert.equal(clampPremiumStep(6), 6);
+  assert.equal(clampPremiumStep(9), 6);
+  assert.equal(clampPremiumStep(3.7), 3);
+  assert.equal(clampPremiumStep(Number.NaN), 1);
+});
+
+test('nextPremiumStep: מתקדם שלב אחד ונעצר במסך הסיום (6)', () => {
+  assert.equal(nextPremiumStep(1), 2);
+  assert.equal(nextPremiumStep(4), 5);
+  assert.equal(nextPremiumStep(5), 6);
+  assert.equal(nextPremiumStep(6), 6);
+});
+
+test('prevPremiumStep: חוזר שלב אחד ולא לפני שלב 1', () => {
+  assert.equal(prevPremiumStep(6), 5);
+  assert.equal(prevPremiumStep(2), 1);
+  assert.equal(prevPremiumStep(1), 1);
+});
+
+test('isPremiumWinStep: אמת רק עבור מסך הסיום (6)', () => {
+  assert.equal(isPremiumWinStep(6), true);
+  assert.equal(isPremiumWinStep(5), false);
+  assert.equal(isPremiumWinStep(1), false);
+});
+
+test('premiumStepName: ממפה 1..5 לשמות ומחזיר null במסך הסיום', () => {
+  assert.equal(premiumStepName(1), 'gallery');
+  assert.equal(premiumStepName(2), 'social');
+  assert.equal(premiumStepName(3), 'deals');
+  assert.equal(premiumStepName(4), 'about');
+  assert.equal(premiumStepName(5), 'why');
+  assert.equal(premiumStepName(6), null);
+});
+
+test('premiumStepIndex: מיפוי הפוך שם⇄מספר, לניווט «עריכה» ממסך הסיום', () => {
+  assert.equal(premiumStepIndex('gallery'), 1);
+  assert.equal(premiumStepIndex('social'), 2);
+  assert.equal(premiumStepIndex('deals'), 3);
+  assert.equal(premiumStepIndex('about'), 4);
+  assert.equal(premiumStepIndex('why'), 5);
+  // round-trip: name → index → name
+  for (const name of PREMIUM_WIZARD_STEPS) {
+    assert.equal(premiumStepName(premiumStepIndex(name)), name);
+  }
+});
+
+test('premiumPipStatus: מסמן שלבים שהושלמו/נוכחי/עתידי לפי השלב הנוכחי', () => {
+  // בשלב 3: 1-2 הושלמו, 3 נוכחי, 4-5 עתידיים
+  assert.equal(premiumPipStatus(1, 3), 'done');
+  assert.equal(premiumPipStatus(2, 3), 'done');
+  assert.equal(premiumPipStatus(3, 3), 'cur');
+  assert.equal(premiumPipStatus(4, 3), 'todo');
+  assert.equal(premiumPipStatus(5, 3), 'todo');
 });

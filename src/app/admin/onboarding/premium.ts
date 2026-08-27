@@ -278,3 +278,59 @@ export function resolveOnboardingEntry(input: {
   if (input.onboardingCompleted) return 'editor';
   return undefined;
 }
+
+/* ── wizard: לוגיקת ניווט טהורה לאשף חמשת השלבים בתוך מסגרת הטלפון ──
+ * חמשת שלבי עריכת עמוד הפרימיום, נאמנים למוקאפ המאושר (premium-builder.html).
+ * הסדר קובע גם את מספור ה-pips וגם את כיוון «המשך»/«חזרה». שלב 6 הוא מסך הסיום (win).
+ * כל הפונקציות טהורות (ללא JSX/DB) כדי שיהיו קלות לבדיקה תחת node --test.
+ */
+export const PREMIUM_WIZARD_STEPS = ['gallery', 'social', 'deals', 'about', 'why'] as const;
+export type PremiumWizardStepName = (typeof PREMIUM_WIZARD_STEPS)[number];
+export const PREMIUM_WIZARD_TOTAL = PREMIUM_WIZARD_STEPS.length; // 5
+export const PREMIUM_WIN_STEP = PREMIUM_WIZARD_TOTAL + 1; // 6 — מסך הסיום
+
+export type PremiumWizardStep = 1 | 2 | 3 | 4 | 5 | 6;
+
+/** מקבע מספר שלב לטווח החוקי 1..6 (5 שלבי עריכה + מסך סיום). */
+export function clampPremiumStep(n: number): PremiumWizardStep {
+  if (!Number.isFinite(n)) return 1;
+  const i = Math.floor(n);
+  if (i < 1) return 1;
+  if (i > PREMIUM_WIN_STEP) return PREMIUM_WIN_STEP as PremiumWizardStep;
+  return i as PremiumWizardStep;
+}
+
+/** «המשך»: מתקדם שלב אחד, עד מסך הסיום (6) כולל. */
+export function nextPremiumStep(n: number): PremiumWizardStep {
+  return clampPremiumStep(clampPremiumStep(n) + 1);
+}
+
+/** «חזרה»: חוזר שלב אחד, לא לפני שלב 1. */
+export function prevPremiumStep(n: number): PremiumWizardStep {
+  return clampPremiumStep(clampPremiumStep(n) - 1);
+}
+
+/** האם מספר השלב הוא מסך הסיום (win). */
+export function isPremiumWinStep(n: number): boolean {
+  return clampPremiumStep(n) === PREMIUM_WIN_STEP;
+}
+
+/** שם השלב (gallery..why) לפי מספר 1..5, או null עבור מסך הסיום. */
+export function premiumStepName(n: number): PremiumWizardStepName | null {
+  const i = clampPremiumStep(n);
+  if (i >= 1 && i <= PREMIUM_WIZARD_TOTAL) return PREMIUM_WIZARD_STEPS[i - 1];
+  return null;
+}
+
+/** מספר השלב (1..5) לפי שם, לניווט «עריכה» ממסך הסיום אל השלב המתאים. */
+export function premiumStepIndex(name: PremiumWizardStepName): PremiumWizardStep {
+  return (PREMIUM_WIZARD_STEPS.indexOf(name) + 1) as PremiumWizardStep;
+}
+
+/** מצב ה-pip לפי מיקומו (1-based) ביחס לשלב הנוכחי: הושלם / נוכחי / עתידי. */
+export function premiumPipStatus(index: number, current: number): 'done' | 'cur' | 'todo' {
+  const cur = clampPremiumStep(current);
+  if (index < cur) return 'done';
+  if (index === cur) return 'cur';
+  return 'todo';
+}
