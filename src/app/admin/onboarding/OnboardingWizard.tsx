@@ -312,6 +312,14 @@ export default function OnboardingWizard({
   // יעד המעבר אחרי שמירה מוצלחת, נקבע ב-onClick לפני שליחת הטופס.
   const nextTargetRef = useRef<PremiumPhase | 'done'>('gate');
 
+  // ── פס הכלים של העורך (פורט המוקאפ המאושר), שכבה ויזואלית בלבד מעל אותו state ──
+  // pill פעיל + ניווט בקליק לשלושת עוגני העריכה, ומתג תצוגת מובייל/דסקטופ שמגביל רוחב.
+  const [premiumStep, setPremiumStep] = useState<1 | 2 | 3>(1);
+  const [previewDevice, setPreviewDevice] = useState<'mobile' | 'desktop'>('mobile');
+  const heroSectionRef = useRef<HTMLDivElement | null>(null);
+  const dealsSectionRef = useRef<HTMLDivElement | null>(null);
+  const contactSectionRef = useRef<HTMLDivElement | null>(null);
+
   // מצב מקומי לצעד השירותים: אילו שירותים פעילים + טופס "הוספת שירות משלך".
   const [active, setActive] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(services.map((s) => [s.id, !s.hidden])),
@@ -838,11 +846,29 @@ export default function OnboardingWizard({
     };
     const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
 
+    // ── ניווט בין שלבי העריכה (פורט המוקאפ): מסמן pill פעיל וגולל לעוגן המתאים ──
+    const goStep = (n: 1 | 2 | 3) => {
+      setPremiumStep(n);
+      const ref = n === 1 ? heroSectionRef : n === 2 ? dealsSectionRef : contactSectionRef;
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    // רוחב מרבי לתצוגה מקדימה: מובייל תוחם ל-430px, דסקטופ ממלא את הרוחב הזמין.
+    const previewMaxWidth = previewDevice === 'mobile' ? 430 : '100%';
+
     return (
       <div dir="rtl">
         {/* כותרת העורך */}
         <div className="mb-4">
-          <p className="text-sm font-medium text-emerald-600">{p.steps.hero.eyebrow}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium text-emerald-600">{p.steps.hero.eyebrow}</p>
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+              style={{ background: c.brandDark, color: c.gold }}
+            >
+              <span aria-hidden>●</span>
+              {ed.wysiwygBadge}
+            </span>
+          </div>
           <h2 className="mt-1 text-xl font-bold text-[#1b1715]">{ed.title}</h2>
           <p className="mt-1 text-sm text-[#8f8478]">{ed.lead}</p>
           <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
@@ -851,12 +877,91 @@ export default function OnboardingWizard({
           </p>
         </div>
 
+        {/* ── פס כלים של העורך: שלושת פסי השלבים ומתג התצוגה (פורט המוקאפ המאושר) ── */}
+        <div className="mb-4 rounded-2xl border border-[#e7dfd2] bg-white/70 p-2 shadow-sm">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { n: 1 as const, label: ed.stepPills.hero, optional: false },
+              { n: 2 as const, label: ed.stepPills.deals, optional: true },
+              { n: 3 as const, label: ed.stepPills.contact, optional: true },
+            ].map((s) => {
+              const active = premiumStep === s.n;
+              return (
+                <button
+                  key={s.n}
+                  type="button"
+                  onClick={() => goStep(s.n)}
+                  aria-current={active ? 'step' : undefined}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold transition"
+                  style={{
+                    background: active ? c.brandDark : 'transparent',
+                    color: active ? '#fff' : c.ink,
+                    border: `1px solid ${active ? c.brandDark : c.accent}`,
+                  }}
+                >
+                  <span
+                    className="flex h-5 w-5 items-center justify-center rounded-full text-[11px]"
+                    style={{ background: active ? c.gold : c.accent, color: active ? c.goldText : c.ink }}
+                  >
+                    {s.n}
+                  </span>
+                  <span className="whitespace-nowrap">{s.label}</span>
+                  {s.optional ? (
+                    <span
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                      style={{
+                        background: active ? 'rgba(255,255,255,0.2)' : c.cream,
+                        color: active ? '#fff' : '#8f8478',
+                      }}
+                    >
+                      {ed.stepPills.optional}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
+            <p className="text-[11px] text-[#8f8478]">{ed.stepHint}</p>
+            <div className="flex items-center gap-1" role="group" aria-label={ed.device.label}>
+              {[
+                { key: 'mobile' as const, label: ed.device.mobile },
+                { key: 'desktop' as const, label: ed.device.desktop },
+              ].map((d) => {
+                const on = previewDevice === d.key;
+                return (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={() => setPreviewDevice(d.key)}
+                    aria-pressed={on}
+                    className="rounded-lg px-2.5 py-1 text-[11px] font-medium transition"
+                    style={{
+                      background: on ? c.brandDark : '#fff',
+                      color: on ? '#fff' : c.ink,
+                      border: `1px solid ${on ? c.brandDark : c.accent}`,
+                    }}
+                  >
+                    {d.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         <form action={premiumFormAction}>
           {/* ── תצוגת העמוד החי, ניתנת לעריכה במקום ── */}
           <div
             lang="he"
             className="overflow-hidden rounded-3xl border border-[#e7dfd2] shadow-sm"
-            style={{ background: c.cream }}
+            style={{
+              background: c.cream,
+              maxWidth: previewMaxWidth,
+              width: '100%',
+              marginInline: 'auto',
+              transition: 'max-width 200ms ease',
+            }}
           >
             {/* פס עדכון */}
             <div className="px-4 py-2 text-center text-xs font-medium" style={{ background: c.ink, color: '#fff' }}>
@@ -873,6 +978,7 @@ export default function OnboardingWizard({
 
             {/* הירו */}
             <div
+              ref={heroSectionRef}
               className="relative px-5 py-8 text-center"
               style={{ background: `linear-gradient(to bottom, ${c.brandDark}, ${c.brand})`, color: '#fff' }}
             >
@@ -990,7 +1096,7 @@ export default function OnboardingWizard({
             </div>
 
             {/* מבצעים חמים */}
-            <div className="px-5 py-8" style={{ background: c.ink, color: '#fff' }}>
+            <div ref={dealsSectionRef} className="px-5 py-8" style={{ background: c.ink, color: '#fff' }}>
               <InlineText
                 value={hotDeals.eyebrow ?? ''}
                 onCommit={(v) => patchHotDeals({ eyebrow: v })}
@@ -1168,7 +1274,7 @@ export default function OnboardingWizard({
             </div>
 
             {/* מיקום ווואטסאפ */}
-            <div className="border-t border-[#e7dfd2] px-5 py-6" style={{ background: c.cream }}>
+            <div ref={contactSectionRef} className="border-t border-[#e7dfd2] px-5 py-6" style={{ background: c.cream }}>
               <p className="text-sm font-semibold text-[#4a4038]">{p.steps.location.addressTitle}</p>
               <p className="mt-1 text-sm text-[#6e655f]">
                 {businessAddress.trim() !== '' ? businessAddress : p.steps.location.noAddress}

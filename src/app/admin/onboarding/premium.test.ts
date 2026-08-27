@@ -6,6 +6,7 @@ import {
   BRAND_PRESETS,
   resolveInitialPremiumPhase,
   seedPremiumDraft,
+  resolveOnboardingEntry,
 } from './premium';
 
 /**
@@ -293,4 +294,30 @@ test('seedPremiumDraft: זריעה מתוכן קיים מחזירה בדיוק �
 test('seedPremiumDraft: ללא תוכן קיים (null/undefined) מחזירה טיוטה ריקה', () => {
   assert.deepEqual(seedPremiumDraft(null), {});
   assert.deepEqual(seedPremiumDraft(undefined), {});
+});
+
+/**
+ * תיקון הפלואו "מתחיל מהתחלה": עסק שכבר סיים את ההקמה הבסיסית נכנס ישר לעורך הפרימיום,
+ * בלי לחזור על שירותים → שעות → מיתוג. resolveOnboardingEntry משלב deep-link מפורש
+ * עם settings.onboardingCompleted, ומשמר את הזרימה הרגילה של עסק חדש.
+ */
+test('resolveOnboardingEntry: deep-link מפורש פותח את העורך תמיד', () => {
+  assert.equal(resolveOnboardingEntry({ editParam: 'premium' }), 'editor');
+  assert.equal(resolveOnboardingEntry({ phaseParam: 'editor' }), 'editor');
+  // גם כשההקמה לא הושלמה — הכוונה המפורשת גוברת
+  assert.equal(
+    resolveOnboardingEntry({ editParam: 'premium', onboardingCompleted: false }),
+    'editor',
+  );
+});
+
+test('resolveOnboardingEntry: עסק שסיים הקמה נוחת ישר בעורך גם בלי deep-link', () => {
+  assert.equal(resolveOnboardingEntry({ onboardingCompleted: true }), 'editor');
+});
+
+test('resolveOnboardingEntry: עסק חדש בלי deep-link שומר על הזרימה הרגילה (undefined)', () => {
+  assert.equal(resolveOnboardingEntry({}), undefined);
+  assert.equal(resolveOnboardingEntry({ onboardingCompleted: false }), undefined);
+  assert.equal(resolveOnboardingEntry({ editParam: 'other', phaseParam: 'gate' }), undefined);
+  assert.equal(resolveOnboardingEntry({ editParam: null, phaseParam: null, onboardingCompleted: null }), undefined);
 });
