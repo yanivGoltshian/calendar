@@ -235,3 +235,25 @@ export function buildDefaultSectionToggles(type?: string | null): LandingSection
   }
   return toggles;
 }
+
+/** תת-השלבים של עמוד הפרימיום באשף: שער → עורך → סיכום. */
+export type PremiumPhase = 'gate' | 'editor' | 'summary';
+
+/**
+ * מחשב את שלב הפרימיום ההתחלתי של האשף מתוך prop ה-deep-link.
+ *  - 'editor' ⇐ כניסה ישירה לעורך העמוד (‎/admin/onboarding?edit=premium‎),
+ *    למשל מיד אחרי «כניסה כבעל העסק» — כך בעל העסק נוחת ישר בעריכת עמוד הפרימיום.
+ *  - כל ערך אחר / undefined ⇐ null: הזרימה הקלאסית של שלושת הצעדים
+ *    (שירותים → שעות → מיתוג), ורק אחרי שמירת המיתוג נפתח שער הפרימיום.
+ */
+export function resolveInitialPremiumPhase(initialPremiumPhase?: 'editor'): PremiumPhase | null {
+  return initialPremiumPhase === 'editor' ? 'editor' : null;
+}
+
+/**
+ * זריעת טיוטת הפרימיום בעת טעינת האשף: התוכן הקיים של העסק אם קיים, אחרת טיוטה ריקה.
+ * כך העורך נטען מיד עם הנתונים הנוכחיים גם בכניסה ישירה (deep-link), והשמירה עצמאית עובדת.
+ */
+export function seedPremiumDraft(initial: LandingContent | null | undefined): LandingContent {
+  return initial ?? {};
+}

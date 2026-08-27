@@ -258,6 +258,28 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
         </h1>
       </header>
 
+      {/* קיצור בלחיצה אחת לעורך עמוד הפרימיום — התיקון המרכזי לגילוי הפיצ׳ר. */}
+      <a
+        href="/admin/onboarding?edit=premium"
+        dir="rtl"
+        className="mb-4 flex flex-col gap-3 rounded-2xl border border-[#C59D5F]/40 bg-gradient-to-l from-[#0B1526] to-[#132038] px-5 py-4 shadow-sm transition hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#F2D695]">
+            {t.admin.onboarding.premiumEditorCta.eyebrow}
+          </p>
+          <p className="mt-0.5 text-base font-bold text-white">
+            {t.admin.onboarding.premiumEditorCta.title}
+          </p>
+          <p className="mt-0.5 text-sm text-[#c9d2e2]">
+            {t.admin.onboarding.premiumEditorCta.subtitle}
+          </p>
+        </div>
+        <span className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-l from-[#C59D5F] to-[#F2D695] px-5 py-2.5 text-sm font-bold text-[#0B1526] shadow transition hover:brightness-105">
+          ✨ {t.admin.onboarding.premiumEditorCta.cta}
+        </span>
+      </a>
+
       {pendingCount > 0 ? (
         <a
           href="/admin/appointments?tab=pending"

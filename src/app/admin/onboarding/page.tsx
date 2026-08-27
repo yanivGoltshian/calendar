@@ -13,7 +13,19 @@ import OnboardingWizard, { type WizardService } from './OnboardingWizard';
 
 export const metadata: Metadata = { title: t.admin.onboarding.title };
 
-export default async function AdminOnboardingPage() {
+/**
+ * ‎?edit=premium‎ (או ‎?phase=editor‎) פותח את האשף ישר בעורך עמוד הפרימיום —
+ * קיצור בלחיצה אחת לעריכת העמוד, למשל מיד אחרי «כניסה כבעל העסק». ב-Next 15
+ * ‎searchParams‎ הוא Promise ולכן נדרש await.
+ */
+type Props = {
+  searchParams: Promise<{ edit?: string; phase?: string }>;
+};
+
+export default async function AdminOnboardingPage({ searchParams }: Props) {
+  const sp = await searchParams;
+  const initialPremiumPhase = sp.edit === 'premium' || sp.phase === 'editor' ? 'editor' : undefined;
+
   const business = await getActiveBusiness();
   if (!business) notFound();
 
@@ -65,6 +77,7 @@ export default async function AdminOnboardingPage() {
         businessAddress={business.address ?? ''}
         slug={business.slug}
         premiumInitial={premiumInitial}
+        initialPremiumPhase={initialPremiumPhase}
       />
     </main>
   );

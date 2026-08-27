@@ -7,7 +7,7 @@ import { Button } from '@/components/ui';
 import BookingLinkShare from '@/components/booking/BookingLinkShare';
 import { ImageUploadField, type ImageUploadLabels } from '../settings/ImageUploadField';
 import { saveServices, saveHours, saveBranding, savePremiumLanding } from './actions';
-import { buildDefaultSectionToggles, BRAND_PRESETS, type BrandPreset } from './premium';
+import { buildDefaultSectionToggles, BRAND_PRESETS, resolveInitialPremiumPhase, seedPremiumDraft, type BrandPreset } from './premium';
 import {
   landingDefaults,
   MAX_BENEFITS,
@@ -52,6 +52,12 @@ type Props = {
   businessAddress: string;
   slug: string;
   premiumInitial: LandingContent | null;
+  /**
+   * כניסה ישירה לתת-שלב הפרימיום (deep-link ‎?edit=premium‎). כאשר 'editor',
+   * האשף נפתח ישר בעורך עמוד הפרימיום — למשל מיד אחרי «כניסה כבעל העסק» — במקום
+   * לפתוח בשלושת הצעדים הקלאסיים. undefined ⇐ הזרימה הרגילה ללא שינוי.
+   */
+  initialPremiumPhase?: 'editor';
 };
 
 const initialSaveState: SaveState = { ok: false };
@@ -288,6 +294,7 @@ export default function OnboardingWizard({
   businessAddress,
   slug,
   premiumInitial,
+  initialPremiumPhase,
 }: Props) {
   const o = t.admin.onboarding;
   const [step, setStep] = useState(0); // 0=services 1=hours 2=branding
@@ -295,9 +302,13 @@ export default function OnboardingWizard({
 
   // ── מצב שלב הפרימיום (אופציונלי, מופעל אחרי המיתוג) ──
   // premiumPhase=null ⇐ שלב הפרימיום עדיין מחוץ לתמונה (שלושת הצעדים הרגילים).
-  const [premiumPhase, setPremiumPhase] = useState<PremiumPhase | null>(null);
+  // בכניסה ישירה (deep-link ‎?edit=premium‎) נפתח מיד ב-'editor' דרך העוזר הטהור.
+  const [premiumPhase, setPremiumPhase] = useState<PremiumPhase | null>(() =>
+    resolveInitialPremiumPhase(initialPremiumPhase),
+  );
   // טיוטת התוכן היא מקור האמת היחיד; נשלחת כשדה JSON יחיד בכל שמירה.
-  const [premiumDraft, setPremiumDraft] = useState<LandingContent>(() => premiumInitial ?? {});
+  // נזרעת מהתוכן הקיים כבר בטעינה, כך שהעורך עובד עצמאית גם בכניסה ישירה.
+  const [premiumDraft, setPremiumDraft] = useState<LandingContent>(() => seedPremiumDraft(premiumInitial));
   // יעד המעבר אחרי שמירה מוצלחת, נקבע ב-onClick לפני שליחת הטופס.
   const nextTargetRef = useRef<PremiumPhase | 'done'>('gate');
 
