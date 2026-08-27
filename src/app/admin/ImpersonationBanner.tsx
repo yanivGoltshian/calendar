@@ -29,6 +29,17 @@ export default function ImpersonationBanner({ businessName }: { businessName: st
         ·
       </span>
       <Link
+        href="/admin/onboarding?edit=premium"
+        prefetch={false}
+        className="min-h-[44px] rounded-lg px-3 py-1 font-bold"
+        style={{ backgroundColor: '#C59D5F', color: '#0B1526' }}
+      >
+        ✨ {t.admin.onboarding.premiumEditorCta.cta}
+      </Link>
+      <span aria-hidden style={{ color: '#C59D5F' }}>
+        ·
+      </span>
+      <Link
         href="/admin/impersonate/stop"
         prefetch={false}
         className="min-h-[44px] rounded-lg px-3 py-1 font-bold underline-offset-2 hover:underline"

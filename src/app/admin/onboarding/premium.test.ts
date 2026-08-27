@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePremiumDraft, buildDefaultSectionToggles, BRAND_PRESETS } from './premium';
+import {
+  parsePremiumDraft,
+  buildDefaultSectionToggles,
+  BRAND_PRESETS,
+  resolveInitialPremiumPhase,
+  seedPremiumDraft,
+} from './premium';
 
 /**
  * בדיקות יחידה טהורות ללוגיקת תתי-שלבי הפרימיום.
@@ -263,4 +269,28 @@ test('WAVE D: אינווריאנט C.1 — socialLinks.facebook לבדו אינ�
   );
   assert.ok(nonFacebook);
   assert.equal(nonFacebook?.facebookFeedUrl, undefined);
+});
+
+/**
+ * כניסה ישירה לעורך (deep-link ‎?edit=premium‎) מול הזרימה הקלאסית.
+ * resolveInitialPremiumPhase הוא הלוגיקה שמאתחלת את premiumPhase באשף:
+ * 'editor' ⇐ העורך נפתח מיד; אחרת null ⇐ שלושת הצעדים הרגילים.
+ */
+test('resolveInitialPremiumPhase: כניסה ישירה עם "editor" פותחת את העורך מיד', () => {
+  assert.equal(resolveInitialPremiumPhase('editor'), 'editor');
+});
+
+test('resolveInitialPremiumPhase: ללא prop (זרימה רגילה) מתחילים בשלבים הקלאסיים (null)', () => {
+  assert.equal(resolveInitialPremiumPhase(undefined), null);
+  assert.equal(resolveInitialPremiumPhase(), null);
+});
+
+test('seedPremiumDraft: זריעה מתוכן קיים מחזירה בדיוק את אותו אובייקט (העורך נטען מלא)', () => {
+  const existing = { heroHeadline: 'חוויה שמרגישים', about: 'קצת עלינו' };
+  assert.equal(seedPremiumDraft(existing), existing);
+});
+
+test('seedPremiumDraft: ללא תוכן קיים (null/undefined) מחזירה טיוטה ריקה', () => {
+  assert.deepEqual(seedPremiumDraft(null), {});
+  assert.deepEqual(seedPremiumDraft(undefined), {});
 });
