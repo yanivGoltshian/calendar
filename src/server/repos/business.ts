@@ -8,6 +8,7 @@ import { ensureOwnerStaffMember } from './staff';
 import { seedServicesForBusiness } from './services';
 import { decideTrialForRegistration } from './trialLedger';
 import { shapeBusinessMetrics, type BusinessMetrics } from '@/app/superadmin/logic';
+import { getImpersonatedBusinessId } from '@/server/impersonation';
 
 /**
  * שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל.
@@ -157,8 +158,18 @@ export async function getBusinessBranding(slug: string) {
  * אם קיים session עם מייל -> מחזיר את העסק האחרון שבבעלות אותו מייל (ownerEmail).
  * אחרת -> נופל ל-getFirstBusiness (תאימות לאורחים וללינקים עמוקים, כמו עמוד demo).
  * זהו תפר ה-scoping של אזור הניהול: הבעלות נגזרת מהמייל המאומת (מונע IDOR).
+ *
+ * תפר ההתחזות: אם מנהל-על "נכנס כבעל העסק" (עוגייה חתומה תקפה), getImpersonatedBusinessId
+ * מחזיר את מזהה העסק המתוחזה — ורק אז כל עץ הניהול (תורים, לקוחות, יומן, הגדרות, קופה)
+ * פועל מול אותו עסק. השער עצמו מוודא שוב בצד השרת שהסשן הוא מנהל-על, ולכן העוגייה
+ * לבדה לעולם אינה מקנה גישה.
  */
 export async function getActiveBusiness() {
+  const impersonatedId = await getImpersonatedBusinessId();
+  if (impersonatedId) {
+    const impersonated = await getBusinessById(impersonatedId);
+    if (impersonated) return impersonated;
+  }
   const session = await auth();
   const email = session?.user?.email;
   if (email) {

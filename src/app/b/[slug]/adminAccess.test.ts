@@ -5,6 +5,7 @@ import {
   isBusinessOwnerEmail,
   canAccessBusinessAdmin,
   decideBusinessAdminRoute,
+  impersonateEntryHref,
   OWNER_ADMIN_HREF,
   PLATFORM_CONSOLE_HREF,
 } from './adminAccess';
@@ -133,16 +134,25 @@ test('ניתוב: בעלות קודמת להרשאת פלטפורמה — בעל
   );
 });
 
-test('ניתוב: מנהל פלטפורמה שאינו הבעלים -> קונסולת הפלטפורמה (/superadmin)', () => {
-  assert.equal(
-    decideBusinessAdminRoute({
-      email: 'admin@platform.com',
-      ownerEmail: 'owner@example.com',
-      isPlatformAdmin: true,
-    }),
-    'platform',
-  );
-  assert.equal(PLATFORM_CONSOLE_HREF, '/superadmin');
+test('ניתוב: מנהל פלטפורמה שאינו הבעלים -> ענף platform (כניסת התחזות, לא מבוי סתום)', () => {
+  const input = {
+    email: 'admin@platform.com',
+    ownerEmail: 'owner@example.com',
+    isPlatformAdmin: true,
+  };
+  // ההחלטה הטהורה נשארת 'platform'...
+  assert.equal(decideBusinessAdminRoute(input), 'platform');
+  // ...אך היעד בפועל הוא כעת כניסת ההתחזות לעסק, ולא מבוי סתום ל-/superadmin.
+  const dest = impersonateEntryHref('biz_123');
+  assert.equal(dest, '/superadmin/impersonate/biz_123');
+  assert.notEqual(dest, PLATFORM_CONSOLE_HREF);
+});
+
+// --- impersonateEntryHref: נתיב כניסת ההתחזות (טהור) ---
+
+test('התחזות: הנתיב מורכב מזהה העסק', () => {
+  assert.equal(impersonateEntryHref('abc'), '/superadmin/impersonate/abc');
+  assert.equal(impersonateEntryHref('biz_42'), '/superadmin/impersonate/biz_42');
 });
 
 test('ניתוב: מחובר שאינו בעלים ואינו מנהל -> 404 (forbidden)', () => {

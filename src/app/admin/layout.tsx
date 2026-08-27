@@ -2,15 +2,17 @@ import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getBusinessesOwnedByEmail } from '@/server/repos/business';
+import { getBusinessesOwnedByEmail, getBusinessById } from '@/server/repos/business';
 import { countPendingAppointments, countRecentClientCancellations } from '@/server/repos/appointments';
 import { getBusinessAccess } from '@/server/subscription';
 import { isPlatformAdminEmail } from '@/server/platformAdmin';
+import { getImpersonatedBusinessId } from '@/server/impersonation';
 import AdminSidebar from './AdminSidebar';
 import { buildAdminNotifications } from './notifications';
 import Paywall from './Paywall';
 import DeletionPending from './DeletionPending';
 import TrialBanner from './TrialBanner';
+import ImpersonationBanner from './ImpersonationBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,24 +53,44 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     redirect('/business/login?redirect=/admin');
   }
 
-  // כתובת הבסיס /admin היא קונסולת הפלטפורמה של יניב: מנהל פלטפורמה מנותב
-  // לניהול-העל (/superadmin) לפני בדיקת הבעלות, כדי שלא ייחסם לזרימת "הקמת עסק"
-  // כשאינו בעלים של אף עסק. אין סכנת לולאת הפניה: /superadmin הוא עץ ניתוב נפרד
-  // שאינו עטוף ב-layout זה ואינו מפנה בחזרה ל-/admin.
-  if (isPlatformAdminEmail(email)) {
+  // כתובת הבסיס /admin היא קונסולת הפלטפורמה של יניב. שני מסלולים למנהל-על:
+  //  1) עם עוגיית התחזות תקפה (tc_imp) -> נכנס "כבעל העסק" המתוחזה ומדלג על שערי
+  //     הבעלות והתשלום, כדי שיוכל להשלים הקמה, לתקן פרטים ולערוך תורים.
+  //  2) ללא עוגייה -> מנותב לקונסולת ניהול-העל (/superadmin), כמו קודם.
+  // getImpersonatedBusinessId() מאמת מחדש בכל בקשה שהצופה הוא מנהל פלטפורמה,
+  // כך שהעוגייה לעולם אינה נסמכת לבדה. משתמש רגיל -> זרימת הבעלים הרגילה.
+  const isPlatformAdmin = isPlatformAdminEmail(email);
+  const impersonatedId = isPlatformAdmin ? await getImpersonatedBusinessId() : null;
+
+  if (isPlatformAdmin && !impersonatedId) {
     redirect('/superadmin');
   }
 
-  const owned = await getBusinessesOwnedByEmail(email);
-  if (owned.length === 0) {
-    redirect('/business/new');
+  type AdminBusiness = Awaited<ReturnType<typeof getBusinessesOwnedByEmail>>[number];
+  const impersonating = Boolean(impersonatedId);
+  let business: AdminBusiness;
+
+  if (impersonatedId) {
+    const target = await getBusinessById(impersonatedId);
+    if (!target) {
+      // העסק לא נמצא (אולי נמחק) -> חזרה לקונסולה; נתיב היציאה ינקה את העוגייה.
+      redirect('/superadmin');
+    }
+    business = target;
+  } else {
+    const owned = await getBusinessesOwnedByEmail(email);
+    if (owned.length === 0) {
+      redirect('/business/new');
+    }
+    business = owned[0];
   }
 
   // עסק שממתין למחיקה (PENDING_DELETION): אזור הניהול והעמוד הציבורי מושבתים.
   // במקום התוכן מציגים מסך שחזור בלבד (שחזור מנוי או התנתקות), כדי לאפשר לבטל את
   // המחיקה עד למועד המחיקה הסופית. הבעלים עדיין מזוהה כי השחזור מחייב זהות מאומתת.
-  if (owned[0].accountStatus === 'PENDING_DELETION') {
-    const purge = owned[0].purgeScheduledFor;
+  // בהתחזות מדלגים על מסך זה כדי לאפשר למנהל-על גישה מלאה לתיקון (החלטה A).
+  if (!impersonating && business.accountStatus === 'PENDING_DELETION') {
+    const purge = business.purgeScheduledFor;
     const purgeDateLabel = purge
       ? new Intl.DateTimeFormat('he-IL', {
           dateStyle: 'long',
@@ -77,26 +99,27 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       : '';
     return (
       <DeletionPending
-        businessName={owned[0].name}
+        businessName={business.name}
         purgeDateLabel={purgeDateLabel}
       />
     );
   }
 
-  const access = getBusinessAccess(owned[0]);
+  const access = getBusinessAccess(business);
 
   // מנוי/ניסיון שפג -> חסימת אזור הניהול במסך paywall (יציאה נשארת נגישה).
-  if (!access.active) {
+  // בהתחזות עוקפים את החסימה (החלטה A): גישה מלאה לתיקון עסקים שפג תוקפם.
+  if (!impersonating && !access.active) {
     return <Paywall />;
   }
 
   // ספירת תורים הממתינים לאישור לחיווי (תג) על פריט "הזמנות" בסרגל הצד.
-  const pendingCount = await countPendingAppointments(owned[0].id);
+  const pendingCount = await countPendingAppointments(business.id);
 
   // ביטולי לקוח ב-24 השעות האחרונות לתורים עתידיים (משבצות שהתפנו) — להתראת הפעמון.
   const cancellationSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const recentCancellations = await countRecentClientCancellations(
-    owned[0].id,
+    business.id,
     cancellationSince,
   );
 
@@ -122,6 +145,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
+        {impersonating && <ImpersonationBanner businessName={business.name} />}
         {access.state === 'trialing' && <TrialBanner daysLeft={access.daysLeft} />}
         {children}
       </div>

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
-import { getBusinessesOwnedByEmail } from '@/server/repos/business';
+import { getBusinessesOwnedByEmail, getBusinessById } from '@/server/repos/business';
+import { getImpersonatedBusinessId } from '@/server/impersonation';
 import {
   deleteConnection,
   setConnectionToggles,
@@ -14,8 +15,25 @@ import {
  *
  * שער בעלות מחמיר: מאמתים session + בעלות במייל ופותרים את איש הצוות של הבעלים,
  * במקום getActiveBusiness שנופל לאורח — כדי שפעולות משנות מצב לא ייחשפו ללא זיהוי.
+ *
+ * מקבילות התחזות (החלטה C): אם מנהל-על "נכנס כבעל העסק" (עוגיית tc_imp תקפה,
+ * getImpersonatedBusinessId כבר מאמת שהסשן הוא מנהל-על), פותרים את איש הצוות של
+ * הבעלים של העסק המתוחזה — כך שניהול יומן Google עוקב אחר ההתחזות ומחייב את הבעלים
+ * האמיתי (ולא את מנהל-העל). עסק מתוחזה ללא מייל בעלים -> null (אין את מי לפתור).
  */
 async function resolveOwnerContext(): Promise<{ staffId: string } | null> {
+  const impersonatedId = await getImpersonatedBusinessId();
+  if (impersonatedId) {
+    const business = await getBusinessById(impersonatedId);
+    if (!business || !business.ownerEmail) return null;
+    const staffId = await resolveOwnerStaffId({
+      id: business.id,
+      ownerEmail: business.ownerEmail,
+      name: business.name,
+    });
+    return { staffId };
+  }
+
   const session = await auth();
   const email = session?.user?.email;
   if (!email) return null;

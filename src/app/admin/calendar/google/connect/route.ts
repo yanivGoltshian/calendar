@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { getBusinessesOwnedByEmail } from '@/server/repos/business';
+import { getBusinessesOwnedByEmail, getBusinessById } from '@/server/repos/business';
+import { getImpersonatedBusinessId } from '@/server/impersonation';
 import { getCanonicalOrigin } from '@/lib/canonicalHost';
 import {
   isCalendarSyncEnabled,
@@ -19,6 +20,11 @@ export const dynamic = 'force-dynamic';
  * שער בעלות נאכף כאן במפורש: route handler אינו עובר דרך admin/layout, ולכן
  * מאמתים session + בעלות במייל (ולא getActiveBusiness שנופל לאורח). כשהפיצ׳ר
  * כבוי ב-env מפנים בחזרה להגדרות עם דגל, כדי שלא ייווצר redirect_uri_mismatch.
+ *
+ * מקבילות התחזות (החלטה C): אם מנהל-על "נכנס כבעל העסק" (עוגיית tc_imp תקפה,
+ * getImpersonatedBusinessId כבר מאמת שהסשן הוא מנהל-על), מחברים את יומן העסק
+ * המתוחזה תוך שימוש במייל הבעלים האמיתי (loginHint + resolveOwnerStaffId), כך
+ * שגם חיבור ה-OAuth עוקב אחר ההתחזות.
  */
 export async function GET(req: Request) {
   const origin = getCanonicalOrigin(process.env) ?? new URL(req.url).origin;
@@ -43,14 +49,25 @@ export async function GET(req: Request) {
     );
   }
 
-  const [business] = await getBusinessesOwnedByEmail(email);
+  // בהתחזות מנהל-על פותרים את העסק המתוחזה; אחרת את העסק של הבעלים המחובר.
+  const impersonatedId = await getImpersonatedBusinessId();
+  const business = impersonatedId
+    ? await getBusinessById(impersonatedId)
+    : (await getBusinessesOwnedByEmail(email))[0];
   if (!business) {
+    return NextResponse.redirect(new URL('/admin', origin));
+  }
+
+  // בהתחזות מחייבים את מייל הבעלים האמיתי (לא של מנהל-העל); עסק ללא מייל בעלים
+  // אינו ניתן לחיבור. בזרימת הבעלים הרגילה email הוא ממילא מייל הבעלים.
+  const ownerEmail = business.ownerEmail ?? (impersonatedId ? null : email);
+  if (!ownerEmail) {
     return NextResponse.redirect(new URL('/admin', origin));
   }
 
   const staffId = await resolveOwnerStaffId({
     id: business.id,
-    ownerEmail: business.ownerEmail ?? email,
+    ownerEmail,
     name: business.name,
   });
 
@@ -59,7 +76,7 @@ export async function GET(req: Request) {
     redirectUri,
     scope: GOOGLE_CALENDAR_SCOPES,
     state,
-    loginHint: business.ownerEmail ?? email,
+    loginHint: ownerEmail,
   });
 
   return NextResponse.redirect(authUrl);
