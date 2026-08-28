@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { SaveState } from '../settings/parse';
 import { t } from '@/i18n';
 import { Button } from '@/components/ui';
@@ -306,8 +306,8 @@ function MediaSlot(props: {
 // אין font-family בשום מחלקה כדי שהיבו הגלובלי יורש. RTL, mobile-first.
 const PW_CSS = `
 .pw-root{--sand:#faf8f5;--surface:#fff;--ink:#2a2119;--muted:#7c6650;--border:#e8dfd4;--navy:#24406e;--navy-strong:#16233a;--navy-900:#0a182d;--navy-50:#eef3fa;--navy-100:#d9e2f1;--gold:#c08c3c;--gold-300:#e4bf6f;--gold-600:#b5873a;--emerald:#0ea86f;--emerald-50:#e9f7f0;--emerald-100:#c9ecdb;color:var(--ink);}
-.pw-phone-wrap{display:flex;justify-content:center;padding:18px 14px 40px;background:radial-gradient(120% 90% at 50% -10%,#fff 0%,var(--sand) 55%,#f4efe9 100%);}
-.pw-phone{position:relative;width:100%;max-width:400px;height:760px;max-height:86vh;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:34px;overflow:hidden;box-shadow:0 24px 60px -28px rgba(16,35,58,.5);}
+.pw-phone-wrap{display:flex;justify-content:center;padding:0;background:transparent;}
+.pw-phone{position:relative;width:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;background:var(--surface);}
 .pw-appbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;background:var(--surface);color:var(--navy-900);border-bottom:1px solid var(--border);flex:0 0 auto;}
 .pw-back{background:transparent;border:0;color:var(--muted);font-size:12.5px;font-weight:700;cursor:pointer;padding:4px 2px;}
 .pw-back:hover{color:var(--navy);}
@@ -321,7 +321,7 @@ const PW_CSS = `
 .pw-pip{flex:1;height:6px;border-radius:999px;border:0;padding:0;cursor:pointer;background:var(--navy-50);transition:background .2s;}
 .pw-pip-done{background:linear-gradient(90deg,var(--navy),var(--gold));}
 .pw-pip-cur{background:linear-gradient(90deg,var(--navy-900),var(--navy));}
-.pw-body{flex:1 1 auto;overflow-y:auto;padding:18px 18px 8px;-webkit-overflow-scrolling:touch;}
+.pw-body{padding:18px 18px 8px;}
 .pw-step{animation:pwFade .28s ease;}
 @keyframes pwFade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 .pw-eyebrow{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--gold-600);}
@@ -398,6 +398,49 @@ const PW_CSS = `
 .pw-cf-2{background:var(--emerald);}
 .pw-cf-3{background:var(--gold-300);}
 @keyframes pwCf{0%{transform:translateY(0) rotate(0);opacity:.95;}100%{transform:translateY(210px) rotate(320deg);opacity:0;}}
+.pw-cubewrap{perspective:720px;display:grid;place-items:center;padding:10px 0 4px;}
+.pw-cube{width:112px;height:112px;position:relative;transform-style:preserve-3d;transform:rotateX(-14deg) rotateY(0deg);animation:pwCube 15s linear infinite;}
+@media (prefers-reduced-motion:reduce){.pw-cube{animation:none;}}
+.pw-face{position:absolute;inset:0;border-radius:14px;border:2px solid var(--gold);overflow:hidden;backface-visibility:hidden;display:grid;place-items:center;color:#fff;font-weight:800;font-size:11px;box-shadow:0 12px 26px -12px rgba(16,35,58,.5);}
+.pw-face>span{position:relative;z-index:2;text-shadow:0 1px 4px rgba(0,0,0,.4);padding:0 5px;text-align:center;line-height:1.2;}
+.pw-face>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.pw-face::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.28),transparent);}
+.pw-f1{transform:translateZ(56px);}
+.pw-f2{transform:rotateY(180deg) translateZ(56px);}
+.pw-f3{transform:rotateY(90deg) translateZ(56px);}
+.pw-f4{transform:rotateY(-90deg) translateZ(56px);}
+.pw-f5{transform:rotateX(90deg) translateZ(56px);}
+.pw-f6{transform:rotateX(-90deg) translateZ(56px);}
+@keyframes pwCube{to{transform:rotateX(-14deg) rotateY(360deg);}}
+.pw-cube-sm{width:84px;height:84px;}
+.pw-cube-sm .pw-f1{transform:translateZ(42px);}
+.pw-cube-sm .pw-f2{transform:rotateY(180deg) translateZ(42px);}
+.pw-cube-sm .pw-f3{transform:rotateY(90deg) translateZ(42px);}
+.pw-cube-sm .pw-f4{transform:rotateY(-90deg) translateZ(42px);}
+.pw-cube-sm .pw-f5{transform:rotateX(90deg) translateZ(42px);}
+.pw-cube-sm .pw-f6{transform:rotateX(-90deg) translateZ(42px);}
+.pw-face-a{background:linear-gradient(135deg,#cdb489,#a98b5f);}
+.pw-face-b{background:linear-gradient(135deg,#6f88b3,#3d5985);}
+.pw-face-c{background:linear-gradient(135deg,#cda6a0,#a56f6a);}
+.pw-face-d{background:linear-gradient(135deg,#9fc0ad,#6f9d82);}
+.pw-face-e{background:linear-gradient(135deg,#b9a7cf,#85699f);}
+.pw-face-f{background:linear-gradient(135deg,#d8c67e,#b39a45);}
+.pw-edit-block{position:relative;border:1.5px solid transparent;border-radius:14px;transition:.15s;cursor:pointer;}
+.pw-edit-block:hover,.pw-edit-block.pw-show-tools{border-color:rgba(206,162,74,.65);box-shadow:0 0 0 3px rgba(206,162,74,.12);}
+.pw-edit-tools{position:absolute;top:8px;inset-inline-start:8px;display:flex;gap:6px;z-index:5;opacity:0;transform:translateY(-4px);transition:.15s;pointer-events:none;}
+.pw-edit-block:hover .pw-edit-tools,.pw-edit-block.pw-show-tools .pw-edit-tools{opacity:1;transform:none;pointer-events:auto;}
+.pw-edit-tools button{width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 3px 8px -3px rgba(10,24,45,.35);}
+.pw-edit-tools button svg{width:15px;height:15px;}
+.pw-edit-tools .pw-del{color:#c2453f;}
+.pw-edit-tools .pw-edt{color:var(--navy);}
+.pw-edit-hint{display:flex;align-items:center;gap:8px;margin:14px auto 0;max-width:300px;font-size:11.5px;color:var(--muted);background:var(--sand);border:1px dashed var(--border);border-radius:12px;padding:9px 12px;line-height:1.5;}
+.pw-edit-hint svg{width:16px;height:16px;flex:0 0 auto;color:var(--navy);}
+.pv-offer-title{font-weight:800;font-size:12.5px;color:var(--ink);text-align:center;margin-top:8px;}
+.pv-offer-text{font-size:11px;color:var(--muted);text-align:center;margin-top:3px;line-height:1.5;}
+.pv-map{margin-top:8px;border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+.pv-map .pv-strip{height:66px;background:linear-gradient(90deg,#e7efe4 0 30%,#dfe8ef 30% 55%,#efe9df 55% 100%);position:relative;display:grid;place-items:center;}
+.pv-map .pv-strip svg{width:22px;height:22px;color:var(--navy);}
+.pv-map .pv-addr{padding:8px 10px;font-size:11.5px;color:var(--muted);}
 .pw-preview{position:relative;z-index:2;margin:16px auto 0;max-width:300px;border-radius:20px;overflow:hidden;border:1px solid var(--border);background:var(--surface);box-shadow:0 18px 40px -24px rgba(16,35,58,.55);text-align:right;}
 .pv-hero{padding:20px 16px 18px;color:#fff;text-align:center;}
 .pv-logo{width:42px;height:42px;margin:0 auto;border-radius:50%;background:#fff;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;}
@@ -547,6 +590,8 @@ export default function OnboardingWizard({
   // ── אשף הפרימיום (פורט המוקאפ המאושר): 5 שלבים בתוך מסגרת טלפון, שכבת UI מעל אותו state ──
   // premiumStep: 1..5 שלבי עריכה, 6 מסך הסיום. heroBg: מקור רקע ראש-העמוד. googleHelpOpen: אקורדיון עזרה.
   const [premiumStep, setPremiumStep] = useState<PremiumWizardStep>(1);
+  // winToolOpen: מזהה הבלוק שכליו נחשפים בלחיצה בתצוגת הסיום (tap במובייל); null = אין.
+  const [winToolOpen, setWinToolOpen] = useState<string | null>(null);
   const [heroBg, setHeroBg] = useState<'imgvid' | 'image' | 'color'>(() => {
     if (premiumDraft.heroVideoUrl) return 'imgvid';
     if ((premiumDraft.heroImages ?? []).some(Boolean)) return 'image';
@@ -1062,6 +1107,82 @@ export default function OnboardingWizard({
     };
     const goStepName = (name: PremiumWizardStepName) => setPremiumStep(premiumStepIndex(name));
 
+    // ── קוביית המבצעים המסתובבת (פורט מהמוקאפ): 6 פאות, תמונות שהועלו עם נפילה לתוויות ──
+    const PW_CUBE_FACES: ReadonlyArray<readonly [string, string]> = [
+      ['pw-f1', 'pw-face-f'],
+      ['pw-f2', 'pw-face-b'],
+      ['pw-f3', 'pw-face-c'],
+      ['pw-f4', 'pw-face-d'],
+      ['pw-f5', 'pw-face-a'],
+      ['pw-f6', 'pw-face-e'],
+    ];
+    const renderCube = (labels: string[], small: boolean) => (
+      <div className="pw-cubewrap">
+        <div className={small ? 'pw-cube pw-cube-sm' : 'pw-cube'}>
+          {PW_CUBE_FACES.map(([pos, tint], i) => {
+            const img = hotDealsImages[i];
+            return (
+              <div key={pos} className={`pw-face ${pos} ${tint}`}>
+                {img ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={img} alt="" />
+                ) : (
+                  <span>{labels[i]}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+
+    // ── עטיפת בלוק בתצוגת הסיום עם כלי עריכה/מחיקה. «עריכה» קופצת לשלב; «מחיקה» ויזואלית בלבד ──
+    const winEditBlock = (
+      id: string,
+      target: PremiumWizardStepName,
+      className: string,
+      children: ReactNode,
+      style?: CSSProperties,
+    ) => {
+      const open = winToolOpen === id;
+      return (
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+        <div
+          key={id}
+          className={`pw-edit-block${className ? ` ${className}` : ''}${open ? ' pw-show-tools' : ''}`}
+          style={style}
+          onClick={() => setWinToolOpen(open ? null : id)}
+        >
+          <div className="pw-edit-tools">
+            <button
+              type="button"
+              className="pw-edt"
+              aria-label={wz.win.editLabel}
+              onClick={(e) => {
+                e.stopPropagation();
+                goStepName(target);
+              }}
+            >
+              <svg aria-hidden="true">
+                <use href="#i-edit" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="pw-del"
+              aria-label={wz.win.deleteLabel}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg aria-hidden="true">
+                <use href="#i-trash" />
+              </svg>
+            </button>
+          </div>
+          {children}
+        </div>
+      );
+    };
+
     const isWin = isPremiumWinStep(premiumStep);
     const stepsRemaining = PREMIUM_WIZARD_TOTAL - premiumStep;
     const counterText = isWin
@@ -1301,6 +1422,17 @@ export default function OnboardingWizard({
                   <span className="pw-eyebrow">{wz.deals.eyebrow}</span>
                   <h2 className="pw-h2">{wz.deals.title}</h2>
                   <p className="pw-lede">{wz.deals.lede}</p>
+                  {renderCube(
+                    [
+                      wz.deals.cubeLaunch,
+                      wz.deals.cubeDiscount,
+                      wz.deals.cubeNew,
+                      wz.deals.cubeLimited,
+                      businessName || wz.deals.cubeBenefit,
+                      wz.deals.cubeBenefit,
+                    ],
+                    false,
+                  )}
                   <div className="pw-block-label">{wz.deals.blockLabel}</div>
                   <div className="pw-grid">
                     {Array.from({ length: hotDealsCount }).map((_, i) =>
@@ -1521,37 +1653,56 @@ export default function OnboardingWizard({
                     <p className="pw-subtitle">{wz.win.subtitle.replace('{name}', businessName)}</p>
                   </div>
 
+                  <div className="pw-edit-hint">
+                    <svg aria-hidden="true">
+                      <use href="#i-edit" />
+                    </svg>
+                    <span>{wz.win.editHint}</span>
+                  </div>
+
                   <div className="pw-preview">
                     <div className="pv">
                       {/* הירו */}
-                      <div
-                        className="pv-hero"
-                        style={{ background: `linear-gradient(150deg, ${c.brandDark}, ${c.brand})` }}
-                      >
-                        <div className="pv-logo" style={{ color: c.brandDark }}>
-                          {initial}
-                        </div>
-                        <h3>{premiumDraft.heroHeadline?.trim() ? premiumDraft.heroHeadline : businessName}</h3>
-                        <p>{premiumDraft.heroSubtext?.trim() ? premiumDraft.heroSubtext : def.heroSubtext}</p>
-                        <span className="pv-cta" style={{ background: c.gold, color: c.ink }}>
-                          {wz.win.pvCta}
-                        </span>
+                      <div className="pv-sec" style={{ padding: 0 }}>
+                        {winEditBlock(
+                          'win-hero',
+                          'about',
+                          'pv-hero',
+                          <>
+                            <div className="pv-logo" style={{ color: c.brandDark }}>
+                              {initial}
+                            </div>
+                            <h3>{premiumDraft.heroHeadline?.trim() ? premiumDraft.heroHeadline : businessName}</h3>
+                            <p>{premiumDraft.heroSubtext?.trim() ? premiumDraft.heroSubtext : def.heroSubtext}</p>
+                            <span className="pv-cta" style={{ background: c.gold, color: c.ink }}>
+                              {wz.win.pvCta}
+                            </span>
+                          </>,
+                          { background: `linear-gradient(150deg, ${c.brandDark}, ${c.brand})` },
+                        )}
                       </div>
 
                       {/* למה לבחור בנו */}
                       <div className="pv-sec">
-                        <div className="pv-eyebrow">{wz.win.pvWhyEyebrow}</div>
-                        <div className="pv-title">{wz.why.title}</div>
-                        <div className="pv-why">
-                          {benefits.slice(0, MAX_BENEFITS).map((b, i) => (
-                            <div className="pv-why-c" key={i} style={{ borderColor: c.accent }}>
-                              <span className="pv-k" style={{ color: c.brand }}>
-                                ✓
-                              </span>
-                              <b>{b.title}</b>
+                        {winEditBlock(
+                          'win-why',
+                          'why',
+                          '',
+                          <>
+                            <div className="pv-eyebrow">{wz.win.pvWhyEyebrow}</div>
+                            <div className="pv-title">{wz.why.title}</div>
+                            <div className="pv-why">
+                              {benefits.slice(0, MAX_BENEFITS).map((b, i) => (
+                                <div className="pv-why-c" key={i} style={{ borderColor: c.accent }}>
+                                  <span className="pv-k" style={{ color: c.brand }}>
+                                    ✓
+                                  </span>
+                                  <b>{b.title}</b>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          </>,
+                        )}
                       </div>
 
                       {/* גלריה */}
@@ -1560,47 +1711,118 @@ export default function OnboardingWizard({
                           <div className="pv-eyebrow">{wz.win.pvGalleryEyebrow}</div>
                           <div className="pv-title">{wz.win.pvGalleryTitle}</div>
                           <div className="pv-gal">
-                            {galleryImages.filter(Boolean).slice(0, 4).map((u, i) => (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img key={i} src={u} alt="" className="pv-g" />
-                            ))}
+                            {galleryImages
+                              .filter(Boolean)
+                              .slice(0, 4)
+                              .map((u, i) =>
+                                winEditBlock(
+                                  `win-gal-${i}`,
+                                  'gallery',
+                                  '',
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={u} alt="" className="pv-g" />,
+                                ),
+                              )}
                           </div>
+                        </div>
+                      ) : null}
+
+                      {/* מבצעים · קוביה מוקטנת */}
+                      <div className="pv-sec">
+                        {winEditBlock(
+                          'win-deals',
+                          'deals',
+                          '',
+                          <>
+                            <div className="pv-eyebrow" style={{ textAlign: 'center' }}>
+                              {wz.win.dealsEyebrow}
+                            </div>
+                            {renderCube(
+                              [
+                                wz.win.cubeLaunch,
+                                wz.win.cubeDiscount,
+                                wz.win.cubeNew,
+                                wz.win.cubeLimited,
+                                businessName || wz.win.cubeBenefit,
+                                wz.win.cubeBenefit,
+                              ],
+                              true,
+                            )}
+                            <div className="pv-offer-title">
+                              {hotDeals.title?.trim() ? hotDeals.title : wz.win.offerTitleFallback}
+                            </div>
+                            <div className="pv-offer-text">
+                              {hotDeals.text?.trim() ? hotDeals.text : wz.win.offerTextFallback}
+                            </div>
+                          </>,
+                        )}
+                      </div>
+
+                      {/* מיקום */}
+                      {businessAddress?.trim() || social.whatsapp ? (
+                        <div className="pv-sec">
+                          {winEditBlock(
+                            'win-map',
+                            'about',
+                            '',
+                            <>
+                              <div className="pv-eyebrow">{wz.win.mapEyebrow}</div>
+                              <div className="pv-title">{wz.win.mapTitle}</div>
+                              <div className="pv-map">
+                                <div className="pv-strip">
+                                  <svg aria-hidden="true">
+                                    <use href="#i-pin" />
+                                  </svg>
+                                </div>
+                                {businessAddress?.trim() ? (
+                                  <div className="pv-addr">{businessAddress}</div>
+                                ) : null}
+                              </div>
+                            </>,
+                          )}
                         </div>
                       ) : null}
 
                       {/* רשתות */}
                       <div className="pv-sec">
-                        <div className="pv-eyebrow">{wz.win.pvSocialEyebrow}</div>
-                        <div className="pv-social">
-                          {social.whatsapp ? (
-                            <span className="pv-si">
-                              <svg>
-                                <use href="#i-whatsapp" />
-                              </svg>
-                            </span>
-                          ) : null}
-                          {social.instagram ? (
-                            <span className="pv-si">
-                              <svg>
-                                <use href="#i-instagram" />
-                              </svg>
-                            </span>
-                          ) : null}
-                          {social.facebook ? (
-                            <span className="pv-si">
-                              <svg>
-                                <use href="#i-facebook" />
-                              </svg>
-                            </span>
-                          ) : null}
-                          {social.tiktok ? (
-                            <span className="pv-si">
-                              <svg>
-                                <use href="#i-tiktok" />
-                              </svg>
-                            </span>
-                          ) : null}
-                        </div>
+                        {winEditBlock(
+                          'win-social',
+                          'social',
+                          '',
+                          <>
+                            <div className="pv-eyebrow">{wz.win.pvSocialEyebrow}</div>
+                            <div className="pv-social">
+                              {social.whatsapp ? (
+                                <span className="pv-si">
+                                  <svg>
+                                    <use href="#i-whatsapp" />
+                                  </svg>
+                                </span>
+                              ) : null}
+                              {social.instagram ? (
+                                <span className="pv-si">
+                                  <svg>
+                                    <use href="#i-instagram" />
+                                  </svg>
+                                </span>
+                              ) : null}
+                              {social.facebook ? (
+                                <span className="pv-si">
+                                  <svg>
+                                    <use href="#i-facebook" />
+                                  </svg>
+                                </span>
+                              ) : null}
+                              {social.tiktok ? (
+                                <span className="pv-si">
+                                  <svg>
+                                    <use href="#i-tiktok" />
+                                  </svg>
+                                </span>
+                              ) : null}
+                            </div>
+                          </>,
+                        )}
                       </div>
                     </div>
                   </div>
