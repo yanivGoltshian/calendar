@@ -100,6 +100,14 @@ function shekelToAgorot(raw: string): number {
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
 }
 
+/** מכהה/מבהיר צבע הקס (amt שלילי מכהה), לגזירת brandDark מצבע המותג של העסק. */
+function shadeHex(hex: string, amt: number): string {
+  const h = hex.replace('#', '');
+  const n = h.length === 3 ? h.split('').map((x) => x + x).join('') : h;
+  const ch = (i: number) => Math.max(0, Math.min(255, Math.round(parseInt(n.slice(i, i + 2), 16) * (1 + amt))));
+  return `#${[ch(0), ch(2), ch(4)].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
 /**
  * משבצת טקסט הניתנת לעריכה במקום (WYSIWYG): לחיצה פותחת שדה קלט, יציאה שומרת.
  * Enter שומר (בשורה יחידה), Escape מבטל, והקיטום נאכף לפי המגבלה של המקטע.
@@ -442,8 +450,12 @@ const PW_CSS = `
 .pv-map .pv-strip svg{width:22px;height:22px;color:var(--navy);}
 .pv-map .pv-addr{padding:8px 10px;font-size:11.5px;color:var(--muted);}
 .pw-preview{position:relative;z-index:2;margin:16px auto 0;max-width:300px;border-radius:20px;overflow:hidden;border:1px solid var(--border);background:var(--surface);box-shadow:0 18px 40px -24px rgba(16,35,58,.55);text-align:right;}
-.pv-hero{padding:20px 16px 18px;color:#fff;text-align:center;}
-.pv-logo{width:42px;height:42px;margin:0 auto;border-radius:50%;background:#fff;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.pv-hero{position:relative;overflow:hidden;padding:20px 16px 18px;color:#fff;text-align:center;}
+.pv-hero>*{position:relative;z-index:1;}
+.pv-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+.pv-hero::after{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(10,24,45,.18),rgba(10,24,45,.58));}
+.pv-logo{position:relative;z-index:1;overflow:hidden;width:42px;height:42px;margin:0 auto;border-radius:50%;background:#fff;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+.pv-logo-img{width:100%;height:100%;object-fit:cover;}
 .pv-hero h3{margin:10px 0 0;font-size:17px;font-weight:800;}
 .pv-hero p{margin:5px 0 0;font-size:11.5px;line-height:1.5;opacity:.92;}
 .pv-cta{display:inline-block;margin-top:12px;font-size:11.5px;font-weight:800;padding:6px 16px;border-radius:999px;}
@@ -986,9 +998,10 @@ export default function OnboardingWizard({
 
     // פלטת צבעים לתצוגה נאמנה לעמוד החי, עם נפילה עדינה לברירת מחדל.
     const th = premiumDraft.theme;
+    const brandBase = th?.brand ?? color ?? brandColor ?? '#b0855f';
     const c = {
-      brand: th?.brand ?? '#7c5cff',
-      brandDark: th?.brandDark ?? '#2a2350',
+      brand: brandBase,
+      brandDark: th?.brandDark ?? shadeHex(brandBase, -0.32),
       gold: th?.gold ?? '#d9b45b',
       goldText: th?.goldText ?? '#5a4a1e',
       cream: th?.cream ?? '#faf6ef',
@@ -1669,8 +1682,17 @@ export default function OnboardingWizard({
                           'about',
                           'pv-hero',
                           <>
+                            {heroImages[0] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={heroImages[0]} alt="" className="pv-hero-img" />
+                            ) : null}
                             <div className="pv-logo" style={{ color: c.brandDark }}>
-                              {initial}
+                              {logoUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={logoUrl} alt={businessName} className="pv-logo-img" />
+                              ) : (
+                                initial
+                              )}
                             </div>
                             <h3>{premiumDraft.heroHeadline?.trim() ? premiumDraft.heroHeadline : businessName}</h3>
                             <p>{premiumDraft.heroSubtext?.trim() ? premiumDraft.heroSubtext : def.heroSubtext}</p>
@@ -1678,7 +1700,7 @@ export default function OnboardingWizard({
                               {wz.win.pvCta}
                             </span>
                           </>,
-                          { background: `linear-gradient(150deg, ${c.brandDark}, ${c.brand})` },
+                          { background: heroImages[0] ? undefined : `linear-gradient(150deg, ${c.brandDark}, ${c.brand})` },
                         )}
                       </div>
 
