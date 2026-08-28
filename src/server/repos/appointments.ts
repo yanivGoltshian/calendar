@@ -80,6 +80,44 @@ export async function countPendingAppointments(businessId: string): Promise<numb
   });
 }
 
+/**
+ * מספר התורים של העסק בטווח זמן (UTC), למעט מבוטלים — לכרטיס "תורים היום" בלוח הבקרה.
+ * עקבי עם getAppointmentsForBusinessRange שמסנן גם הוא CANCELLED.
+ */
+export async function countAppointmentsInRange(
+  businessId: string,
+  fromUtc: Date,
+  toUtc: Date,
+): Promise<number> {
+  return prisma.appointment.count({
+    where: {
+      businessId,
+      startAt: { gte: fromUtc, lt: toUtc },
+      status: { not: 'CANCELLED' },
+    },
+  });
+}
+
+/**
+ * סכום ההכנסה (באגורות) מכל התורים בטווח זמן (UTC), למעט מבוטלים — להכנסה החודשית
+ * המצטברת בלוח הבקרה. מסכם totalPriceAgorot של כל תור שלא בוטל בטווח.
+ */
+export async function sumRevenueAgorotInRange(
+  businessId: string,
+  fromUtc: Date,
+  toUtc: Date,
+): Promise<number> {
+  const agg = await prisma.appointment.aggregate({
+    where: {
+      businessId,
+      startAt: { gte: fromUtc, lt: toUtc },
+      status: { not: 'CANCELLED' },
+    },
+    _sum: { totalPriceAgorot: true },
+  });
+  return agg._sum.totalPriceAgorot ?? 0;
+}
+
 export type CreateAppointmentInput = {
   businessId: string;
   clientId: string;

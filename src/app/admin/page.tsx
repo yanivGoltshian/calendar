@@ -1,12 +1,23 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
+import { auth } from '@/auth';
 import { getActiveBusiness } from '@/server/repos/business';
-import { listStaff, ensureOwnerStaffMember } from '@/server/repos/staff';
+import {
+  listStaff,
+  ensureOwnerStaffMember,
+  resolveOwnerDisplayName,
+} from '@/server/repos/staff';
 import { listServices } from '@/server/repos/services';
 import { getBusinessHours } from '@/server/repos/workingHours';
-import { getAppointmentsForBusinessRange, countPendingAppointments } from '@/server/repos/appointments';
+import {
+  getAppointmentsForBusinessRange,
+  countPendingAppointments,
+  countRecentClientCancellations,
+  countAppointmentsInRange,
+  sumRevenueAgorotInRange,
+} from '@/server/repos/appointments';
+import { getBusinessAccess } from '@/server/subscription';
 import {
   todayDateString,
   addDaysToDateString,
@@ -20,12 +31,12 @@ import {
 import { displayPhone } from '@/lib/crypto';
 import { hashToIndex } from './serviceColors';
 import CalendarBoard from './CalendarBoard';
-import OnboardingChecklist, { type ChecklistItem } from './OnboardingChecklist';
-import { isOnboardingChecklistDismissed } from './onboarding/checklistState';
-import ShareBanner from './ShareBanner';
-import GoLivePanel from './GoLivePanel';
+import { buildAdminNotifications } from './notifications';
+import HomeShell, { type ToolStep } from './home/HomeShell';
 import { bookingUrl, bookingPath, isBusinessLive } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
+import { LEGAL_COMPANY } from '@/content/legal/meta';
+import './home/home.css';
 import type {
   ApptBlock,
   CalendarColumn,
@@ -201,43 +212,103 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   const granularity = business.settings?.slotGranularityMinutes ?? 15;
   const defaultDurationMin = serviceRows[0]?.durationMin ?? 30;
 
-  // רשימת ההמשך המודרכת של ההקמה: מחשבים בצד השרת אילו אזורים נדרשים כבר הוגדרו,
-  // כדי שהרשימה תהיה ניתנת להמשך מכל מכשיר. כל צעד ניתן לדילוג והשלמה מאוחרת.
-  // הרשימה מוצגת רק כשנותר צעד פתוח והבעלים לא בחר להסתירה.
+  // ── מצב ההקמה (setup) — נתוני אמת בלבד, לרצועת ההקמה ולמגירת הכלים ─────────────
+  // כל צעד נגזר מנתוני העסק בפועל כדי שהרצועה תהיה ניתנת להמשך מכל מכשיר.
   const businessHours = await getBusinessHours(business.id);
   const pendingCount = await countPendingAppointments(business.id);
-  const checklistDismissed = await isOnboardingChecklistDismissed();
-  const checklistItems: ChecklistItem[] = [
-    { key: 'services', done: serviceRows.length > 0, href: '/admin/services' },
-    { key: 'staff', done: staffRows.length > 0, href: '/admin/team' },
+
+  const servicesDone = serviceRows.length > 0;
+  const staffDone = staffRows.length > 0;
+  const workingHoursDone = businessHours.length > 0;
+  const brandingDone = Boolean(
+    business.logoUrl || business.brandColor || business.coverImageUrl,
+  );
+  const detailsDone = business.settings?.onboardingCompleted === true;
+
+  const setupFlags = [
+    servicesDone,
+    staffDone,
+    workingHoursDone,
+    brandingDone,
+    detailsDone,
+  ];
+  const setupDone = setupFlags.filter(Boolean).length;
+  const percent = Math.round((setupDone / setupFlags.length) * 100);
+  const allComplete = setupDone === setupFlags.length;
+  const remaining = setupFlags.length - setupDone;
+
+  // מגירת הכלים: חמשת אזורי ההקמה. תיקון באג 1 — "פרטי העסק ומדיניות" מפנה
+  // ל-/admin/settings (מדיניות וביטולים), לא לעורך הגלריה/הפרימיום.
+  const steps: ToolStep[] = [
     {
-      key: 'workingHours',
-      done: businessHours.length > 0,
+      title: 'שירותים ומחירים',
+      sub: `${serviceRows.length} שירותים פעילים`,
+      done: servicesDone,
+      href: '/admin/services',
+    },
+    {
+      title: 'צוות',
+      sub: `${staffRows.length} אנשי צוות`,
+      done: staffDone,
+      href: '/admin/team',
+    },
+    {
+      title: 'שעות פעילות',
+      sub: hoursLabelFrom(businessHours.map((h) => h.weekday)),
+      done: workingHoursDone,
       href: '/admin/working-hours',
     },
     {
-      key: 'branding',
-      done: Boolean(
-        business.logoUrl || business.brandColor || business.coverImageUrl,
-      ),
+      title: 'מיתוג',
+      sub: 'לוגו, צבע וכיסוי',
+      done: brandingDone,
       href: '/admin/settings',
     },
     {
-      key: 'details',
-      done: business.settings?.onboardingCompleted === true,
-      href: '/admin/onboarding?edit=premium',
+      title: 'פרטי העסק ומדיניות',
+      sub: 'מדיניות ביטולים, כתובת ופרטי קשר',
+      done: detailsDone,
+      href: '/admin/settings',
     },
   ];
-  const showChecklist =
-    !checklistDismissed && checklistItems.some((i) => !i.done);
 
-  // אותות "העסק חי" ו"כל הצעדים הושלמו" נגזרים מאותם נתונים של רשימת ההקמה.
-  // הקישור וקוד ה-QR נבנים בשרת ומועברים לרכיבי הלקוח, כדי לא לטעון ספריית QR בדפדפן.
+  // תוויות רצועת ההקמה — טקסט מדויק לפי המוקאפ, נגזר מהצעד הפתוח הראשון.
+  const CONTINUE_LABELS = [
+    'את השירותים והמחירים',
+    'את פרטי הצוות',
+    'את שעות הפעילות',
+    'את המיתוג',
+    'את פרטי העסק והמדיניות',
+  ];
+  const firstOpenIndex = setupFlags.findIndex((f) => !f);
+  const continueLabel = CONTINUE_LABELS[firstOpenIndex >= 0 ? firstOpenIndex : 0];
+  const setupTitle =
+    remaining <= 1
+      ? 'כמעט שם · נותר צעד אחד'
+      : `עוד רגע לסיום · נותרו ${remaining} צעדים`;
+  const setupSubtitle =
+    remaining <= 1
+      ? `השלימו ${continueLabel} והעמוד יהיה מושלם`
+      : `נותרו ${remaining} צעדים קטנים והעמוד שלכם מושלם`;
+
+  // ── מרכז ההתראות בפעמון — משוחזר כמו ב-layout (אישורים, ביטולים, חידוש מנוי) ──
+  const access = getBusinessAccess(business);
+  const cancellationSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentCancellations = await countRecentClientCancellations(
+    business.id,
+    cancellationSince,
+  );
+  const notifications = buildAdminNotifications({
+    pendingCount,
+    recentCancellations,
+    access,
+  });
+
+  // ── קישור השיתוף וקוד ה-QR (נבנים בשרת כדי לא לטעון ספריית QR בדפדפן) ─────────
   const isLive = isBusinessLive({
     serviceCount: serviceRows.length,
     workingHoursCount: businessHours.length,
   });
-  const allStepsComplete = checklistItems.every((i) => i.done);
   const bookingLink = bookingUrl(business.slug);
   const bookingPagePath = bookingPath(business.slug);
   const bookingQr = isLive
@@ -248,91 +319,112 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
         ),
       })
     : '';
+  const urlDisplay = bookingLink.replace(/^https?:\/\//, '');
+
+  // ── כרטיסי הסטטיסטיקה — נתוני אמת: תורים היום, ממתינים, הכנסה חודשית מצטברת ────
+  const todayCount = await countAppointmentsInRange(
+    business.id,
+    midnightUtc(today, tz),
+    midnightUtc(addDaysToDateString(today, 1), tz),
+  );
+
+  const monthStartStr = `${today.slice(0, 4)}-${today.slice(5, 7)}-01`;
+  const monthYear = Number(today.slice(0, 4));
+  const monthNum = Number(today.slice(5, 7));
+  const nextMonthYear = monthNum === 12 ? monthYear + 1 : monthYear;
+  const nextMonthNum = monthNum === 12 ? 1 : monthNum + 1;
+  const monthEndStr = `${nextMonthYear}-${String(nextMonthNum).padStart(2, '0')}-01`;
+  const revenueAgorot = await sumRevenueAgorotInRange(
+    business.id,
+    midnightUtc(monthStartStr, tz),
+    midnightUtc(monthEndStr, tz),
+  );
+  const revenueDisplay = `₪${Math.round(revenueAgorot / 100).toLocaleString('he-IL')}`;
+
+  // ── ברכה אישית: שם הבעלים (עם נפילה־לאחור) + תאריך עברי מלא ───────────────────
+  const session = await auth();
+  const ownerDisplayName = resolveOwnerDisplayName({
+    ownerName: session?.user?.name ?? null,
+    businessName: business.name,
+    ownerEmail: business.ownerEmail,
+  });
+  const greetingDate = new Intl.DateTimeFormat('he-IL', {
+    timeZone: tz,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date());
+  const greeting = `שלום ${ownerDisplayName} · ${greetingDate}`;
+  const logoLetter = business.name.trim().charAt(0) || 'ת';
+  const helpHref = `mailto:${LEGAL_COMPANY.contactEmail}`;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pb-16 pt-6">
-      <header className="mb-5">
-        <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
-        <h1 className="text-2xl font-bold text-[#1b1715]">
-          {t.admin.calendarTitle} · {business.name}
-        </h1>
-      </header>
-
-      {/* קיצור בלחיצה אחת לעורך עמוד הפרימיום — התיקון המרכזי לגילוי הפיצ׳ר. */}
-      <a
-        href="/admin/onboarding?edit=premium"
-        dir="rtl"
-        className="mb-4 flex flex-col gap-3 rounded-2xl border border-[#C59D5F]/40 bg-gradient-to-l from-[#0B1526] to-[#132038] px-5 py-4 shadow-sm transition hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#F2D695]">
-            {t.admin.onboarding.premiumEditorCta.eyebrow}
-          </p>
-          <p className="mt-0.5 text-base font-bold text-white">
-            {t.admin.onboarding.premiumEditorCta.title}
-          </p>
-          <p className="mt-0.5 text-sm text-[#c9d2e2]">
-            {t.admin.onboarding.premiumEditorCta.subtitle}
-          </p>
-        </div>
-        <span className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-l from-[#C59D5F] to-[#F2D695] px-5 py-2.5 text-sm font-bold text-[#0B1526] shadow transition hover:brightness-105">
-          ✨ {t.admin.onboarding.premiumEditorCta.cta}
-        </span>
-      </a>
-
-      {pendingCount > 0 ? (
-        <a
-          href="/admin/appointments?tab=pending"
-          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 transition hover:bg-amber-100"
-        >
-          <span className="text-sm font-semibold">
-            {t.admin.pendingApprovals.bannerPrefix} {pendingCount}{' '}
-            {pendingCount === 1
-              ? t.admin.pendingApprovals.bannerSuffixOne
-              : t.admin.pendingApprovals.bannerSuffixMany}
-          </span>
-          <span className="whitespace-nowrap text-sm font-medium underline">
-            {t.admin.pendingApprovals.cta}
-          </span>
-        </a>
-      ) : null}
-
-      {isLive ? (
-        <ShareBanner
-          url={bookingLink}
-          qrSvg={bookingQr}
-          businessName={business.name}
-        />
-      ) : null}
-
-      {showChecklist ? <OnboardingChecklist items={checklistItems} /> : null}
-
-      {allStepsComplete ? (
-        <GoLivePanel
-          url={bookingLink}
-          qrSvg={bookingQr}
-          businessName={business.name}
-          bookingPath={bookingPagePath}
-          businessId={business.id}
-        />
-      ) : null}
-
-      <CalendarBoard
-        view={view}
-        date={date}
-        weekStart={weekStart}
-        today={today}
-        headerLabel={headerLabel}
-        columns={columns}
-        appts={appts}
-        services={services}
-        staff={staff}
-        activeStaffId={activeStaffId}
-        gridStartMinute={gridStartMinute}
-        gridEndMinute={gridEndMinute}
-        granularity={granularity}
-        defaultDurationMin={defaultDurationMin}
+    <div className="tcah">
+      <HomeShell
+        logoLetter={logoLetter}
+        bizName={business.name}
+        greeting={greeting}
+        notifications={notifications}
+        isLive={isLive}
+        share={{
+          urlDisplay,
+          bookingLink,
+          bookingPagePath,
+          qrSvg: bookingQr,
+          shareText: t.admin.onboarding.goLive.share.shareText.replace(
+            '{name}',
+            business.name,
+          ),
+          copiedLabel: t.admin.onboarding.goLive.share.copied,
+          copyFailedLabel: t.admin.onboarding.goLive.share.copyFailed,
+        }}
+        todayCount={todayCount}
+        pendingCount={pendingCount}
+        revenueDisplay={revenueDisplay}
+        pendingHref="/admin/appointments?tab=pending"
+        revenueHref="/admin/stats"
+        allComplete={allComplete}
+        percent={percent}
+        setupTitle={setupTitle}
+        setupSubtitle={setupSubtitle}
+        premiumHref="/admin/onboarding?edit=premium"
+        steps={steps}
+        helpHref={helpHref}
+        calendar={
+          <CalendarBoard
+            view={view}
+            date={date}
+            weekStart={weekStart}
+            today={today}
+            headerLabel={headerLabel}
+            columns={columns}
+            appts={appts}
+            services={services}
+            staff={staff}
+            activeStaffId={activeStaffId}
+            gridStartMinute={gridStartMinute}
+            gridEndMinute={gridEndMinute}
+            granularity={granularity}
+            defaultDurationMin={defaultDurationMin}
+          />
+        }
       />
-    </main>
+    </div>
   );
+}
+
+/**
+ * תווית ימי הפעילות מרשימת מספרי ימים (0=ראשון..6=שבת): טווח רציף → "ראשון עד חמישי";
+ * יום בודד → שם היחיד; אחרת רשימה מופרדת ב-"·". טהורה, לשימוש ברצועת/מגירת ההקמה.
+ */
+function hoursLabelFrom(weekdays: number[]): string {
+  const names = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  const active = [...new Set(weekdays)].sort((a, b) => a - b);
+  if (active.length === 0) return 'טרם הוגדרו';
+  if (active.length === 1) return names[active[0]];
+  const first = active[0];
+  const last = active[active.length - 1];
+  const contiguous = active.every((d, i) => d === first + i);
+  if (contiguous) return `${names[first]} עד ${names[last]}`;
+  return active.map((d) => names[d]).join(' · ');
 }

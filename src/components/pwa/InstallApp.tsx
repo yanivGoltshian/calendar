@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { t } from '@/i18n';
 import { BRAND } from '@/config/brand';
 import { resolveBrandColor, readableText } from '@/lib/brandColor';
@@ -40,6 +40,10 @@ type Props = {
   compact?: boolean;
   /** תווית חלופית לכפתור (ברירת המחדל: t.install.button). */
   label?: string;
+  /** מחלקת CSS חלופית לכפתור ההפעלה במצב קומפקטי (למשל שורת "עוד" בלוח הבית). */
+  triggerClassName?: string;
+  /** תוכן חלופי לכפתור ההפעלה במצב קומפקטי. גובר על העיצוב הכהה המובנה. */
+  triggerChildren?: ReactNode;
 };
 
 type GlyphName = 'share' | 'menu' | 'desktop' | 'browser';
@@ -338,6 +342,8 @@ export default function InstallApp({
   brandColor,
   compact = false,
   label,
+  triggerClassName,
+  triggerChildren,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [installed, setInstalled] = useState(false);
@@ -418,6 +424,22 @@ export default function InstallApp({
   ) : null;
 
   if (compact) {
+    if (triggerChildren) {
+      return (
+        <>
+          <button
+            type="button"
+            className={triggerClassName}
+            onClick={handlePrimary}
+            aria-haspopup={deferred ? undefined : 'dialog'}
+            aria-label={label ?? subtitle}
+          >
+            {triggerChildren}
+          </button>
+          {sheet}
+        </>
+      );
+    }
     return (
       <div dir="rtl" className="w-full">
         <button

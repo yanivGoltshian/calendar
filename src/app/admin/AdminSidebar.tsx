@@ -45,6 +45,7 @@ export default function AdminSidebar({
   notifications?: AdminNotification[];
 }) {
   const pathname = usePathname() ?? '/admin';
+  const isHome = pathname === '/admin';
   const [open, setOpen] = useState(false);
 
   // סגירת המגירה בכל מעבר עמוד.
@@ -126,7 +127,8 @@ export default function AdminSidebar({
 
   return (
     <>
-      {/* סרגל עליון קומפקטי למובייל (< md) */}
+      {/* סרגל עליון קומפקטי למובייל (< md) — מוסתר בלוח הבית שבו HomeShell מספק סרגל משלו */}
+      {!isHome && (
       <div
         dir="rtl"
         className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-[#2f241d] bg-[#1c1512] px-4 py-3 md:hidden"
@@ -157,9 +159,10 @@ export default function AdminSidebar({
           </button>
         </div>
       </div>
+      )}
 
       {/* מגירת ניווט (< md) */}
-      {open ? (
+      {!isHome && open ? (
         <div className="fixed inset-0 z-40 md:hidden">
           <button
             type="button"

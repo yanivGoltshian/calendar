@@ -4,8 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { t } from '@/i18n';
 import type { AdminNotification } from './notifications';
+import { BellIcon } from './home/icons';
 
 type Placement = 'mobile' | 'desktop';
+type Variant = 'default' | 'home';
 
 const PANEL_MAX_WIDTH = 320;
 const VIEWPORT_MARGIN = 8;
@@ -14,19 +16,31 @@ const VIEWPORT_MARGIN = 8;
  * פעמון התראות מרכזי לאזור הניהול: תורים הממתינים לאישור וחידוש מנוי.
  * הפופאובר ממוקם ב-fixed לפי מיקום הכפתור ונצמד לגבולות המסך, כדי שלא ייחתך
  * על ידי הסרגל ולא יזלוג אל מחוץ לעמוד.
+ *
+ * variant='home' מרנדר טריגר בהיר (.icobtn) התואם לעמוד הבית החדש, עם נקודה
+ * אדומה במקום מספר. openSignal מאפשר לפתוח את הפאנל מבחוץ (למשל משורת "עוד"):
+ * כל שינוי לערך גדול מ-0 פותח את הפופאובר.
  */
 export default function NotificationsBell({
   notifications,
   placement,
+  variant = 'default',
+  openSignal = 0,
 }: {
   notifications: AdminNotification[];
   placement: Placement;
+  variant?: Variant;
+  openSignal?: number;
 }) {
   const n = t.admin.notifications;
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const count = notifications.length;
+
+  useEffect(() => {
+    if (openSignal > 0) setOpen(true);
+  }, [openSignal]);
 
   const reposition = useCallback(() => {
     const btn = buttonRef.current;
@@ -64,40 +78,55 @@ export default function NotificationsBell({
 
   return (
     <>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label={count > 0 ? n.countAria.replace('{count}', String(count)) : n.bellAria}
-        className={[
-          'relative inline-flex items-center justify-center rounded-lg text-[#F2D695] transition hover:bg-[#2f241d]',
-          buttonRing,
-        ].join(' ')}
-      >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          className="h-6 w-6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+      {variant === 'home' ? (
+        <button
+          ref={buttonRef}
+          type="button"
+          className="icobtn"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label={count > 0 ? n.countAria.replace('{count}', String(count)) : n.bellAria}
         >
-          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
-        {count > 0 ? (
-          <span
+          <BellIcon className="ic" />
+          {count > 0 ? <span className="dot" aria-hidden="true" /> : null}
+        </button>
+      ) : (
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label={count > 0 ? n.countAria.replace('{count}', String(count)) : n.bellAria}
+          className={[
+            'relative inline-flex items-center justify-center rounded-lg text-[#F2D695] transition hover:bg-[#2f241d]',
+            buttonRing,
+          ].join(' ')}
+        >
+          <svg
             aria-hidden="true"
-            className="absolute -top-0.5 -right-0.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-400 px-1 py-0.5 text-[0.65rem] font-bold leading-none text-[#1c1512]"
+            viewBox="0 0 24 24"
+            className="h-6 w-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {count}
-          </span>
-        ) : null}
-      </button>
+            <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          {count > 0 ? (
+            <span
+              aria-hidden="true"
+              className="absolute -top-0.5 -right-0.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-400 px-1 py-0.5 text-[0.65rem] font-bold leading-none text-[#1c1512]"
+            >
+              {count}
+            </span>
+          ) : null}
+        </button>
+      )}
 
       {open ? (
         <>
