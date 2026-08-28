@@ -453,6 +453,7 @@ const PW_CSS = `
 .pv-hero{position:relative;overflow:hidden;padding:20px 16px 18px;color:#fff;text-align:center;}
 .pv-hero>*{position:relative;z-index:1;}
 .pv-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+.pv-hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
 .pv-hero::after{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(10,24,45,.18),rgba(10,24,45,.58));}
 .pv-logo{position:relative;z-index:1;overflow:hidden;width:42px;height:42px;margin:0 auto;border-radius:50%;background:#fff;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;}
 .pv-logo-img{width:100%;height:100%;object-fit:cover;}
@@ -1682,7 +1683,17 @@ export default function OnboardingWizard({
                           'about',
                           'pv-hero',
                           <>
-                            {heroImages[0] ? (
+                            {premiumDraft.heroVideoUrl ? (
+                              <video
+                                className="pv-hero-video"
+                                src={premiumDraft.heroVideoUrl}
+                                poster={heroImages[0] || undefined}
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                              />
+                            ) : heroImages[0] ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={heroImages[0]} alt="" className="pv-hero-img" />
                             ) : null}
@@ -1700,7 +1711,7 @@ export default function OnboardingWizard({
                               {wz.win.pvCta}
                             </span>
                           </>,
-                          { background: heroImages[0] ? undefined : `linear-gradient(150deg, ${c.brandDark}, ${c.brand})` },
+                          { background: (premiumDraft.heroVideoUrl || heroImages[0]) ? undefined : `linear-gradient(150deg, ${c.brandDark}, ${c.brand})` },
                         )}
                       </div>
 
