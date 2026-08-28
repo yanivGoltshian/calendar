@@ -225,7 +225,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
     {
       key: 'details',
       done: business.settings?.onboardingCompleted === true,
-      href: '/admin/onboarding',
+      href: '/admin/onboarding?edit=premium',
     },
   ];
   const showChecklist =

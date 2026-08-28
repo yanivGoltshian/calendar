@@ -265,6 +265,9 @@ export function seedPremiumDraft(initial: LandingContent | null | undefined): La
  *
  *  - deep-link מפורש (‎?edit=premium‎ או ‎?phase=editor‎) ⇐ 'editor' תמיד, בכל מצב.
  *  - אחרת, אם ההקמה הבסיסית הושלמה (settings.onboardingCompleted) ⇐ 'editor'.
+ *  - אחרת, אם ההקמה הבסיסית מוגדרת בפועל (שירותים + שעות + מיתוג) ⇐ 'editor'.
+ *    זה מכסה עסק שהוגדר דרך עמודי האדמין הנפרדים בלי לסגור את הדגל
+ *    onboardingCompleted, כדי שלא יופל שוב לשלב הראשון של האשף הבסיסי.
  *  - אחרת ⇐ undefined: עסק חדש עובר את הזרימה הרגילה null→שער→עורך→סיכום,
  *    בלי כניסה מוקדמת לעורך.
  */
@@ -272,10 +275,12 @@ export function resolveOnboardingEntry(input: {
   editParam?: string | null;
   phaseParam?: string | null;
   onboardingCompleted?: boolean | null;
+  basicSetupComplete?: boolean | null;
 }): 'editor' | undefined {
   const explicitEditor = input.editParam === 'premium' || input.phaseParam === 'editor';
   if (explicitEditor) return 'editor';
   if (input.onboardingCompleted) return 'editor';
+  if (input.basicSetupComplete) return 'editor';
   return undefined;
 }
 
