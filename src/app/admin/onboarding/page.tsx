@@ -5,6 +5,7 @@ import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
 import { listServices } from '@/server/repos/services';
+import { getBusinessHours } from '@/server/repos/workingHours';
 import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
 import { bookingUrl } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
@@ -34,12 +35,24 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
 
   const settings = await getOrCreateSettings(business.id);
   const services = await listServices(business.id);
+  const businessHours = await getBusinessHours(business.id);
 
-  // כניסה ישירה לעורך: deep-link מפורש, או עסק שכבר סיים את ההקמה הבסיסית.
+  // «הקמה בסיסית הושלמה» נגזר מנתונים אמיתיים, במקביל לרשימת ההקמה ב-/admin
+  // (שירותים + שעות + מיתוג). זה מכסה עסק שהוגדר דרך עמודי האדמין הנפרדים בלי
+  // שהדגל settings.onboardingCompleted נסגר, כדי שלא יופל שוב לשלב הראשון של האשף.
+  const hasBranding = Boolean(
+    business.logoUrl || business.brandColor || business.coverImageUrl,
+  );
+  const basicSetupComplete =
+    services.length > 0 && businessHours.length > 0 && hasBranding;
+
+  // כניסה ישירה לעורך: deep-link מפורש, עסק שסגר את דגל ההקמה, או עסק שההקמה
+  // הבסיסית שלו כבר מוגדרת בפועל.
   const initialPremiumPhase = resolveOnboardingEntry({
     editParam: sp.edit,
     phaseParam: sp.phase,
     onboardingCompleted: settings.onboardingCompleted,
+    basicSetupComplete,
   });
 
   const link = bookingUrl(business.slug);
@@ -51,10 +64,11 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
     label: t.admin.onboarding.goLive.share.qrAlt.replace('{name}', business.name),
   });
 
-  // ביקור חוזר: עסק שכבר סיים הקמה ואינו בכניסת עריכה מפורשת רואה את מרכז העסק
-  // החוזר (החגיגה מתקפלת למגירה) במקום להריץ שוב את האשף.
+  // ביקור חוזר: עסק שכבר סיים הקמה (דגל או נתונים אמיתיים) ואינו בכניסת עריכה
+  // מפורשת רואה את מרכז העסק החוזר במקום להריץ שוב את האשף.
   const explicitEditor = sp.edit === 'premium' || sp.phase === 'editor';
-  const showReturningHub = settings.onboardingCompleted && !explicitEditor;
+  const showReturningHub =
+    (settings.onboardingCompleted || basicSetupComplete) && !explicitEditor;
 
   const wizardServices: WizardService[] = services.map((s) => ({
     id: s.id,

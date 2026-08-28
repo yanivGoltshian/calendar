@@ -309,7 +309,8 @@ test('seedPremiumDraft: ללא תוכן קיים (null/undefined) מחזירה �
 /**
  * תיקון הפלואו "מתחיל מהתחלה": עסק שכבר סיים את ההקמה הבסיסית נכנס ישר לעורך הפרימיום,
  * בלי לחזור על שירותים → שעות → מיתוג. resolveOnboardingEntry משלב deep-link מפורש
- * עם settings.onboardingCompleted, ומשמר את הזרימה הרגילה של עסק חדש.
+ * עם settings.onboardingCompleted ועם basicSetupComplete (הקמה מוגדרת בפועל), ומשמר
+ * את הזרימה הרגילה של עסק חדש.
  */
 test('resolveOnboardingEntry: deep-link מפורש פותח את העורך תמיד', () => {
   assert.equal(resolveOnboardingEntry({ editParam: 'premium' }), 'editor');
@@ -325,9 +326,24 @@ test('resolveOnboardingEntry: עסק שסיים הקמה נוחת ישר בעו�
   assert.equal(resolveOnboardingEntry({ onboardingCompleted: true }), 'editor');
 });
 
+test('resolveOnboardingEntry: עסק שהוגדר בפועל (שירותים+שעות+מיתוג) נוחת בעורך גם בלי דגל', () => {
+  // basicSetupComplete מכסה עסק שהוגדר דרך עמודי האדמין בלי לסגור את דגל ההקמה,
+  // כדי שלא יופל שוב לשלב הראשון של האשף הבסיסי.
+  assert.equal(resolveOnboardingEntry({ basicSetupComplete: true }), 'editor');
+  assert.equal(
+    resolveOnboardingEntry({ onboardingCompleted: false, basicSetupComplete: true }),
+    'editor',
+  );
+});
+
 test('resolveOnboardingEntry: עסק חדש בלי deep-link שומר על הזרימה הרגילה (undefined)', () => {
   assert.equal(resolveOnboardingEntry({}), undefined);
   assert.equal(resolveOnboardingEntry({ onboardingCompleted: false }), undefined);
+  assert.equal(resolveOnboardingEntry({ basicSetupComplete: false }), undefined);
+  assert.equal(
+    resolveOnboardingEntry({ onboardingCompleted: false, basicSetupComplete: false }),
+    undefined,
+  );
   assert.equal(resolveOnboardingEntry({ editParam: 'other', phaseParam: 'gate' }), undefined);
   assert.equal(resolveOnboardingEntry({ editParam: null, phaseParam: null, onboardingCompleted: null }), undefined);
 });

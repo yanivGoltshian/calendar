@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import type { SaveState } from '../settings/parse';
 import { t } from '@/i18n';
 import { Button } from '@/components/ui';
@@ -585,8 +586,16 @@ export default function OnboardingWizard({
   initialPremiumPhase,
 }: Props) {
   const o = t.admin.onboarding;
+  const router = useRouter();
   const [step, setStep] = useState(0); // 0=services 1=hours 2=branding
   const [done, setDone] = useState(false);
+
+  // האם המשתמש הגיע דרך שער «הריצה הראשונה» (עסק חדש), או נכנס ישר לעורך (עסק
+  // קיים / deep-link). עסק קיים נכנס עם initialPremiumPhase==='editor', ולכן
+  // enteredViaGate=false. משמש כדי ש«חזרה» לעסק קיים תחזור לדשבורד ולא לשער המיושן.
+  const enteredViaGate = initialPremiumPhase !== 'editor';
+  // יציאה מהעורך אל הדשבורד, ל«חזרה» של עסק קיים (במקום השער המיושן).
+  const exitToAdmin = () => router.push('/admin');
 
   // ── מצב שלב הפרימיום (אופציונלי, מופעל אחרי המיתוג) ──
   // premiumPhase=null ⇐ שלב הפרימיום עדיין מחוץ לתמונה (שלושת הצעדים הרגילים).
@@ -1114,7 +1123,10 @@ export default function OnboardingWizard({
     const wizSkip = () => setPremiumStep((s) => nextPremiumStep(s));
     const wizBack = () => {
       if (premiumStep === 1) {
-        setPremiumPhase('gate');
+        // מהשלב הראשון של עורך הפרימיום: עסק חדש (הריצה הראשונה) חוזר לשער,
+        // אבל עסק קיים / deep-linked חוזר לדשבורד ולא לשער המיושן.
+        if (enteredViaGate) setPremiumPhase('gate');
+        else exitToAdmin();
         return;
       }
       setPremiumStep((s) => prevPremiumStep(s));
@@ -1292,7 +1304,16 @@ export default function OnboardingWizard({
           <form action={premiumFormAction} className="pw-phone">
             {/* ── appbar ── */}
             <div className="pw-appbar">
-              <button type="button" className="pw-back" onClick={() => setPremiumPhase('gate')}>
+              <button
+                type="button"
+                className="pw-back"
+                onClick={() => {
+                  // «חזרה» מה-appbar של העורך: עסק חדש (הריצה הראשונה) חוזר לשער,
+                  // אבל עסק קיים / deep-linked חוזר לדשבורד ולא לשער המיושן.
+                  if (enteredViaGate) setPremiumPhase('gate');
+                  else exitToAdmin();
+                }}
+              >
                 {'\u2039 '}
                 {wz.appbarBack}
               </button>
