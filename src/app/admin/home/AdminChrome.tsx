@@ -142,40 +142,117 @@ export default function AdminChrome({
 
   return (
     <div className="tcah admin-shell" dir="rtl">
-      {/* סרגל עליון משותף */}
-      <div className="topwrap">
-        <div className="topbar">
-          <div className="biz">
-            <div className="logo">{logoLetter}</div>
-            <div className="who">
-              <div className="n">{bizName}</div>
-              <div className="r">{greeting}</div>
-            </div>
-          </div>
-          <div className="tools">
-            <NotificationsBell
-              notifications={notifications}
-              placement="mobile"
-              variant="home"
-              openSignal={bellOpenSignal}
-            />
-            <button
-              type="button"
-              className="icobtn"
-              aria-label="תפריט"
-              aria-haspopup="dialog"
-              aria-expanded={moreOpen}
-              onClick={() => setMoreOpen(true)}
-            >
-              <MenuIcon className="ic" />
-            </button>
+      {/* סרגל-צד קבוע לדסקטופ בלבד (מוסתר במובייל) — נגזר מאותם 13 יעדים */}
+      <aside className="sidenav" aria-label="ניווט ראשי">
+        <div className="brand">
+          <div className="logo">{logoLetter}</div>
+          <div className="who">
+            <div className="n">{bizName}</div>
+            <div className="r">{greeting}</div>
           </div>
         </div>
+        <nav className="side-links">
+          {ADMIN_BOTTOM_NAV.map((item) => (
+            <Link
+              key={item.id}
+              href={item.href as string}
+              className={`side-link${isAdminNavActive(item.href as string, pathname) ? ' on' : ''}`}
+            >
+              <span className="i">{bottomIcon(item.id)}</span>
+              <span className="l">{item.label}</span>
+            </Link>
+          ))}
+          <div className="side-sep" />
+          {ADMIN_MORE_ROWS.map((item) => {
+            const inner = (
+              <>
+                <span className="i">{moreIcon(item.id)}</span>
+                <span className="l">{item.label}</span>
+              </>
+            );
+            if (item.action === 'link') {
+              return (
+                <Link
+                  key={item.id}
+                  href={item.href as string}
+                  className={`side-link${isAdminNavActive(item.href as string, pathname) ? ' on' : ''}`}
+                >
+                  {inner}
+                </Link>
+              );
+            }
+            if (item.action === 'bell') {
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="side-link"
+                  onClick={() => setBellOpenSignal((n) => n + 1)}
+                >
+                  {inner}
+                </button>
+              );
+            }
+            if (item.action === 'install') {
+              return (
+                <InstallApp
+                  key={item.id}
+                  variant="admin"
+                  compact
+                  persistTrigger
+                  triggerClassName="side-link"
+                  triggerChildren={inner}
+                />
+              );
+            }
+            // logout
+            return (
+              <form key={item.id} action={ownerLogout} className="side-logout">
+                <button type="submit" className="side-link danger">
+                  {inner}
+                </button>
+              </form>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {/* עמודת התוכן (סרגל עליון + גוף העמוד) */}
+      <div className="admin-content">
+        {/* סרגל עליון משותף */}
+        <div className="topwrap">
+          <div className="topbar">
+            <div className="biz">
+              <div className="logo">{logoLetter}</div>
+              <div className="who">
+                <div className="n">{bizName}</div>
+                <div className="r">{greeting}</div>
+              </div>
+            </div>
+            <div className="tools">
+              <NotificationsBell
+                notifications={notifications}
+                placement="mobile"
+                variant="home"
+                openSignal={bellOpenSignal}
+              />
+              <button
+                type="button"
+                className="icobtn admin-menu-btn"
+                aria-label="תפריט"
+                aria-haspopup="dialog"
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen(true)}
+              >
+                <MenuIcon className="ic" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* אזור התוכן של העמוד */}
+        <div className="admin-main">{children}</div>
       </div>
-
-      {/* אזור התוכן של העמוד */}
-      <div className="admin-main">{children}</div>
-
       {/* ניווט תחתון משותף */}
       <nav className="botnav">
         <div className="bar">

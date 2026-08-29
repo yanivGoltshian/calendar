@@ -28,7 +28,7 @@ import { displayPhone } from '@/lib/crypto';
 import { hashToIndex } from './serviceColors';
 import CalendarBoard from './CalendarBoard';
 import HomeShell, { type ToolStep } from './home/HomeShell';
-import { computeSetupState } from './onboarding/setup';
+import { computeSetupState, SETUP_STEP_HREFS } from './onboarding/setup';
 import { bookingUrl, bookingPath, isBusinessLive } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
 import './home/home.css';
@@ -233,38 +233,39 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   const allComplete = setup.allComplete;
   const remaining = setup.remaining;
 
-  // מגירת הכלים: חמשת אזורי ההקמה. תיקון באג 1 — "פרטי העסק ומדיניות" מפנה
-  // ל-/admin/settings (מדיניות וביטולים), לא לעורך הגלריה/הפרימיום.
+  // מגירת הכלים: חמשת אזורי ההקמה. היעדים נגזרים ממקור-האמת (SETUP_STEP_HREFS)
+  // כדי שכפתור «המשך» ומגירת הכלים לעולם לא יסטו זה מזה. "פרטי העסק ומדיניות"
+  // מפנה ל-/admin/settings (מדיניות וביטולים), לא לעורך הגלריה/הפרימיום.
   const steps: ToolStep[] = [
     {
       title: 'שירותים ומחירים',
       sub: `${serviceRows.length} שירותים פעילים`,
       done: servicesDone,
-      href: '/admin/services',
+      href: SETUP_STEP_HREFS.servicesDone,
     },
     {
       title: 'צוות',
       sub: `${staffRows.length} אנשי צוות`,
       done: staffDone,
-      href: '/admin/team',
+      href: SETUP_STEP_HREFS.staffDone,
     },
     {
       title: 'שעות פעילות',
       sub: hoursLabelFrom(businessHours.map((h) => h.weekday)),
       done: workingHoursDone,
-      href: '/admin/working-hours',
+      href: SETUP_STEP_HREFS.workingHoursDone,
     },
     {
       title: 'מיתוג',
       sub: 'לוגו, צבע וכיסוי',
       done: brandingDone,
-      href: '/admin/settings',
+      href: SETUP_STEP_HREFS.brandingDone,
     },
     {
       title: 'פרטי העסק ומדיניות',
       sub: 'מדיניות ביטולים, כתובת ופרטי קשר',
       done: detailsDone,
-      href: '/admin/settings',
+      href: SETUP_STEP_HREFS.detailsDone,
     },
   ];
 
