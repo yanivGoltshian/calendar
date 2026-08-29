@@ -41,19 +41,37 @@
   letter-spacing: -0.01em;
 }
 
+/* מעטפת אזור הניהול המשותפת (סרגל עליון + תוכן + ניווט תחתון) */
+.tcah.admin-shell {
+  background: var(--sand);
+  min-height: 100vh;
+}
+
 /* מעטפת העמוד */
 .tcah .app-wrap {
   display: flex;
   justify-content: center;
-  padding: 0 12px 90px;
+  padding: 0 12px;
 }
 .tcah .app {
   width: 100%;
   max-width: 420px;
 }
 
-/* ── סרגל עליון של האפליקציה ── */
+/* אזור התוכן בין הסרגל העליון לניווט התחתון (ריווח לפינוי הניווט הצף) */
+.tcah .admin-main {
+  padding-bottom: 90px;
+}
+
+/* ── סרגל עליון של האפליקציה (ממורכז לרוחב העמוד) ── */
+.tcah .topwrap {
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+}
 .tcah .topbar {
+  width: 100%;
+  max-width: 420px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -467,6 +485,305 @@
   margin-top: 16px;
 }
 
+/* ── היומן (CalendarBoard) · פורט מדויק מקטע ‎.cal‎ במוקאפ ── */
+.tcah .cal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+.tcah .cal .cal-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px 14px 10px;
+  flex-wrap: wrap;
+}
+.tcah .cal .cal-head .ttl {
+  font-family: 'Heebo', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--ink);
+}
+.tcah .cal .seg2 {
+  display: inline-flex;
+  background: var(--sand-2);
+  border-radius: 999px;
+  padding: 3px;
+  margin-inline-start: auto;
+}
+.tcah .cal .seg2 button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 12.5px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.tcah .cal .seg2 button.on {
+  background: linear-gradient(135deg, var(--gold-600), var(--gold-300));
+  color: #241a06;
+  box-shadow: 0 4px 10px -5px rgba(181, 135, 58, 0.7);
+}
+.tcah .cal .cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px 10px;
+}
+.tcah .cal .cal-nav .nv {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 15px;
+}
+.tcah .cal .cal-nav .tdy {
+  border: 1px solid var(--navy-100);
+  background: var(--navy-50);
+  color: var(--navy);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.tcah .cal .cal-nav .lbl {
+  font-weight: 800;
+  font-size: 13.5px;
+  color: var(--ink);
+  margin-inline-start: 4px;
+}
+.tcah .cal .cal-nav .pick {
+  margin-inline-start: auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.tcah .cal .legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0 14px 12px;
+}
+.tcah .cal .lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--sand);
+  border: 1px solid var(--border);
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+.tcah .cal .lg i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+.tcah .cal .cal-notice {
+  padding: 0 14px 12px;
+  font-size: 12.5px;
+  color: var(--gold-600);
+}
+.tcah .cal .cal-notice a {
+  font-weight: 800;
+  color: var(--navy);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.tcah .cal .cal-empty {
+  padding: 0 14px 6px;
+  font-size: 12px;
+  color: #b3a690;
+}
+.tcah .cal .cal-blank {
+  margin: 0 14px 14px;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--sand);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.tcah .cal .cal-blank p {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+.tcah .cal .grid {
+  display: flex;
+  padding: 0 8px 8px;
+}
+.tcah .cal .axis {
+  width: 40px;
+  flex: none;
+}
+.tcah .cal .axis .axhead {
+  padding: 0;
+}
+.tcah .cal .axis .axbody {
+  position: relative;
+}
+.tcah .cal .axis .hr {
+  position: absolute;
+  inset-inline-end: 4px;
+  transform: translateY(-50%);
+  font-size: 10.5px;
+  color: #b3a690;
+  direction: ltr;
+}
+.tcah .cal .cols {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+}
+.tcah .cal .col {
+  flex: 1;
+  min-width: 0;
+  border-inline-start: 1px solid var(--sand-2);
+}
+.tcah .cal .chd {
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 800;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.tcah .cal .chd.tdy {
+  color: var(--navy);
+}
+.tcah .cal .chd .sub {
+  display: block;
+  font-size: 10px;
+  color: #b3a690;
+  font-weight: 600;
+  margin-top: 1px;
+}
+.tcah .cal .lane {
+  position: relative;
+}
+.tcah .cal .lane.today {
+  background: var(--navy-50);
+}
+.tcah .cal .lane.live {
+  cursor: crosshair;
+}
+.tcah .cal .hrline {
+  position: absolute;
+  inset-inline: 0;
+  border-top: 1px dashed #efe6db;
+  pointer-events: none;
+}
+.tcah .cal .dragsel {
+  position: absolute;
+  inset-inline: 1px;
+  border-radius: 8px;
+  border: 2px dashed var(--navy);
+  background: var(--navy-50);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.tcah .cal .appt {
+  position: absolute;
+  border-radius: 10px;
+  padding: 5px 7px;
+  overflow: hidden;
+  border: 1px solid;
+  border-inline-start-width: 4px;
+  box-shadow: 0 3px 8px -4px rgba(42, 33, 25, 0.25);
+  text-align: right;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.tcah .cal .appt:hover {
+  box-shadow: 0 5px 12px -4px rgba(42, 33, 25, 0.32);
+}
+.tcah .cal .appt.dim {
+  opacity: 0.6;
+}
+.tcah .cal .appt .tm {
+  display: block;
+  direction: ltr;
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 800;
+  opacity: 0.85;
+}
+.tcah .cal .appt .nm {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tcah .cal .appt .sv {
+  display: block;
+  font-size: 10.5px;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tcah .cal .cal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--sand-2);
+}
+.tcah .cal .cal-foot .hintx {
+  font-size: 11px;
+  color: var(--muted);
+}
+.tcah .cal .newbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--navy-900), var(--navy));
+  color: #fff;
+  border: 0;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 8px 18px -9px rgba(10, 24, 45, 0.7);
+  text-decoration: none;
+}
+.tcah .cal .newbtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
+}
+.tcah .cal .newbtn .ic {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
 /* ── ניווט תחתון ── */
 .tcah .botnav {
   position: fixed;
@@ -806,14 +1123,4 @@
 .tcah .sheet .x svg.ic {
   width: 15px;
   height: 15px;
-}
-
-/* בדסקטופ הניווט מגיע מה-AdminSidebar; מסתירים את הניווט התחתון ומוסיפים ריווח. */
-@media (min-width: 768px) {
-  .tcah .botnav {
-    display: none;
-  }
-  .tcah .app-wrap {
-    padding-bottom: 24px;
-  }
 }
