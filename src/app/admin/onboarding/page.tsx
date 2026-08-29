@@ -12,7 +12,6 @@ import { bookingQrSvg } from '@/lib/qr-svg';
 import { normalizeLandingContent } from '@/lib/publicPageStyle';
 import { resolveOnboardingEntry } from './premium';
 import OnboardingWizard, { type WizardService } from './OnboardingWizard';
-import ReturningHub from './ReturningHub';
 
 export const metadata: Metadata = { title: t.admin.onboarding.title };
 
@@ -20,12 +19,20 @@ export const metadata: Metadata = { title: t.admin.onboarding.title };
  * ‎?edit=premium‎ (או ‎?phase=editor‎) פותח את האשף ישר בעורך עמוד הפרימיום —
  * קיצור בלחיצה אחת לעריכת העמוד, למשל מיד אחרי «כניסה כבעל העסק». בנוסף, עסק
  * שכבר סיים את ההקמה הבסיסית (settings.onboardingCompleted) נוחת ישר בעורך גם בלי
- * deep-link, כדי לא לחזור על שלושת הצעדים. ב-Next 15 ‎searchParams‎ הוא Promise
- * ולכן נדרש await.
+ * deep-link, כדי לא לחזור על שלושת הצעדים. ‎?step=services|hours|branding‎ הוא
+ * deep-link «המשך» מטבעת ההתקדמות בדשבורד — פותח את האשף ישר בצעד הבסיסי החסר
+ * (ולכן גובר על כניסת העורך). ב-Next 15 ‎searchParams‎ הוא Promise ולכן נדרש await.
  */
 type Props = {
-  searchParams: Promise<{ edit?: string; phase?: string }>;
+  searchParams: Promise<{ edit?: string; phase?: string; step?: string }>;
 };
+
+// מיפוי deep-link ‎?step=‎ לצעד הבסיסי באשף (services→0, hours→1, branding→2).
+const BASIC_STEP_PARAMS = ['services', 'hours', 'branding'] as const;
+type BasicStepParam = (typeof BASIC_STEP_PARAMS)[number];
+function resolveInitialBasicStep(step?: string): BasicStepParam | undefined {
+  return BASIC_STEP_PARAMS.find((s) => s === step);
+}
 
 export default async function AdminOnboardingPage({ searchParams }: Props) {
   const sp = await searchParams;
@@ -46,14 +53,20 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
   const basicSetupComplete =
     services.length > 0 && businessHours.length > 0 && hasBranding;
 
+  // deep-link «המשך»: ‎?step=‎ פותח את האשף בצעד הבסיסי החסר וגובר על כניסת העורך
+  // האוטומטית, כדי לנחות בדיוק במקום שבו חסר הפרט (ולא במסך אחר).
+  const initialBasicStep = resolveInitialBasicStep(sp.step);
+
   // כניסה ישירה לעורך: deep-link מפורש, עסק שסגר את דגל ההקמה, או עסק שההקמה
-  // הבסיסית שלו כבר מוגדרת בפועל.
-  const initialPremiumPhase = resolveOnboardingEntry({
-    editParam: sp.edit,
-    phaseParam: sp.phase,
-    onboardingCompleted: settings.onboardingCompleted,
-    basicSetupComplete,
-  });
+  // הבסיסית שלו כבר מוגדרת בפועל. כאשר קיים ‎?step=‎ בסיסי — לא פותחים עורך.
+  const initialPremiumPhase = initialBasicStep
+    ? undefined
+    : resolveOnboardingEntry({
+        editParam: sp.edit,
+        phaseParam: sp.phase,
+        onboardingCompleted: settings.onboardingCompleted,
+        basicSetupComplete,
+      });
 
   const link = bookingUrl(business.slug);
   const qr = bookingQrSvg(link, {
@@ -63,12 +76,6 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
   const bookQr = bookingQrSvg(`${link}/book`, {
     label: t.admin.onboarding.goLive.share.qrAlt.replace('{name}', business.name),
   });
-
-  // ביקור חוזר: עסק שכבר סיים הקמה (דגל או נתונים אמיתיים) ואינו בכניסת עריכה
-  // מפורשת רואה את מרכז העסק החוזר במקום להריץ שוב את האשף.
-  const explicitEditor = sp.edit === 'premium' || sp.phase === 'editor';
-  const showReturningHub =
-    (settings.onboardingCompleted || basicSetupComplete) && !explicitEditor;
 
   const wizardServices: WizardService[] = services.map((s) => ({
     id: s.id,
@@ -84,34 +91,13 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
   // תוכן פרימיום קיים (אם כבר מולא) — מנורמל לזריעת האשף בכניסה חוזרת.
   const premiumInitial = normalizeLandingContent(business.landingContent);
 
-  // מרכז העסק החוזר (variant-1): מסך עצמאי ללא כותרת ההקמה הגנרית.
-  if (showReturningHub) {
-    return (
-      <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
-        <ReturningHub
-          businessName={business.name}
-          slug={business.slug}
-          pageUrl={link}
-          bookingShareUrl={`${link}/book`}
-          bookingShareQr={bookQr}
-        />
-      </main>
-    );
-  }
-
   return (
-    <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
+    <main className="mx-auto max-w-2xl px-4 pb-16 pt-6 lg:max-w-5xl xl:max-w-6xl">
       <header className="mb-6">
         <p className="text-sm text-[#8f8478]">{BRAND.name}</p>
         <h1 className="text-2xl font-bold text-[#1b1715]">{t.admin.onboarding.title}</h1>
         <p className="mt-1 text-sm text-[#8f8478]">{t.admin.onboarding.subtitle}</p>
       </header>
-
-      {settings.onboardingCompleted ? (
-        <p className="mb-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
-          {t.admin.onboarding.completedBanner}
-        </p>
-      ) : null}
 
       <OnboardingWizard
         businessName={business.name}
@@ -126,6 +112,7 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
         businessAddress={business.address ?? ''}
         slug={business.slug}
         premiumInitial={premiumInitial}
+        initialBasicStep={initialBasicStep}
         initialPremiumPhase={initialPremiumPhase}
       />
     </main>

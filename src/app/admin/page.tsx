@@ -218,7 +218,11 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   const brandingDone = Boolean(
     business.logoUrl || business.brandColor || business.coverImageUrl,
   );
-  const detailsDone = business.settings?.onboardingCompleted === true;
+  // «פרטי העסק» נגזר מנתונים אמיתיים (כתובת + טלפון + מדיניות), לא מדגל
+  // onboardingCompleted — כדי שדילוג על הצעד לא ינפח את הטבעת ל-100% בעוד פרטים חסרים.
+  const detailsDone = Boolean(
+    business.address && business.phone && business.settings?.policyText,
+  );
 
   // מצב ההקמה מחושב ממקור אמת יחיד (setup.ts) שמזין גם את הבית וגם את ניווט ההמשך.
   const setup = computeSetupState({

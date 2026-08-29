@@ -237,7 +237,7 @@ export function buildDefaultSectionToggles(type?: string | null): LandingSection
 }
 
 /** תת-השלבים של עמוד הפרימיום באשף: שער → עורך → סיכום. */
-export type PremiumPhase = 'gate' | 'editor' | 'summary';
+export type PremiumPhase = 'editor' | 'summary';
 
 /**
  * מחשב את שלב הפרימיום ההתחלתי של האשף מתוך prop ה-deep-link.
@@ -268,7 +268,7 @@ export function seedPremiumDraft(initial: LandingContent | null | undefined): La
  *  - אחרת, אם ההקמה הבסיסית מוגדרת בפועל (שירותים + שעות + מיתוג) ⇐ 'editor'.
  *    זה מכסה עסק שהוגדר דרך עמודי האדמין הנפרדים בלי לסגור את הדגל
  *    onboardingCompleted, כדי שלא יופל שוב לשלב הראשון של האשף הבסיסי.
- *  - אחרת ⇐ undefined: עסק חדש עובר את הזרימה הרגילה null→שער→עורך→סיכום,
+ *  - אחרת ⇐ undefined: עסק חדש עובר את הזרימה הרגילה null→עורך→סיכום,
  *    בלי כניסה מוקדמת לעורך.
  */
 export function resolveOnboardingEntry(input: {

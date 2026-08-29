@@ -13,7 +13,6 @@ import { t } from '@/i18n';
 
 const admin = t.admin as {
   onboarding: {
-    completedBanner: string;
     premium: { editor: { wizard: { kicker: string; stepCounter: string; stepRemain: string } } };
   };
   calendar: {
@@ -24,15 +23,6 @@ const admin = t.admin as {
     dragHint: string;
   };
 };
-
-// ── נעילה 5: האשף לעולם לא מציג "הושלמה" ליד "נשארו N" ──
-test('messaging: באנר סיום ההקמה בבית לא מכיל את המילה "נשאר"', () => {
-  assert.doesNotMatch(
-    admin.onboarding.completedBanner,
-    /נשאר/,
-    'הבאנר לא יכול לרמוז שנותרו צעדים כשההקמה הושלמה',
-  );
-});
 
 test('messaging: כותרת האשף מתויגת כפרימיום, לא כהקמה שהושלמה', () => {
   const w = admin.onboarding.premium.editor.wizard;

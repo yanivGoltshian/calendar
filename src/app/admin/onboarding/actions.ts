@@ -180,7 +180,12 @@ export async function saveBranding(_prev: SaveState, fd: FormData): Promise<Save
   };
 
   await updateBusinessProfile(business.id, profile);
-  await setOnboardingCompleted(business.id, true);
+  // סגירת דגל ההקמה רק כשפרטי העסק האמיתיים קיימים (כתובת + טלפון + מדיניות),
+  // אחרת דילוג על צעד הפרטים היה מנפח את טבעת ההשלמה ל-100% בעוד פרטים חסרים.
+  // כניסת העורך שורדת ממילא דרך basicSetupComplete (שירותים+שעות+מיתוג), עצמאית מהדגל.
+  if (business.address && business.phone && business.settings?.policyText) {
+    await setOnboardingCompleted(business.id, true);
+  }
   // סימון צעד המיתוג רק כשקיים מיתוג ממשי (לוגו וגם צבע מותג).
   if (profile.logoUrl && profile.brandColor) {
     await markOnboardingStep(business.id, 'branding');

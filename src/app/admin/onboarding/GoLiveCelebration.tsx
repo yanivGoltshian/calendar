@@ -99,8 +99,10 @@ export default function GoLiveCelebration({
           href="/admin/onboarding?edit=premium"
           className="group flex items-center gap-3 rounded-2xl bg-brand-sheen px-4 py-3.5 text-white shadow-elevated transition hover:brightness-110"
         >
-          <span aria-hidden="true" className="text-xl">
-            ✨
+          <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z" />
+            </svg>
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">{c.ctaPremiumTitle}</span>
@@ -115,8 +117,11 @@ export default function GoLiveCelebration({
           href="/admin"
           className="group flex items-center gap-3 rounded-2xl bg-brand-gradient px-4 py-3.5 text-white shadow-soft transition hover:brightness-110"
         >
-          <span aria-hidden="true" className="text-xl">
-            📅
+          <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4.5" width="18" height="16.5" rx="2" />
+              <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+            </svg>
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">{c.ctaCalendarTitle}</span>
@@ -133,8 +138,12 @@ export default function GoLiveCelebration({
           rel="noopener noreferrer"
           className="group flex items-center gap-3 rounded-2xl bg-accent-500 px-4 py-3.5 text-brand-950 shadow-soft transition hover:bg-accent-600"
         >
-          <span aria-hidden="true" className="text-xl">
-            🔗
+          <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 15l6-6" />
+              <path d="M11 6.5l1-1a4 4 0 0 1 5.7 5.7l-1 1" />
+              <path d="M13 17.5l-1 1a4 4 0 0 1-5.7-5.7l1-1" />
+            </svg>
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">{c.ctaPageTitle}</span>
@@ -168,7 +177,11 @@ export default function GoLiveCelebration({
           rel="noopener noreferrer"
           className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 sm:w-auto"
         >
-          <span aria-hidden="true">💬</span>
+          <span aria-hidden="true" className="flex h-5 w-5 items-center justify-center">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8 8 0 0 1-11.5 7.2L4 20l1.3-4.4A8 8 0 1 1 21 11.5z" />
+            </svg>
+          </span>
           {c.whatsapp}
         </a>
       </div>

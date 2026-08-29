@@ -38,17 +38,17 @@ test('setup: אחוז קטן מ-100 ו-allComplete=false כשלא הכול הו�
 test('setup: כשכלום לא הושלם, יעד ההמשך הוא מסך השירותים', () => {
   const s = computeSetupState(flags({}));
   assert.equal(s.continueHref, SETUP_STEP_HREFS.servicesDone);
-  assert.equal(s.continueHref, '/admin/services');
+  assert.equal(s.continueHref, '/admin/onboarding?step=services');
 });
 
 test('setup: יעד ההמשך עוקב אחר הצעד החסר הראשון (עומק-קישור למסך הנכון)', () => {
-  // שירותים+צוות הושלמו → הצעד החסר הראשון הוא שעות פעילות
+  // שירותים+צוות הושלמו → הצעד החסר הראשון הוא שעות פעילות (באשף המאוחד)
   assert.equal(
     computeSetupState(flags({ servicesDone: true, staffDone: true }))
       .continueHref,
-    '/admin/working-hours',
+    '/admin/onboarding?step=hours',
   );
-  // הכול חוץ ממיתוג → «המשך» מוביל למסך ההגדרות (מיתוג)
+  // הכול חוץ ממיתוג → «המשך» מוביל לצעד המיתוג באשף המאוחד
   assert.equal(
     computeSetupState(
       flags({
@@ -70,8 +70,24 @@ test('setup: יעד ההמשך עוקב אחר הצעד החסר הראשון (�
         brandingDone: true,
       }),
     ).continueHref,
-    '/admin/settings',
+    '/admin/settings#policy',
   );
+});
+
+// נעילה: 4 מתוך 5 (חסרים רק פרטי עסק/מדיניות) — הטבעת חייבת להראות 80%<100,
+// כך ש«דילוג» על פרטי העסק לעולם לא מנפח את ההשלמה ל-100%.
+test('setup: 4/5 (פרטי עסק חסרים) → percent=80 ו-allComplete=false', () => {
+  const s = computeSetupState(
+    flags({
+      servicesDone: true,
+      staffDone: true,
+      workingHoursDone: true,
+      brandingDone: true,
+    }),
+  );
+  assert.equal(s.percent, 80);
+  assert.equal(s.allComplete, false);
+  assert.ok(s.percent < 100, 'הטבעת לא יכולה להראות 100% כשחסרים פרטי עסק');
 });
 
 test('setup: כשהכול הושלם, יעד ההמשך נופל לנתיב האונבורדינג', () => {
