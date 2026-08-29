@@ -6,10 +6,10 @@ import {
   getAppointmentById,
   updateAppointmentStatus,
 } from '@/server/repos/appointments';
-import { getBusinessAccess } from '@/server/subscription';
+import { canSendPaidClientSms, getBusinessAccess } from '@/server/subscription';
 import { notifyClientOfApproval } from '@/server/notifications/clientApproval';
 import { exportOnCreate, exportOnCancel } from '@/server/google/appointmentSync';
-import { canEmailClients, canWhatsappClients } from '@/server/tier';
+import { canEmailClients } from '@/server/tier';
 import { absoluteUrl } from '@/lib/seo';
 
 /**
@@ -50,15 +50,17 @@ export async function approveAppointmentAction(formData: FormData) {
   if (!wasPending) return;
 
   // ערוצי התקשורת נגזרים מהמסלול (tier) בזמן ריצה, כך ששדרוג משתקף מיד. המנוי חייב
-  // להיות פעיל כדי לפתוח ערוצים בתשלום.
+  // להיות פעיל כדי לפתוח ערוצים בתשלום. המסרון בתשלום שמור לאקסקלוסיב בלבד.
   const access = getBusinessAccess(business);
   const canEmail = access.active && canEmailClients(business.plan);
-  const canWhatsapp = access.active && canWhatsappClients(business.plan);
+  const isExclusive = canSendPaidClientSms(business);
 
   try {
     await notifyClientOfApproval({
       appointmentId: appt.id,
+      businessId: business.id,
       businessName: business.name,
+      clientId: appt.client.id,
       clientName: appt.client.name,
       clientEmail: appt.client.email,
       clientPhone: appt.client.phone,
@@ -66,7 +68,7 @@ export async function approveAppointmentAction(formData: FormData) {
       startAt: appt.startAt,
       timezone: business.timezone,
       canEmail,
-      canWhatsapp,
+      isExclusive,
       manageUrl: absoluteUrl(`/b/${business.slug}`),
     });
   } catch {
