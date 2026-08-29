@@ -1,10 +1,12 @@
 import { prisma } from '@/lib/db';
+import { sendGuardedSms as defaultSendGuardedSms } from '@/server/billing/costGuard';
 import {
-  parseCampaignChannels,
+  allowedCampaignChannels,
   resolveCampaignRecipients,
   type CampaignChannel,
 } from '@/server/campaigns/channels';
 import { deliverCampaignMessage } from '@/server/campaigns/delivery';
+import { canSendPaidClientSms } from '@/server/subscription';
 
 /**
  * מודול דיוור רב-ערוצי (marketing).
@@ -117,26 +119,41 @@ export type SendCampaignResult =
   | { ok: true; recipientCount: number; sentCount: number; failedCount: number }
   | { ok: false; reason: 'not_found' | 'already_sent' | 'no_recipients' };
 
+/** תלויות ניתנות להזרקה (לבדיקה). ברירת המחדל היא שער העלות האמיתי. */
+export type SendCampaignDeps = {
+  sendGuardedSms?: typeof defaultSendGuardedSms;
+};
+
 /**
- * שליחת קמפיין רב-ערוצי: מחשב נמענים לפי הפילוח והערוצים שנבחרו, שולח הודעה לכל
- * צירוף לקוח×ערוץ-שמיש דרך שכבת המסירה, רושם MessageLog לכל נמען, ומעדכן סטטוס
- * וספירות. מונע שליחה כפולה באמצעות "תפיסה" אטומית: רק מעבר יחיד DRAFT|SCHEDULED
- * => SENDING מצליח, כך ששני cron מקבילים לא ישלחו את אותו קמפיין פעמיים.
- * ההודעה נשלחת גם עבור קמפיין מתוזמן (SCHEDULED) שהגיע זמנו וגם עבור טיוטה ידנית.
+ * שליחת קמפיין רב-ערוצי: מחשב נמענים לפי הפילוח והערוצים המותרים לדרגת החבילה,
+ * שולח הודעה לכל צירוף לקוח×ערוץ-שמיש, ומעדכן סטטוס וספירות. ערוץ SMS בתשלום
+ * מותר רק באקסלוסיב ועובר דרך שער העלות (חסימה בתקרה החודשית + רישום MessageLog
+ * עצמי, בלי רישום כפול); מייל נשלח דרך שכבת המסירה ונרשם כאן. וואטסאפ מסונן תמיד.
+ * מונע שליחה כפולה באמצעות "תפיסה" אטומית: רק מעבר יחיד DRAFT|SCHEDULED => SENDING
+ * מצליח, כך ששני cron מקבילים לא ישלחו את אותו קמפיין פעמיים.
  */
 export async function sendCampaign(
   businessId: string,
   id: string,
+  deps: SendCampaignDeps = {},
 ): Promise<SendCampaignResult> {
+  const sendGuardedSms = deps.sendGuardedSms ?? defaultSendGuardedSms;
   const campaign = await prisma.campaign.findFirst({ where: { id, businessId } });
   if (!campaign) return { ok: false, reason: 'not_found' };
   if (campaign.status !== 'DRAFT' && campaign.status !== 'SCHEDULED') {
     return { ok: false, reason: 'already_sent' };
   }
 
+  // דרגת החבילה קובעת אילו ערוצים מותרים: SMS בתשלום רק באקסלוסיב, וואטסאפ מסונן תמיד.
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { plan: true, subscriptionStatus: true, trialEndsAt: true, paidUntil: true },
+  });
+  const isExclusive = business != null && canSendPaidClientSms(business);
+
   const segment = normalizeSegment(campaign.segment);
   const clients = await resolveSegmentClients(businessId, segment);
-  const channels = parseCampaignChannels(campaign.channels);
+  const channels = allowedCampaignChannels(campaign.channels, { isExclusive });
   const { messages, recipientCount } = resolveCampaignRecipients(clients, channels);
   if (messages.length === 0) return { ok: false, reason: 'no_recipients' };
 
@@ -150,10 +167,34 @@ export async function sendCampaign(
 
   let sentCount = 0;
   let failedCount = 0;
+  let smsBlocked = false;
 
   for (const message of messages) {
-    // phone נשמר ל-sms/וואטסאפ (תצוגת יומן ממוסכת), ו-address מכיל תמיד את יעד המסירה.
-    const phone = message.channel === 'email' ? null : message.address;
+    if (message.channel === 'sms') {
+      // ערוץ בתשלום — עובר דרך שער העלות, שרושם MessageLog בעצמו (בלי רישום כפול).
+      if (smsBlocked) {
+        failedCount += 1;
+        continue;
+      }
+      const result = await sendGuardedSms({
+        businessId,
+        to: message.address,
+        body: campaign.body,
+        clientId: message.clientId,
+        campaignId: campaign.id,
+        channel: 'sms',
+      });
+      if (result.status === 'sent') {
+        sentCount += 1;
+      } else {
+        failedCount += 1;
+        // בתקרה — לחסום את שאר המסרונים בקמפיין (התקרה החודשית נשמרת בכל מקרה).
+        if (result.status === 'blocked') smsBlocked = true;
+      }
+      continue;
+    }
+
+    // מייל (הערוץ היחיד שאינו בתשלום אחרי הסינון) — נשלח דרך שכבת המסירה ונרשם כאן.
     try {
       await deliverCampaignMessage(message.channel, message.address, campaign.body, {
         subject: campaign.name,
@@ -166,7 +207,7 @@ export async function sendCampaign(
           clientId: message.clientId,
           channel: message.channel,
           address: message.address,
-          phone,
+          phone: null,
           body: campaign.body,
           status: 'SENT',
         },
@@ -180,7 +221,7 @@ export async function sendCampaign(
           clientId: message.clientId,
           channel: message.channel,
           address: message.address,
-          phone,
+          phone: null,
           body: campaign.body,
           status: 'FAILED',
           error: err instanceof Error ? err.message : 'send failed',

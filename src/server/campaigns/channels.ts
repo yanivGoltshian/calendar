@@ -49,6 +49,23 @@ export function parseCampaignChannels(
   return normalized.length > 0 ? normalized : ['sms'];
 }
 
+/**
+ * סינון ערוצי הקמפיין לפי דרגת החבילה, נקודת האכיפה של המודל המדורג בקמפיינים.
+ * וואטסאפ מוסתר תמיד באיטרציה זו (תשתית עתידית רדומה בלבד). ערוץ SMS בתשלום
+ * מותר רק בעסקי אקסלוסיב; בפרימיום ובבסיס נותר מייל בלבד. מייל מותר תמיד.
+ * טהור וניתן לבדיקה — מיושם גם בשרת (sendCampaign) וגם בטופס (הצגת הערוצים).
+ */
+export function allowedCampaignChannels(
+  raw: readonly string[] | null | undefined,
+  opts: { isExclusive: boolean },
+): CampaignChannel[] {
+  return parseCampaignChannels(raw).filter((channel) => {
+    if (channel === 'whatsapp') return false;
+    if (channel === 'sms') return opts.isExclusive;
+    return true;
+  });
+}
+
 /** רשומת לקוח מינימלית לפתרון קהל היעד. */
 export interface AudienceClient {
   id: string;
