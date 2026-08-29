@@ -228,7 +228,7 @@ export default function CalendarBoard({
             })
           }
         >
-          ›
+          ‹
         </button>
         <button
           type="button"
@@ -250,7 +250,7 @@ export default function CalendarBoard({
             })
           }
         >
-          ‹
+          ›
         </button>
         <span className="lbl">{headerLabel}</span>
         {view === 'week' && staff.length > 0 ? (
