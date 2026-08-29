@@ -7,7 +7,6 @@ import { t } from '@/i18n';
 import SettingsSection from './SettingsSection';
 import {
   ProfileFields,
-  PublicPageFields,
   PolicyFields,
   TransparencyFields,
   TextsFields,
@@ -80,10 +79,6 @@ export default function SettingsForm({
       <form action={formAction} onInput={markDirty} onChange={markDirty} className="space-y-6 pb-28">
         <SettingsSection title={s.profile.title} description={s.profile.description}>
           <ProfileFields b={business} />
-        </SettingsSection>
-
-        <SettingsSection title={s.pageStyle.title} description={s.pageStyle.description}>
-          <PublicPageFields b={business} />
         </SettingsSection>
 
         <SettingsSection title={s.policy.title} description={s.policy.description}>

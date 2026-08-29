@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import type { SaveState } from '../settings/parse';
 import { t } from '@/i18n';
 import { Button } from '@/components/ui';
-import BookingLinkShare from '@/components/booking/BookingLinkShare';
 import GoLiveCelebration from './GoLiveCelebration';
 import { ImageUploadField, type ImageUploadLabels } from '../settings/ImageUploadField';
 import { saveServices, saveHours, saveBranding, savePremiumLanding } from './actions';
@@ -53,9 +52,9 @@ type HoursPresetKey = 'sun-thu' | 'every-day' | 'custom';
 
 /**
  * שלב הפרימיום האופציונלי (אחרי המיתוג):
- * 'gate' שער הבחירה, 'editor' עורך העמוד המלא, 'summary' מסך הסיכום.
+ * 'editor' עורך העמוד המלא, 'summary' מסך הסיכום.
  */
-type PremiumPhase = 'gate' | 'editor' | 'summary';
+type PremiumPhase = 'editor' | 'summary';
 
 type Props = {
   businessName: string;
@@ -78,6 +77,11 @@ type Props = {
    * לפתוח בשלושת הצעדים הקלאסיים. undefined ⇐ הזרימה הרגילה ללא שינוי.
    */
   initialPremiumPhase?: 'editor';
+  /**
+   * כניסה ישירה לצעד בסיסי מסוים (deep-link ‎?step=services|hours|branding‎), משמש
+   * את «המשך» מטבעת ההתקדמות בדשבורד כדי לנחות בדיוק בצעד החסר. undefined ⇐ צעד ראשון.
+   */
+  initialBasicStep?: 'services' | 'hours' | 'branding';
 };
 
 const initialSaveState: SaveState = { ok: false };
@@ -320,6 +324,8 @@ const PW_CSS = `
 .pw-appbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;background:var(--surface);color:var(--navy-900);border-bottom:1px solid var(--border);flex:0 0 auto;}
 .pw-back{background:transparent;border:0;color:var(--muted);font-size:12.5px;font-weight:700;cursor:pointer;padding:4px 2px;}
 .pw-back:hover{color:var(--navy);}
+.pw-later{background:transparent;border:0;color:var(--muted);font-size:12.5px;font-weight:700;cursor:pointer;padding:4px 2px;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
+.pw-later:hover{color:var(--navy);}
 .pw-brandchip{display:inline-flex;align-items:center;gap:6px;color:var(--navy-900);font-size:13px;font-weight:800;}
 .pw-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(206,162,74,.2);display:inline-block;}
 .pw-wiz-head{flex:0 0 auto;padding:14px 18px 12px;background:var(--surface);border-bottom:1px solid var(--border);}
@@ -483,6 +489,12 @@ const PW_CSS = `
 .pw-publish:disabled{opacity:.6;cursor:default;}
 .pw-ghost{background:transparent;border:0;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;padding:10px 12px;}
 .pw-ghost:hover{color:var(--ink);}
+/* דסקטופ בלבד: העורך המאושר (מוקאפ הטלפון) מנצל יותר מרוחב המסך, בלי שינוי מבנה/פרופורציות.
+   מתחת ל-1024px התצוגה זהה לחלוטין למובייל המאושר. */
+@media (min-width:1024px){
+  .pw-phone{max-width:680px;}
+  .pw-preview{max-width:360px;}
+}
 `;
 
 // ספרייט אייקונים אינליין (17 סמלים + גרדיאנט אינסטגרם), מרונדר פעם אחת, מוסתר.
@@ -584,11 +596,14 @@ export default function OnboardingWizard({
   slug,
   premiumInitial,
   initialPremiumPhase,
+  initialBasicStep,
 }: Props) {
   const o = t.admin.onboarding;
   const router = useRouter();
-  const [step, setStep] = useState(0); // 0=services 1=hours 2=branding
-  const [done, setDone] = useState(false);
+  // צעד בסיסי התחלתי (0=services 1=hours 2=branding). deep-link ‎?step=‎ נוחת ישר בצעד החסר.
+  const initialStepIndex =
+    initialBasicStep === 'hours' ? 1 : initialBasicStep === 'branding' ? 2 : 0;
+  const [step, setStep] = useState(initialStepIndex); // 0=services 1=hours 2=branding
 
   // האם המשתמש הגיע דרך שער «הריצה הראשונה» (עסק חדש), או נכנס ישר לעורך (עסק
   // קיים / deep-link). עסק קיים נכנס עם initialPremiumPhase==='editor', ולכן
@@ -607,7 +622,7 @@ export default function OnboardingWizard({
   // נזרעת מהתוכן הקיים כבר בטעינה, כך שהעורך עובד עצמאית גם בכניסה ישירה.
   const [premiumDraft, setPremiumDraft] = useState<LandingContent>(() => seedPremiumDraft(premiumInitial));
   // יעד המעבר אחרי שמירה מוצלחת, נקבע ב-onClick לפני שליחת הטופס.
-  const nextTargetRef = useRef<PremiumPhase | 'done'>('gate');
+  const nextTargetRef = useRef<PremiumPhase>('editor');
 
   // ── אשף הפרימיום (פורט המוקאפ המאושר): 5 שלבים בתוך מסגרת טלפון, שכבת UI מעל אותו state ──
   // premiumStep: 1..5 שלבי עריכה, 6 מסך הסיום. heroBg: מקור רקע ראש-העמוד. googleHelpOpen: אקורדיון עזרה.
@@ -673,17 +688,20 @@ export default function OnboardingWizard({
   useEffect(() => {
     if (hoursState.ok) setStep(2);
   }, [hoursState]);
-  // אחרי המיתוג: במקום סיום מיידי, מציגים את שער הפרימיום האופציונלי.
+  // אחרי המיתוג: מעבר רציף ישר לעורך עמוד הפרימיום (בלי שער ביניים).
   useEffect(() => {
-    if (brandingState.ok) setPremiumPhase('gate');
+    if (brandingState.ok) setPremiumPhase('editor');
   }, [brandingState]);
-  // אחרי שמירת פרימיום מוצלחת: מעבר ליעד שנקבע (תת-שלב הבא / סיכום / סיום).
+  // אחרי שמירת פרימיום מוצלחת: מעבר ליעד שנקבע (תת-שלב הבא / סיכום).
   useEffect(() => {
     if (!premiumState.ok) return;
-    const target = nextTargetRef.current;
-    if (target === 'done') setDone(true);
-    else setPremiumPhase(target);
+    setPremiumPhase(nextTargetRef.current);
   }, [premiumState]);
+  // גלילה לראש התצוגה בכל מעבר בין שלבים (המשך/דלג/חזרה, וכל מעבר 1/5→5/5 בעורך).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step, premiumPhase, premiumStep]);
 
   const activeCount = Object.values(active).filter(Boolean).length;
   const draftPending = draftName.trim() !== '' ? 1 : 0;
@@ -731,59 +749,6 @@ export default function OnboardingWizard({
     tooLarge: t.admin.settings.profile.image.tooLarge,
   };
 
-  // ── מסך סיום "אתם באוויר" (טרמינלי) ──────────────────────────────
-  if (done) {
-    const su = o.success;
-    const whatsappText = encodeURIComponent(
-      `${o.goLive.share.shareText.replace('{name}', businessName)} ${bookingUrl}`,
-    );
-    return (
-      <section
-        dir="rtl"
-        className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-6 text-center shadow-sm sm:p-8"
-      >
-        <span
-          aria-hidden="true"
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-8 w-8"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M4 12.5l5 5L20 6" />
-          </svg>
-        </span>
-        <h2 className="mt-4 text-2xl font-bold text-[#1b1715]">{su.title}</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-[#6e655f]">
-          {su.subtitle.replace('{name}', businessName)}
-        </p>
-
-        <div className="mt-6 rounded-2xl border border-[#e7ddcd] bg-white p-4 text-start sm:p-5">
-          <BookingLinkShare url={bookingUrl} qrSvg={bookingQr} businessName={businessName} />
-        </div>
-
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <a
-            href={`https://wa.me/?text=${whatsappText}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
-          >
-            <span aria-hidden="true">💬</span>
-            {o.goLive.share.nativeShare} · WhatsApp
-          </a>
-          <Button href="/admin" className="justify-center">
-            {su.cta}
-          </Button>
-        </div>
-      </section>
-    );
-  }
 
   // ── שלב הפרימיום האופציונלי: מוצג אחרי המיתוג ולפני שובו של האשף הרגיל ──
   // (premiumPhase!==null בלבד; שלושת הצעדים הרגילים אינם מושפעים.)
@@ -881,97 +846,6 @@ export default function OnboardingWizard({
         ...prev,
         socialLinks: { ...(prev.socialLinks ?? {}), [key]: v },
       }));
-
-    // ── שער הבחירה: שאלה מפורשת עם המשך/דילוג ──
-    if (premiumPhase === 'gate') {
-      const g = p.gate;
-      return (
-        <div dir="rtl">
-          <section className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-6 text-center shadow-sm sm:p-8">
-            <span
-              aria-hidden="true"
-              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-3xl shadow-lg"
-            >
-              ✨
-            </span>
-            <p className="mt-4 text-sm font-medium text-emerald-600">{g.eyebrow}</p>
-            <h2 className="mt-1 text-2xl font-bold text-[#1b1715]">{g.title}</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-[#6e655f]">{g.subtitle}</p>
-            {/* רשתות חברתיות (אופציונלי): קישורים אלה מדליקים את כפתורי הרשתות ומחזקים את העמוד. */}
-            <div className="mx-auto mt-6 max-w-md rounded-2xl border border-[#e7ddcd] bg-[#f7f2ea] p-4 text-right sm:p-5">
-              <p className="text-sm font-semibold text-[#4a4038]">{g.social.title}</p>
-              <p className="mt-1 text-xs text-[#6e655f]">{g.social.lead}</p>
-              <div className="mt-3 space-y-3">
-                <div>
-                  <label htmlFor="gate-social-ig" className={labelCls}>{g.social.instagramLabel}</label>
-                  <input
-                    id="gate-social-ig"
-                    type="text"
-                    dir="ltr"
-                    value={premiumDraft.socialLinks?.instagram ?? ''}
-                    onChange={(e) => setSocial('instagram', e.target.value)}
-                    placeholder={g.social.instagramPlaceholder}
-                    className={inputCls}
-                  />
-                  <p className="mt-1 text-xs text-[#b3a690]">{g.social.instagramHint}</p>
-                </div>
-                <div>
-                  <label htmlFor="gate-social-tt" className={labelCls}>{g.social.tiktokLabel}</label>
-                  <input
-                    id="gate-social-tt"
-                    type="text"
-                    dir="ltr"
-                    value={premiumDraft.socialLinks?.tiktok ?? ''}
-                    onChange={(e) => setSocial('tiktok', e.target.value)}
-                    placeholder={g.social.tiktokPlaceholder}
-                    className={inputCls}
-                  />
-                  <p className="mt-1 text-xs text-[#b3a690]">{g.social.tiktokHint}</p>
-                </div>
-                <div>
-                  <label htmlFor="gate-social-fb" className={labelCls}>{g.social.facebookLabel}</label>
-                  <input
-                    id="gate-social-fb"
-                    type="text"
-                    dir="ltr"
-                    value={premiumDraft.socialLinks?.facebook ?? ''}
-                    onChange={(e) => setSocial('facebook', e.target.value)}
-                    placeholder={g.social.facebookPlaceholder}
-                    className={inputCls}
-                  />
-                  <p className="mt-1 text-xs text-[#b3a690]">{g.social.facebookHint}</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 flex flex-col items-center gap-3">
-              {/* המשך: שומר טיוטה ריקה ומעביר לתת-השלב הראשון */}
-              <form action={premiumFormAction} className="w-full sm:w-auto">
-                <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
-                <button
-                  type="submit"
-                  disabled={premiumPending}
-                  onClick={() => {
-                    nextTargetRef.current = 'editor';
-                  }}
-                  className="w-full rounded-xl bg-[#1b1715] px-6 py-2.5 font-semibold text-white transition hover:bg-[#2a2320] disabled:opacity-60 sm:w-auto"
-                >
-                  {premiumPending ? p.nav.saving : g.build}
-                </button>
-              </form>
-              {/* דילוג: סיום מיידי אל מסך שיתוף קישור ההזמנות */}
-              <button
-                type="button"
-                onClick={() => setDone(true)}
-                className="text-sm font-medium text-[#8f8478] transition hover:text-[#4a4038]"
-              >
-                {g.skip}
-              </button>
-            </div>
-            {err && <p className="mt-3 text-sm text-rose-600">{err}</p>}
-          </section>
-        </div>
-      );
-    }
 
     // ── מסך «רגע ההשקה»: חגיגת עליית העמוד לאוויר (variant-1) ──
     // מחליף את מסך הסיכום הישן. הטיוטה כבר נשמרה בכניסה למסך (gate→build או
@@ -1123,10 +997,12 @@ export default function OnboardingWizard({
     const wizSkip = () => setPremiumStep((s) => nextPremiumStep(s));
     const wizBack = () => {
       if (premiumStep === 1) {
-        // מהשלב הראשון של עורך הפרימיום: עסק חדש (הריצה הראשונה) חוזר לשער,
-        // אבל עסק קיים / deep-linked חוזר לדשבורד ולא לשער המיושן.
-        if (enteredViaGate) setPremiumPhase('gate');
-        else exitToAdmin();
+        // מהשלב הראשון של עורך הפרימיום: עסק חדש (הריצה הראשונה) חוזר לצעד המיתוג
+        // (זרימה רציפה בלי שער ביניים); עסק קיים / deep-linked חוזר לדשבורד.
+        if (enteredViaGate) {
+          setPremiumPhase(null);
+          setStep(2);
+        } else exitToAdmin();
         return;
       }
       setPremiumStep((s) => prevPremiumStep(s));
@@ -1308,10 +1184,12 @@ export default function OnboardingWizard({
                 type="button"
                 className="pw-back"
                 onClick={() => {
-                  // «חזרה» מה-appbar של העורך: עסק חדש (הריצה הראשונה) חוזר לשער,
-                  // אבל עסק קיים / deep-linked חוזר לדשבורד ולא לשער המיושן.
-                  if (enteredViaGate) setPremiumPhase('gate');
-                  else exitToAdmin();
+                  // «חזרה» מה-appbar של העורך: עסק חדש (הריצה הראשונה) חוזר לצעד
+                  // המיתוג (זרימה רציפה); עסק קיים / deep-linked חוזר לדשבורד.
+                  if (enteredViaGate) {
+                    setPremiumPhase(null);
+                    setStep(2);
+                  } else exitToAdmin();
                 }}
               >
                 {'\u2039 '}
@@ -1321,6 +1199,11 @@ export default function OnboardingWizard({
                 <span className="pw-dot" aria-hidden />
                 {businessName}
               </span>
+              {premiumStep === 1 ? (
+                <button type="button" className="pw-later" onClick={exitToAdmin}>
+                  {wz.later}
+                </button>
+              ) : null}
             </div>
 
             {/* ── כותרת האשף: kicker + מונה + פיפים ── */}
@@ -1951,8 +1834,8 @@ export default function OnboardingWizard({
   }
 
   return (
-    <div dir="rtl">
-      <div className="mb-5">
+    <div dir="rtl" className="lg:grid lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+      <div className="mb-5 lg:mb-0 lg:sticky lg:top-6">
         <p className="text-sm font-medium text-emerald-600">{o[stepKey].eyebrow}</p>
         <h2 className="mt-1 text-xl font-bold text-[#1b1715]">{o[stepKey].title}</h2>
         <p className="mt-1 text-sm text-[#8f8478]">{o[stepKey].subtitle}</p>

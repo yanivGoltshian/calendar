@@ -1,17 +1,5 @@
 import { z } from 'zod';
 import { BusinessType, ReminderChannel } from '@prisma/client';
-import {
-  normalizePublicPageStyle,
-  normalizeLandingContent,
-  landingSectionEnabledByDefault,
-  TOGGLEABLE_LANDING_SECTIONS,
-  MAX_BENEFITS,
-  MAX_TESTIMONIALS,
-  MAX_GALLERY_IMAGES,
-  MAX_FAQ,
-  MAX_BEFORE_AFTER,
-} from '@/lib/publicPageStyle';
-import type { LandingSectionToggles } from '@/lib/publicPageStyle';
 import type {
   BusinessProfileInput,
   BookingPolicyInput,
@@ -54,77 +42,6 @@ export function checkbox(fd: FormData, key: string): boolean {
 const businessTypeValues = Object.values(BusinessType) as string[];
 const reminderChannelValues = Object.values(ReminderChannel) as string[];
 
-/**
- * מרכיב את תוכן עמוד הנחיתה משדות הטופס ומעביר לנרמול (סינון ריקים + מגבלות).
- * מחזיר null כשאין תוכן ממשי, כדי לשמור NULL במסד הנתונים.
- */
-export function parseLandingContent(fd: FormData) {
-  const benefits = [];
-  for (let i = 0; i < MAX_BENEFITS; i++) {
-    benefits.push({
-      title: str(fd, `landingBenefit${i}Title`),
-      text: str(fd, `landingBenefit${i}Text`),
-    });
-  }
-  const testimonials = [];
-  for (let i = 0; i < MAX_TESTIMONIALS; i++) {
-    testimonials.push({
-      name: str(fd, `landingTestimonial${i}Name`),
-      quote: str(fd, `landingTestimonial${i}Quote`),
-    });
-  }
-  const galleryImageUrls = [];
-  for (let i = 0; i < MAX_GALLERY_IMAGES; i++) {
-    galleryImageUrls.push(str(fd, `landingGallery${i}`));
-  }
-  const faq = [];
-  for (let i = 0; i < MAX_FAQ; i++) {
-    faq.push({
-      question: str(fd, `landingFaq${i}Question`),
-      answer: str(fd, `landingFaq${i}Answer`),
-    });
-  }
-  const beforeAfter = [];
-  for (let i = 0; i < MAX_BEFORE_AFTER; i++) {
-    beforeAfter.push({
-      beforeUrl: str(fd, `landingBefore${i}Url`),
-      afterUrl: str(fd, `landingAfter${i}Url`),
-      label: str(fd, `landingBeforeAfter${i}Label`),
-    });
-  }
-
-  // מתגי המקטעים: שומרים רק בחירות שסוטות מברירת המחדל לפי סוג העסק,
-  // כדי שעסק שלא נגע בעמוד הנחיתה יישאר עם landingContent ריק (NULL).
-  const type = str(fd, 'type') || null;
-  const sections: LandingSectionToggles = {};
-  for (const key of TOGGLEABLE_LANDING_SECTIONS) {
-    const checked = checkbox(fd, `landingSection_${key}`);
-    if (checked !== landingSectionEnabledByDefault(key, type)) sections[key] = checked;
-  }
-
-  return normalizeLandingContent({
-    heroEyebrow: str(fd, 'landingHeroEyebrow'),
-    heroHeadline: str(fd, 'landingHeroHeadline'),
-    heroSubtext: str(fd, 'landingHeroSubtext'),
-    benefits,
-    galleryImageUrls,
-    beforeAfter,
-    testimonials,
-    faq,
-    about: str(fd, 'landingAbout'),
-    announcement: str(fd, 'landingAnnouncement'),
-    googleReviewsUrl: str(fd, 'landingGoogleReviewsUrl'),
-    socialLinks: {
-      whatsapp: str(fd, 'landingSocialWhatsapp'),
-      instagram: str(fd, 'landingSocialInstagram'),
-      facebook: str(fd, 'landingSocialFacebook'),
-      tiktok: str(fd, 'landingSocialTiktok'),
-    },
-    ctaLabel: str(fd, 'landingCtaLabel'),
-    sections,
-  });
-}
-
 /** ניתוח פרופיל העסק. שם חובה; סוג לא חוקי ⇐ שגיאה. */
 export function parseProfile(fd: FormData): ParseResult<BusinessProfileInput> {
   const name = str(fd, 'name');
@@ -150,8 +67,6 @@ export function parseProfile(fd: FormData): ParseResult<BusinessProfileInput> {
       coverImageUrl: nullableStr(fd, 'coverImageUrl'),
       brandColor: nullableStr(fd, 'brandColor'),
       timezone: str(fd, 'timezone') || 'Asia/Jerusalem',
-      publicPageStyle: normalizePublicPageStyle(str(fd, 'publicPageStyle')),
-      landingContent: parseLandingContent(fd),
     },
   };
 }

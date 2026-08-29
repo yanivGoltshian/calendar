@@ -17,15 +17,16 @@ export type SetupFlags = {
 
 /**
  * יעדי עומק-קישור לכל אזור הקמה — מקור אמת יחיד לכפתור «המשך» (רצועת ההקמה)
- * ולמגירת הכלים. תיקון באג 1: «המשך» מנווט ישירות למסך שבו חסרים הפרטים בפועל
- * (למשל מיתוג ← /admin/settings), ולא לתחילת האונבורדינג.
+ * ולמגירת הכלים. תיקון באג 1: «המשך» מנווט ישירות למסך שבו חסרים הפרטים בפועל,
+ * ולא לתחילת האונבורדינג. שירותים/שעות/מיתוג נכנסים באשף המאוחד דרך ‎?step=‎;
+ * פרטי עסק ומדיניות נערכים בהגדרות (‎#policy‎); צוות נמצא בעמוד הצוות.
  */
 export const SETUP_STEP_HREFS: Record<keyof SetupFlags, string> = {
-  servicesDone: '/admin/services',
+  servicesDone: '/admin/onboarding?step=services',
   staffDone: '/admin/team',
-  workingHoursDone: '/admin/working-hours',
-  brandingDone: '/admin/settings',
-  detailsDone: '/admin/settings',
+  workingHoursDone: '/admin/onboarding?step=hours',
+  brandingDone: '/admin/onboarding?step=branding',
+  detailsDone: '/admin/settings#policy',
 };
 
 export type SetupState = {

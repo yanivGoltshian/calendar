@@ -36,6 +36,23 @@ test('parseProfile: ממפה שדות, ריק ⇐ null, וברירת מחדל א
   assert.equal(res.data.timezone, 'Asia/Jerusalem');
 });
 
+test('parseProfile: משמיט landingContent ו-publicPageStyle לשימור ערכי המסד', () => {
+  // עורך הנחיתה הוסר מההגדרות; parseProfile לא אמור להחזיר את שני השדות האלה,
+  // כדי ש-updateBusinessProfile (כותב רק כשהערך !== undefined) ישמר את הקיים במסד.
+  const res = parseProfile(
+    form({
+      name: 'עסק',
+      type: 'BARBERSHOP',
+      publicPageStyle: 'BOOKING',
+      landingContent: '{"heroHeadline":"שלום"}',
+    }),
+  );
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.equal('publicPageStyle' in res.data, false);
+  assert.equal('landingContent' in res.data, false);
+});
+
 test('parseProfile: שם חסר ⇐ שגיאת name', () => {
   const res = parseProfile(form({ name: '   ' }));
   assert.deepEqual(res, { ok: false, error: 'name' });
