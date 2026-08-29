@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import {
   getBusinessAccess,
   canAcceptPublicBookings,
+  describePlan,
+  canSendPaidClientSms,
+  canVerifyClientPhone,
+  canSendOwnerVerificationSms,
   type BusinessAccessInput,
 } from './subscription';
 
@@ -98,4 +102,28 @@ test('canAcceptPublicBookings=false כשהניסיון או המנוי פג', ()
     ),
     false,
   );
+});
+
+test('describePlan returns distinct labels per plan', () => {
+  const basic = describePlan('basic');
+  const premium = describePlan('premium');
+  const exclusive = describePlan('exclusive');
+  assert.notEqual(exclusive, basic);
+  assert.notEqual(exclusive, premium);
+});
+
+test('canSendPaidClientSms only for active exclusive', () => {
+  assert.equal(canSendPaidClientSms(input({ plan: 'exclusive', paidUntil: future(30) })), true);
+  assert.equal(canSendPaidClientSms(input({ plan: 'exclusive', paidUntil: past(1) })), false);
+  assert.equal(canSendPaidClientSms(input({ plan: 'premium', paidUntil: future(30) })), false);
+  assert.equal(canSendPaidClientSms(input({ plan: 'basic', trialEndsAt: future(30) })), false);
+});
+
+test('canVerifyClientPhone mirrors paid client sms gate', () => {
+  assert.equal(canVerifyClientPhone(input({ plan: 'exclusive', paidUntil: future(30) })), true);
+  assert.equal(canVerifyClientPhone(input({ plan: 'premium', paidUntil: future(30) })), false);
+});
+
+test('canSendOwnerVerificationSms always allowed', () => {
+  assert.equal(canSendOwnerVerificationSms(), true);
 });
