@@ -67,7 +67,14 @@ export default function LandingTestimonials({ title, items, eyebrow, googleRevie
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[0.95rem] font-extrabold text-[color:var(--biz-ink-strong)]">{tm.name}</span>
-                  {isGoogle ? <span className="mt-0.5 block text-xs text-slate-500">🟢 ביקורת מגוגל</span> : null}
+                  {isGoogle ? (
+                    <span className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+                      <svg aria-hidden viewBox="0 0 8 8" className="h-2 w-2 shrink-0">
+                        <circle cx="4" cy="4" r="4" fill="#34A853" />
+                      </svg>
+                      ביקורת מגוגל
+                    </span>
+                  ) : null}
                 </span>
               </figcaption>
             ) : null}
