@@ -3,7 +3,7 @@
 // ומזין גם את רצועת ההקמה/טבעת ההשלמה בבית וגם את ניווט ההמשך אל אשף האונבורדינג.
 // טהור וניתן לבדיקה — נועל את היעד (נתיב האונבורדינג) ואת אחוז ההשלמה האמיתי.
 
-/** נתיב אשף האונבורדינג — יעד ניווט ההמשך (טבעת ההשלמה + כפתור «המשך»). */
+/** נתיב אשף האונבורדינג — נפילת-ברירת-מחדל כשאין צעד פתוח (הכול הושלם). */
 export const SETUP_CONTINUE_HREF = '/admin/onboarding';
 
 /** חמשת דגלי אזורי ההקמה, בסדר הצגתם. */
@@ -13,6 +13,19 @@ export type SetupFlags = {
   workingHoursDone: boolean;
   brandingDone: boolean;
   detailsDone: boolean;
+};
+
+/**
+ * יעדי עומק-קישור לכל אזור הקמה — מקור אמת יחיד לכפתור «המשך» (רצועת ההקמה)
+ * ולמגירת הכלים. תיקון באג 1: «המשך» מנווט ישירות למסך שבו חסרים הפרטים בפועל
+ * (למשל מיתוג ← /admin/settings), ולא לתחילת האונבורדינג.
+ */
+export const SETUP_STEP_HREFS: Record<keyof SetupFlags, string> = {
+  servicesDone: '/admin/services',
+  staffDone: '/admin/team',
+  workingHoursDone: '/admin/working-hours',
+  brandingDone: '/admin/settings',
+  detailsDone: '/admin/settings',
 };
 
 export type SetupState = {
@@ -30,7 +43,7 @@ export type SetupState = {
   remaining: number;
   /** אינדקס הצעד הפתוח הראשון, או 1- אם הכול הושלם. */
   firstOpenIndex: number;
-  /** יעד ניווט ההמשך (אשף האונבורדינג, נפתח בצעד החסר הראשון). */
+  /** יעד ניווט ההמשך — עומק-קישור למסך הצעד החסר הראשון (באג 1). */
   continueHref: string;
 };
 
@@ -44,7 +57,8 @@ const SETUP_ORDER: (keyof SetupFlags)[] = [
 
 /**
  * מחשב את מצב ההקמה מתוך חמשת הדגלים. טהור — ללא תופעות לוואי.
- * כשאין השלמה, `continueHref` תמיד נתיב האונבורדינג, ו-`percent` קטן מ-100.
+ * כשיש צעד חסר, `continueHref` הוא עומק-קישור למסך הצעד החסר הראשון (באג 1);
+ * כשהכול הושלם הוא נופל לנתיב האונבורדינג. `percent` קטן מ-100 עד השלמה מלאה.
  */
 export function computeSetupState(flags: SetupFlags): SetupState {
   const arr = SETUP_ORDER.map((k) => flags[k]);
@@ -54,6 +68,10 @@ export function computeSetupState(flags: SetupFlags): SetupState {
   const allComplete = done === total;
   const remaining = total - done;
   const firstOpenIndex = arr.findIndex((f) => !f);
+  const continueHref =
+    firstOpenIndex >= 0
+      ? SETUP_STEP_HREFS[SETUP_ORDER[firstOpenIndex]]
+      : SETUP_CONTINUE_HREF;
   return {
     flags: arr,
     total,
@@ -62,6 +80,6 @@ export function computeSetupState(flags: SetupFlags): SetupState {
     allComplete,
     remaining,
     firstOpenIndex,
-    continueHref: SETUP_CONTINUE_HREF,
+    continueHref,
   };
 }
