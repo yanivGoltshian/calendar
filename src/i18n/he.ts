@@ -2433,7 +2433,7 @@ const he = {
       reminderAlt: 'שון מאשר יחד אתכם את התור',
     },
     states: {
-      loadingAlt: 'שון טוען את התוכן',
+      loadingAlt: 'סמל תור צ׳יק',
       loadingText: 'רגע, טוענים…',
       errorAlt: 'שון מתנצל על התקלה',
       errorTitle: 'משהו השתבש',
