@@ -94,7 +94,6 @@ export default async function AdminStatsPage({ searchParams }: Props) {
             lang="he-IL"
             className="rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
-          <p className="mt-1 text-xs text-[#b3a690]" dir="ltr">{formatShortDate(from)}</p>
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-[#4a4038]">{s.toLabel}</label>
@@ -106,7 +105,6 @@ export default async function AdminStatsPage({ searchParams }: Props) {
             lang="he-IL"
             className="rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
-          <p className="mt-1 text-xs text-[#b3a690]" dir="ltr">{formatShortDate(to)}</p>
         </div>
         <button
           type="submit"

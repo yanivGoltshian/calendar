@@ -221,6 +221,47 @@
   position: relative;
   z-index: 1;
 }
+.tcah .share-hero .share-head {
+  margin: 0;
+}
+.tcah .share-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  position: relative;
+  z-index: 1;
+}
+.tcah .share-toggle .share-title-txt {
+  font-family: 'Heebo', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+.tcah .share-toggle .share-caret {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s ease;
+}
+.tcah .share-toggle .share-caret.open {
+  transform: rotate(45deg);
+}
+.tcah .share-body {
+  margin-top: 10px;
+  position: relative;
+  z-index: 1;
+}
+.tcah .share-body .live {
+  margin-bottom: 8px;
+}
 .tcah .share-main {
   display: flex;
   gap: 13px;
@@ -1287,7 +1328,7 @@
   }
   .tcah .admin-content .topbar {
     max-width: none;
-    padding: 18px 4px 14px;
+    padding: 6px 4px 6px;
   }
   /* המותג כבר מוצג בסרגל-הצד — לא לשכפל בסרגל העליון */
   .tcah .admin-content .topbar .biz {
