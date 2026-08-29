@@ -6,12 +6,15 @@ import { createCampaignAction, type CreateCampaignState } from './actions';
 import type { CampaignSegment } from '@/server/repos/marketing';
 import {
   ALL_CAMPAIGN_CHANNELS,
+  allowedCampaignChannels,
   type CampaignChannel,
 } from '@/server/campaigns/channels';
 
 type Props = {
   /** ספירת נמענים לכל פילוח — לתצוגה מקדימה. */
   counts: Record<CampaignSegment, number>;
+  /** האם העסק בדרגת אקסקלוסיב — קובע אם ערוץ המסרון בתשלום מוצג בטופס. */
+  isExclusive: boolean;
 };
 
 const initialState: CreateCampaignState = { ok: false };
@@ -21,15 +24,13 @@ const inputClass =
 
 const SEGMENTS: CampaignSegment[] = ['all', 'active', 'with_appointments'];
 
-/** ברירת מחדל: כל הערוצים מסומנים (יישלח רק בערוצים שיש ללקוח כתובת עבורם). */
-const defaultChannels = (): Set<CampaignChannel> =>
-  new Set<CampaignChannel>(ALL_CAMPAIGN_CHANNELS);
-
-export default function CampaignForm({ counts }: Props) {
+export default function CampaignForm({ counts, isExclusive }: Props) {
   const m = t.admin.marketingModule;
+  // הערוצים הניתנים לבחירה לפי הדרגה: וואטסאפ מוסתר תמיד, מסרון רק באקסקלוסיב, מייל תמיד.
+  const visibleChannels = allowedCampaignChannels(ALL_CAMPAIGN_CHANNELS, { isExclusive });
   const [state, formAction, pending] = useActionState(createCampaignAction, initialState);
   const [segment, setSegment] = useState<CampaignSegment>('all');
-  const [channels, setChannels] = useState<Set<CampaignChannel>>(defaultChannels);
+  const [channels, setChannels] = useState<Set<CampaignChannel>>(() => new Set(visibleChannels));
   const [scheduleMode, setScheduleMode] = useState<'now' | 'later'>('now');
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -37,9 +38,10 @@ export default function CampaignForm({ counts }: Props) {
     if (state.ok) {
       formRef.current?.reset();
       setSegment('all');
-      setChannels(defaultChannels());
+      setChannels(new Set(visibleChannels));
       setScheduleMode('now');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   const toggleChannel = (channel: CampaignChannel) => {
@@ -116,7 +118,7 @@ export default function CampaignForm({ counts }: Props) {
         <fieldset>
           <legend className="mb-1 block text-sm font-medium text-[#4a4038]">{m.channelsFieldLabel}</legend>
           <div className="flex flex-wrap gap-4">
-            {ALL_CAMPAIGN_CHANNELS.map((channel) => (
+            {visibleChannels.map((channel) => (
               <label key={channel} className="flex items-center gap-2 text-sm text-[#4a4038]">
                 <input
                   type="checkbox"

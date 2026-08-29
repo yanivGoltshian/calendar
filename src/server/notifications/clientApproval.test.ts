@@ -6,10 +6,13 @@ import {
   buildApprovalMessage,
   notifyClientOfApproval,
   type ClientApprovalPayload,
+  type NotifyClientApprovalDeps,
 } from '@/server/notifications/clientApproval';
 
 const basePayload: ClientApprovalPayload = {
   appointmentId: 'appt-123',
+  businessId: 'biz-1',
+  clientId: 'client-1',
   businessName: 'מספרת הדגמה',
   clientName: 'דנה כהן',
   clientEmail: 'dana@example.com',
@@ -17,26 +20,30 @@ const basePayload: ClientApprovalPayload = {
   services: [{ name: 'תספורת' }, { name: 'צבע' }],
   startAt: new Date('2026-08-25T09:30:00.000Z'),
   timezone: 'Asia/Jerusalem',
-  // ברירת מחדל לבדיקות: אקסקלוסיב (מייל + וואטסאפ).
+  // ברירת מחדל לבדיקות: אקסקלוסיב פעיל (מייל + מסרון בתשלום דרך שער העלות).
   canEmail: true,
-  canWhatsapp: true,
+  isExclusive: true,
   manageUrl: 'http://localhost:3000/b/demo',
 };
+
+/** שער עלות מזויף לבדיקות — אינו נוגע ב-DB, מחזיר מסירה מוצלחת. */
+function fakeGuardDeps(): NotifyClientApprovalDeps {
+  return {
+    sendGuardedSms: async () => ({ status: 'sent', costAgorot: 10, crossedAlert: false }),
+  };
+}
 
 test('buildApprovalEmail בונה מייל עברית RTL עם פרטי התור', () => {
   const { subject, text, html } = buildApprovalEmail(basePayload);
 
-  // הנושא כולל את שם העסק ואת בשורת האישור.
   assert.ok(subject.includes('מספרת הדגמה'));
   assert.ok(subject.includes('אושר'));
 
-  // גוף הטקסט כולל את הלקוח, השירותים והקישור לעמוד העסק.
   assert.ok(text.includes('דנה כהן'));
   assert.ok(text.includes('תספורת'));
   assert.ok(text.includes('צבע'));
   assert.ok(text.includes('/b/demo'));
 
-  // גוף ה-HTML הוא RTL.
   assert.ok(html.includes('dir="rtl"'));
 });
 
@@ -47,29 +54,31 @@ test('buildApprovalMessage בונה הודעת טקסט קצרה עם שם הע�
   assert.ok(message.includes('אושר'));
 });
 
-test('אקסקלוסיב: שולח מייל והודעת וואטסאפ ואינו זורק', async () => {
-  const result = await notifyClientOfApproval(basePayload);
+test('notifyClientOfApproval שולח מייל ומסרון באקסקלוסיב דרך שער העלות ואינו זורק', async () => {
+  const result = await notifyClientOfApproval(basePayload, fakeGuardDeps());
   assert.equal(result.emailSkipped, false);
   assert.equal(result.emailed, true);
-  // בפיתוח ספק ההודעות הוא console — ההודעה נמסרת דרך WhatsApp ללא שגיאה.
+  // מסרון נמסר דרך שער העלות המזויף ללא שגיאה.
   assert.equal(result.messaged, true);
-  assert.equal(result.messageChannel, 'whatsapp');
+  assert.equal(result.messageChannel, 'sms');
   assert.deepEqual(result.errors, []);
 });
 
-test('מדלג בחן על מייל כשאין ללקוח כתובת (גם אם canEmail)', async () => {
-  const result = await notifyClientOfApproval({ ...basePayload, clientEmail: null });
+test('notifyClientOfApproval מדלג בחן על מייל כשאין ללקוח כתובת', async () => {
+  const result = await notifyClientOfApproval(
+    { ...basePayload, clientEmail: null },
+    fakeGuardDeps(),
+  );
   assert.equal(result.emailSkipped, true);
   assert.equal(result.emailed, false);
   assert.deepEqual(result.errors, []);
 });
 
-test('סטנדרט: אין ערוצי תקשורת ללקוח — לא מייל ולא וואטסאפ', async () => {
-  const result = await notifyClientOfApproval({
-    ...basePayload,
-    canEmail: false,
-    canWhatsapp: false,
-  });
+test('סטנדרט: אין ערוצי תקשורת ללקוח — לא מייל ולא מסרון', async () => {
+  const result = await notifyClientOfApproval(
+    { ...basePayload, canEmail: false, isExclusive: false },
+    fakeGuardDeps(),
+  );
   assert.equal(result.emailed, false);
   assert.equal(result.emailSkipped, true);
   assert.equal(result.messaged, false);
@@ -77,16 +86,22 @@ test('סטנדרט: אין ערוצי תקשורת ללקוח — לא מייל 
   assert.deepEqual(result.errors, []);
 });
 
-test('פרימיום: שולח מייל אך לא וואטסאפ (ערוץ הודעות רק באקסקלוסיב)', async () => {
-  const result = await notifyClientOfApproval({ ...basePayload, canWhatsapp: false });
+test('פרימיום: שולח מייל אך לא מסרון (ערוץ המסרון רק באקסקלוסיב)', async () => {
+  const result = await notifyClientOfApproval(
+    { ...basePayload, isExclusive: false },
+    fakeGuardDeps(),
+  );
   assert.equal(result.emailed, true);
   assert.equal(result.messaged, false);
   assert.equal(result.messageChannel, null);
   assert.deepEqual(result.errors, []);
 });
 
-test('אקסקלוסיב ללא טלפון: לא נשלחת הודעת וואטסאפ, המייל עדיין נשלח', async () => {
-  const result = await notifyClientOfApproval({ ...basePayload, clientPhone: null });
+test('אקסקלוסיב ללא טלפון: לא נשלח מסרון, המייל עדיין נשלח', async () => {
+  const result = await notifyClientOfApproval(
+    { ...basePayload, clientPhone: null },
+    fakeGuardDeps(),
+  );
   assert.equal(result.messaged, false);
   assert.equal(result.messageChannel, null);
   assert.equal(result.emailed, true);

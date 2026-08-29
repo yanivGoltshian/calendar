@@ -9,6 +9,10 @@ import {
   ConsoleMessagingProvider,
   WhatsAppCloudProvider,
   type WhatsAppCloudConfig,
+  Sms4FreeProvider,
+  parseSms4FreeBody,
+  sms4freeErrorMessage,
+  type Sms4FreeConfig,
 } from './messaging';
 import { BRAND } from '@/config/brand';
 
@@ -229,4 +233,185 @@ test('buildOtpMessage כולל את שם המותג ואת הקוד', () => {
   const msg = buildOtpMessage('123456');
   assert.ok(msg.includes('123456'));
   assert.ok(msg.includes(BRAND.name));
+});
+
+// ---------- sms4free: תצורה ----------
+
+/** קונפיג בסיסי ל-Sms4FreeProvider בבדיקות. */
+function sms4freeConfig(overrides: Partial<Sms4FreeConfig> = {}): Sms4FreeConfig {
+  return {
+    apiKey: 'api-key-secret',
+    user: '0501234567',
+    pass: 'pass-secret',
+    sender: 'Torchick',
+    baseUrl: 'https://api.sms4free.co.il',
+    sendPath: '/ApiSMS/v2/SendSMS',
+    defaultCountryCode: '972',
+    ...overrides,
+  };
+}
+
+test('sms4free עם קרדנשלס מלאים נבחר ומחזיר Sms4FreeProvider', () => {
+  const provider = resolveMessagingProvider({
+    MESSAGING_PROVIDER: 'sms4free',
+    SMS4FREE_API_KEY: 'k',
+    SMS4FREE_USER: '0501234567',
+    SMS4FREE_PASS: 'p',
+    SMS4FREE_SENDER: 'Torchick',
+  });
+  assert.ok(provider instanceof Sms4FreeProvider);
+  assert.equal(provider.name, 'sms4free');
+});
+
+test('alias של sms-il נבחר גם הוא', () => {
+  const provider = resolveMessagingProvider({
+    MESSAGING_PROVIDER: 'sms-il',
+    SMS4FREE_API_KEY: 'k',
+    SMS4FREE_USER: '0501234567',
+    SMS4FREE_PASS: 'p',
+    SMS4FREE_SENDER: 'Torchick',
+  });
+  assert.ok(provider instanceof Sms4FreeProvider);
+});
+
+test('sms4free ללא קרדנשלס זורק MessagingConfigError ומפרט חוסרים', () => {
+  assert.throws(
+    () => resolveMessagingProvider({ MESSAGING_PROVIDER: 'sms4free' }),
+    (err: unknown) => {
+      assert.ok(err instanceof MessagingConfigError);
+      const message = (err as Error).message;
+      assert.ok(message.includes('SMS4FREE_API_KEY'));
+      assert.ok(message.includes('SMS4FREE_USER'));
+      assert.ok(message.includes('SMS4FREE_PASS'));
+      assert.ok(message.includes('SMS4FREE_SENDER'));
+      return true;
+    },
+  );
+});
+
+// ---------- sms4free: שליחה ----------
+
+test('sendSms שולח POST עם JSON תקין ונמען מנורמל למבנה מקומי', async () => {
+  const calls: RecordedCall[] = [];
+  const provider = new Sms4FreeProvider(sms4freeConfig(), fakeFetch(calls, 200, '1'));
+
+  await provider.sendSms('+972541111111', 'שלום עולם');
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://api.sms4free.co.il/ApiSMS/v2/SendSMS');
+  assert.equal(calls[0].init?.method, 'POST');
+  assert.equal(
+    headerValue(calls[0].init, 'Content-Type'),
+    'application/json; charset=utf-8',
+  );
+
+  const payload = JSON.parse(String(calls[0].init?.body));
+  assert.equal(payload.key, 'api-key-secret');
+  assert.equal(payload.user, '0501234567');
+  assert.equal(payload.pass, 'pass-secret');
+  assert.equal(payload.sender, 'Torchick');
+  assert.equal(payload.recipient, '0541111111');
+  assert.equal(payload.msg, 'שלום עולם');
+});
+
+test('sendSmsWithResult מחזיר את מזהה ההודעה מתגובת v2', async () => {
+  const calls: RecordedCall[] = [];
+  const provider = new Sms4FreeProvider(
+    sms4freeConfig(),
+    fakeFetch(calls, 200, JSON.stringify({ status: 1, id: 'abc123' })),
+  );
+
+  const result = await provider.sendSmsWithResult('0541111111', 'הודעה');
+
+  assert.equal(result.ok, true);
+  assert.equal(result.providerMessageId, 'abc123');
+});
+
+test('sendSmsWithResult מקבל תגובת v1 של מספר שלם כטקסט', async () => {
+  const calls: RecordedCall[] = [];
+  const provider = new Sms4FreeProvider(sms4freeConfig(), fakeFetch(calls, 200, '1'));
+
+  const result = await provider.sendSmsWithResult('0541111111', 'הודעה');
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, 1);
+});
+
+test('קוד שגיאה שלילי מהשער זורק MessagingSendError', async () => {
+  const calls: RecordedCall[] = [];
+  const provider = new Sms4FreeProvider(sms4freeConfig(), fakeFetch(calls, 200, '-4'));
+
+  await assert.rejects(() => provider.sendSms('0541111111', 'הודעה'), MessagingSendError);
+});
+
+test('תגובת HTTP שאינה 2xx זורקת MessagingSendError', async () => {
+  const calls: RecordedCall[] = [];
+  const provider = new Sms4FreeProvider(
+    sms4freeConfig(),
+    fakeFetch(calls, 500, 'server error'),
+  );
+
+  await assert.rejects(() => provider.sendSms('0541111111', 'הודעה'), MessagingSendError);
+});
+
+test('sendOtp שולח מסרון עם שם המותג והקוד', async () => {
+  const calls: RecordedCall[] = [];
+  const provider = new Sms4FreeProvider(sms4freeConfig(), fakeFetch(calls, 200, '1'));
+
+  await provider.sendOtp('0541111111', '246810');
+
+  const payload = JSON.parse(String(calls[0].init?.body));
+  assert.ok(payload.msg.includes('246810'));
+  assert.ok(payload.msg.includes(BRAND.name));
+});
+
+test('נרמול נמען: קידומת בין-לאומית +972 הופכת ל-0', async () => {
+  const calls: RecordedCall[] = [];
+  const provider = new Sms4FreeProvider(sms4freeConfig(), fakeFetch(calls, 200, '1'));
+
+  await provider.sendSms('+972541111111', 'x');
+
+  const payload = JSON.parse(String(calls[0].init?.body));
+  assert.equal(payload.recipient, '0541111111');
+});
+
+test('נרמול נמען: קידומת 00 בין-לאומית מנוקה', async () => {
+  const calls: RecordedCall[] = [];
+  const provider = new Sms4FreeProvider(sms4freeConfig(), fakeFetch(calls, 200, '1'));
+
+  await provider.sendSms('00972541111111', 'x');
+
+  const payload = JSON.parse(String(calls[0].init?.body));
+  assert.equal(payload.recipient, '0541111111');
+});
+
+// ---------- sms4free: פענוח גוף התגובה ----------
+
+test('parseSms4FreeBody מזהה מספר שלם חיובי כהצלחה', () => {
+  const result = parseSms4FreeBody('3');
+  assert.equal(result.ok, true);
+  assert.equal(result.code, 3);
+});
+
+test('parseSms4FreeBody מזהה אובייקט v2 עם status ו-id', () => {
+  const result = parseSms4FreeBody(JSON.stringify({ status: 1, id: 'm-9' }));
+  assert.equal(result.ok, true);
+  assert.equal(result.providerMessageId, 'm-9');
+});
+
+test('parseSms4FreeBody מזהה קוד שלילי כשגיאה עם טקסט עברי', () => {
+  const result = parseSms4FreeBody('-1');
+  assert.equal(result.ok, false);
+  assert.equal(result.code, -1);
+  assert.ok((result.error ?? '').length > 0);
+});
+
+test('parseSms4FreeBody מחזיר שגיאה על תגובה לא צפויה', () => {
+  const result = parseSms4FreeBody('לא מספר');
+  assert.equal(result.ok, false);
+});
+
+test('sms4freeErrorMessage ממפה קודים ידועים ולא ידועים', () => {
+  assert.equal(sms4freeErrorMessage(-4), 'יתרת ההודעות נמוכה מכדי לשלוח');
+  assert.ok(sms4freeErrorMessage(-99).includes('-99'));
 });

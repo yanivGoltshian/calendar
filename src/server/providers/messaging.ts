@@ -12,6 +12,7 @@ import { BRAND } from '@/config/brand';
  *
  * ערכים אפשריים ל-MESSAGING_PROVIDER:
  *   console         - הדפסה ללוג בלבד (ברירת מחדל לפיתוח).
+ *   sms4free        - שער מסרונים ישראלי אמיתי api.sms4free.co.il (aliases: sms-il, sms_il).
  *   whatsapp-cloud  - WhatsApp Cloud API של מטא (aliases: whatsapp, whatsapp_cloud).
  *
  * משתני הסביבה של whatsapp-cloud:
@@ -28,6 +29,17 @@ import { BRAND } from '@/config/brand';
  *   WHATSAPP_GRAPH_BASE_URL      (אופציונלי, ברירת מחדל https://graph.facebook.com).
  *   WHATSAPP_DEFAULT_COUNTRY_CODE(אופציונלי, ברירת מחדל 972) קידומת מדינה עבור
  *                                מספרים בפורמט מקומי (0...).
+ *
+ * משתני הסביבה של sms4free (כולם בשרת בלבד, המפתח והסיסמה הם סוד):
+ *   SMS4FREE_API_KEY       (חובה, סוד) מפתח ה-API של החשבון.
+ *   SMS4FREE_USER          (חובה) שם המשתמש בחשבון (בדרך כלל מספר הבעלים).
+ *   SMS4FREE_PASS          (חובה, סוד) סיסמת החשבון.
+ *   SMS4FREE_SENDER        (חובה) שם או מספר השולח שמוצג לנמען.
+ *   SMS4FREE_BASE_URL      (אופציונלי, ברירת מחדל https://api.sms4free.co.il).
+ *   SMS4FREE_SEND_PATH     (אופציונלי, ברירת מחדל /ApiSMS/v2/SendSMS) נתיב השליחה;
+ *                          ניתן לעקיפה ל-/ApiSMS/SendSMS עבור הגרסה הישנה.
+ *   SMS_DEFAULT_COUNTRY_CODE(אופציונלי, ברירת מחדל 972) קידומת לנרמול מספרים
+ *                          בין-לאומיים חזרה למבנה מקומי (05...).
  *
  * הערה: whatsapp-cloud הוא ספק WhatsApp בלבד. sendSms נמסר גם הוא דרך WhatsApp
  * (אין ערוץ SMS בתשלום). התפר ל-sendSms נשמר נקי כדי שאדפטר SMS ייעודי עתידי
@@ -229,6 +241,178 @@ export class WhatsAppCloudProvider implements MessagingProvider {
 }
 
 // ---------------------------------------------------------------------------
+// מתאם sms4free: שער מסרונים ישראלי אמיתי (api.sms4free.co.il). ערוץ ה-SMS
+// האופרטיבי. המפתח, שם המשתמש, והסיסמה חיים בשרת בלבד (סוד), לעולם לא בצד הלקוח.
+// ---------------------------------------------------------------------------
+
+/** תצורת מתאם sms4free. כל השדות מגיעים ממשתני סביבה בשרת. */
+export interface Sms4FreeConfig {
+  /** מפתח ה-API של החשבון (סוד). */
+  apiKey: string;
+  /** שם המשתמש בחשבון (בדרך כלל מספר הטלפון של הבעלים). */
+  user: string;
+  /** סיסמת החשבון (סוד). */
+  pass: string;
+  /** שם או מספר השולח שמוצג לנמען. */
+  sender: string;
+  /** בסיס כתובת ה-API (למשל https://api.sms4free.co.il). */
+  baseUrl: string;
+  /** נתיב שליחת ההודעה (למשל /ApiSMS/v2/SendSMS). ניתן לעקיפה לגרסה ישנה. */
+  sendPath: string;
+  /** קידומת מדינה לנרמול מספרים בין-לאומיים חזרה למבנה מקומי (למשל 972). */
+  defaultCountryCode: string;
+}
+
+/** תוצאת פענוח גוף התגובה של sms4free. */
+export interface Sms4FreeResult {
+  /** האם השליחה הצליחה (קוד חיובי או מזהה הודעה תקין). */
+  ok: boolean;
+  /** הקוד המספרי מהשער (חיובי = מספר הודעות, אפס/שלילי = שגיאה). */
+  code: number;
+  /** מזהה ההודעה מהספק, אם הוחזר (בעיקר בגרסת v2). */
+  providerMessageId?: string;
+  /** הודעת שגיאה קריאה, כשהשליחה נכשלה. */
+  error?: string;
+}
+
+/** מיפוי קודי השגיאה של sms4free לטקסט קריא בעברית (מקור: תיעוד הספק). */
+export function sms4freeErrorMessage(code: number): string {
+  switch (code) {
+    case 0:
+      return 'שגיאה כללית מהשער';
+    case -1:
+      return 'מפתח, שם משתמש או סיסמה שגויים';
+    case -2:
+      return 'שם או מספר שולח ההודעה שגוי';
+    case -3:
+      return 'לא נמצאו נמענים';
+    case -4:
+      return 'יתרת ההודעות נמוכה מכדי לשלוח';
+    case -5:
+      return 'תוכן ההודעה אינו מתאים';
+    case -6:
+      return 'יש לאמת את מספר השולח מול הספק';
+    default:
+      return `שגיאה לא ידועה מהשער (קוד ${code})`;
+  }
+}
+
+/**
+ * פענוח גוף התגובה של sms4free. בגרסה הישנה השער מחזיר מספר שלם כטקסט, ובגרסת
+ * v2 אובייקט JSON עם status ו-id. הפענוח סובלני לשני המבנים כדי לא להיתלות בגרסה.
+ */
+export function parseSms4FreeBody(rawText: string): Sms4FreeResult {
+  const trimmed = (rawText ?? '').trim();
+  let code = Number.NaN;
+  let providerMessageId: string | undefined;
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (typeof parsed === 'number') {
+      code = parsed;
+    } else if (parsed && typeof parsed === 'object') {
+      const obj = parsed as Record<string, unknown>;
+      const rawStatus = obj.status ?? obj.code;
+      code = rawStatus === undefined ? Number.NaN : Number(rawStatus);
+      const data = (obj.data ?? {}) as Record<string, unknown>;
+      const rawId = obj.id ?? obj.messageId ?? data.messageId ?? data.id;
+      providerMessageId =
+        rawId === undefined || rawId === null ? undefined : String(rawId) || undefined;
+    }
+  } catch {
+    code = Number.parseInt(trimmed, 10);
+  }
+
+  if (!Number.isNaN(code)) {
+    return code > 0
+      ? { ok: true, code, providerMessageId }
+      : { ok: false, code, error: sms4freeErrorMessage(code) };
+  }
+  if (providerMessageId) {
+    return { ok: true, code: 1, providerMessageId };
+  }
+  return {
+    ok: false,
+    code: 0,
+    error: `תגובה לא צפויה מהשער: ${trimmed.slice(0, 120)}`,
+  };
+}
+
+export class Sms4FreeProvider implements MessagingProvider {
+  readonly name = 'sms4free';
+  private readonly config: Sms4FreeConfig;
+  private readonly fetchImpl: typeof fetch;
+
+  constructor(config: Sms4FreeConfig, fetchImpl: typeof fetch = fetch) {
+    this.config = config;
+    this.fetchImpl = fetchImpl;
+  }
+
+  /** נרמול מספר היעד למבנה מקומי ישראלי (05...), כפי שהשער מצפה. */
+  private toRecipient(to: string): string {
+    let digits = (to ?? '').replace(/\D/g, '');
+    if (digits.startsWith('00')) {
+      digits = digits.slice(2);
+    }
+    const cc = this.config.defaultCountryCode;
+    if (cc && digits.startsWith(cc)) {
+      return `0${digits.slice(cc.length)}`;
+    }
+    return digits;
+  }
+
+  /** שליחת מסרון בפועל דרך השער, והחזרת תוצאה מפוענחת (לתיעוד ומעקב עלות). */
+  async sendSmsWithResult(to: string, message: string): Promise<Sms4FreeResult> {
+    const url = `${this.config.baseUrl}${this.config.sendPath}`;
+    const payload = {
+      key: this.config.apiKey,
+      user: this.config.user,
+      pass: this.config.pass,
+      sender: this.config.sender,
+      recipient: this.toRecipient(to),
+      msg: message,
+    };
+
+    let res: Response;
+    try {
+      res = await this.fetchImpl(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      throw new MessagingSendError(`sms4free request failed: ${(err as Error).message}`);
+    }
+
+    const bodyText = await res.text().catch(() => '');
+    if (!res.ok) {
+      throw new MessagingSendError(`sms4free responded ${res.status}: ${bodyText}`);
+    }
+
+    const result = parseSms4FreeBody(bodyText);
+    if (!result.ok) {
+      throw new MessagingSendError(`sms4free send failed: ${result.error}`);
+    }
+    return result;
+  }
+
+  async sendSms(to: string, message: string): Promise<void> {
+    await this.sendSmsWithResult(to, message);
+  }
+
+  async sendWhatsApp(to: string, message: string): Promise<void> {
+    // sms4free הוא ערוץ SMS בלבד ואין בו WhatsApp. כדי לא לשבור צרכני טקסט
+    // קיימים (למשל ענף התזכורת המתויג SMS שקורא היום sendWhatsApp), הקריאה
+    // נמסרת כ-SMS עד שניתוב הערוצים יאוחד סביב sendSms.
+    await this.sendSms(to, message);
+  }
+
+  async sendOtp(to: string, code: string): Promise<void> {
+    await this.sendSms(to, buildOtpMessage(code));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // בחירת ספק: קורא MESSAGING_PROVIDER (עם תאימות לאחור ל-SMS_PROVIDER).
 // ---------------------------------------------------------------------------
 
@@ -275,6 +459,49 @@ function buildWhatsAppCloudProvider(
   );
 }
 
+/** בניית מתאם sms4free מתוך משתני הסביבה; זורק אם חסרים קרדנשלס. */
+function buildSms4FreeProvider(
+  env: MessagingEnv,
+  fetchImpl?: typeof fetch,
+): MessagingProvider {
+  const apiKey = (env.SMS4FREE_API_KEY ?? '').trim();
+  const user = (env.SMS4FREE_USER ?? '').trim();
+  const pass = (env.SMS4FREE_PASS ?? '').trim();
+  const sender = (env.SMS4FREE_SENDER ?? '').trim();
+
+  const missing: string[] = [];
+  if (!apiKey) missing.push('SMS4FREE_API_KEY');
+  if (!user) missing.push('SMS4FREE_USER');
+  if (!pass) missing.push('SMS4FREE_PASS');
+  if (!sender) missing.push('SMS4FREE_SENDER');
+  if (missing.length > 0) {
+    throw new MessagingConfigError(
+      `sms4free provider selected but missing required env: ${missing.join(', ')}`,
+    );
+  }
+
+  const baseUrl = (env.SMS4FREE_BASE_URL ?? 'https://api.sms4free.co.il')
+    .trim()
+    .replace(/\/+$/, '');
+  const rawPath = (env.SMS4FREE_SEND_PATH ?? '/ApiSMS/v2/SendSMS').trim();
+  const sendPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+  const defaultCountryCode =
+    (env.SMS_DEFAULT_COUNTRY_CODE ?? '972').replace(/\D/g, '') || '972';
+
+  return new Sms4FreeProvider(
+    {
+      apiKey,
+      user,
+      pass,
+      sender,
+      baseUrl: baseUrl || 'https://api.sms4free.co.il',
+      sendPath,
+      defaultCountryCode,
+    },
+    fetchImpl,
+  );
+}
+
 /**
  * מזהה ובונה את ספק ההודעות מתוך משתני הסביבה. ניתן להזריק env ו-fetch לבדיקות.
  * ברירת המחדל console; בפרודקשן console/ריק זורק MessagingConfigError (כשל רועש).
@@ -288,6 +515,10 @@ export function resolveMessagingProvider(
     .toLowerCase();
 
   switch (selected) {
+    case 'sms4free':
+    case 'sms-il':
+    case 'sms_il':
+      return buildSms4FreeProvider(env, fetchImpl);
     case 'whatsapp-cloud':
     case 'whatsapp_cloud':
     case 'whatsapp':
@@ -296,13 +527,13 @@ export function resolveMessagingProvider(
     case '':
       if (isProduction(env)) {
         throw new MessagingConfigError(
-          'MESSAGING_PROVIDER is "console" in production; configure a real provider (whatsapp-cloud)',
+          'MESSAGING_PROVIDER is "console" in production; configure a real provider (sms4free | whatsapp-cloud)',
         );
       }
       return new ConsoleMessagingProvider();
     default:
       throw new MessagingConfigError(
-        `Unknown MESSAGING_PROVIDER "${selected}" (expected console | whatsapp-cloud)`,
+        `Unknown MESSAGING_PROVIDER "${selected}" (expected console | sms4free | whatsapp-cloud)`,
       );
   }
 }

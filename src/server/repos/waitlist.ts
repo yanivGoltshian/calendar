@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { getSmsProvider } from '@/server/providers/sms';
+import { sendGuardedSms } from '@/server/billing/costGuard';
 import { normalizePhone } from '@/lib/crypto';
 import { BRAND } from '@/config/brand';
 import type { WaitlistStatus } from '@prisma/client';
@@ -89,13 +89,25 @@ export async function addWaitlistEntry(
 export async function notifyWaitlistEntry(
   businessId: string,
   id: string,
+  opts?: { isExclusive?: boolean },
 ): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'not_waiting' }> {
   const entry = await prisma.waitlistEntry.findFirst({ where: { id, businessId } });
   if (!entry) return { ok: false, reason: 'not_found' };
   if (entry.status !== 'WAITING') return { ok: false, reason: 'not_waiting' };
 
-  const message = `${BRAND.name}: התפנה תור! ${entry.name}, נשמח לתאם לך מועד. השיבו להודעה זו ליצירת קשר.`;
-  await getSmsProvider().sendSms(entry.phone, message);
+  // מסרון רשימת המתנה בתשלום שמור לאקסקלוסיב בלבד, ועובר דרך שער העלות (sendGuardedSms).
+  // בפרימיום/בסיס אין ערוץ מסרון בתשלום ואין מייל על רשומת המתנה ידנית, לכן הרשומה מסומנת
+  // NOTIFIED לצורך מעקב הצוות בלבד — בדיוק ההתנהגות הקיימת כשספק ההודעות במצב console.
+  if (opts?.isExclusive) {
+    const message = `${BRAND.name}: התפנה תור! ${entry.name}, נשמח לתאם לך מועד. השיבו להודעה זו ליצירת קשר.`;
+    await sendGuardedSms({
+      businessId,
+      to: entry.phone,
+      body: message,
+      clientId: entry.clientId,
+      channel: 'sms',
+    });
+  }
 
   await prisma.waitlistEntry.update({
     where: { id: entry.id },

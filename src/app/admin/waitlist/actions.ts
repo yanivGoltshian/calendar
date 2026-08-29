@@ -10,6 +10,7 @@ import {
   cancelWaitlistEntry,
 } from '@/server/repos/waitlist';
 import { isValidIsraeliMobile } from '@/lib/crypto';
+import { canSendPaidClientSms } from '@/server/subscription';
 
 const addSchema = z.object({
   name: z.string().trim().min(1, 'name').max(120),
@@ -76,9 +77,16 @@ async function withBusiness(
   revalidatePath('/admin/waitlist');
 }
 
-/** יידוע ממתין (SMS stub) וסימון NOTIFIED. */
+/** יידוע ממתין: מסרון בתשלום לאקסקלוסיב דרך שער העלות, וסימון NOTIFIED. */
 export async function notifyAction(formData: FormData): Promise<void> {
-  await withBusiness(notifyWaitlistEntry, formData);
+  const id = String(formData.get('id') ?? '').trim();
+  if (!id) return;
+  const business = await getActiveBusiness();
+  if (!business) return;
+  await notifyWaitlistEntry(business.id, id, {
+    isExclusive: canSendPaidClientSms(business),
+  });
+  revalidatePath('/admin/waitlist');
 }
 
 /** קידום ידני של ממתין (BOOKED). */

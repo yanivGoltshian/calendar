@@ -5,7 +5,7 @@ import { t } from '@/i18n';
  * גישה למנוי — מחושבת על קריאה (ללא תלות ב-cron שמעדכן סטטוס).
  *
  * active = (חבילת בסיס בתקופת ניסיון ו-trialEndsAt בעתיד)
- *          או (חבילת פרימיום ו-paidUntil בעתיד).
+ *          או (חבילת פרימיום/אקסקלוסיב ו-paidUntil בעתיד).
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -40,6 +40,14 @@ function daysUntil(target: Date | null, nowMs: number): number {
 }
 
 /**
+ * חבילות בתשלום (ללא ניסיון) — גישתן נגזרת מ-paidUntil, לא מ-trialEndsAt.
+ * כרגע: פרימיום ואקסקלוסיב. הבסיס לבדו הוא דרגת הניסיון.
+ */
+function isPaidPlan(plan: BusinessPlan): boolean {
+  return plan === 'premium' || plan === 'exclusive';
+}
+
+/**
  * חישוב מצב הגישה של עסק לפי החבילה והתאריכים. מחושב תמיד מחדש על קריאה.
  * - פרימיום/אקסקלוסיב עם paidUntil בעתיד ⇐ active (שניהם מסלולים בתשלום).
  * - בסיס עם trialEndsAt בעתיד ⇐ trialing.
@@ -50,11 +58,10 @@ export function getBusinessAccess(business: BusinessAccessInput): BusinessAccess
   const { plan, trialEndsAt, paidUntil } = business;
 
   // מסלולים בתשלום — פרימיום ואקסקלוסיב. הבסיס (סטנדרט) הוא מסלול הניסיון/החינם.
-  const paidPlan = plan === 'premium' || plan === 'exclusive';
   const paidActive =
-    paidPlan && paidUntil != null && paidUntil.getTime() > nowMs;
+    isPaidPlan(plan) && paidUntil != null && paidUntil.getTime() > nowMs;
   const trialActive =
-    !paidPlan && trialEndsAt != null && trialEndsAt.getTime() > nowMs;
+    !isPaidPlan(plan) && trialEndsAt != null && trialEndsAt.getTime() > nowMs;
 
   if (paidActive) {
     return {
@@ -106,4 +113,30 @@ export function describePlan(plan: BusinessPlan): string {
   if (plan === 'exclusive') return t.billing.plan.exclusive;
   if (plan === 'premium') return t.billing.plan.premium;
   return t.billing.plan.basic;
+}
+
+/**
+ * שער יכולת: האם מותר לעסק לשלוח מסרון בתשלום ללקוח קצה
+ * (אישור, תזכורת, קמפיין, רשימת המתנה). דלוק רק בחבילת אקסקלוסיב
+ * עם מנוי פעיל בתשלום — לא בניסיון, ולא בפרימיום/בסיס (הם פונים במייל).
+ */
+export function canSendPaidClientSms(business: BusinessAccessInput): boolean {
+  return business.plan === 'exclusive' && getBusinessAccess(business).state === 'active';
+}
+
+/**
+ * שער יכולת: האם מותר לאמת טלפון של לקוח קצה במסרון. תכונת אקסקלוסיב בלבד,
+ * בכפיפה לאותם תנאים כמו המסרון בתשלום ללקוח. בפרימיום/בסיס אין אימות טלפון ללקוח.
+ */
+export function canVerifyClientPhone(business: BusinessAccessInput): boolean {
+  return canSendPaidClientSms(business);
+}
+
+/**
+ * שער יכולת: אימות טלפון של בעל העסק עצמו (הרשמה/התחברות). חריג קבוע —
+ * דלוק תמיד בכל דרגה, כי זו כניסת מערכת ואינה פנייה ללקוח קצה, ואינו כפוף
+ * לתקרת העלות הפר-עסקית של פניות ללקוח.
+ */
+export function canSendOwnerVerificationSms(): boolean {
+  return true;
 }
