@@ -28,6 +28,7 @@ import { displayPhone } from '@/lib/crypto';
 import { hashToIndex } from './serviceColors';
 import CalendarBoard from './CalendarBoard';
 import HomeShell, { type ToolStep } from './home/HomeShell';
+import { computeSetupState } from './onboarding/setup';
 import { bookingUrl, bookingPath, isBusinessLive } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
 import './home/home.css';
@@ -219,17 +220,18 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   );
   const detailsDone = business.settings?.onboardingCompleted === true;
 
-  const setupFlags = [
+  // מצב ההקמה מחושב ממקור אמת יחיד (setup.ts) שמזין גם את הבית וגם את ניווט ההמשך.
+  const setup = computeSetupState({
     servicesDone,
     staffDone,
     workingHoursDone,
     brandingDone,
     detailsDone,
-  ];
-  const setupDone = setupFlags.filter(Boolean).length;
-  const percent = Math.round((setupDone / setupFlags.length) * 100);
-  const allComplete = setupDone === setupFlags.length;
-  const remaining = setupFlags.length - setupDone;
+  });
+  const setupFlags = setup.flags;
+  const percent = setup.percent;
+  const allComplete = setup.allComplete;
+  const remaining = setup.remaining;
 
   // מגירת הכלים: חמשת אזורי ההקמה. תיקון באג 1 — "פרטי העסק ומדיניות" מפנה
   // ל-/admin/settings (מדיניות וביטולים), לא לעורך הגלריה/הפרימיום.
@@ -274,7 +276,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
     'את המיתוג',
     'את פרטי העסק והמדיניות',
   ];
-  const firstOpenIndex = setupFlags.findIndex((f) => !f);
+  const firstOpenIndex = setup.firstOpenIndex;
   const continueLabel = CONTINUE_LABELS[firstOpenIndex >= 0 ? firstOpenIndex : 0];
   const setupTitle =
     remaining <= 1
@@ -344,6 +346,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
       revenueHref="/admin/stats"
       allComplete={allComplete}
       percent={percent}
+      continueHref={setup.continueHref}
       setupTitle={setupTitle}
       setupSubtitle={setupSubtitle}
       premiumHref="/admin/onboarding?edit=premium"

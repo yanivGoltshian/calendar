@@ -33,6 +33,7 @@ export type HomeShellProps = {
   revenueHref: string;
   allComplete: boolean;
   percent: number;
+  continueHref: string;
   setupTitle: string;
   setupSubtitle: string;
   premiumHref: string;
@@ -52,6 +53,7 @@ export default function HomeShell({
   revenueHref,
   allComplete,
   percent,
+  continueHref,
   setupTitle,
   setupSubtitle,
   premiumHref,
@@ -125,7 +127,8 @@ export default function HomeShell({
             </Link>
           </div>
 
-          {/* רצועת השלמת הקמה / גלולת עריכה — פותחות תמיד את מגירת הכלים */}
+          {/* גלולת עריכה (הכול הושלם) פותחת את מגירת הכלים · רצועת ההקמה (לא הושלם)
+              מנווטת ישירות לאשף האונבורדינג בצעד החסר הראשון (באגים 9/10). */}
           {allComplete ? (
             <button type="button" className="setup-pill" onClick={openTools}>
               <span className="ck">
@@ -135,7 +138,7 @@ export default function HomeShell({
               <span className="re">לעריכה ›</span>
             </button>
           ) : (
-            <button type="button" className="setup-strip" onClick={openTools}>
+            <Link className="setup-strip" href={continueHref}>
               <span className="ring" style={{ '--p': percent } as CSSProperties}>
                 <i>{percent}%</i>
               </span>
@@ -144,7 +147,7 @@ export default function HomeShell({
                 <span className="s">{setupSubtitle}</span>
               </span>
               <span className="go">המשך ›</span>
-            </button>
+            </Link>
           )}
 
           {/* כרטיס היומן — הרכיב האמיתי הקיים */}
@@ -179,7 +182,7 @@ export default function HomeShell({
             </span>
             <span className="tx">
               <span className="t">עמוד הפרימיום שלך</span>
-              <span className="s">עוצב והושלם · עריכת תמונות, טקסטים וצבעים</span>
+              <span className="s">עריכת תמונות, טקסטים וצבעים</span>
             </span>
             <span className="act">עריכה ›</span>
           </Link>
