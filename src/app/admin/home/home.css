@@ -376,16 +376,16 @@
   opacity: 0.6;
 }
 
-/* ── רצועת ההקמה (מגירה שנפתחת מחדש) · קומפקטית לשורה בודדת (באג 3) ── */
+/* ── רצועת ההקמה (מגירה שנפתחת מחדש) · כרטיס גבוה עם הבזק זוהר (באגים 1-2) ── */
 .tcah .setup-strip {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-top: 14px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 8px 12px;
+  border-radius: 16px;
+  padding: 12px 14px;
   box-shadow: var(--shadow-soft);
   cursor: pointer;
   width: 100%;
@@ -399,8 +399,8 @@
 }
 .tcah .ring {
   --p: 80;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
   flex: none;
   display: grid;
@@ -408,13 +408,13 @@
   background: conic-gradient(var(--emerald) calc(var(--p) * 1%), var(--sand-2) 0);
 }
 .tcah .ring i {
-  width: 26px;
-  height: 26px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   background: var(--surface);
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--navy-900);
   font-style: normal;
@@ -422,30 +422,18 @@
 .tcah .setup-strip .body {
   flex: 1;
   min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  overflow: hidden;
 }
 .tcah .setup-strip .body .t {
+  display: block;
   font-weight: 800;
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: none;
-  max-width: 100%;
 }
-/* בשורה קומפקטית הטקסט המשני נשאר לרוחב פנוי בלבד ומתקצר בעדינות */
 .tcah .setup-strip .body .s {
+  display: block;
   font-size: 12px;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-  min-width: 0;
+  margin-top: 2px;
 }
 .tcah .setup-strip .go {
   flex: none;

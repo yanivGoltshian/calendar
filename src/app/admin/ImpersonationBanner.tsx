@@ -13,36 +13,33 @@ export default function ImpersonationBanner({ businessName }: { businessName: st
     <div
       dir="rtl"
       role="status"
-      className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b px-4 py-2 text-center text-sm"
+      className="sticky top-0 z-40 flex flex-nowrap items-center justify-center gap-x-2 border-b px-3 py-1.5 text-center text-sm"
       style={{
         backgroundColor: '#0B1526',
         borderColor: '#C59D5F',
         color: '#F2D695',
-        paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+        paddingTop: 'max(0.375rem, env(safe-area-inset-top))',
       }}
     >
-      <span className="font-semibold">
+      <span className="min-w-0 truncate whitespace-nowrap font-semibold">
         {c.bannerPrefix}
         <span style={{ color: '#FFFFFF' }}>«{businessName}»</span>
       </span>
-      <span aria-hidden style={{ color: '#C59D5F' }}>
+      <span aria-hidden className="shrink-0" style={{ color: '#C59D5F' }}>
         ·
       </span>
       <Link
         href="/admin/onboarding?edit=premium"
         prefetch={false}
-        className="min-h-[44px] rounded-lg px-3 py-1 font-bold"
+        className="shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-bold"
         style={{ backgroundColor: '#C59D5F', color: '#0B1526' }}
       >
         ✨ {t.admin.onboarding.premiumEditorCta.cta}
       </Link>
-      <span aria-hidden style={{ color: '#C59D5F' }}>
-        ·
-      </span>
       <Link
         href="/admin/impersonate/stop"
         prefetch={false}
-        className="min-h-[44px] rounded-lg px-3 py-1 font-bold underline-offset-2 hover:underline"
+        className="shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-bold underline-offset-2 hover:underline"
         style={{ color: '#F2D695' }}
       >
         {c.exit}
