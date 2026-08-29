@@ -160,6 +160,18 @@ export function formatLongDate(dateStr: string, timeZone: string = DEFAULT_TZ): 
   }).format(noon);
 }
 
+/** עיצוב תאריך קצר לפורמט ישראלי dd/MM/yyyy (he-IL), למשל "2024-08-12" → "12/08/2024". */
+export function formatShortDate(dateStr: string, timeZone: string = DEFAULT_TZ): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const noon = localWallTimeToUtc(y, m, d, 12 * 60, timeZone);
+  return new Intl.DateTimeFormat('he-IL', {
+    timeZone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(noon);
+}
+
 /** עיצוב משך בדקות לעברית, למשל 90 → "שעה וחצי", 45 → "45 דק׳". */
 export function formatDuration(totalMinutes: number): string {
   if (totalMinutes < 60) return `${totalMinutes} דק׳`;

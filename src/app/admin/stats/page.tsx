@@ -12,6 +12,7 @@ import {
   addDaysToDateString,
   localWallTimeToUtc,
   formatLongDate,
+  formatShortDate,
 } from '@/lib/time';
 
 export const metadata: Metadata = { title: t.admin.statsModule.title };
@@ -90,8 +91,10 @@ export default async function AdminStatsPage({ searchParams }: Props) {
             name="from"
             defaultValue={from}
             dir="ltr"
+            lang="he-IL"
             className="rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
+          <p className="mt-1 text-xs text-[#b3a690]" dir="ltr">{formatShortDate(from)}</p>
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-[#4a4038]">{s.toLabel}</label>
@@ -100,8 +103,10 @@ export default async function AdminStatsPage({ searchParams }: Props) {
             name="to"
             defaultValue={to}
             dir="ltr"
+            lang="he-IL"
             className="rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           />
+          <p className="mt-1 text-xs text-[#b3a690]" dir="ltr">{formatShortDate(to)}</p>
         </div>
         <button
           type="submit"
@@ -112,7 +117,8 @@ export default async function AdminStatsPage({ searchParams }: Props) {
       </form>
 
       <p className="mb-5 text-sm text-[#8f8478]">
-        {formatLongDate(from)} – {formatLongDate(to)}
+        {formatLongDate(from)} · {formatLongDate(to)}{' '}
+        <span dir="ltr">({formatShortDate(from)} · {formatShortDate(to)})</span>
       </p>
 
       {/* מדדי מפתח */}
