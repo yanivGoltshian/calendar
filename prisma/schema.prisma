@@ -178,6 +178,7 @@ enum CampaignStatus {
 enum MessageStatus {
   SENT // נשלח
   FAILED // נכשל
+  BLOCKED // נחסם לפני שליחה עקב חריגה מתקרת העלות החודשית של העסק
 }
 
 // סוג תנועת מלאי (אפוס L — מלאי בסיסי). enum חדש ונפרד, ללא נגיעה ב-enums קיימים.
@@ -853,9 +854,18 @@ model MessageLog {
   status  MessageStatus @default(SENT)
   error   String? // הודעת שגיאה אם השליחה נכשלה
 
+  // עלות ההודעה באגורות. הערכה קבועה להודעה (SMS_UNIT_COST_AGOROT) או עלות ספק,
+  // ומשמשת בסיס לצבירת תקרת העלות החודשית לכל עסק.
+  costAgorot Int @default(0)
+  // האם ההודעה נספרת אל מול תקרת העלות החודשית של העסק. שליחת מסרון בתשלום ללקוח = true;
+  // אימות טלפון של בעל העסק (חריג קבוע, מחוץ לתקרה) = false, ונצבר בדלי נפרד.
+  countsToCap Boolean @default(true)
+
   createdAt DateTime @default(now())
 
   @@index([businessId, createdAt])
+  // תומך בשאילתת הצבירה החודשית: סכום costAgorot לעסק, לחודש, לספירות-תקרה בלבד.
+  @@index([businessId, countsToCap, createdAt])
   @@index([campaignId])
 }
 

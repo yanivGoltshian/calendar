@@ -1647,6 +1647,7 @@ const he = {
       messageStatuses: {
         SENT: 'נשלחה',
         FAILED: 'נכשלה',
+        BLOCKED: 'נחסמה',
       },
       channelsLabel: 'ערוצים',
       channels: {

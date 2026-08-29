@@ -177,7 +177,9 @@ export default async function AdminMarketingPage() {
                   className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     log.status === 'SENT'
                       ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
+                      : log.status === 'BLOCKED'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-red-100 text-red-700'
                   }`}
                 >
                   {m.messageStatuses[log.status]}
