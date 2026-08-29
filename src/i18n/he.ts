@@ -601,8 +601,12 @@ const he = {
       DECLINED: 'הלקוח הודיע שלא יגיע',
     },
     calendar: {
+      boardTitle: 'היומן שלי',
       dayView: 'תצוגת יום',
       weekView: 'תצוגת שבוע',
+      dayTab: 'יום',
+      weekTab: 'שבוע',
+      newAppt: 'תור חדש',
       prevWeek: 'שבוע קודם',
       nextWeek: 'שבוע הבא',
       allStaffHint: 'עמודה לכל איש צוות',

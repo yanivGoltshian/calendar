@@ -21,8 +21,6 @@ import type {
 const cal = t.admin.calendar;
 
 const PX_PER_MIN = 0.9;
-const AXIS_W = 56;
-const COL_W = 158;
 const MIN_BLOCK_H = 22;
 
 type Props = {
@@ -176,87 +174,91 @@ export default function CalendarBoard({
   const firstHour = Math.ceil(gridStartMinute / 60) * 60;
   for (let m = firstHour; m <= gridEndMinute; m += 60) hourLines.push(m);
 
-  const otherView: CalendarView = view === 'day' ? 'week' : 'day';
+  function openNew() {
+    if (!hasServices || columns.length === 0) return;
+    const col =
+      columns.find((c) => c.staffId === activeStaffId) ?? columns[0];
+    const staffName =
+      staff.find((s) => s.id === col.staffId)?.displayName ?? col.title;
+    setCreateCtx({
+      staffId: col.staffId,
+      staffName,
+      date: col.date,
+      time: formatMinutes(gridStartMinute),
+    });
+  }
 
   return (
-    <div dir="rtl">
-      {/* סרגל ניווט */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-lg border border-[#e7ddcd] bg-white p-0.5">
+    <section className="cal" dir="rtl">
+      <div className="cal-head">
+        <span className="ttl">{cal.boardTitle}</span>
+        <div className="seg2" role="tablist" aria-label={cal.dayView}>
           <button
             type="button"
+            role="tab"
+            aria-selected={view === 'day'}
+            className={view === 'day' ? 'on' : ''}
             onClick={() => go({ view: 'day' })}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-              view === 'day'
-                ? 'bg-brand-600 text-white'
-                : 'text-[#6e655f] hover:bg-[#f7f2ea]'
-            }`}
           >
-            {cal.dayView}
+            {cal.dayTab}
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={view === 'week'}
+            className={view === 'week' ? 'on' : ''}
             onClick={() => go({ view: 'week' })}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-              view === 'week'
-                ? 'bg-brand-600 text-white'
-                : 'text-[#6e655f] hover:bg-[#f7f2ea]'
-            }`}
           >
-            {cal.weekView}
+            {cal.weekTab}
           </button>
         </div>
+      </div>
 
-        <div className="inline-flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() =>
-              go({
-                date:
-                  view === 'day'
-                    ? addDaysToDateString(date, -1)
-                    : addDaysToDateString(weekStart, -7),
-              })
-            }
-            aria-label={view === 'day' ? t.admin.prevDay : cal.prevWeek}
-            className="rounded-lg border border-[#e7ddcd] bg-white px-2.5 py-1.5 text-[#6e655f] transition hover:bg-[#f7f2ea]"
-          >
-            ›
-          </button>
-          <button
-            type="button"
-            onClick={() => go({ date: today })}
-            className="rounded-lg border border-[#e7ddcd] bg-white px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
-          >
-            {t.admin.today}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              go({
-                date:
-                  view === 'day'
-                    ? addDaysToDateString(date, 1)
-                    : addDaysToDateString(weekStart, 7),
-              })
-            }
-            aria-label={view === 'day' ? t.admin.nextDay : cal.nextWeek}
-            className="rounded-lg border border-[#e7ddcd] bg-white px-2.5 py-1.5 text-[#6e655f] transition hover:bg-[#f7f2ea]"
-          >
-            ‹
-          </button>
-        </div>
-
-        <span className="text-base font-semibold text-[#1b1715]">
-          {headerLabel}
-        </span>
-
+      <div className="cal-nav">
+        <button
+          type="button"
+          className="nv"
+          aria-label={view === 'day' ? t.admin.prevDay : cal.prevWeek}
+          onClick={() =>
+            go({
+              date:
+                view === 'day'
+                  ? addDaysToDateString(date, -1)
+                  : addDaysToDateString(weekStart, -7),
+            })
+          }
+        >
+          ›
+        </button>
+        <button
+          type="button"
+          className="tdy"
+          onClick={() => go({ date: today })}
+        >
+          {t.admin.today}
+        </button>
+        <button
+          type="button"
+          className="nv"
+          aria-label={view === 'day' ? t.admin.nextDay : cal.nextWeek}
+          onClick={() =>
+            go({
+              date:
+                view === 'day'
+                  ? addDaysToDateString(date, 1)
+                  : addDaysToDateString(weekStart, 7),
+            })
+          }
+        >
+          ‹
+        </button>
+        <span className="lbl">{headerLabel}</span>
         {view === 'week' && staff.length > 0 ? (
           <select
+            className="pick"
             aria-label={cal.staffPickerLabel}
             value={activeStaffId}
             onChange={(e) => go({ staffId: e.target.value })}
-            className="ms-auto rounded-lg border border-[#d6c8b4] bg-white px-3 py-1.5 text-sm text-[#4a4038] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
           >
             {staff.map((s) => (
               <option key={s.id} value={s.id}>
@@ -267,116 +269,81 @@ export default function CalendarBoard({
         ) : null}
       </div>
 
-      {/* מקרא צבעים */}
       {hasServices ? (
-        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          <span className="text-xs font-medium text-[#b3a690]">
-            {cal.legendTitle}:
-          </span>
+        <div className="legend">
           {services.map((s) => {
             const color = serviceColor(s.colorIndex);
             return (
-              <span key={s.id} className="inline-flex items-center gap-1.5 text-xs text-[#6e655f]">
-                <span
-                  className="inline-block h-3 w-3 rounded-sm"
-                  style={{ backgroundColor: color.bg, border: `1px solid ${color.border}` }}
-                />
+              <span key={s.id} className="lg">
+                <i style={{ backgroundColor: color.border }} />
                 {s.name}
               </span>
             );
           })}
         </div>
       ) : (
-        <p className="mb-3 text-sm text-amber-700">
+        <p className="cal-notice">
           {cal.noServices}{' '}
-          <Link
-            href="/admin/services"
-            className="font-semibold text-amber-900 underline underline-offset-2 transition hover:text-amber-950"
-          >
-            {cal.noServicesCta}
-          </Link>
+          <Link href="/admin/services">{cal.noServicesCta}</Link>
         </p>
       )}
 
       {staff.length === 0 ? (
-        <div className="rounded-xl border border-[#e7ddcd] bg-white p-8 text-center text-[#8f8478]">
+        <div className="cal-blank">
           <p>{cal.noStaff}</p>
-          <Link
-            href="/admin/team"
-            className="mt-4 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
-          >
+          <Link href="/admin/team" className="newbtn">
             {cal.noStaffCta}
           </Link>
         </div>
       ) : (
         <>
           {appts.length === 0 ? (
-            <p className="mb-2 text-sm text-[#b3a690]">{cal.empty}</p>
-          ) : hasServices ? (
-            <p className="mb-2 text-xs text-[#b3a690]">{cal.dragHint}</p>
+            <p className="cal-empty">{cal.empty}</p>
           ) : null}
 
-          <div className="overflow-x-auto rounded-xl border border-[#e7ddcd] bg-white">
-            <div className="min-w-max">
-              {/* כותרות עמודות */}
-              <div className="flex border-b border-[#e7ddcd]">
-                <div style={{ width: AXIS_W }} className="shrink-0" />
-                {columns.map((col) => (
+          <div className="grid">
+            <div className="axis">
+              <div className="chd axhead" aria-hidden="true" />
+              <div className="axbody" style={{ height: bodyHeight }}>
+                {hourLines.map((m) => (
                   <div
-                    key={col.key}
-                    style={{ width: COL_W }}
-                    className="shrink-0 border-s border-[#efe6d8] px-2 py-2 text-center"
+                    key={m}
+                    className="hr"
+                    style={{ top: (m - gridStartMinute) * PX_PER_MIN }}
                   >
-                    <div
-                      className={`text-sm font-semibold ${
-                        col.isToday ? 'text-brand-600' : 'text-[#2a2320]'
-                      }`}
-                    >
-                      {col.title}
-                    </div>
-                    {col.subtitle ? (
-                      <div className="text-xs text-[#b3a690]">{col.subtitle}</div>
-                    ) : null}
+                    <span dir="ltr">{formatMinutes(m)}</span>
                   </div>
                 ))}
               </div>
+            </div>
 
-              {/* גוף היומן */}
-              <div className="flex">
-                {/* ציר שעות */}
-                <div style={{ width: AXIS_W, height: bodyHeight }} className="relative shrink-0">
-                  {hourLines.map((m) => (
-                    <div
-                      key={m}
-                      className="absolute inset-x-0 -translate-y-1/2 pe-1 text-left text-[11px] text-[#b3a690]"
-                      style={{ top: (m - gridStartMinute) * PX_PER_MIN }}
-                    >
-                      <span dir="ltr">{formatMinutes(m)}</span>
+            <div className="cols">
+              {columns.map((col) => {
+                const placed = packColumn(
+                  appts.filter((a) => a.columnKey === col.key),
+                );
+                const showDrag = drag && drag.colKey === col.key;
+                const dragTop =
+                  (Math.min(drag?.startMin ?? 0, drag?.curMin ?? 0) -
+                    gridStartMinute) *
+                  PX_PER_MIN;
+                const dragH =
+                  Math.abs((drag?.curMin ?? 0) - (drag?.startMin ?? 0)) *
+                  PX_PER_MIN;
+
+                return (
+                  <div key={col.key} className="col">
+                    <div className={`chd${col.isToday ? ' tdy' : ''}`}>
+                      <span className="nm">{col.title}</span>
+                      {col.subtitle ? (
+                        <span className="sub">{col.subtitle}</span>
+                      ) : null}
                     </div>
-                  ))}
-                </div>
-
-                {/* עמודות */}
-                {columns.map((col) => {
-                  const placed = packColumn(
-                    appts.filter((a) => a.columnKey === col.key),
-                  );
-                  const showDrag = drag && drag.colKey === col.key;
-                  const dragTop =
-                    (Math.min(drag?.startMin ?? 0, drag?.curMin ?? 0) -
-                      gridStartMinute) *
-                    PX_PER_MIN;
-                  const dragH =
-                    Math.abs((drag?.curMin ?? 0) - (drag?.startMin ?? 0)) *
-                    PX_PER_MIN;
-
-                  return (
                     <div
-                      key={col.key}
-                      style={{ width: COL_W, height: bodyHeight }}
-                      className={`relative shrink-0 border-s border-[#efe6d8] ${
-                        col.isToday ? 'bg-brand-50/30' : ''
-                      } ${hasServices ? 'cursor-crosshair' : ''}`}
+                      className={`lane${col.isToday ? ' today' : ''}${
+                        hasServices ? ' live' : ''
+                      }`}
+                      style={{ height: bodyHeight }}
                       onPointerDown={(e) => onDown(e, col)}
                       onPointerMove={(e) => onMove(e, col)}
                       onPointerUp={(e) => onUp(e, col)}
@@ -384,14 +351,14 @@ export default function CalendarBoard({
                       {hourLines.map((m) => (
                         <div
                           key={m}
-                          className="pointer-events-none absolute inset-x-0 border-t border-[#efe6d8]"
+                          className="hrline"
                           style={{ top: (m - gridStartMinute) * PX_PER_MIN }}
                         />
                       ))}
 
                       {showDrag && dragH > 0 ? (
                         <div
-                          className="pointer-events-none absolute inset-x-1 rounded-md border-2 border-dashed border-brand-400 bg-brand-100/50"
+                          className="dragsel"
                           style={{ top: dragTop, height: Math.max(dragH, 4) }}
                         />
                       ) : null}
@@ -411,41 +378,51 @@ export default function CalendarBoard({
                           <button
                             key={block.id}
                             type="button"
+                            className={`appt${dim ? ' dim' : ''}`}
                             onPointerDown={(e) => e.stopPropagation()}
                             onClick={() => setDetail(block)}
-                            className={`absolute overflow-hidden rounded-md border px-1.5 py-1 text-right text-[11px] leading-tight shadow-sm transition hover:shadow ${
-                              dim ? 'opacity-60' : ''
-                            }`}
                             style={{
                               top,
                               height,
                               insetInlineStart: `${(block.lane / block.laneCount) * 100}%`,
-                              width: `calc(${100 / block.laneCount}% - 2px)`,
+                              width: `calc(${100 / block.laneCount}% - 3px)`,
                               backgroundColor: color.bg,
                               borderColor: color.border,
-                              borderInlineStartWidth: 3,
                               color: color.text,
                             }}
                           >
-                            <span dir="ltr" className="block font-semibold">
+                            <span className="tm" dir="ltr">
                               {block.startLabel}
                             </span>
-                            <span className="block truncate font-medium">
+                            <span className="nm">
                               {block.clientName || cal.untitledClient}
                             </span>
                             {height > 44 && block.serviceNames ? (
-                              <span className="block truncate opacity-80">
-                                {block.serviceNames}
-                              </span>
+                              <span className="sv">{block.serviceNames}</span>
                             ) : null}
                           </button>
                         );
                       })}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
+          </div>
+
+          <div className="cal-foot">
+            <span className="hintx">{cal.dragHint}</span>
+            <button
+              type="button"
+              className="newbtn"
+              onClick={openNew}
+              disabled={!hasServices}
+            >
+              <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 6v12M6 12h12" />
+              </svg>
+              {cal.newAppt}
+            </button>
           </div>
         </>
       )}
@@ -464,6 +441,6 @@ export default function CalendarBoard({
       {detail ? (
         <AppointmentDetailModal appt={detail} onClose={() => setDetail(null)} />
       ) : null}
-    </div>
+    </section>
   );
 }
