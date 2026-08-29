@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getBusinessesOwnedByEmail, getBusinessById } from '@/server/repos/business';
+import { getBusinessesOwnedByEmail, getBusinessById, getActiveBusiness } from '@/server/repos/business';
 import { countPendingAppointments, countRecentClientCancellations } from '@/server/repos/appointments';
 import { resolveOwnerDisplayName } from '@/server/repos/staff';
 import { getBusinessAccess } from '@/server/subscription';
@@ -18,19 +18,29 @@ import ImpersonationBanner from './ImpersonationBanner';
 export const dynamic = 'force-dynamic';
 
 /**
- * מטא-דאטה לאזור הניהול: דורס את המניפסט הגלובלי עבור /admin/* ומצביע
- * על מניפסט ה-PWA הייעודי, כך שסביבת הניהול ניתנת להתקנה כאפליקציה עצמאית
- * (שם, id ו-scope נפרדים). ייצוא סטטי מותר לצד רכיב layout אסינכרוני.
+ * מטא-דאטה לאזור הניהול (מותאם-הקשר): דורסת את המניפסט הגלובלי עבור /admin/*
+ * ומצביעה על מניפסט ה-PWA של הניהול. הדפדפן מושך את המניפסט ללא עוגיות ולכן
+ * אינו יכול לזהות את העסק מתוך ה-route עצמו; לפיכך מזהים כאן את העסק הפעיל
+ * (מודע-התחזות) דרך getActiveBusiness ומעבירים את ה-slug בתוך כתובת המניפסט,
+ * בדיוק כמו הקשר עמוד ההזמנות. כך ההתקנה מהאדמין ממותגת-עסק (שם העסק והלוגו
+ * שלו). ללא עסק/slug — נפילה חיננית למניפסט הפלטפורמה הגנרי ללא פרמטר.
  */
-export const metadata: Metadata = {
-  applicationName: 'תור צ׳יק · ניהול',
-  manifest: '/admin/manifest.webmanifest',
-  appleWebApp: {
-    capable: true,
-    title: 'תור צ׳יק ניהול',
-    statusBarStyle: 'default',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const business = await getActiveBusiness();
+  const slug = business?.slug;
+  const manifest = slug
+    ? `/admin/manifest.webmanifest?slug=${encodeURIComponent(slug)}`
+    : '/admin/manifest.webmanifest';
+  return {
+    applicationName: 'תור צ׳יק · ניהול',
+    manifest,
+    appleWebApp: {
+      capable: true,
+      title: business?.name ?? 'תור צ׳יק ניהול',
+      statusBarStyle: 'default',
+    },
+  };
+}
 
 /**
  * שלד אזור הניהול (RTL): סרגל צד בפלטת נייבי-זהב + אזור תוכן.
