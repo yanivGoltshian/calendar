@@ -5,7 +5,7 @@ import { t } from '@/i18n';
  * גישה למנוי — מחושבת על קריאה (ללא תלות ב-cron שמעדכן סטטוס).
  *
  * active = (חבילת בסיס בתקופת ניסיון ו-trialEndsAt בעתיד)
- *          או (חבילת פרימיום/אקסלוסיב ו-paidUntil בעתיד).
+ *          או (חבילת פרימיום/אקסקלוסיב ו-paidUntil בעתיד).
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -41,7 +41,7 @@ function daysUntil(target: Date | null, nowMs: number): number {
 
 /**
  * חבילות בתשלום (ללא ניסיון) — גישתן נגזרת מ-paidUntil, לא מ-trialEndsAt.
- * כרגע: פרימיום ואקסלוסיב. הבסיס לבדו הוא דרגת הניסיון.
+ * כרגע: פרימיום ואקסקלוסיב. הבסיס לבדו הוא דרגת הניסיון.
  */
 function isPaidPlan(plan: BusinessPlan): boolean {
   return plan === 'premium' || plan === 'exclusive';
@@ -117,7 +117,7 @@ export function describePlan(plan: BusinessPlan): string {
 
 /**
  * שער יכולת: האם מותר לעסק לשלוח מסרון בתשלום ללקוח קצה
- * (אישור, תזכורת, קמפיין, רשימת המתנה). דלוק רק בחבילת אקסלוסיב
+ * (אישור, תזכורת, קמפיין, רשימת המתנה). דלוק רק בחבילת אקסקלוסיב
  * עם מנוי פעיל בתשלום — לא בניסיון, ולא בפרימיום/בסיס (הם פונים במייל).
  */
 export function canSendPaidClientSms(business: BusinessAccessInput): boolean {
@@ -125,7 +125,7 @@ export function canSendPaidClientSms(business: BusinessAccessInput): boolean {
 }
 
 /**
- * שער יכולת: האם מותר לאמת טלפון של לקוח קצה במסרון. תכונת אקסלוסיב בלבד,
+ * שער יכולת: האם מותר לאמת טלפון של לקוח קצה במסרון. תכונת אקסקלוסיב בלבד,
  * בכפיפה לאותם תנאים כמו המסרון בתשלום ללקוח. בפרימיום/בסיס אין אימות טלפון ללקוח.
  */
 export function canVerifyClientPhone(business: BusinessAccessInput): boolean {

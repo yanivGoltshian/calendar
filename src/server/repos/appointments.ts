@@ -293,7 +293,7 @@ const REMINDABLE_STATUSES: AppointmentStatus[] = ['PENDING', 'CONFIRMED'];
 // ערוץ התזכורת של העסק (מתוך ה-relation settings, שהוא nullable), צוות ושירותים.
 // המייל וערוץ התזכורת דרושים לגזירת הערוץ בפועל בשכבת השליחה (resolveReminderChannel).
 // שדות החבילה (plan/subscriptionStatus/trialEndsAt/paidUntil) דרושים לחישוב
-// canSendPaidClientSms — האם מותר לשלוח מסרון בתשלום ללקוח (אקסלוסיב פעיל בלבד).
+// canSendPaidClientSms — האם מותר לשלוח מסרון בתשלום ללקוח (אקסקלוסיב פעיל בלבד).
 const reminderInclude = {
   business: {
     select: {

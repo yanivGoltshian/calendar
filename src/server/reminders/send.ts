@@ -13,7 +13,7 @@ import { DEFAULT_TZ, formatDateString, formatLongDate, formatTime } from '@/lib/
  * מייל, אחרת מסרון לפי הטלפון אם המסרון דלוק בחבילה; בעקיפה ידנית (EMAIL/SMS)
  * מכבדים את הבחירה כל עוד ליעד יש כתובת. לעולם לא שולחים ליעד ריק.
  *
- * ניתוב לפי חבילה: המסרון בתשלום ללקוח דלוק רק בחבילת אקסלוסיב. הדגל isExclusive
+ * ניתוב לפי חבילה: המסרון בתשלום ללקוח דלוק רק בחבילת אקסקלוסיב. הדגל isExclusive
  * מוזרם מהמטפל (canSendPaidClientSms) ומועבר כ-allowSms; בפרימיום/בסיס לעולם לא
  * נגזר מסרון — התזכורת נשלחת במייל, ואם אין מייל מדלגים.
  *
@@ -35,7 +35,7 @@ export type ReminderAppointment = {
     id: string;
     name: string;
     timezone: string | null;
-    // האם העסק רשאי לשלוח מסרון בתשלום ללקוח (אקסלוסיב פעיל). מחושב במטפל דרך
+    // האם העסק רשאי לשלוח מסרון בתשלום ללקוח (אקסקלוסיב פעיל). מחושב במטפל דרך
     // canSendPaidClientSms ומועבר כ-allowSms לגזירת הערוץ. בפרימיום/בסיס false.
     isExclusive: boolean;
     // ערוץ התזכורת מגיע מה-relation settings של העסק, שהוא nullable בסכימה. כאשר
@@ -192,7 +192,7 @@ export async function sendReminder(
   // ה-relation settings הוא nullable; כשאין רשומה מתייחסים לברירת המחדל AUTO (כמו
   // בסכימה), כך שהערוץ נגזר מזהות הלקוח ואף לקוח לא נשמט בגלל היעדר הגדרות.
   const channelPref = appt.business.settings?.reminderChannel ?? 'AUTO';
-  // המסרון בתשלום ללקוח דלוק רק בחבילת אקסלוסיב; בפרימיום/בסיס allowSms=false,
+  // המסרון בתשלום ללקוח דלוק רק בחבילת אקסקלוסיב; בפרימיום/בסיס allowSms=false,
   // ואז הערוץ נגזר למייל בלבד או מדלג — לעולם לא מגיע לערוץ בתשלום.
   const resolved = resolveReminderChannel(appt.client, channelPref, appt.business.isExclusive);
   if (resolved.kind === 'skip') {

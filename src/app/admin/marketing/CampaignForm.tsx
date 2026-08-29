@@ -13,7 +13,7 @@ import {
 type Props = {
   /** ספירת נמענים לכל פילוח — לתצוגה מקדימה. */
   counts: Record<CampaignSegment, number>;
-  /** האם העסק בדרגת אקסלוסיב — קובע אם ערוץ המסרון בתשלום מוצג בטופס. */
+  /** האם העסק בדרגת אקסקלוסיב — קובע אם ערוץ המסרון בתשלום מוצג בטופס. */
   isExclusive: boolean;
 };
 
@@ -26,7 +26,7 @@ const SEGMENTS: CampaignSegment[] = ['all', 'active', 'with_appointments'];
 
 export default function CampaignForm({ counts, isExclusive }: Props) {
   const m = t.admin.marketingModule;
-  // הערוצים הניתנים לבחירה לפי הדרגה: וואטסאפ מוסתר תמיד, מסרון רק באקסלוסיב, מייל תמיד.
+  // הערוצים הניתנים לבחירה לפי הדרגה: וואטסאפ מוסתר תמיד, מסרון רק באקסקלוסיב, מייל תמיד.
   const visibleChannels = allowedCampaignChannels(ALL_CAMPAIGN_CHANNELS, { isExclusive });
   const [state, formAction, pending] = useActionState(createCampaignAction, initialState);
   const [segment, setSegment] = useState<CampaignSegment>('all');

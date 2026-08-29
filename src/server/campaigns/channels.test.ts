@@ -113,30 +113,30 @@ test('resolveCampaignRecipients — מתעלם מכתובות רווח-בלבד'
   assert.equal(recipientCount, 1);
 });
 
-test('allowedCampaignChannels — אקסלוסיב מקבל מייל ו-SMS, אך לעולם לא וואטסאפ', () => {
+test('allowedCampaignChannels — אקסקלוסיב מקבל מייל ו-SMS, אך לעולם לא וואטסאפ', () => {
   assert.deepEqual(
     allowedCampaignChannels(['email', 'sms', 'whatsapp'], { isExclusive: true }),
     ['email', 'sms'],
   );
 });
 
-test('allowedCampaignChannels — לא-אקסלוסיב מקבל מייל בלבד', () => {
+test('allowedCampaignChannels — לא-אקסקלוסיב מקבל מייל בלבד', () => {
   assert.deepEqual(
     allowedCampaignChannels(['email', 'sms', 'whatsapp'], { isExclusive: false }),
     ['email'],
   );
-  // קמפיין SMS-בלבד בלא-אקסלוסיב מתרוקן (אין ערוץ מותר).
+  // קמפיין SMS-בלבד בלא-אקסקלוסיב מתרוקן (אין ערוץ מותר).
   assert.deepEqual(allowedCampaignChannels(['sms'], { isExclusive: false }), []);
 });
 
 test('allowedCampaignChannels — נפילה לאחור של קמפיין ישן (ריק) תלוית דרגה', () => {
-  // רשימה ריקה => sms היסטורי; מותר רק באקסלוסיב.
+  // רשימה ריקה => sms היסטורי; מותר רק באקסקלוסיב.
   assert.deepEqual(allowedCampaignChannels([], { isExclusive: true }), ['sms']);
   assert.deepEqual(allowedCampaignChannels([], { isExclusive: false }), []);
   assert.deepEqual(allowedCampaignChannels(null, { isExclusive: false }), []);
 });
 
-test('allowedCampaignChannels — וואטסאפ מסונן גם באקסלוסיב וגם בלעדיו', () => {
+test('allowedCampaignChannels — וואטסאפ מסונן גם באקסקלוסיב וגם בלעדיו', () => {
   assert.deepEqual(allowedCampaignChannels(['whatsapp'], { isExclusive: true }), []);
   assert.deepEqual(allowedCampaignChannels(['whatsapp'], { isExclusive: false }), []);
 });

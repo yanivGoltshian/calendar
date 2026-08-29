@@ -169,7 +169,7 @@ export async function handleReminderCron(
 
     for (const appt of due) {
       // הערוץ והיעד נגזרים בשכבת השליחה (resolveReminderChannel) לפי העדפת העסק,
-      // זהות הלקוח, והרשאת המסרון לפי החבילה. המסרון בתשלום ללקוח דלוק רק באקסלוסיב
+      // זהות הלקוח, והרשאת המסרון לפי החבילה. המסרון בתשלום ללקוח דלוק רק באקסקלוסיב
       // פעיל — canSendPaidClientSms מחשב זאת, וזורם כ-isExclusive לשכבת השליחה.
       const isExclusive = canSendPaidClientSms(appt.business);
       const result = await deps.sendReminder({

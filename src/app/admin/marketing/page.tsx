@@ -38,7 +38,7 @@ export default async function AdminMarketingPage() {
 
   const m = t.admin.marketingModule;
   const delivery = getCampaignDeliveryStatus();
-  // ערוץ המסרון בתשלום בקמפיינים שמור לאקסלוסיב; בפרימיום ובבסיס הטופס מציג מייל בלבד.
+  // ערוץ המסרון בתשלום בקמפיינים שמור לאקסקלוסיב; בפרימיום ובבסיס הטופס מציג מייל בלבד.
   const isExclusive = canSendPaidClientSms(business);
 
   const [campaigns, messageLog, allCount, activeCount, apptCount] = await Promise.all([

@@ -56,7 +56,7 @@ test('ערוץ מפורש מתוך settings מכובד: EMAIL ללקוח בלי 
   });
 });
 
-test('אקסלוסיב + AUTO + טלפון בלבד → מסרון דרך שער העלות, מוחזר sent', async () => {
+test('אקסקלוסיב + AUTO + טלפון בלבד → מסרון דרך שער העלות, מוחזר sent', async () => {
   const calls: Array<{ businessId: string; to: string; clientId?: string | null }> = [];
   const res = await sendReminder(
     makeAppt(null, { name: 'לקוח', phone: '+972500000000', email: null }, true),
@@ -76,7 +76,7 @@ test('אקסלוסיב + AUTO + טלפון בלבד → מסרון דרך שער
   });
 });
 
-test('אקסלוסיב + מסרון שנחסם בתקרה → skipped (לא כשל, לא ניסיון חוזר)', async () => {
+test('אקסקלוסיב + מסרון שנחסם בתקרה → skipped (לא כשל, לא ניסיון חוזר)', async () => {
   const res = await sendReminder(
     makeAppt({ reminderChannel: 'SMS' }, {
       name: 'לקוח',
@@ -90,7 +90,7 @@ test('אקסלוסיב + מסרון שנחסם בתקרה → skipped (לא כש
   assert.deepEqual(res, { status: 'skipped', reason: 'monthly SMS cost cap reached' });
 });
 
-test('לא-אקסלוסיב + AUTO + טלפון בלבד → מדולג, שער העלות לא נקרא', async () => {
+test('לא-אקסקלוסיב + AUTO + טלפון בלבד → מדולג, שער העלות לא נקרא', async () => {
   let called = false;
   const res = await sendReminder(
     makeAppt(null, { name: 'לקוח', phone: '+972500000000', email: null }, false),
