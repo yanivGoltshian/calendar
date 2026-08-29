@@ -4,10 +4,11 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getBusinessesOwnedByEmail, getBusinessById } from '@/server/repos/business';
 import { countPendingAppointments, countRecentClientCancellations } from '@/server/repos/appointments';
+import { resolveOwnerDisplayName } from '@/server/repos/staff';
 import { getBusinessAccess } from '@/server/subscription';
 import { isPlatformAdminEmail } from '@/server/platformAdmin';
 import { getImpersonatedBusinessId } from '@/server/impersonation';
-import AdminSidebar from './AdminSidebar';
+import AdminChrome from './home/AdminChrome';
 import { buildAdminNotifications } from './notifications';
 import Paywall from './Paywall';
 import DeletionPending from './DeletionPending';
@@ -130,25 +131,32 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     access,
   });
 
+  // ── כותרת משותפת: לוגו, שם העסק וברכה אישית (שם הבעלים + תאריך עברי) ──────────
+  // נגזרות פעם אחת ב-layout כדי שהסרגל העליון יהיה זהה בין הבית לעמודים הפנימיים.
+  const ownerDisplayName = resolveOwnerDisplayName({
+    ownerName: session?.user?.name ?? null,
+    businessName: business.name,
+    ownerEmail: business.ownerEmail,
+  });
+  const greetingDate = new Intl.DateTimeFormat('he-IL', {
+    timeZone: business.timezone,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date());
+  const greeting = `שלום ${ownerDisplayName} · ${greetingDate}`;
+  const logoLetter = business.name.trim().charAt(0) || 'ת';
+
   return (
-    <div
-      dir="rtl"
-      className="flex min-h-screen flex-col md:flex-row"
-      style={{ background: 'linear-gradient(180deg, #faf6ef 0%, #f5efe4 100%)' }}
+    <AdminChrome
+      logoLetter={logoLetter}
+      bizName={business.name}
+      greeting={greeting}
+      notifications={notifications}
     >
-      <AdminSidebar pendingCount={pendingCount} notifications={notifications} />
-      <div
-        className="min-w-0 flex-1"
-        style={{
-          paddingLeft: 'env(safe-area-inset-left)',
-          paddingRight: 'env(safe-area-inset-right)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
-      >
-        {impersonating && <ImpersonationBanner businessName={business.name} />}
-        {access.state === 'trialing' && <TrialBanner daysLeft={access.daysLeft} />}
-        {children}
-      </div>
-    </div>
+      {impersonating && <ImpersonationBanner businessName={business.name} />}
+      {access.state === 'trialing' && <TrialBanner daysLeft={access.daysLeft} />}
+      {children}
+    </AdminChrome>
   );
 }

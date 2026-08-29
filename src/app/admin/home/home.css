@@ -41,19 +41,37 @@
   letter-spacing: -0.01em;
 }
 
+/* מעטפת אזור הניהול המשותפת (סרגל עליון + תוכן + ניווט תחתון) */
+.tcah.admin-shell {
+  background: var(--sand);
+  min-height: 100vh;
+}
+
 /* מעטפת העמוד */
 .tcah .app-wrap {
   display: flex;
   justify-content: center;
-  padding: 0 12px 90px;
+  padding: 0 12px;
 }
 .tcah .app {
   width: 100%;
   max-width: 420px;
 }
 
-/* ── סרגל עליון של האפליקציה ── */
+/* אזור התוכן בין הסרגל העליון לניווט התחתון (ריווח לפינוי הניווט הצף) */
+.tcah .admin-main {
+  padding-bottom: 90px;
+}
+
+/* ── סרגל עליון של האפליקציה (ממורכז לרוחב העמוד) ── */
+.tcah .topwrap {
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+}
 .tcah .topbar {
+  width: 100%;
+  max-width: 420px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -806,14 +824,4 @@
 .tcah .sheet .x svg.ic {
   width: 15px;
   height: 15px;
-}
-
-/* בדסקטופ הניווט מגיע מה-AdminSidebar; מסתירים את הניווט התחתון ומוסיפים ריווח. */
-@media (min-width: 768px) {
-  .tcah .botnav {
-    display: none;
-  }
-  .tcah .app-wrap {
-    padding-bottom: 24px;
-  }
 }

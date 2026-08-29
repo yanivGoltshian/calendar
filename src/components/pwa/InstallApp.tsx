@@ -44,6 +44,12 @@ type Props = {
   triggerClassName?: string;
   /** תוכן חלופי לכפתור ההפעלה במצב קומפקטי. גובר על העיצוב הכהה המובנה. */
   triggerChildren?: ReactNode;
+  /**
+   * כשמופעל, כפתור ההפעלה נשאר גלוי גם כשהאפליקציה כבר מותקנת (למשל שורת
+   * "התקנת האפליקציה" הקבועה בגיליון "עוד"). לחיצה תמיד פותחת את חלון ההנחיה
+   * הידנית כשאין אירוע התקנה זמין, במקום להיעלם.
+   */
+  persistTrigger?: boolean;
 };
 
 type GlyphName = 'share' | 'menu' | 'desktop' | 'browser';
@@ -344,6 +350,7 @@ export default function InstallApp({
   label,
   triggerClassName,
   triggerChildren,
+  persistTrigger = false,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [installed, setInstalled] = useState(false);
@@ -386,7 +393,8 @@ export default function InstallApp({
 
   const closeSheet = useCallback(() => setSheetOpen(false), []);
 
-  if (!mounted || installed) return null;
+  if (!mounted) return null;
+  if (installed && !persistTrigger) return null;
 
   const name = variant === 'business' ? appName ?? '' : BRAND.name;
   const accent = variant === 'business' ? resolveBrandColor(brandColor) : BRAND.themeColor;

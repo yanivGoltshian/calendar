@@ -1,23 +1,19 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { t } from '@/i18n';
-import { auth } from '@/auth';
 import { getActiveBusiness } from '@/server/repos/business';
 import {
   listStaff,
   ensureOwnerStaffMember,
-  resolveOwnerDisplayName,
 } from '@/server/repos/staff';
 import { listServices } from '@/server/repos/services';
 import { getBusinessHours } from '@/server/repos/workingHours';
 import {
   getAppointmentsForBusinessRange,
   countPendingAppointments,
-  countRecentClientCancellations,
   countAppointmentsInRange,
   sumRevenueAgorotInRange,
 } from '@/server/repos/appointments';
-import { getBusinessAccess } from '@/server/subscription';
 import {
   todayDateString,
   addDaysToDateString,
@@ -31,11 +27,9 @@ import {
 import { displayPhone } from '@/lib/crypto';
 import { hashToIndex } from './serviceColors';
 import CalendarBoard from './CalendarBoard';
-import { buildAdminNotifications } from './notifications';
 import HomeShell, { type ToolStep } from './home/HomeShell';
 import { bookingUrl, bookingPath, isBusinessLive } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
-import { LEGAL_COMPANY } from '@/content/legal/meta';
 import './home/home.css';
 import type {
   ApptBlock,
@@ -291,19 +285,6 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
       ? `השלימו ${continueLabel} והעמוד יהיה מושלם`
       : `נותרו ${remaining} צעדים קטנים והעמוד שלכם מושלם`;
 
-  // ── מרכז ההתראות בפעמון — משוחזר כמו ב-layout (אישורים, ביטולים, חידוש מנוי) ──
-  const access = getBusinessAccess(business);
-  const cancellationSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const recentCancellations = await countRecentClientCancellations(
-    business.id,
-    cancellationSince,
-  );
-  const notifications = buildAdminNotifications({
-    pendingCount,
-    recentCancellations,
-    access,
-  });
-
   // ── קישור השיתוף וקוד ה-QR (נבנים בשרת כדי לא לטעון ספריית QR בדפדפן) ─────────
   const isLive = isBusinessLive({
     serviceCount: serviceRows.length,
@@ -341,75 +322,51 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   );
   const revenueDisplay = `₪${Math.round(revenueAgorot / 100).toLocaleString('he-IL')}`;
 
-  // ── ברכה אישית: שם הבעלים (עם נפילה־לאחור) + תאריך עברי מלא ───────────────────
-  const session = await auth();
-  const ownerDisplayName = resolveOwnerDisplayName({
-    ownerName: session?.user?.name ?? null,
-    businessName: business.name,
-    ownerEmail: business.ownerEmail,
-  });
-  const greetingDate = new Intl.DateTimeFormat('he-IL', {
-    timeZone: tz,
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(new Date());
-  const greeting = `שלום ${ownerDisplayName} · ${greetingDate}`;
-  const logoLetter = business.name.trim().charAt(0) || 'ת';
-  const helpHref = `mailto:${LEGAL_COMPANY.contactEmail}`;
-
   return (
-    <div className="tcah">
-      <HomeShell
-        logoLetter={logoLetter}
-        bizName={business.name}
-        greeting={greeting}
-        notifications={notifications}
-        isLive={isLive}
-        share={{
-          urlDisplay,
-          bookingLink,
-          bookingPagePath,
-          qrSvg: bookingQr,
-          shareText: t.admin.onboarding.goLive.share.shareText.replace(
-            '{name}',
-            business.name,
-          ),
-          copiedLabel: t.admin.onboarding.goLive.share.copied,
-          copyFailedLabel: t.admin.onboarding.goLive.share.copyFailed,
-        }}
-        todayCount={todayCount}
-        pendingCount={pendingCount}
-        revenueDisplay={revenueDisplay}
-        pendingHref="/admin/appointments?tab=pending"
-        revenueHref="/admin/stats"
-        allComplete={allComplete}
-        percent={percent}
-        setupTitle={setupTitle}
-        setupSubtitle={setupSubtitle}
-        premiumHref="/admin/onboarding?edit=premium"
-        steps={steps}
-        helpHref={helpHref}
-        calendar={
-          <CalendarBoard
-            view={view}
-            date={date}
-            weekStart={weekStart}
-            today={today}
-            headerLabel={headerLabel}
-            columns={columns}
-            appts={appts}
-            services={services}
-            staff={staff}
-            activeStaffId={activeStaffId}
-            gridStartMinute={gridStartMinute}
-            gridEndMinute={gridEndMinute}
-            granularity={granularity}
-            defaultDurationMin={defaultDurationMin}
-          />
-        }
-      />
-    </div>
+    <HomeShell
+      isLive={isLive}
+      share={{
+        urlDisplay,
+        bookingLink,
+        bookingPagePath,
+        qrSvg: bookingQr,
+        shareText: t.admin.onboarding.goLive.share.shareText.replace(
+          '{name}',
+          business.name,
+        ),
+        copiedLabel: t.admin.onboarding.goLive.share.copied,
+        copyFailedLabel: t.admin.onboarding.goLive.share.copyFailed,
+      }}
+      todayCount={todayCount}
+      pendingCount={pendingCount}
+      revenueDisplay={revenueDisplay}
+      pendingHref="/admin/appointments?tab=pending"
+      revenueHref="/admin/stats"
+      allComplete={allComplete}
+      percent={percent}
+      setupTitle={setupTitle}
+      setupSubtitle={setupSubtitle}
+      premiumHref="/admin/onboarding?edit=premium"
+      steps={steps}
+      calendar={
+        <CalendarBoard
+          view={view}
+          date={date}
+          weekStart={weekStart}
+          today={today}
+          headerLabel={headerLabel}
+          columns={columns}
+          appts={appts}
+          services={services}
+          staff={staff}
+          activeStaffId={activeStaffId}
+          gridStartMinute={gridStartMinute}
+          gridEndMinute={gridEndMinute}
+          granularity={granularity}
+          defaultDurationMin={defaultDurationMin}
+        />
+      }
+    />
   );
 }
 
