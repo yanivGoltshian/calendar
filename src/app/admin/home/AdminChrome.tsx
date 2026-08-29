@@ -105,6 +105,14 @@ export default function AdminChrome({
   children,
 }: AdminChromeProps) {
   const pathname = usePathname() ?? '/admin';
+  // כותרת העמוד הפעיל לסרגל העליון בדסקטופ, נגזרת מקונפיגורציית הניווט לפי הנתיב.
+  const pageTitle =
+    [...ADMIN_BOTTOM_NAV, ...ADMIN_MORE_ROWS].find(
+      (it) =>
+        it.action === 'link' &&
+        typeof it.href === 'string' &&
+        isAdminNavActive(it.href, pathname),
+    )?.label ?? bizName;
   const [moreOpen, setMoreOpen] = useState(false);
   const [bellOpenSignal, setBellOpenSignal] = useState(0);
 
@@ -229,6 +237,7 @@ export default function AdminChrome({
                 <div className="r">{greeting}</div>
               </div>
             </div>
+            <div className="page-title">{pageTitle}</div>
             <div className="tools">
               <NotificationsBell
                 notifications={notifications}
