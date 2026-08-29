@@ -10,6 +10,7 @@ import {
   type CampaignSegment,
 } from '@/server/repos/marketing';
 import { parseCampaignChannels } from '@/server/campaigns/channels';
+import { canSendPaidClientSms } from '@/server/subscription';
 import { getCampaignDeliveryStatus } from '@/server/campaigns/delivery';
 import { displayPhone } from '@/lib/crypto';
 import { formatDateString, formatTime } from '@/lib/time';
@@ -37,6 +38,8 @@ export default async function AdminMarketingPage() {
 
   const m = t.admin.marketingModule;
   const delivery = getCampaignDeliveryStatus();
+  // ערוץ המסרון בתשלום בקמפיינים שמור לאקסלוסיב; בפרימיום ובבסיס הטופס מציג מייל בלבד.
+  const isExclusive = canSendPaidClientSms(business);
 
   const [campaigns, messageLog, allCount, activeCount, apptCount] = await Promise.all([
     listCampaigns(business.id),
@@ -149,7 +152,7 @@ export default async function AdminMarketingPage() {
         </ul>
       )}
 
-      <CampaignForm counts={counts} />
+      <CampaignForm counts={counts} isExclusive={isExclusive} />
 
       {/* יומן הודעות */}
       <section className="mt-8">
