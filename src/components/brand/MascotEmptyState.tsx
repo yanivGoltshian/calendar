@@ -16,8 +16,8 @@ type MascotEmptyStateProps = {
 export function MascotEmptyState({
   title,
   body,
-  pose = 'head',
-  size = 84,
+  pose = 'full',
+  size = 132,
   className,
 }: MascotEmptyStateProps) {
   return (
