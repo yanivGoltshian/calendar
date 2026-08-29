@@ -5,7 +5,10 @@ import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
+import { canSendPaidClientSms } from '@/server/subscription';
+import { getCostGuardStatus } from '@/server/billing/costGuard';
 import SettingsForm from './SettingsForm';
+import CostGuardPanel from './CostGuardPanel';
 import DeleteAccountSection from './DeleteAccountSection';
 import CalendarSyncSection from './CalendarSyncSection';
 
@@ -21,6 +24,9 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
   if (!business) notFound();
 
   const settings = await getOrCreateSettings(business.id);
+  const costGuardStatus = canSendPaidClientSms(business)
+    ? await getCostGuardStatus(business.id)
+    : null;
 
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6">
@@ -52,6 +58,8 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
         business={{ id: business.id, name: business.name, ownerEmail: business.ownerEmail }}
         resultCode={sp.calendar}
       />
+
+      {costGuardStatus ? <CostGuardPanel status={costGuardStatus} /> : null}
 
       <DeleteAccountSection />
     </main>
