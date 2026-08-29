@@ -68,3 +68,43 @@ test('ערך לא מוכר (למשל PUSH) מתנהג כמו אוטומטי — 
   const r = resolveReminderChannel({ email: 'p@q.com', phone: null }, 'PUSH');
   assert.deepEqual(r, { kind: 'send', channel: 'EMAIL', to: 'p@q.com' });
 });
+
+/**
+ * שער החבילה (allowSms=false) — פרימיום/בסיס אינם דלוקים למסרון בתשלום ללקוח.
+ * הבדיקות מוודאות שלעולם לא נגזר SMS: יש עדיפות למייל, ואם אין מייל מדלגים בבטחה
+ * ולא נופלים למסרון, בכל אחד ממצבי ההעדפה (AUTO ו-SMS מפורש).
+ */
+
+test('allowSms=false, AUTO: לקוח עם מייל וטלפון — נשלח במייל (לא במסרון)', () => {
+  const r = resolveReminderChannel(
+    { email: 'a@b.com', phone: '0501234567' },
+    'AUTO',
+    false,
+  );
+  assert.deepEqual(r, { kind: 'send', channel: 'EMAIL', to: 'a@b.com' });
+});
+
+test('allowSms=false, AUTO: לקוח עם טלפון בלבד — דילוג (לא נופל למסרון)', () => {
+  const r = resolveReminderChannel({ email: null, phone: '0501234567' }, 'AUTO', false);
+  assert.deepEqual(r, {
+    kind: 'skip',
+    reason: 'client has no email and paid SMS is not enabled on this plan',
+  });
+});
+
+test('allowSms=false, SMS מפורש: יש מייל — נפילה למייל', () => {
+  const r = resolveReminderChannel(
+    { email: 'x@y.com', phone: '0501234567' },
+    'SMS',
+    false,
+  );
+  assert.deepEqual(r, { kind: 'send', channel: 'EMAIL', to: 'x@y.com' });
+});
+
+test('allowSms=false, SMS מפורש: אין מייל אך יש טלפון — דילוג (לא נשלח מסרון)', () => {
+  const r = resolveReminderChannel({ email: null, phone: '0501234567' }, 'SMS', false);
+  assert.deepEqual(r, {
+    kind: 'skip',
+    reason: 'channel SMS requested but paid SMS is not enabled on this plan',
+  });
+});

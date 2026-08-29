@@ -292,6 +292,8 @@ const REMINDABLE_STATUSES: AppointmentStatus[] = ['PENDING', 'CONFIRMED'];
 // בחירת שדות אחידה לתצוגת קישור האישור וההודעה — שם עסק, זהות לקוח (טלפון ומייל),
 // ערוץ התזכורת של העסק (מתוך ה-relation settings, שהוא nullable), צוות ושירותים.
 // המייל וערוץ התזכורת דרושים לגזירת הערוץ בפועל בשכבת השליחה (resolveReminderChannel).
+// שדות החבילה (plan/subscriptionStatus/trialEndsAt/paidUntil) דרושים לחישוב
+// canSendPaidClientSms — האם מותר לשלוח מסרון בתשלום ללקוח (אקסלוסיב פעיל בלבד).
 const reminderInclude = {
   business: {
     select: {
@@ -300,6 +302,10 @@ const reminderInclude = {
       slug: true,
       phone: true,
       timezone: true,
+      plan: true,
+      subscriptionStatus: true,
+      trialEndsAt: true,
+      paidUntil: true,
       settings: { select: { reminderChannel: true } },
     },
   },

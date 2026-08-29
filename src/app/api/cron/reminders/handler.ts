@@ -5,6 +5,7 @@ import {
   markReminderSent,
 } from '@/server/repos/appointments';
 import { sendReminder } from '@/server/reminders/send';
+import { canSendPaidClientSms } from '@/server/subscription';
 
 /**
  * הלוגיקה של נקודת הקצה המתוזמנת לשליחת תזכורות 24 שעות, מופרדת מ-route.ts
@@ -167,18 +168,23 @@ export async function handleReminderCron(
     found = due.length;
 
     for (const appt of due) {
-      // הערוץ והיעד נגזרים בשכבת השליחה (resolveReminderChannel) לפי העדפת העסק
-      // וזהות הלקוח; אין עוד שער טלפון מקדים כאן, כדי שגם לקוח עם מייל בלבד יטופל.
+      // הערוץ והיעד נגזרים בשכבת השליחה (resolveReminderChannel) לפי העדפת העסק,
+      // זהות הלקוח, והרשאת המסרון לפי החבילה. המסרון בתשלום ללקוח דלוק רק באקסלוסיב
+      // פעיל — canSendPaidClientSms מחשב זאת, וזורם כ-isExclusive לשכבת השליחה.
+      const isExclusive = canSendPaidClientSms(appt.business);
       const result = await deps.sendReminder({
         id: appt.id,
         startAt: appt.startAt,
         confirmToken: appt.confirmToken,
         business: {
+          id: appt.business.id,
           name: appt.business.name,
           timezone: appt.business.timezone,
+          isExclusive,
           settings: appt.business.settings,
         },
         client: {
+          id: appt.client.id,
           name: appt.client.name,
           phone: appt.client.phone,
           email: appt.client.email,
