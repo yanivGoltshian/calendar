@@ -7,11 +7,13 @@ import {
   updateBusinessProfile,
   updateBookingPolicy,
   updateReminders,
+  updateOwnerNotifications,
 } from '@/server/repos/settings';
 import {
   parseProfile,
   parsePolicy,
   parseReminders,
+  parseOwnerNotifications,
   type SaveState,
 } from './parse';
 
@@ -47,9 +49,13 @@ export async function saveAllSettingsAction(
   const reminders = parseReminders(fd, canSendPaidClientSms(business));
   if (!reminders.ok) return { ok: false, error: reminders.error };
 
+  const ownerNotifications = parseOwnerNotifications(fd);
+  if (!ownerNotifications.ok) return { ok: false, error: ownerNotifications.error };
+
   await updateBusinessProfile(business.id, profile.data);
   await updateBookingPolicy(business.id, policy.data);
   await updateReminders(business.id, reminders.data);
+  await updateOwnerNotifications(business.id, ownerNotifications.data);
 
   revalidateAll(business.slug);
   return { ok: true };

@@ -45,6 +45,28 @@ test('buildBookingEmail בונה מייל עברית RTL עם כל פרטי הה
   assert.ok(html.includes('/admin/appointments'));
 });
 
+test('buildBookingEmail — ברירת מחדל היא נוסח "ממתינה לאישור" (תאימות לאחור)', () => {
+  const { subject, text, html } = buildBookingEmail(basePayload);
+  assert.ok(subject.includes('ממתינה לאישור'));
+  assert.ok(text.includes('הממתינה לאישורך'));
+  assert.ok(html.includes('ממתינה לאישור'));
+});
+
+test('buildBookingEmail — תור מאושר אוטומטית (requiresApproval=false) מקבל נוסח "הזמנה חדשה"', () => {
+  const { subject, text, html } = buildBookingEmail({
+    ...basePayload,
+    requiresApproval: false,
+  });
+  // הנוסח אינו כולל "ממתינה לאישור".
+  assert.ok(!subject.includes('ממתינה לאישור'));
+  assert.ok(subject.includes('הזמנה חדשה'));
+  assert.ok(text.includes('התקבלה הזמנה חדשה בעסק שלך'));
+  assert.ok(html.includes('הזמנה חדשה התקבלה'));
+  // עדיין RTL ועדיין עם קישור לניהול התורים.
+  assert.ok(html.includes('dir="rtl"'));
+  assert.ok(text.includes('/admin/appointments'));
+});
+
 test('resolveOwnerBookingTarget מעדיף את מייל העסק ולעולם לא את מייל הפלטפורמה', () => {
   // מייל העסק גובר על מייל המשתמש הבעלים.
   assert.equal(

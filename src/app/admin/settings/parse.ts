@@ -4,6 +4,7 @@ import type {
   BusinessProfileInput,
   BookingPolicyInput,
   RemindersInput,
+  OwnerNotificationsInput,
 } from '@/server/repos/settings';
 
 /**
@@ -125,6 +126,22 @@ export function parseReminders(
       reminderChannel: channel,
       reminderLeadHours: leadParsed.data,
       confirmationRequired: checkbox(fd, 'confirmationRequired'),
+    },
+  };
+}
+
+/**
+ * ניתוח מתגי התראות בעל העסק (הזמנה/ביטול/פוש). כל שדה הוא תיבת סימון; ברירות
+ * המחדל בסכימה (הזמנה/ביטול דלוקים, פוש כבוי) חלות רק ביצירת שורה חדשה, ולכן
+ * המנתח מחזיר את הערך המפורש של הטופס בכל שמירה.
+ */
+export function parseOwnerNotifications(fd: FormData): ParseResult<OwnerNotificationsInput> {
+  return {
+    ok: true,
+    data: {
+      notifyOnBooking: checkbox(fd, 'notifyOnBooking'),
+      notifyOnCancellation: checkbox(fd, 'notifyOnCancellation'),
+      pushEnabled: checkbox(fd, 'pushEnabled'),
     },
   };
 }

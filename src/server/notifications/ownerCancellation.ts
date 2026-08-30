@@ -42,6 +42,10 @@ export type OwnerCancellationPayload = {
   timezone: string;
   /** קישור מוחלט ליומן הניהול (נבנה אצל הקורא). */
   manageUrl: string;
+  /** מזהה העסק — נדרש לשליחת Web Push למנויי הדפדפן של בעל העסק (אופציונלי). */
+  businessId?: string;
+  /** האם ערוץ ה-Web Push דלוק בהגדרות העסק (ברירת מחדל false — כבוי). */
+  pushEnabled?: boolean;
 };
 
 export type NotifyOwnerCancellationResult = {
@@ -145,13 +149,19 @@ export async function notifyOwnerOfCancellation(
     }
   }
 
-  // ── ערוץ 2: קידום Web Push עתידי (מיטבי, stub כרגע) ───────────────────────
+  // ── ערוץ 2: Web Push לבעל העסק (מיטבי, לעולם לא חוסם) ────────────────────
+  // כשיש businessId והמתג pushEnabled אינו כבוי במפורש — שולחים למנויי הדפדפן של
+  // העסק דרך sendToBusiness (VAPID אמיתי, מתדרדר בחן). קוראים ותיקים ללא businessId
+  // שומרים על ההתנהגות הקודמת (sendPush stub) לתאימות לאחור.
+  const pushTitle = `${BRAND.name} · תור בוטל`;
+  const pushBody = `${payload.clientName} ביטל/ה תור בעסק ${payload.businessName}.`;
   try {
-    await getPushProvider().sendPush(
-      target ?? payload.businessName,
-      `${BRAND.name} · תור בוטל`,
-      `${payload.clientName} ביטל/ה תור בעסק ${payload.businessName}.`,
-    );
+    const push = getPushProvider();
+    if (payload.businessId && payload.pushEnabled !== false) {
+      await push.sendToBusiness(payload.businessId, pushTitle, pushBody, payload.manageUrl);
+    } else {
+      await push.sendPush(target ?? payload.businessName, pushTitle, pushBody);
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     errors.push(`push: ${msg}`);

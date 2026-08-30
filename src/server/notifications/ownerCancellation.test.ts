@@ -86,3 +86,15 @@ test('notifyOwnerOfCancellation אינו זורק גם ללא טלפון ולל�
     assert.equal(typeof result.emailed, 'boolean');
   });
 });
+
+test('notifyOwnerOfCancellation עם businessId ופוש דלוק מתדרדר בחן ללא מפתחות VAPID', async () => {
+  await assert.doesNotReject(async () => {
+    const result = await notifyOwnerOfCancellation({
+      ...basePayload,
+      businessId: 'biz-1',
+      pushEnabled: true,
+    });
+    // ערוץ הפוש מיטבי: גם בלי מפתחות VAPID לא נזרקת שגיאה ולא נרשמת שגיאת push.
+    assert.deepEqual(result.errors, []);
+  });
+});

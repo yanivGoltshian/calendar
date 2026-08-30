@@ -9,6 +9,7 @@ import {
   ProfileFields,
   PolicyFields,
   RemindersFields,
+  OwnerNotificationsFields,
 } from './fields';
 import { saveAllSettingsAction, type SaveState } from './actions';
 
@@ -24,11 +25,13 @@ export default function SettingsForm({
   settings,
   onboardingCompleted,
   isExclusive,
+  vapidPublicKey,
 }: {
   business: Business;
   settings: BusinessSettings;
   onboardingCompleted: boolean;
   isExclusive: boolean;
+  vapidPublicKey: string | null;
 }) {
   const s = t.admin.settings;
   const [state, formAction, pending] = useActionState(
@@ -87,6 +90,13 @@ export default function SettingsForm({
 
         <SettingsSection title={s.reminders.title} description={s.reminders.description}>
           <RemindersFields s={settings} isExclusive={isExclusive} />
+        </SettingsSection>
+
+        <SettingsSection
+          title={s.ownerNotifications.title}
+          description={s.ownerNotifications.description}
+        >
+          <OwnerNotificationsFields s={settings} vapidPublicKey={vapidPublicKey} />
         </SettingsSection>
 
         {justSaved ? (

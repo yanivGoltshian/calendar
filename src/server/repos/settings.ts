@@ -91,6 +91,24 @@ export async function updateReminders(businessId: string, data: RemindersInput) 
   });
 }
 
+export type OwnerNotificationsInput = {
+  notifyOnBooking: boolean;
+  notifyOnCancellation: boolean;
+  pushEnabled: boolean;
+};
+
+/** עדכון מתגי התראות בעל העסק (הזמנה/ביטול/פוש) ב-BusinessSettings. */
+export async function updateOwnerNotifications(
+  businessId: string,
+  data: OwnerNotificationsInput,
+) {
+  return prisma.businessSettings.upsert({
+    where: { businessId },
+    update: data,
+    create: { businessId, ...data },
+  });
+}
+
 /** סימון השלמת ההקמה המודרכת (BusinessSettings). */
 export async function setOnboardingCompleted(businessId: string, completed: boolean) {
   return prisma.businessSettings.upsert({

@@ -206,6 +206,28 @@ export function countRecentClientCancellations(
   });
 }
 
+/**
+ * ספירת הזמנות מאושרות עדכניות לתורים עתידיים בעסק — להתראת הפעמון.
+ * חלון מתגלגל: תורים שסטטוסם CONFIRMED (כולל אישור אוטומטי), שנוצרו מאז הרגע
+ * `since`, ושמועדם עדיין עתידי. תורים הממתינים לאישור (PENDING) אינם נספרים כאן
+ * כי הם כבר מיוצגים בפריט "ממתינים לאישור", וכך נמנעת ספירה כפולה. מתאפס מעצמו
+ * כשהחלון עובר, בדיוק כמו countRecentClientCancellations.
+ */
+export function countRecentBookings(
+  businessId: string,
+  since: Date,
+  now: Date = new Date(),
+): Promise<number> {
+  return prisma.appointment.count({
+    where: {
+      businessId,
+      status: 'CONFIRMED',
+      createdAt: { gte: since },
+      startAt: { gt: now },
+    },
+  });
+}
+
 /** שליפת תור בודד עם כל הפרטים. */
 export function getAppointmentById(id: string) {
   return prisma.appointment.findUnique({
@@ -240,12 +262,19 @@ export function getAppointmentForOwner(id: string) {
       services: { select: { nameSnapshot: true } },
       business: {
         select: {
+          id: true,
           name: true,
           slug: true,
           timezone: true,
           ownerEmail: true,
           owner: { select: { email: true } },
-          settings: { select: { cancellationWindowHours: true } },
+          settings: {
+            select: {
+              cancellationWindowHours: true,
+              notifyOnCancellation: true,
+              pushEnabled: true,
+            },
+          },
         },
       },
     },
