@@ -271,68 +271,15 @@ export function PolicyFields({ s }: { s: PolicyValues }) {
   );
 }
 
-export type TransparencyValues = Pick<
-  BusinessSettings,
-  'showPricesPublic' | 'showDurationPublic' | 'showStaffPublic'
->;
-
-export function TransparencyFields({ s }: { s: TransparencyValues }) {
-  const c = t.admin.settings.transparency;
-  return (
-    <>
-      <div className="space-y-2 rounded-lg bg-[#f7f2ea] p-3">
-        <label className={checkRowClass}>
-          <input
-            type="checkbox"
-            name="showPricesPublic"
-            defaultChecked={s.showPricesPublic}
-            className={checkboxClass}
-          />
-          {c.showPricesLabel}
-        </label>
-        <label className={checkRowClass}>
-          <input
-            type="checkbox"
-            name="showDurationPublic"
-            defaultChecked={s.showDurationPublic}
-            className={checkboxClass}
-          />
-          {c.showDurationLabel}
-        </label>
-        <label className={checkRowClass}>
-          <input
-            type="checkbox"
-            name="showStaffPublic"
-            defaultChecked={s.showStaffPublic}
-            className={checkboxClass}
-          />
-          {c.showStaffLabel}
-        </label>
-      </div>
-      <p className={hintClass}>{c.hint}</p>
-    </>
-  );
-}
-
 export type RemindersValues = Pick<
   BusinessSettings,
-  'remindersEnabled' | 'reminderChannel' | 'reminderLeadHours' | 'confirmationRequired'
+  'reminderChannel' | 'reminderLeadHours'
 >;
 
 export function RemindersFields({ s }: { s: RemindersValues }) {
   const c = t.admin.settings.reminders;
   return (
     <>
-      <label className={checkRowClass}>
-        <input
-          type="checkbox"
-          name="remindersEnabled"
-          defaultChecked={s.remindersEnabled}
-          className={checkboxClass}
-        />
-        {c.enabledLabel}
-      </label>
-
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="flex-1">
           <label className={labelClass}>{c.channelLabel}</label>
@@ -367,19 +314,6 @@ export function RemindersFields({ s }: { s: RemindersValues }) {
           />
         </div>
       </div>
-
-      <label className={checkRowClass}>
-        <input
-          type="checkbox"
-          name="confirmationRequired"
-          defaultChecked={s.confirmationRequired}
-          className={checkboxClass}
-        />
-        <span>
-          {c.confirmationRequiredLabel}
-          <span className={hintClass + ' block'}>{c.confirmationRequiredHint}</span>
-        </span>
-      </label>
     </>
   );
 }

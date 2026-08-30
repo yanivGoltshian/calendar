@@ -3,7 +3,6 @@ import { BusinessType, ReminderChannel } from '@prisma/client';
 import type {
   BusinessProfileInput,
   BookingPolicyInput,
-  TransparencyInput,
   RemindersInput,
 } from '@/server/repos/settings';
 
@@ -96,15 +95,6 @@ export function parsePolicy(fd: FormData): ParseResult<BookingPolicyInput> {
   };
 }
 
-/** ניתוח מתגי השקיפות בעמוד הציבורי. תמיד תקין. */
-export function parseTransparency(fd: FormData): TransparencyInput {
-  return {
-    showPricesPublic: checkbox(fd, 'showPricesPublic'),
-    showDurationPublic: checkbox(fd, 'showDurationPublic'),
-    showStaffPublic: checkbox(fd, 'showStaffPublic'),
-  };
-}
-
 /** ניתוח תצורת התזכורות. שעות התראה לא חוקיות ⇐ שגיאה; ערוץ לא חוקי ⇐ AUTO. */
 export function parseReminders(fd: FormData): ParseResult<RemindersInput> {
   const leadParsed = z.coerce.number().int().min(0).safeParse(fd.get('reminderLeadHours'));
@@ -118,10 +108,8 @@ export function parseReminders(fd: FormData): ParseResult<RemindersInput> {
   return {
     ok: true,
     data: {
-      remindersEnabled: checkbox(fd, 'remindersEnabled'),
       reminderChannel: channel,
       reminderLeadHours: leadParsed.data,
-      confirmationRequired: checkbox(fd, 'confirmationRequired'),
     },
   };
 }

@@ -294,15 +294,8 @@ model BusinessSettings {
   // כמה שעות לפני התור לשלוח תזכורת
   reminderLeadHours       Int     @default(24)
 
-  // מתגי שקיפות בעמוד הציבורי (ברירת מחדל: הצג). נוספו במודול ההגדרות.
-  showPricesPublic   Boolean @default(true) // הצגת מחירים
-  showDurationPublic Boolean @default(true) // הצגת משך טיפול
-  showStaffPublic    Boolean @default(true) // הצגת נותני שירות
-
-  // תצורת תזכורות ואישורים. נוספו במודול ההגדרות.
-  remindersEnabled     Boolean         @default(true) // הפעלת תזכורות
-  reminderChannel      ReminderChannel @default(AUTO) // ערוץ שליחת התזכורת (ברירת מחדל: נגזר אוטומטית מאופן ההרשמה)
-  confirmationRequired Boolean         @default(false) // בקשת אישור הגעה מהלקוח
+  // תצורת תזכורת. נוסף במודול ההגדרות.
+  reminderChannel ReminderChannel @default(AUTO) // ערוץ שליחת התזכורת (ברירת מחדל: נגזר אוטומטית מאופן ההרשמה)
 
   // מצב אונבורדינג — האם ההקמה הראשונית הושלמה. נוסף במודול ההקמה.
   onboardingCompleted Boolean @default(false)
@@ -850,7 +843,7 @@ model MessageLog {
 
   // עלות ההודעה באגורות. הערכה קבועה להודעה (SMS_UNIT_COST_AGOROT) או עלות ספק,
   // ומשמשת בסיס לצבירת תקרת העלות החודשית לכל עסק.
-  costAgorot Int @default(0)
+  costAgorot  Int     @default(0)
   // האם ההודעה נספרת אל מול תקרת העלות החודשית של העסק. שליחת מסרון בתשלום ללקוח = true;
   // אימות טלפון של בעל העסק (חריג קבוע, מחוץ לתקרה) = false, ונצבר בדלי נפרד.
   countsToCap Boolean @default(true)

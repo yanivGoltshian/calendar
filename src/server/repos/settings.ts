@@ -75,26 +75,9 @@ export async function updateBookingPolicy(businessId: string, data: BookingPolic
   });
 }
 
-export type TransparencyInput = {
-  showPricesPublic: boolean;
-  showDurationPublic: boolean;
-  showStaffPublic: boolean;
-};
-
-/** עדכון מתגי השקיפות בעמוד הציבורי (BusinessSettings). */
-export async function updateTransparency(businessId: string, data: TransparencyInput) {
-  return prisma.businessSettings.upsert({
-    where: { businessId },
-    update: data,
-    create: { businessId, ...data },
-  });
-}
-
 export type RemindersInput = {
-  remindersEnabled: boolean;
   reminderChannel: ReminderChannel;
   reminderLeadHours: number;
-  confirmationRequired: boolean;
 };
 
 /** עדכון תצורת תזכורות ואישורים (BusinessSettings). */

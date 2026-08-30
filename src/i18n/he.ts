@@ -1152,24 +1152,13 @@ const he = {
         requiresApprovalHint: 'תורים יישארו ממתינים עד אישור ידני.',
         errorNumber: 'יש להזין ערכים מספריים חוקיים.',
       },
-      transparency: {
-        title: 'מתגי שקיפות',
-        description: 'מה יוצג ללקוחות בעמוד הציבורי.',
-        showPricesLabel: 'הצגת מחירים',
-        showDurationLabel: 'הצגת משך טיפול',
-        showStaffLabel: 'הצגת נותני שירות',
-        hint: 'כיבוי מתג מסתיר את המידע מהעמוד הציבורי.',
-      },
       reminders: {
         title: 'תזכורות ואישורים',
         description: 'שליחת תזכורת ובקשת אישור הגעה.',
-        enabledLabel: 'שליחת תזכורות ללקוחות',
         channelLabel: 'ערוץ שליחה',
         channelAutoHint:
           'במצב אוטומטי, אם הלקוח נרשם עם מייל התזכורת תישלח במייל, ואם נרשם עם טלפון היא תישלח במסרון.',
         leadHoursLabel: 'שליחה כמה שעות לפני התור',
-        confirmationRequiredLabel: 'בקשת אישור הגעה בתזכורת',
-        confirmationRequiredHint: 'הלקוח יתבקש לאשר הגעה דרך התזכורת.',
       },
       channels: {
         AUTO: 'אוטומטי (לפי אופן ההרשמה של הלקוח)',
