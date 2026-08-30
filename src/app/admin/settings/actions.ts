@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getActiveBusiness } from '@/server/repos/business';
 import { canSendPaidClientSms } from '@/server/subscription';
+import { normalizeLandingContent } from '@/lib/publicPageStyle';
 import {
   updateBusinessProfile,
   updateBookingPolicy,
@@ -14,6 +15,7 @@ import {
   parsePolicy,
   parseReminders,
   parseOwnerNotifications,
+  parseLandingHeroImages,
   type SaveState,
 } from './parse';
 
@@ -52,7 +54,20 @@ export async function saveAllSettingsAction(
   const ownerNotifications = parseOwnerNotifications(fd);
   if (!ownerNotifications.ok) return { ok: false, error: ownerNotifications.error };
 
-  await updateBusinessProfile(business.id, profile.data);
+  // באג 13: בעסק בסגנון עמוד נחיתה (LANDING), תמונות ההירו נערכות גם מההגדרות
+  // וגם מהאשף, ולכן ממזגים אותן ל-landingContent הקיים ולא דורסים שדות נחיתה
+  // אחרים (כותרות, גלריה, מבצעים וכו'). בעסק בסגנון עמוד הזמנה (BOOKING) לא
+  // נשלח landingContent כלל, כדי לשמר את התוכן הקיים כפי שהוא.
+  const profileData = { ...profile.data };
+  if (business.publicPageStyle === 'LANDING') {
+    const existing = normalizeLandingContent(business.landingContent) ?? {};
+    profileData.landingContent = normalizeLandingContent({
+      ...existing,
+      heroImages: parseLandingHeroImages(fd),
+    });
+  }
+
+  await updateBusinessProfile(business.id, profileData);
   await updateBookingPolicy(business.id, policy.data);
   await updateReminders(business.id, reminders.data);
   await updateOwnerNotifications(business.id, ownerNotifications.data);

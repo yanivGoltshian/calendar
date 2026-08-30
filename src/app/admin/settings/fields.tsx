@@ -3,6 +3,7 @@ import { BusinessType, ReminderChannel } from '@prisma/client';
 import Link from 'next/link';
 import { t } from '@/i18n';
 import { BRAND } from '@/config/brand';
+import { normalizeLandingContent, MAX_HERO_IMAGES } from '@/lib/publicPageStyle';
 import { inputClass } from './fieldStyles';
 import { BrandColorField } from './BrandColorField';
 import { TimezoneField } from './TimezoneField';
@@ -33,10 +34,31 @@ export type ProfileValues = Pick<
   | 'coverImageUrl'
   | 'brandColor'
   | 'timezone'
+  | 'publicPageStyle'
+  | 'landingContent'
 >;
 
 export function ProfileFields({ b }: { b: ProfileValues }) {
   const s = t.admin.settings.profile;
+  const isLanding = b.publicPageStyle === 'LANDING';
+  // באג 13: בסגנון עמוד נחיתה, מקור האמת לתמונות הרקע הוא landingContent.heroImages
+  // (אותו מקור שבאשף ההקמה ובעמוד הציבורי), ולכן חושפים כאן את אותן תמונות.
+  const heroImages = isLanding
+    ? normalizeLandingContent(b.landingContent)?.heroImages ?? []
+    : [];
+  const heroLabels = {
+    choose: s.image.choose,
+    change: s.image.change,
+    remove: s.image.remove,
+    cropTitle: s.image.cropTitle,
+    zoom: s.image.zoom,
+    adjust: s.image.adjust,
+    done: s.image.done,
+    cancel: s.image.cancel,
+    dragHint: s.image.heroDragHint,
+    empty: s.image.heroEmpty,
+    tooLarge: s.image.tooLarge,
+  };
   return (
     <>
       <div>
@@ -134,30 +156,56 @@ export function ProfileFields({ b }: { b: ProfileValues }) {
           <p className={hintClass}>{s.logoHint}</p>
         </div>
         <div className="flex-1">
-          <label className={labelClass}>{s.coverUrlLabel}</label>
-          <ImageUploadField
-            name="coverImageUrl"
-            defaultValue={b.coverImageUrl ?? ''}
-            targetAspect={16 / 9}
-            rounded={false}
-            maxWidth={1280}
-            maxHeight={720}
-            mime="image/jpeg"
-            labels={{
-              choose: s.image.choose,
-              change: s.image.change,
-              remove: s.image.remove,
-              cropTitle: s.image.cropTitle,
-              zoom: s.image.zoom,
-              adjust: s.image.adjust,
-              done: s.image.done,
-              cancel: s.image.cancel,
-              dragHint: s.image.coverDragHint,
-              empty: s.image.coverEmpty,
-              tooLarge: s.image.tooLarge,
-            }}
-          />
-          <p className={hintClass}>{s.coverHint}</p>
+          {isLanding ? (
+            <>
+              <label className={labelClass}>{s.heroImagesLabel}</label>
+              <div className="flex flex-col gap-3">
+                {Array.from({ length: MAX_HERO_IMAGES }).map((_, i) => (
+                  <ImageUploadField
+                    key={i}
+                    name={`heroImage${i}`}
+                    defaultValue={heroImages[i] ?? ''}
+                    targetAspect={16 / 9}
+                    rounded={false}
+                    maxWidth={1280}
+                    maxHeight={720}
+                    mime="image/jpeg"
+                    labels={heroLabels}
+                  />
+                ))}
+              </div>
+              <p className={hintClass}>{s.heroImagesHint}</p>
+              {/* שימור תמונת הנושא הישנה (STANDARD) בעסק נחיתה: לא נערכת אך לא נמחקת. */}
+              <input type="hidden" name="coverImageUrl" defaultValue={b.coverImageUrl ?? ''} />
+            </>
+          ) : (
+            <>
+              <label className={labelClass}>{s.coverUrlLabel}</label>
+              <ImageUploadField
+                name="coverImageUrl"
+                defaultValue={b.coverImageUrl ?? ''}
+                targetAspect={16 / 9}
+                rounded={false}
+                maxWidth={1280}
+                maxHeight={720}
+                mime="image/jpeg"
+                labels={{
+                  choose: s.image.choose,
+                  change: s.image.change,
+                  remove: s.image.remove,
+                  cropTitle: s.image.cropTitle,
+                  zoom: s.image.zoom,
+                  adjust: s.image.adjust,
+                  done: s.image.done,
+                  cancel: s.image.cancel,
+                  dragHint: s.image.coverDragHint,
+                  empty: s.image.coverEmpty,
+                  tooLarge: s.image.tooLarge,
+                }}
+              />
+              <p className={hintClass}>{s.coverHint}</p>
+            </>
+          )}
         </div>
       </div>
 

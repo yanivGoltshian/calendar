@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BusinessType, ReminderChannel } from '@prisma/client';
+import { MAX_HERO_IMAGES } from '@/lib/publicPageStyle';
 import type {
   BusinessProfileInput,
   BookingPolicyInput,
@@ -70,6 +71,21 @@ export function parseProfile(fd: FormData): ParseResult<BusinessProfileInput> {
   };
 }
 
+/**
+ * ניתוח תמונות ההירו של עמוד הנחיתה מתוך טופס ההגדרות (עד MAX_HERO_IMAGES).
+ * מקביל ל-setHeroImage באשף ההקמה: שדות בשם heroImage0..heroImageN, נחתכים
+ * לשתיים לכל היותר. מנתח טהור — המיזוג ל-landingContent הקיים נעשה בשכבת ה-Action
+ * (יש שם גישה ל-business), כדי לא לדרוס שדות נחיתה אחרים.
+ */
+export function parseLandingHeroImages(fd: FormData): string[] {
+  const images: string[] = [];
+  for (let i = 0; i < MAX_HERO_IMAGES; i++) {
+    const url = str(fd, `heroImage${i}`);
+    if (url) images.push(url);
+  }
+  return images;
+}
+
 export const policySchema = z.object({
   minLeadTimeMinutes: z.coerce.number().int().min(0),
   cancellationWindowHours: z.coerce.number().int().min(0),
@@ -132,7 +148,7 @@ export function parseReminders(
 
 /**
  * ניתוח מתגי התראות בעל העסק (הזמנה/ביטול/פוש). כל שדה הוא תיבת סימון; ברירות
- * המחדל בסכימה (הזמנה/ביטול דלוקים, פוש כבוי) חלות רק ביצירת שורה חדשה, ולכן
+ * המחדל בסכימה (הזמנה/ביטול/פוש דלוקים) חלות רק ביצירת שורה חדשה, ולכן
  * המנתח מחזיר את הערך המפורש של הטופס בכל שמירה.
  */
 export function parseOwnerNotifications(fd: FormData): ParseResult<OwnerNotificationsInput> {
