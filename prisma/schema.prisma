@@ -39,6 +39,7 @@ enum ReminderChannel {
   PUSH
   EMAIL
   AUTO // נגזר אוטומטית מאופן ההרשמה של הלקוח (מייל או טלפון)
+  BOTH // מייל ומסרון יחד (חבילת אקסקלוסיב בלבד; ההיפתרות וה-UI אוכפים לפי החבילה)
 }
 
 // סטטוס אישור ההגעה של הלקוח, כפי שנקבע דרך קישור התזכורת (/c/<token>).
@@ -308,7 +309,7 @@ model BusinessSettings {
   // תצורת תזכורות ואישורים. נוספו במודול ההגדרות.
   remindersEnabled     Boolean         @default(true) // הפעלת תזכורות
   reminderChannel      ReminderChannel @default(AUTO) // ערוץ שליחת התזכורת (ברירת מחדל: נגזר אוטומטית מאופן ההרשמה)
-  confirmationRequired Boolean         @default(false) // בקשת אישור הגעה מהלקוח
+  confirmationRequired Boolean         @default(true) // בקשת אישור הגעה מהלקוח (ברירת מחדל דלוקה; ניתן לכבות פר-עסק)
 
   // מצב אונבורדינג — האם ההקמה הראשונית הושלמה. נוסף במודול ההקמה.
   onboardingCompleted Boolean @default(false)

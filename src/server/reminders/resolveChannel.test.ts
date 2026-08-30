@@ -1,21 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { resolveReminderChannel } from './resolveChannel';
+import { resolveReminderChannel, resolveReminderTargets } from './resolveChannel';
 
 /**
- * בדיקות ל-resolveReminderChannel — גזירת ערוץ התזכורת ויעד השליחה מתוך זהות הלקוח
- * והעדפת העסק. בדיקות טהורות ללא DB (node:test + assert/strict), בסגנון שאר בדיקות
- * היחידה במאגר. מכסות: מצב אוטומטי (עדיפות למייל, נפילה לטלפון, דילוג ללא יעד),
- * עקיפות ידניות (EMAIL/SMS) כולל דילוג כשאין יעד תואם, ומחרוזות ריקות/רווחים.
+ * בדיקות ל-resolveReminderChannel ו-resolveReminderTargets — גזירת ערוצי התזכורת
+ * ויעדי השליחה מתוך זהות הלקוח והעדפת העסק. בדיקות טהורות ללא DB (node:test +
+ * assert/strict), בסגנון שאר בדיקות היחידה במאגר. מכסות: מצב אוטומטי תלוי-תוכנית
+ * (אקסקלוסיב מעדיף מסרון, שאר החבילות מייל), עקיפות ידניות (EMAIL/SMS/BOTH) כולל
+ * דילוג כשאין יעד תואם, שליחה כפולה ב-BOTH, ומחרוזות ריקות/רווחים.
  */
 
-test('AUTO: לקוח עם מייל וטלפון — נשלח במייל (עדיפות למייל)', () => {
+test('AUTO: עסק אקסקלוסיב עם מייל וטלפון — נשלח במסרון (ברירת מחדל אקסקלוסיב)', () => {
   const r = resolveReminderChannel(
     { email: 'a@b.com', phone: '0501234567' },
     'AUTO',
   );
-  assert.deepEqual(r, { kind: 'send', channel: 'EMAIL', to: 'a@b.com' });
+  assert.deepEqual(r, { kind: 'send', channel: 'SMS', to: '0501234567' });
 });
 
 test('AUTO: לקוח עם מייל בלבד וללא טלפון — נשלח במייל (מסלול מייל בלבד)', () => {
@@ -107,4 +108,58 @@ test('allowSms=false, SMS מפורש: אין מייל אך יש טלפון — �
     kind: 'skip',
     reason: 'channel SMS requested but paid SMS is not enabled on this plan',
   });
+});
+
+/**
+ * resolveReminderTargets — הפונקציה הקנונית שמחזירה 0/1/2 יעדים. משמשת את שליחה
+ * הכפולה של BOTH ואת ברירת המחדל התלוית-תוכנית.
+ */
+
+test('targets BOTH אקסקלוסיב עם מייל וטלפון — שני יעדים (מייל ומסרון)', () => {
+  const r = resolveReminderTargets(
+    { email: 'a@b.com', phone: '0501234567' },
+    'BOTH',
+    true,
+  );
+  assert.deepEqual(r, [
+    { channel: 'EMAIL', to: 'a@b.com' },
+    { channel: 'SMS', to: '0501234567' },
+  ]);
+});
+
+test('targets BOTH לא-אקסקלוסיב עם מייל וטלפון — מייל בלבד (הורדה לתוכנית)', () => {
+  const r = resolveReminderTargets(
+    { email: 'a@b.com', phone: '0501234567' },
+    'BOTH',
+    false,
+  );
+  assert.deepEqual(r, [{ channel: 'EMAIL', to: 'a@b.com' }]);
+});
+
+test('targets BOTH אקסקלוסיב עם טלפון בלבד — מסרון בלבד', () => {
+  const r = resolveReminderTargets({ email: null, phone: '0501234567' }, 'BOTH', true);
+  assert.deepEqual(r, [{ channel: 'SMS', to: '0501234567' }]);
+});
+
+test('targets BOTH אקסקלוסיב ללא מייל וללא טלפון — ללא יעדים', () => {
+  const r = resolveReminderTargets({ email: null, phone: null }, 'BOTH', true);
+  assert.deepEqual(r, []);
+});
+
+test('targets AUTO אקסקלוסיב עם מייל וטלפון — מסרון בלבד (ברירת מחדל אקסקלוסיב)', () => {
+  const r = resolveReminderTargets(
+    { email: 'a@b.com', phone: '0501234567' },
+    'AUTO',
+    true,
+  );
+  assert.deepEqual(r, [{ channel: 'SMS', to: '0501234567' }]);
+});
+
+test('targets AUTO לא-אקסקלוסיב עם מייל וטלפון — מייל בלבד', () => {
+  const r = resolveReminderTargets(
+    { email: 'a@b.com', phone: '0501234567' },
+    'AUTO',
+    false,
+  );
+  assert.deepEqual(r, [{ channel: 'EMAIL', to: 'a@b.com' }]);
 });
