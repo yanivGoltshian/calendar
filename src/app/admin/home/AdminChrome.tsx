@@ -29,6 +29,7 @@ import {
   HelpIcon,
   InstallIcon,
   LogoutIcon,
+  SettingsIcon,
 } from './icons';
 import './home.css';
 
@@ -81,6 +82,8 @@ function moreIcon(id: string) {
       return <BellRowIcon />;
     case 'upgrade':
       return <UpgradeStarIcon className="ic" />;
+    case 'settings':
+      return <SettingsIcon className="ic" />;
     case 'help':
       return <HelpIcon className="ic" />;
     case 'install':
