@@ -90,21 +90,6 @@ export async function updateTransparency(businessId: string, data: TransparencyI
   });
 }
 
-export type CustomTextsInput = {
-  welcomeMessage: string | null;
-  confirmationMessage: string | null;
-  policyText: string | null;
-};
-
-/** עדכון הטקסטים המותאמים ללקוח (BusinessSettings). */
-export async function updateCustomTexts(businessId: string, data: CustomTextsInput) {
-  return prisma.businessSettings.upsert({
-    where: { businessId },
-    update: data,
-    create: { businessId, ...data },
-  });
-}
-
 export type RemindersInput = {
   remindersEnabled: boolean;
   reminderChannel: ReminderChannel;

@@ -4,7 +4,6 @@ import {
   parseProfile,
   parsePolicy,
   parseTransparency,
-  parseTexts,
   parseReminders,
 } from './parse';
 
@@ -111,15 +110,6 @@ test('parseTransparency: תיבות סימון ⇐ בוליאני', () => {
     showPricesPublic: true,
     showDurationPublic: false,
     showStaffPublic: true,
-  });
-});
-
-test('parseTexts: ריק ⇐ null', () => {
-  const res = parseTexts(form({ welcomeMessage: 'שלום' }));
-  assert.deepEqual(res, {
-    welcomeMessage: 'שלום',
-    confirmationMessage: null,
-    policyText: null,
   });
 });
 

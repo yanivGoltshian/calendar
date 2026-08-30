@@ -4,7 +4,6 @@ import type {
   BusinessProfileInput,
   BookingPolicyInput,
   TransparencyInput,
-  CustomTextsInput,
   RemindersInput,
 } from '@/server/repos/settings';
 
@@ -103,15 +102,6 @@ export function parseTransparency(fd: FormData): TransparencyInput {
     showPricesPublic: checkbox(fd, 'showPricesPublic'),
     showDurationPublic: checkbox(fd, 'showDurationPublic'),
     showStaffPublic: checkbox(fd, 'showStaffPublic'),
-  };
-}
-
-/** ניתוח הטקסטים המותאמים ללקוח. תמיד תקין. */
-export function parseTexts(fd: FormData): CustomTextsInput {
-  return {
-    welcomeMessage: nullableStr(fd, 'welcomeMessage'),
-    confirmationMessage: nullableStr(fd, 'confirmationMessage'),
-    policyText: nullableStr(fd, 'policyText'),
   };
 }
 

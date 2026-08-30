@@ -293,17 +293,11 @@ model BusinessSettings {
   bookingRequiresApproval Boolean @default(false)
   // כמה שעות לפני התור לשלוח תזכורת
   reminderLeadHours       Int     @default(24)
-  // מדיניות/הודעה חופשית לתצוגה ללקוח
-  policyText              String?
 
   // מתגי שקיפות בעמוד הציבורי (ברירת מחדל: הצג). נוספו במודול ההגדרות.
   showPricesPublic   Boolean @default(true) // הצגת מחירים
   showDurationPublic Boolean @default(true) // הצגת משך טיפול
   showStaffPublic    Boolean @default(true) // הצגת נותני שירות
-
-  // טקסטים מותאמים ללקוח. נוספו במודול ההגדרות.
-  welcomeMessage      String? // הודעת פתיחה בעמוד ההזמנה
-  confirmationMessage String? // הודעה לאחר קביעת תור
 
   // תצורת תזכורות ואישורים. נוספו במודול ההגדרות.
   remindersEnabled     Boolean         @default(true) // הפעלת תזכורות

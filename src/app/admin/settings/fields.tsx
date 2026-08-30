@@ -314,49 +314,6 @@ export function TransparencyFields({ s }: { s: TransparencyValues }) {
   );
 }
 
-export type TextsValues = Pick<
-  BusinessSettings,
-  'welcomeMessage' | 'confirmationMessage' | 'policyText'
->;
-
-export function TextsFields({ s }: { s: TextsValues }) {
-  const c = t.admin.settings.texts;
-  return (
-    <>
-      <div>
-        <label className={labelClass}>{c.welcomeLabel}</label>
-        <textarea
-          name="welcomeMessage"
-          rows={2}
-          defaultValue={s.welcomeMessage ?? ''}
-          placeholder={c.welcomePlaceholder}
-          className={inputClass}
-        />
-      </div>
-      <div>
-        <label className={labelClass}>{c.confirmationLabel}</label>
-        <textarea
-          name="confirmationMessage"
-          rows={2}
-          defaultValue={s.confirmationMessage ?? ''}
-          placeholder={c.confirmationPlaceholder}
-          className={inputClass}
-        />
-      </div>
-      <div>
-        <label className={labelClass}>{c.policyLabel}</label>
-        <textarea
-          name="policyText"
-          rows={3}
-          defaultValue={s.policyText ?? ''}
-          placeholder={c.policyPlaceholder}
-          className={inputClass}
-        />
-      </div>
-    </>
-  );
-}
-
 export type RemindersValues = Pick<
   BusinessSettings,
   'remindersEnabled' | 'reminderChannel' | 'reminderLeadHours' | 'confirmationRequired'

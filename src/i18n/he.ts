@@ -1160,16 +1160,6 @@ const he = {
         showStaffLabel: 'הצגת נותני שירות',
         hint: 'כיבוי מתג מסתיר את המידע מהעמוד הציבורי.',
       },
-      texts: {
-        title: 'טקסטים מותאמים',
-        description: 'הודעות שיוצגו ללקוח לאורך התהליך.',
-        welcomeLabel: 'הודעת פתיחה',
-        welcomePlaceholder: 'ברוכים הבאים! נשמח לארח אתכם.',
-        confirmationLabel: 'הודעת אישור',
-        confirmationPlaceholder: 'התור נקבע. נתראה בקרוב!',
-        policyLabel: 'מדיניות ותנאים',
-        policyPlaceholder: 'למשל: ביטול עד 24 שעות לפני התור.',
-      },
       reminders: {
         title: 'תזכורות ואישורים',
         description: 'שליחת תזכורת ובקשת אישור הגעה.',

@@ -6,14 +6,12 @@ import {
   updateBusinessProfile,
   updateBookingPolicy,
   updateTransparency,
-  updateCustomTexts,
   updateReminders,
 } from '@/server/repos/settings';
 import {
   parseProfile,
   parsePolicy,
   parseTransparency,
-  parseTexts,
   parseReminders,
   type SaveState,
 } from './parse';
@@ -47,7 +45,6 @@ export async function saveAllSettingsAction(
   if (!reminders.ok) return { ok: false, error: reminders.error };
 
   const transparency = parseTransparency(fd);
-  const texts = parseTexts(fd);
 
   const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
@@ -55,7 +52,6 @@ export async function saveAllSettingsAction(
   await updateBusinessProfile(business.id, profile.data);
   await updateBookingPolicy(business.id, policy.data);
   await updateTransparency(business.id, transparency);
-  await updateCustomTexts(business.id, texts);
   await updateReminders(business.id, reminders.data);
 
   revalidateAll(business.slug);

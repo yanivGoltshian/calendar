@@ -9,7 +9,6 @@ import {
   ProfileFields,
   PolicyFields,
   TransparencyFields,
-  TextsFields,
   RemindersFields,
 } from './fields';
 import { saveAllSettingsAction, type SaveState } from './actions';
@@ -87,10 +86,6 @@ export default function SettingsForm({
 
         <SettingsSection title={s.transparency.title} description={s.transparency.description}>
           <TransparencyFields s={settings} />
-        </SettingsSection>
-
-        <SettingsSection title={s.texts.title} description={s.texts.description}>
-          <TextsFields s={settings} />
         </SettingsSection>
 
         <SettingsSection title={s.reminders.title} description={s.reminders.description}>
