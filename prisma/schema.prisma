@@ -309,9 +309,10 @@ model BusinessSettings {
   notifyOnBooking      Boolean @default(true)
   // התראה על ביטול לקוח. ברירת מחדל דלוקה (עקבי עם התנהגות הפעמון הקיימת).
   notifyOnCancellation Boolean @default(true)
-  // הפעלת Web Push לבעל העסק. ברירת מחדל כבויה — נדרשת הצטרפות מפורשת
-  // (הרשאת דפדפן + רישום מנוי) לפני שנשלחות התראות דחיפה.
-  pushEnabled          Boolean @default(false)
+  // הפעלת Web Push לבעל העסק. ברירת מחדל דלוקה — המתג מוצג פעיל מראש, אך
+  // השליחה בפועל נשארת no-op חינני עד שהמכשיר משלים הצטרפות מפורשת
+  // (הרשאת דפדפן + רישום מנוי), ולכן ההדלקה כברירת מחדל בטוחה.
+  pushEnabled          Boolean @default(true)
 
   // מצב אונבורדינג — האם ההקמה הראשונית הושלמה. נוסף במודול ההקמה.
   onboardingCompleted Boolean @default(false)

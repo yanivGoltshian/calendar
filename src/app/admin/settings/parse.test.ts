@@ -5,6 +5,7 @@ import {
   parsePolicy,
   parseReminders,
   parseOwnerNotifications,
+  parseLandingHeroImages,
 } from './parse';
 
 /** בונה FormData מאובייקט פשוט. */
@@ -166,4 +167,20 @@ test('parseOwnerNotifications: מיפוי חלקי — רק הזמנה דלוק�
   assert.equal(res.data.notifyOnBooking, true);
   assert.equal(res.data.notifyOnCancellation, false);
   assert.equal(res.data.pushEnabled, false);
+});
+
+test('parseLandingHeroImages: קורא עד שתי תמונות ומדלג על ריקות', () => {
+  const images = parseLandingHeroImages(
+    form({ heroImage0: '  data:image/jpeg;base64,AAAA  ', heroImage1: 'data:image/jpeg;base64,BBBB' }),
+  );
+  assert.deepEqual(images, ['data:image/jpeg;base64,AAAA', 'data:image/jpeg;base64,BBBB']);
+});
+
+test('parseLandingHeroImages: בלי שדות ⇐ מערך ריק', () => {
+  assert.deepEqual(parseLandingHeroImages(form({})), []);
+});
+
+test('parseLandingHeroImages: מדלג על תמונה ראשונה ריקה ושומר את השנייה', () => {
+  const images = parseLandingHeroImages(form({ heroImage0: '   ', heroImage1: 'data:image/jpeg;base64,CCCC' }));
+  assert.deepEqual(images, ['data:image/jpeg;base64,CCCC']);
 });
