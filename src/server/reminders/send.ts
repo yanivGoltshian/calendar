@@ -38,21 +38,51 @@ export type ReminderAppointment = {
     // האם העסק רשאי לשלוח מסרון בתשלום ללקוח (אקסקלוסיב פעיל). מחושב במטפל דרך
     // canSendPaidClientSms ומועבר כ-allowSms לגזירת הערוץ. בפרימיום/בסיס false.
     isExclusive: boolean;
-    // ערוץ התזכורת מגיע מה-relation settings של העסק, שהוא nullable בסכימה. כאשר
-    // אין רשומת settings — ברירת המחדל היא AUTO (נגזר בשכבת השליחה, ראו sendReminder).
-    settings: { reminderChannel: string } | null;
+    // תצורת התזכורות מגיעה מה-relation settings של העסק, שהוא nullable בסכימה.
+    // reminderChannel — כאשר אין רשומת settings ברירת המחדל היא AUTO (נגזר בשכבת
+    // השליחה, ראו sendReminder). confirmationRequired — קובע אם ההודעה כוללת את
+    // קישור האישור /c/<token>: ברירת המחדל בסכימה היא false, ולכן חיווט נאמן הופך
+    // את קישור האישור ל-opt-in (ראו buildReminderBody/buildReminderEmail).
+    // reminderLeadHours/remindersEnabled נקראים במטפל ה-cron ובשאילתת הריפו ולא
+    // כאן, אך נכללים בטיפוס כדי שצורת ה-settings תתאים לתוצאת השאילתה.
+    settings: {
+      reminderChannel: string;
+      remindersEnabled?: boolean;
+      reminderLeadHours?: number;
+      confirmationRequired?: boolean;
+    } | null;
   };
   client: { id: string; name: string; phone?: string | null; email?: string | null };
 };
 
-/** בניית גוף הודעת התזכורת בעברית מתוך תבנית ה-i18n, עם קישור אישור מוחלט ונגיש. */
+/**
+ * בניית גוף הודעת התזכורת בעברית מתוך תבנית ה-i18n.
+ *
+ * שער אישור הגעה: קישור האישור /c/<token> נכלל בהודעה רק כאשר העסק הפעיל את
+ * confirmationRequired (ברירת המחדל בסכימה היא false — ולכן זה opt-in). כשההגדרה
+ * כבויה נשלחת תזכורת רגילה מתבנית ללא קישור (bodyNoConfirm/bodyNoNameNoConfirm).
+ * בכל מקרה יש תבנית עם שם ותבנית בלי שם, לפי הימצאות שם הלקוח.
+ */
 export function buildReminderBody(appt: ReminderAppointment): string {
   const tz = appt.business.timezone || DEFAULT_TZ;
   const dateStr = formatDateString(appt.startAt, tz);
   const date = formatLongDate(dateStr, tz);
   const time = formatTime(appt.startAt, tz);
-  const url = absoluteUrl(`/c/${appt.confirmToken}`);
   const name = appt.client.name?.trim();
+  const confirmationRequired = appt.business.settings?.confirmationRequired ?? false;
+
+  if (!confirmationRequired) {
+    const template = name
+      ? t.reminders.message.bodyNoConfirm
+      : t.reminders.message.bodyNoNameNoConfirm;
+    return template
+      .replace('{name}', name ?? '')
+      .replace('{business}', appt.business.name)
+      .replace('{date}', date)
+      .replace('{time}', time);
+  }
+
+  const url = absoluteUrl(`/c/${appt.confirmToken}`);
   const template = name ? t.reminders.message.body : t.reminders.message.bodyNoName;
   return template
     .replace('{name}', name ?? '')
@@ -74,7 +104,8 @@ function escapeHtml(value: string): string {
 /**
  * בניית תוכן מייל התזכורת (נושא + גוף טקסט + HTML נגיש RTL).
  * הטקסט זהה לגוף הודעת המסרון (buildReminderBody) לשמירת אחידות; ה-HTML עוטף
- * אותו בכיווניות ימין-לשמאל והופך את קישור האישור לעוגן לחיץ.
+ * אותו בכיווניות ימין-לשמאל. קישור האישור הופך לעוגן לחיץ רק כאשר confirmationRequired
+ * דלוק — אז הקישור קיים בטקסט; אחרת אין קישור והטקסט נשלח כמות שהוא.
  */
 export function buildReminderEmail(appt: ReminderAppointment): {
   subject: string;
@@ -83,11 +114,15 @@ export function buildReminderEmail(appt: ReminderAppointment): {
 } {
   const text = buildReminderBody(appt);
   const subject = t.reminders.message.emailSubject.replace('{business}', appt.business.name);
-  const url = absoluteUrl(`/c/${appt.confirmToken}`);
-  const body = escapeHtml(text).replace(
-    escapeHtml(url),
-    `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`,
-  );
+  const confirmationRequired = appt.business.settings?.confirmationRequired ?? false;
+  let body = escapeHtml(text);
+  if (confirmationRequired) {
+    const url = absoluteUrl(`/c/${appt.confirmToken}`);
+    body = body.replace(
+      escapeHtml(url),
+      `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`,
+    );
+  }
   const html =
     `<!doctype html><html lang="he" dir="rtl"><body style="font-family:Arial,Helvetica,sans-serif;text-align:right;direction:rtl">` +
     `<p>${body}</p>` +

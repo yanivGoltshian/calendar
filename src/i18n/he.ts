@@ -2194,6 +2194,8 @@ const he = {
     message: {
       body: 'שלום {name}, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. לאישור ההגעה או ביטול: {url}',
       bodyNoName: 'שלום, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. לאישור ההגעה או ביטול: {url}',
+      bodyNoConfirm: 'שלום {name}, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. נתראה!',
+      bodyNoNameNoConfirm: 'שלום, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. נתראה!',
       emailSubject: 'תזכורת לתור ב{business}',
     },
     confirm: {
