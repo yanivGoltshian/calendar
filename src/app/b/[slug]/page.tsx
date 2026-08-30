@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { getBusinessBySlug } from '@/server/repos/business';
 import { getClientSession } from '@/lib/session';
 import { getUpcomingAppointmentsForUserAtBusiness } from '@/server/repos/account';
+import { getAppointmentById } from '@/server/repos/appointments';
 import { buildGoogleCalendarUrl } from '@/lib/googleCalendar';
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
@@ -24,7 +25,6 @@ import {
 import {
   MapPinIcon,
   PhoneIcon,
-  PlusIcon,
   InstagramIcon,
   ClockIcon,
   UsersIcon,
@@ -45,7 +45,7 @@ type Props = {
   params: Promise<{ slug: string }>;
   // אפשרות תצוגה מקדימה בלבד לאורחים (בוחר ה-/demo): 'landing' או 'booking'.
   // לעולם לא נשמר ולא נכתב ל-DB, רק משפיע על הרינדור של הבקשה הנוכחית.
-  searchParams?: Promise<{ style?: string }>;
+  searchParams?: Promise<{ style?: string; booked?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -110,6 +110,45 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
           appointments={views}
         />
       );
+    }
+  } else {
+    // באג 10 — נפילה חיננית לאורח ללא סשן לקוח: אחרי קביעת התור, מסך ההצלחה מפנה
+    // ל-/b/{slug}?booked={id}. נשלוף את התור לפי המזהה, נוודא שהוא שייך לעסק הזה
+    // ועתידי, ונציג באנר "התור שלך נקבע" עם אותו כרטיס תור (הוספה ליומן) — ללא ביטול.
+    const bookedId = ((await searchParams) ?? {}).booked;
+    if (bookedId) {
+      const appt = await getAppointmentById(bookedId);
+      if (
+        appt &&
+        appt.businessId === business.id &&
+        appt.status !== 'CANCELLED' &&
+        appt.startAt.getTime() >= Date.now()
+      ) {
+        const tz = business.timezone;
+        const clinic = t.premiumLanding.clinic.returning;
+        const title =
+          appt.services.map((s) => s.nameSnapshot).filter(Boolean).join(' + ') || business.name;
+        const staffLabel = appt.staff?.displayName ? `${clinic.withStaff} ${appt.staff.displayName}` : '';
+        const whenLabel = `${formatLongDate(formatDateString(appt.startAt, tz), tz)} • ${formatTime(
+          appt.startAt,
+          tz,
+        )}`;
+        const googleUrl = buildGoogleCalendarUrl({
+          title,
+          start: appt.startAt,
+          end: appt.endAt,
+          details: appt.staff?.displayName ? `${business.name} — ${appt.staff.displayName}` : business.name,
+          location: business.address ?? undefined,
+        });
+        returningNode = (
+          <ReturningCustomer
+            name=""
+            slug={slug}
+            heading={t.booking.bookingConfirmedBanner}
+            appointments={[{ id: appt.id, title, staffLabel, whenLabel, googleUrl, canCancel: false }]}
+          />
+        );
+      }
     }
   }
 
@@ -479,31 +518,6 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
             {hoursSection}
           </>
         )}
-
-        {/* הסבר רשימת המתנה ללקוח — מגירה נסגרת, ברירת מחדל סגורה, תוכן בלבד */}
-        <details className="group mt-10 rounded-3xl border border-[color:var(--biz-border)] bg-white px-6 py-5 shadow-sm [&_summary::-webkit-details-marker]:hidden">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-base font-bold text-slate-900">
-            {t.publicPage.waitlistInfo.title}
-            <PlusIcon className="h-5 w-5 shrink-0 text-[color:var(--biz-strong)] transition group-open:rotate-45" />
-          </summary>
-          <ul className="mt-3 list-disc space-y-2 ps-5 text-sm leading-relaxed text-slate-600 marker:text-[color:var(--biz-strong)]">
-            {t.publicPage.waitlistInfo.points.map((point, i) => (
-              <li key={i}>{point}</li>
-            ))}
-          </ul>
-          {business.phone ? (
-            <a
-              href={`tel:${business.phone}`}
-              style={{ backgroundImage: 'linear-gradient(90deg, var(--biz) 0%, var(--biz-strong) 100%)', color: 'var(--biz-ink)' }}
-              className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition hover:opacity-95"
-            >
-              <PhoneIcon className="h-4 w-4 shrink-0" />
-              {t.publicPage.waitlistInfo.callCta}
-            </a>
-          ) : (
-            <p className="mt-4 text-sm font-semibold text-slate-500">{t.publicPage.waitlistInfo.contactFallback}</p>
-          )}
-        </details>
 
         {/* שיתוף העמוד ברשתות — משני ל-CTA של קביעת התור, לא מתחרה בו */}
         <div className="mt-10">

@@ -18,6 +18,8 @@ type Props = {
   name: string;
   slug: string;
   appointments: ReturningAppointmentView[];
+  /** כותרת חלופית למקטע (למשל "התור שלך נקבע" לאורח שזה עתה קבע). ברירת מחדל: "שלום {name}". */
+  heading?: string;
 };
 
 const INITIAL: CancelState = { ok: false };
@@ -117,7 +119,7 @@ function AppointmentRow({
  * מקטע "שלום .." ללקוח מזוהה — מוצג בעמוד העסק הציבורי בין ווידג'ט קביעת התור
  * למקטע המבצעים. מציג את התורים הקרובים של הלקוח בעסק זה עם הוספה ליומן וביטול.
  */
-export default function ReturningCustomer({ name, slug, appointments }: Props) {
+export default function ReturningCustomer({ name, slug, appointments, heading }: Props) {
   const r = t.premiumLanding.clinic.returning;
   if (appointments.length === 0) return null;
 
@@ -127,7 +129,7 @@ export default function ReturningCustomer({ name, slug, appointments }: Props) {
         <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#c6a86a,#c08f86,#b0855f)]" />
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-2xl font-black text-[color:var(--c-ink,#1b1715)]">
-            {name ? `${r.greeting} ${name}` : r.greeting}
+            {heading ?? (name ? `${r.greeting} ${name}` : r.greeting)}
           </h2>
           <span className="inline-flex items-center rounded-full bg-[#c08f86]/15 px-3.5 py-1.5 text-xs font-extrabold text-[#a06c63]">
             {r.subtitle}
