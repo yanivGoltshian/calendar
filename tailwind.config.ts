@@ -120,12 +120,33 @@ const config: Config = {
           '83%': { transform: 'rotateX(76deg) rotateY(-270deg)' },
           '100%': { transform: 'rotateX(-14deg) rotateY(-360deg)' },
         },
+        // דפדוף ספר — כרטיס שתי תמונות מתהפך על ציר Y, עם שהייה על כל פאה.
+        'book-flip': {
+          '0%, 42%': { transform: 'rotateY(0deg)' },
+          '50%, 92%': { transform: 'rotateY(180deg)' },
+          '100%': { transform: 'rotateY(360deg)' },
+        },
+        // סיבוב מנסרה משולשת — עצירה על כל אחת משלוש הפאות (0/−120/−240).
+        'prism-spin': {
+          '0%, 20%': { transform: 'rotateY(0deg)' },
+          '33%, 53%': { transform: 'rotateY(-120deg)' },
+          '66%, 86%': { transform: 'rotateY(-240deg)' },
+          '100%': { transform: 'rotateY(-360deg)' },
+        },
+        // "נשימה" עדינה לתמונה יחידה — ריחוף והגדלה קלים על transform בלבד.
+        'image-breathe': {
+          '0%, 100%': { transform: 'translateY(0) scale(1)' },
+          '50%': { transform: 'translateY(-6px) scale(1.02)' },
+        },
       },
       animation: {
         float: 'float 6s ease-in-out infinite',
         shimmer: 'shimmer 2.5s linear infinite',
         'fade-up': 'fade-up 0.6s ease-out both',
         'cube-spin': 'cube-spin 24s ease-in-out infinite',
+        'book-flip': 'book-flip 9s ease-in-out infinite',
+        'prism-spin': 'prism-spin 18s ease-in-out infinite',
+        'image-breathe': 'image-breathe 6s ease-in-out infinite',
       },
       transitionTimingFunction: {
         emphasized: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
