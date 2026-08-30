@@ -1177,6 +1177,8 @@ const he = {
         channelLabel: 'ערוץ שליחה',
         channelAutoHint:
           'במצב אוטומטי, אם הלקוח נרשם עם מייל התזכורת תישלח במייל, ואם נרשם עם טלפון היא תישלח במסרון.',
+        channelLockedHint: 'מסרון ושליחה משולבת זמינים בחבילת אקסקלוסיב.',
+        channelLockedUpgradeLink: 'למעבר לאקסקלוסיב',
         leadHoursLabel: 'שליחה כמה שעות לפני התור',
         confirmationRequiredLabel: 'בקשת אישור הגעה בתזכורת',
         confirmationRequiredHint: 'הלקוח יתבקש לאשר הגעה דרך התזכורת.',
@@ -1186,6 +1188,7 @@ const he = {
         SMS: 'מסרון (SMS)',
         PUSH: 'התראת דחיפה',
         EMAIL: 'דוא״ל',
+        BOTH: 'דוא״ל ומסרון יחד',
       },
       costGuard: {
         title: 'מעקב עלות מסרונים',
@@ -2194,6 +2197,8 @@ const he = {
     message: {
       body: 'שלום {name}, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. לאישור ההגעה או ביטול: {url}',
       bodyNoName: 'שלום, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. לאישור ההגעה או ביטול: {url}',
+      bodyNoConfirm: 'שלום {name}, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. נתראה!',
+      bodyNoNameNoConfirm: 'שלום, מזכירים לך את התור ב{business} בתאריך {date} בשעה {time}. נתראה!',
       emailSubject: 'תזכורת לתור ב{business}',
     },
     confirm: {

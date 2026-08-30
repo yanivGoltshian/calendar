@@ -8,17 +8,25 @@ import { sendReminder } from '@/server/reminders/send';
 import { canSendPaidClientSms } from '@/server/subscription';
 
 /**
- * הלוגיקה של נקודת הקצה המתוזמנת לשליחת תזכורות 24 שעות, מופרדת מ-route.ts
- * כדי לאפשר בדיקות יחידה עם הזרקת תלויות (dependency injection) ללא DB אמיתי.
+ * הלוגיקה של נקודת הקצה המתוזמנת לשליחת תזכורות, מופרדת מ-route.ts כדי לאפשר
+ * בדיקות יחידה עם הזרקת תלויות (dependency injection) ללא DB אמיתי.
  *
  * מוגנת בסוד CRON_SECRET (כותרת x-cron-secret או Authorization: Bearer).
- * מוצאת תורים פעילים שמתחילים בחלון של כ-24 שעות קדימה (עם סבילות ±15 דק׳
- * שתואמת ל-cron כל 15 דק׳) שטרם נשלחה עבורם תזכורת, שולחת הודעה דרך שכבת
- * הספקים המשותפת ומסמנת reminderSentAt באופן אידמפוטנטי. בטוחה לריצה חוזרת.
+ * שולפת תורים פעילים בחלון מרבי חסום קדימה (עד MAX_LEAD_HOURS) שטרם נשלחה עבורם
+ * תזכורת, ואז מסננת פר-תור לפי זמן ההקדמה של כל עסק (reminderLeadHours; ברירת
+ * מחדל 24 שעות) כדי לקבוע בשלות. כך כל עסק מקבל את התזכורת בזמן ההקדמה שהגדיר,
+ * במקום חלון 24 שעות גלובלי קשיח. תור שנשלף אך טרם בשל מדולג בלי לסמן, וייתפס
+ * בריצה מאוחרת יותר. השליחה מסמנת reminderSentAt באופן אידמפוטנטי — בטוחה לריצה
+ * חוזרת. הסבילות (±15 דק׳) תואמת לתדירות ה-cron (כל 15 דק׳).
  */
 
-// חלון היעד: 24 שעות קדימה, עם סבילות שתואמת לתדירות ה-cron (כל 15 דק׳).
-const LEAD_MS = 24 * 60 * 60 * 1000;
+// חלון השליפה: חסום עד זמן ההקדמה המרבי האפשרי (שבעה ימים). הבשלות בפועל נקבעת
+// פר-תור לפי reminderLeadHours של העסק — ראו הלולאה למטה. הסבילות (±15 דק׳)
+// תואמת לתדירות ה-cron (כל 15 דק׳). DEFAULT_LEAD_HOURS משמש כשלעסק אין ערך.
+const MAX_LEAD_HOURS = 168;
+const MAX_LEAD_MS = MAX_LEAD_HOURS * 60 * 60 * 1000;
+const DEFAULT_LEAD_HOURS = 24;
+const HOUR_MS = 60 * 60 * 1000;
 const TOLERANCE_MS = 15 * 60 * 1000;
 
 // השהיה קצרה לפני ניסיון חוזר בודד על כשל חיבור חולף (חיבור קר ב-Container App).
@@ -149,8 +157,11 @@ export async function handleReminderCron(
   }
 
   const now = Date.now();
-  const windowStart = new Date(now + LEAD_MS - TOLERANCE_MS);
-  const windowEnd = new Date(now + LEAD_MS + TOLERANCE_MS);
+  // חלון שליפה רחב וחסום: מגבול תחתון של now − סבילות (גרייס לסטיית שעון) ועד
+  // now + זמן ההקדמה המרבי + סבילות. הבשלות המדויקת נקבעת פר-תור בלולאה לפי
+  // reminderLeadHours של העסק, כך שהחלון הרחב רק מבטיח שכל תור בשל פוטנציאלי נשלף.
+  const windowStart = new Date(now - TOLERANCE_MS);
+  const windowEnd = new Date(now + MAX_LEAD_MS + TOLERANCE_MS);
   const window = { start: windowStart.toISOString(), end: windowEnd.toISOString() };
 
   const provider = process.env.SMS_PROVIDER ?? 'console';
@@ -162,12 +173,31 @@ export async function handleReminderCron(
   let failed = 0;
   let skipped = 0;
   let alreadyMarked = 0;
+  // תורים שנשלפו אך טרם בשלים לפי זמן ההקדמה של העסק (או שכבר החלו) — דולגו בלי
+  // לסמן reminderSentAt, וייתפסו בריצה מאוחרת יותר. נספרים בנפרד לצורכי תצפית.
+  let notYetDue = 0;
 
   try {
     const due = await loadDueWithRetry(deps, windowStart, windowEnd);
-    found = due.length;
 
     for (const appt of due) {
+      // בשלות פר-תור לפי זמן ההקדמה של העסק (reminderLeadHours; ברירת מחדל 24 שעות
+      // כשאין רשומת settings או ערך). התור בשל כאשר הגיע זמן ההקדמה שלו: dueAt =
+      // startAt − leadHours, ושולחים רק כאשר dueAt ≤ now + סבילות והתור עדיין עתידי
+      // (startAt > now). תור שטרם בשל או שכבר החל — מדלגים בלי לסמן reminderSentAt,
+      // כך שריצה מאוחרת יותר תתפוס אותו בזמנו. האידמפוטנטיות נשמרת דרך
+      // reminderSentAt: null + markReminderSent, בדיוק כמו לתורים בשלים.
+      const startAtMs = appt.startAt.getTime();
+      const leadHours = appt.business.settings?.reminderLeadHours ?? DEFAULT_LEAD_HOURS;
+      const dueAt = startAtMs - leadHours * HOUR_MS;
+      if (startAtMs <= now || dueAt > now + TOLERANCE_MS) {
+        notYetDue += 1;
+        continue;
+      }
+
+      // נספר רק תורים בשלים בפועל — כדי שדיווח found ישקף שליחות אמת ולא שליפה גולמית.
+      found += 1;
+
       // הערוץ והיעד נגזרים בשכבת השליחה (resolveReminderChannel) לפי העדפת העסק,
       // זהות הלקוח, והרשאת המסרון לפי החבילה. המסרון בתשלום ללקוח דלוק רק באקסקלוסיב
       // פעיל — canSendPaidClientSms מחשב זאת, וזורם כ-isExclusive לשכבת השליחה.
@@ -222,13 +252,13 @@ export async function handleReminderCron(
       }
     }
 
-    const counts = { found, sent, failed, skipped, alreadyMarked };
+    const counts = { found, sent, failed, skipped, alreadyMarked, notYetDue };
     // כאשר הספק אינו כשיר (console בפרודקשן / מייל לא מוגדר) או שאין ליעד כתובת,
     // ההודעות מחושבות ומסומנות (skipped) אך אינן נשלחות בפועל. ה-endpoint אינו קורס.
     console.log(
       `[cron/reminders] provider=${provider} window=${windowStart.toISOString()}..${windowEnd.toISOString()} ` +
         `found=${counts.found} sent=${counts.sent} failed=${counts.failed} ` +
-        `skipped=${counts.skipped} alreadyMarked=${counts.alreadyMarked}`,
+        `skipped=${counts.skipped} alreadyMarked=${counts.alreadyMarked} notYetDue=${counts.notYetDue}`,
     );
 
     return NextResponse.json({
@@ -252,7 +282,7 @@ export async function handleReminderCron(
       message: safeDegradedMessage(code),
       provider,
       window,
-      counts: { found, sent, failed, skipped, alreadyMarked },
+      counts: { found, sent, failed, skipped, alreadyMarked, notYetDue },
     });
   }
 }
