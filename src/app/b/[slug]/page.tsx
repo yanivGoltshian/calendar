@@ -22,6 +22,7 @@ import {
   normalizeLandingContent,
   normalizePublicPageStyle,
 } from '@/lib/publicPageStyle';
+import { CLINIC_IDENTITY } from '@/data/clinicDemo';
 import {
   MapPinIcon,
   PhoneIcon,
@@ -222,6 +223,10 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
     ? `${formatMinutes(todayWorkingHours.startMinute)}–${formatMinutes(todayWorkingHours.endMinute)}`
     : null;
   const clinicLabels = t.premiumLanding.clinic;
+  // תת-הכותרת הממותגת של הקליניקה ("טיפולי יופי ואסתטיקה...") שייכת רק לעסק הדמו
+  // (skin-beauty). לכל שאר עסקי הפרימיום מזינים null כדי שהיא לא תדלוף כברירת מחדל (באג 3).
+  const clinicHeroTagline =
+    business.slug === CLINIC_IDENTITY.slug ? clinicLabels.heroTagline : null;
   // משתני הפלטה החמה מוזרקים רק בעמוד הקליניקה; שאר העסקים נשארים עם ‎--biz-*‎ בלבד.
   const clinicThemeVars = {
     '--c-gold': '#c6a86a',
@@ -412,7 +417,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
           heroEyebrow={heroEyebrow}
           heroHeadline={heroHeadline}
           heroSubtext={heroSubtext}
-          heroTagline={clinicLabels.heroTagline}
+          heroTagline={clinicHeroTagline}
           heroCtaLabel={heroCtaLabel}
           updatesText={landing?.announcement ?? null}
           launchOffer={landing?.launchOffer}

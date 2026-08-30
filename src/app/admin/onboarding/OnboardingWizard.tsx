@@ -38,6 +38,7 @@ import {
   type LandingSectionKey,
   type LandingBenefit,
 } from '@/lib/publicPageStyle';
+import { ALLOWED_MEDIA } from '@/app/api/upload/media/validate';
 
 /** תת-קבוצה סריאליזבילית של שירות, לרינדור שורות ההחלפה בצעד השירותים. */
 export type WizardService = {
@@ -351,6 +352,14 @@ const PW_CSS = `
 .pw-tile-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .pw-tile-add{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--navy);opacity:.5;}
 .pw-tile-add svg{width:26px;height:26px;}
+/* נודג׳ ה-+ בקוביית המבצעים: טבעת זהב סביב המשבצת הריקה + בועת הסבר עם חץ (באג 1). */
+.pw-nudge-anchor{position:relative;}
+.pw-nudge-anchor .pw-tile{box-shadow:0 0 0 3px var(--gold-600),0 6px 16px rgba(0,0,0,.18);}
+.pw-nudge{position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%);z-index:20;width:max-content;max-width:190px;display:flex;align-items:flex-start;gap:6px;background:var(--navy-strong);color:#fff;font-size:11.5px;line-height:1.45;font-weight:600;padding:8px 10px;border-radius:11px;box-shadow:0 8px 22px rgba(0,0,0,.22);}
+.pw-nudge::before{content:"";position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:var(--navy-strong);}
+.pw-nudge-txt{flex:1;}
+.pw-nudge-x{flex:0 0 auto;border:0;background:transparent;color:#fff;opacity:.7;font-size:15px;line-height:1;cursor:pointer;padding:0;}
+.pw-nudge-x:hover{opacity:1;}
 .pw-field{margin-top:14px;}
 .pw-label{display:block;font-size:12.5px;font-weight:700;color:var(--navy-strong);margin-bottom:6px;}
 .pw-inp{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:0 12px;transition:border-color .15s,box-shadow .15s;}
@@ -636,6 +645,23 @@ export default function OnboardingWizard({
   });
   const [googleHelpOpen, setGoogleHelpOpen] = useState(false);
 
+  // מצב מקומי לכתובת העסק — ניתנת לעריכה בעורך הפרימיום ונשמרת לפרופיל העסק
+  // (business.address). נזרעת מהערך הקיים ונשלחת כשדה מוסתר בטופס הפרימיום (באג 5).
+  const [address, setAddress] = useState(businessAddress ?? '');
+
+  // נודג׳ חד-פעמי שמדגיש את כפתור ה-+ בקוביית המבצעים אחרי העלאת התמונה הראשונה:
+  // כשמספר התמונות עולה מ-0 ל-1 מוצג טולטיפ קצר שמזמין להוסיף עוד תמונות (באג 1).
+  // dealsNudgeSeenRef מבטיח שהנודג׳ יופיע פעם אחת בלבד למשך חיי העורך.
+  const [showDealsNudge, setShowDealsNudge] = useState(false);
+  const dealsNudgeSeenRef = useRef(false);
+
+  // הנודג׳ נסגר אוטומטית אחרי כמה שניות כדי לא להיתקע על המסך (ניתן גם לסגור ידנית).
+  useEffect(() => {
+    if (!showDealsNudge) return;
+    const id = window.setTimeout(() => setShowDealsNudge(false), 6000);
+    return () => window.clearTimeout(id);
+  }, [showDealsNudge]);
+
   // מצב מקומי לצעד השירותים: אילו שירותים פעילים + טופס "הוספת שירות משלך".
   const [active, setActive] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(services.map((s) => [s.id, !s.hidden])),
@@ -774,7 +800,9 @@ export default function OnboardingWizard({
     const handleHeroVideoFile = async (file: File | null | undefined) => {
       if (!file) return;
       setVideoUploadError(null);
-      if (file.type !== 'video/mp4' && file.type !== 'video/webm') {
+      // מאשרים כל פורמט וידאו מותר (כולל mov של אייפון), דרך מקור אמת אחד.
+      const mediaMeta = ALLOWED_MEDIA[file.type];
+      if (!mediaMeta || mediaMeta.kind !== 'video') {
         setVideoUploadError(p.steps.hero.videoBadType);
         return;
       }
@@ -973,7 +1001,14 @@ export default function OnboardingWizard({
         next[i] = url;
         return { ...prev, galleryImageUrls: next.slice(0, MAX_GALLERY_IMAGES) };
       });
-    const setHotDealImage = (i: number, url: string) =>
+    const setHotDealImage = (i: number, url: string) => {
+      // זיהוי המעבר 0→1: כשמעלים את התמונה הראשונה מציגים פעם אחת נודג׳ שמצביע
+      // על כפתור ה-+ להוספת תמונות נוספות (באג 1). נבדק לפני העדכון של ה-state.
+      const prevFilled = (premiumDraft.hotDeals?.images ?? []).filter(Boolean).length;
+      if (url && prevFilled === 0 && !dealsNudgeSeenRef.current) {
+        dealsNudgeSeenRef.current = true;
+        setShowDealsNudge(true);
+      }
       setPremiumDraft((prev) => {
         const cur: LandingHotDeals = prev.hotDeals ?? { images: [] };
         const next = [...(cur.images ?? [])];
@@ -981,6 +1016,7 @@ export default function OnboardingWizard({
         next[i] = url;
         return { ...prev, hotDeals: { ...cur, images: next.slice(0, MAX_HOT_DEALS_IMAGES) } };
       });
+    };
     // תוויות אחידות לכל משבצות התמונה בעורך.
     const mediaImageLabels = {
       upload: ed.uploadLabel,
@@ -1353,9 +1389,30 @@ export default function OnboardingWizard({
                   )}
                   <div className="pw-block-label">{wz.deals.blockLabel}</div>
                   <div className="pw-grid">
-                    {Array.from({ length: hotDealsCount }).map((_, i) =>
-                      mediaTile(hotDealsImages[i], (url) => setHotDealImage(i, url), i),
-                    )}
+                    {Array.from({ length: hotDealsCount }).map((_, i) => {
+                      const tile = mediaTile(hotDealsImages[i], (url) => setHotDealImage(i, url), i);
+                      // הנודג׳ נצמד למשבצת ה-+ הריקה הראשונה בלבד (באג 1).
+                      const isFirstEmpty =
+                        !hotDealsImages[i] &&
+                        hotDealsImages.slice(0, i).every((u) => !!u);
+                      if (!(showDealsNudge && isFirstEmpty)) return tile;
+                      return (
+                        <div key={i} className="pw-nudge-anchor">
+                          {tile}
+                          <div className="pw-nudge" role="status">
+                            <button
+                              type="button"
+                              className="pw-nudge-x"
+                              onClick={() => setShowDealsNudge(false)}
+                              aria-label={wz.deals.addMoreNudgeClose}
+                            >
+                              ×
+                            </button>
+                            <span className="pw-nudge-txt">{wz.deals.addMoreNudge}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                   {pwField({
                     label: wz.deals.titleLabel,
@@ -1411,7 +1468,7 @@ export default function OnboardingWizard({
                           <input
                             ref={heroVideoInputRef}
                             type="file"
-                            accept="video/mp4,video/webm"
+                            accept="video/mp4,video/webm,video/quicktime,.mov"
                             className="pw-hidden-file"
                             onChange={(e) => {
                               const f = e.target.files?.[0];
@@ -1446,7 +1503,8 @@ export default function OnboardingWizard({
                     </div>
                   ) : null}
 
-                  {/* תצוגה מקדימה חיה של כרטיס העסק */}
+                  {/* תצוגה מקדימה חיה — רק במצב "צבע"; בתמונה/וידאו התצוגה כבר בתוך פקד ההעלאה (באג 7) */}
+                  {heroBg === 'color' ? (
                   <div className="pw-hero-prev">
                     <div
                       className="pw-cover"
@@ -1476,6 +1534,7 @@ export default function OnboardingWizard({
                       </p>
                     </div>
                   </div>
+                  ) : null}
                   <span className="pw-chip-note pw-navy">{wz.about.mediaHint}</span>
 
                   {pwField({
@@ -1492,21 +1551,14 @@ export default function OnboardingWizard({
                   })}
 
                   <div className="pw-block-label">{wz.about.contactLabel}</div>
-                  {businessAddress?.trim()
-                    ? pwField({
-                        label: wz.about.addressLabel,
-                        value: businessAddress,
-                        readOnly: true,
-                        icon: 'i-pin',
-                        hint: wz.about.addressHint,
-                      })
-                    : pwField({
-                        label: wz.about.addressLabel,
-                        value: '',
-                        readOnly: true,
-                        icon: 'i-pin',
-                        placeholder: wz.about.addressEmpty,
-                      })}
+                  {pwField({
+                    label: wz.about.addressLabel,
+                    value: address,
+                    onChange: setAddress,
+                    placeholder: wz.about.addressEmpty,
+                    icon: 'i-pin',
+                    hint: wz.about.addressHint,
+                  })}
                   {pwField({
                     label: wz.about.phoneLabel,
                     value: social.whatsapp ?? '',
@@ -1769,6 +1821,8 @@ export default function OnboardingWizard({
 
             {/* שדה JSON יחיד שנושא את כל הטיוטה לפעולת השרת */}
             <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
+            {/* כתובת העסק נשמרת לפרופיל (business.address), נפרד מטיוטת ה-landing (באג 5) */}
+            <input type="hidden" name="address" value={address} />
             {err && <p className="pw-err pw-err-form">{err}</p>}
 
             {/* ── תחתית · ניווט ── */}

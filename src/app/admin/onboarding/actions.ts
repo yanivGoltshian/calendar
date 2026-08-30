@@ -208,11 +208,17 @@ export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promis
   // ניתוח בטוח של טיוטת הפרימיום: null כשאין תוכן ממשי (ישמור NULL במסד).
   const landingContent = parsePremiumDraft(fd.get('premiumDraft'));
 
+  // כתובת העסק ניתנת לעריכה בעורך הפרימיום ומגיעה כשדה מוסתר. שומרים את הערך
+  // החדש (לאחר trim); כשהשדה חסר לגמרי (לקוח ישן) נשמר הערך הקיים כדי לא לאבד
+  // כתובת שמורה. מחרוזת ריקה נשמרת כפי שהיא (המשתמש ניקה את השדה במכוון). (באג 5)
+  const addressRaw = fd.get('address');
+  const nextAddress = typeof addressRaw === 'string' ? addressRaw.trim() : null;
+
   const profile: BusinessProfileInput = {
     name: business.name,
     type: business.type,
     phone: business.phone,
-    address: business.address,
+    address: nextAddress ?? business.address,
     description: business.description,
     instagramUrl: business.instagramUrl,
     logoUrl: business.logoUrl,

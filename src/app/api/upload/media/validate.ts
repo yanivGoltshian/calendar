@@ -12,6 +12,9 @@ export const ALLOWED_MEDIA: Record<string, { ext: string; kind: 'image' | 'video
   'image/webp': { ext: 'webp', kind: 'image' },
   'video/mp4': { ext: 'mp4', kind: 'video' },
   'video/webm': { ext: 'webm', kind: 'video' },
+  // אייפון מצלם בפורמט QuickTime (‎.mov‎) — מותר כדי לא לחסום משתמשי iOS.
+  'video/quicktime': { ext: 'mov', kind: 'video' },
+  'video/x-m4v': { ext: 'm4v', kind: 'video' },
 };
 
 export type MediaKind = 'image' | 'video';
@@ -22,7 +25,7 @@ export type MediaValidationResult =
 
 /**
  * מאמת קובץ מדיה לפי סוג ה-MIME והגודל בלבד (ניתן לבדיקה ללא File או רשת).
- * תמונות: jpg, png, webp עד 8MB. סרטונים: mp4, webm עד 30MB.
+ * תמונות: jpg, png, webp עד 8MB. סרטונים: mp4, webm, mov עד 30MB.
  * מחזיר תוצאה בעברית עם סטטוס HTTP מתאים לכל סוג כשל.
  */
 export function validateMediaFile(input: {
@@ -34,7 +37,7 @@ export function validateMediaFile(input: {
     return {
       ok: false,
       status: 415,
-      error: 'אפשר להעלות תמונה בפורמט jpg, png או webp, או סרטון בפורמט mp4 או webm.',
+      error: 'אפשר להעלות תמונה בפורמט jpg, png או webp, או סרטון בפורמט mp4, webm או mov.',
     };
   }
   const max = meta.kind === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
