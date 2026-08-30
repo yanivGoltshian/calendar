@@ -104,15 +104,19 @@ test('parsePolicy: מספר לא חוקי ⇐ שגיאת number', () => {
 test('parseReminders: ערוץ חוקי נשמר', () => {
   const res = parseReminders(
     form({
+      remindersEnabled: 'on',
       reminderChannel: 'SMS',
       reminderLeadHours: '3',
+      confirmationRequired: 'on',
     }),
   );
   assert.equal(res.ok, true);
   if (!res.ok) return;
   assert.deepEqual(res.data, {
+    remindersEnabled: true,
     reminderChannel: 'SMS',
     reminderLeadHours: 3,
+    confirmationRequired: true,
   });
 });
 

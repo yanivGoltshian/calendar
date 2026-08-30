@@ -273,13 +273,23 @@ export function PolicyFields({ s }: { s: PolicyValues }) {
 
 export type RemindersValues = Pick<
   BusinessSettings,
-  'reminderChannel' | 'reminderLeadHours'
+  'remindersEnabled' | 'reminderChannel' | 'reminderLeadHours' | 'confirmationRequired'
 >;
 
 export function RemindersFields({ s }: { s: RemindersValues }) {
   const c = t.admin.settings.reminders;
   return (
     <>
+      <label className={checkRowClass}>
+        <input
+          type="checkbox"
+          name="remindersEnabled"
+          defaultChecked={s.remindersEnabled}
+          className={checkboxClass}
+        />
+        {c.enabledLabel}
+      </label>
+
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="flex-1">
           <label className={labelClass}>{c.channelLabel}</label>
@@ -314,6 +324,19 @@ export function RemindersFields({ s }: { s: RemindersValues }) {
           />
         </div>
       </div>
+
+      <label className={checkRowClass}>
+        <input
+          type="checkbox"
+          name="confirmationRequired"
+          defaultChecked={s.confirmationRequired}
+          className={checkboxClass}
+        />
+        <span>
+          {c.confirmationRequiredLabel}
+          <span className={hintClass + ' block'}>{c.confirmationRequiredHint}</span>
+        </span>
+      </label>
     </>
   );
 }

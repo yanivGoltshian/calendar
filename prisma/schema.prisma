@@ -294,8 +294,10 @@ model BusinessSettings {
   // כמה שעות לפני התור לשלוח תזכורת
   reminderLeadHours       Int     @default(24)
 
-  // תצורת תזכורת. נוסף במודול ההגדרות.
-  reminderChannel ReminderChannel @default(AUTO) // ערוץ שליחת התזכורת (ברירת מחדל: נגזר אוטומטית מאופן ההרשמה)
+  // תצורת תזכורות ואישורים. נוספו במודול ההגדרות.
+  remindersEnabled     Boolean         @default(true) // הפעלת תזכורות
+  reminderChannel      ReminderChannel @default(AUTO) // ערוץ שליחת התזכורת (ברירת מחדל: נגזר אוטומטית מאופן ההרשמה)
+  confirmationRequired Boolean         @default(false) // בקשת אישור הגעה מהלקוח
 
   // מצב אונבורדינג — האם ההקמה הראשונית הושלמה. נוסף במודול ההקמה.
   onboardingCompleted Boolean @default(false)

@@ -108,8 +108,10 @@ export function parseReminders(fd: FormData): ParseResult<RemindersInput> {
   return {
     ok: true,
     data: {
+      remindersEnabled: checkbox(fd, 'remindersEnabled'),
       reminderChannel: channel,
       reminderLeadHours: leadParsed.data,
+      confirmationRequired: checkbox(fd, 'confirmationRequired'),
     },
   };
 }

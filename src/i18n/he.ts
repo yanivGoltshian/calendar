@@ -1155,10 +1155,13 @@ const he = {
       reminders: {
         title: 'תזכורות ואישורים',
         description: 'שליחת תזכורת ובקשת אישור הגעה.',
+        enabledLabel: 'שליחת תזכורות ללקוחות',
         channelLabel: 'ערוץ שליחה',
         channelAutoHint:
           'במצב אוטומטי, אם הלקוח נרשם עם מייל התזכורת תישלח במייל, ואם נרשם עם טלפון היא תישלח במסרון.',
         leadHoursLabel: 'שליחה כמה שעות לפני התור',
+        confirmationRequiredLabel: 'בקשת אישור הגעה בתזכורת',
+        confirmationRequiredHint: 'הלקוח יתבקש לאשר הגעה דרך התזכורת.',
       },
       channels: {
         AUTO: 'אוטומטי (לפי אופן ההרשמה של הלקוח)',

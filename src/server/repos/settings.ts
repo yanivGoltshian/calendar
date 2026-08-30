@@ -76,8 +76,10 @@ export async function updateBookingPolicy(businessId: string, data: BookingPolic
 }
 
 export type RemindersInput = {
+  remindersEnabled: boolean;
   reminderChannel: ReminderChannel;
   reminderLeadHours: number;
+  confirmationRequired: boolean;
 };
 
 /** עדכון תצורת תזכורות ואישורים (BusinessSettings). */
