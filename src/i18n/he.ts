@@ -1357,7 +1357,7 @@ const he = {
             uploadVideo: 'העלאת סרטון מהמכשיר',
             uploadingVideo: 'מעלה…',
             videoTooLarge: 'הקובץ גדול מדי. אפשר עד 30MB.',
-            videoBadType: 'אפשר להעלות רק קובץ mp4 או webm.',
+            videoBadType: 'אפשר להעלות רק קובץ וידאו בפורמט mp4, webm או mov.',
           },
           // מבצעים חמים: עד שש תמונות טיפולים + מבצע השקה אופציונלי
           hotDeals: {
@@ -1516,6 +1516,8 @@ const he = {
               cubeNew: 'חדש',
               cubeLimited: 'מוגבל',
               cubeBenefit: 'הטבה',
+              addMoreNudge: 'הוסיפו עוד תמונות כדי ליצור קוביה מסתובבת',
+              addMoreNudgeClose: 'סגירה',
             },
             about: {
               eyebrow: 'ראש העמוד',
@@ -1526,7 +1528,7 @@ const he = {
               bgImage: 'תמונה',
               bgColor: 'צבע רקע',
               dropVideoTitle: 'העלאת וידאו רקע',
-              dropVideoSub: 'MP4 עד 30 שניות',
+              dropVideoSub: 'MP4, WEBM או MOV · עד 30 שניות (מומלץ MP4)',
               flagColor: 'ברירת מחדל · צבע המותג',
               flagImage: 'תצוגה מקדימה · תמונת רקע',
               flagImgvid: 'תצוגה מקדימה · תמונה + וידאו',
