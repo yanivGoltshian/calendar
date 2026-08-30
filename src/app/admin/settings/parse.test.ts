@@ -3,8 +3,6 @@ import assert from 'node:assert/strict';
 import {
   parseProfile,
   parsePolicy,
-  parseTransparency,
-  parseTexts,
   parseReminders,
 } from './parse';
 
@@ -101,26 +99,6 @@ test('parsePolicy: מספר לא חוקי ⇐ שגיאת number', () => {
     }),
   );
   assert.deepEqual(res, { ok: false, error: 'number' });
-});
-
-test('parseTransparency: תיבות סימון ⇐ בוליאני', () => {
-  const res = parseTransparency(
-    form({ showPricesPublic: 'on', showStaffPublic: '1' }),
-  );
-  assert.deepEqual(res, {
-    showPricesPublic: true,
-    showDurationPublic: false,
-    showStaffPublic: true,
-  });
-});
-
-test('parseTexts: ריק ⇐ null', () => {
-  const res = parseTexts(form({ welcomeMessage: 'שלום' }));
-  assert.deepEqual(res, {
-    welcomeMessage: 'שלום',
-    confirmationMessage: null,
-    policyText: null,
-  });
 });
 
 test('parseReminders: ערוץ חוקי נשמר', () => {

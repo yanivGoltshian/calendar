@@ -6,15 +6,11 @@ import { canSendPaidClientSms } from '@/server/subscription';
 import {
   updateBusinessProfile,
   updateBookingPolicy,
-  updateTransparency,
-  updateCustomTexts,
   updateReminders,
 } from '@/server/repos/settings';
 import {
   parseProfile,
   parsePolicy,
-  parseTransparency,
-  parseTexts,
   parseReminders,
   type SaveState,
 } from './parse';
@@ -51,13 +47,8 @@ export async function saveAllSettingsAction(
   const reminders = parseReminders(fd, canSendPaidClientSms(business));
   if (!reminders.ok) return { ok: false, error: reminders.error };
 
-  const transparency = parseTransparency(fd);
-  const texts = parseTexts(fd);
-
   await updateBusinessProfile(business.id, profile.data);
   await updateBookingPolicy(business.id, policy.data);
-  await updateTransparency(business.id, transparency);
-  await updateCustomTexts(business.id, texts);
   await updateReminders(business.id, reminders.data);
 
   revalidateAll(business.slug);

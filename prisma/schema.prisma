@@ -294,17 +294,6 @@ model BusinessSettings {
   bookingRequiresApproval Boolean @default(false)
   // כמה שעות לפני התור לשלוח תזכורת
   reminderLeadHours       Int     @default(24)
-  // מדיניות/הודעה חופשית לתצוגה ללקוח
-  policyText              String?
-
-  // מתגי שקיפות בעמוד הציבורי (ברירת מחדל: הצג). נוספו במודול ההגדרות.
-  showPricesPublic   Boolean @default(true) // הצגת מחירים
-  showDurationPublic Boolean @default(true) // הצגת משך טיפול
-  showStaffPublic    Boolean @default(true) // הצגת נותני שירות
-
-  // טקסטים מותאמים ללקוח. נוספו במודול ההגדרות.
-  welcomeMessage      String? // הודעת פתיחה בעמוד ההזמנה
-  confirmationMessage String? // הודעה לאחר קביעת תור
 
   // תצורת תזכורות ואישורים. נוספו במודול ההגדרות.
   remindersEnabled     Boolean         @default(true) // הפעלת תזכורות
@@ -857,7 +846,7 @@ model MessageLog {
 
   // עלות ההודעה באגורות. הערכה קבועה להודעה (SMS_UNIT_COST_AGOROT) או עלות ספק,
   // ומשמשת בסיס לצבירת תקרת העלות החודשית לכל עסק.
-  costAgorot Int @default(0)
+  costAgorot  Int     @default(0)
   // האם ההודעה נספרת אל מול תקרת העלות החודשית של העסק. שליחת מסרון בתשלום ללקוח = true;
   // אימות טלפון של בעל העסק (חריג קבוע, מחוץ לתקרה) = false, ונצבר בדלי נפרד.
   countsToCap Boolean @default(true)

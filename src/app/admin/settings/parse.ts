@@ -3,8 +3,6 @@ import { BusinessType, ReminderChannel } from '@prisma/client';
 import type {
   BusinessProfileInput,
   BookingPolicyInput,
-  TransparencyInput,
-  CustomTextsInput,
   RemindersInput,
 } from '@/server/repos/settings';
 
@@ -94,24 +92,6 @@ export function parsePolicy(fd: FormData): ParseResult<BookingPolicyInput> {
       ...parsed.data,
       bookingRequiresApproval: checkbox(fd, 'bookingRequiresApproval'),
     },
-  };
-}
-
-/** ניתוח מתגי השקיפות בעמוד הציבורי. תמיד תקין. */
-export function parseTransparency(fd: FormData): TransparencyInput {
-  return {
-    showPricesPublic: checkbox(fd, 'showPricesPublic'),
-    showDurationPublic: checkbox(fd, 'showDurationPublic'),
-    showStaffPublic: checkbox(fd, 'showStaffPublic'),
-  };
-}
-
-/** ניתוח הטקסטים המותאמים ללקוח. תמיד תקין. */
-export function parseTexts(fd: FormData): CustomTextsInput {
-  return {
-    welcomeMessage: nullableStr(fd, 'welcomeMessage'),
-    confirmationMessage: nullableStr(fd, 'confirmationMessage'),
-    policyText: nullableStr(fd, 'policyText'),
   };
 }
 
