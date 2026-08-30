@@ -29,6 +29,7 @@ import { hashToIndex } from './serviceColors';
 import CalendarBoard from './CalendarBoard';
 import HomeShell, { type ToolStep } from './home/HomeShell';
 import { computeSetupState, SETUP_STEP_HREFS } from './onboarding/setup';
+import { isPremiumContentCreated } from './onboarding/premium';
 import { bookingUrl, bookingPath, isBusinessLive } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
 import './home/home.css';
@@ -218,11 +219,9 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
   const brandingDone = Boolean(
     business.logoUrl || business.brandColor || business.coverImageUrl,
   );
-  // «פרטי העסק» נגזר מנתונים אמיתיים (כתובת + טלפון + מדיניות), לא מדגל
-  // onboardingCompleted — כדי שדילוג על הצעד לא ינפח את הטבעת ל-100% בעוד פרטים חסרים.
-  const detailsDone = Boolean(
-    business.address && business.phone && business.settings?.policyText,
-  );
+  // «עמוד הפרימיום» נגזר מתוכן אמיתי שנשמר (business.landingContent) דרך הנרמול —
+  // כדי שהטבעת תסמן השלמה רק כשנוצר תוכן פרימיום בפועל, ולא מברירת מחדל זרעית.
+  const premiumDone = isPremiumContentCreated(business.landingContent);
 
   // מצב ההקמה מחושב ממקור אמת יחיד (setup.ts) שמזין גם את הבית וגם את ניווט ההמשך.
   const setup = computeSetupState({
@@ -230,16 +229,16 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
     staffDone,
     workingHoursDone,
     brandingDone,
-    detailsDone,
+    premiumDone,
   });
   const setupFlags = setup.flags;
   const percent = setup.percent;
   const allComplete = setup.allComplete;
   const remaining = setup.remaining;
 
-  // מגירת הכלים: חמשת אזורי ההקמה. היעדים נגזרים ממקור-האמת (SETUP_STEP_HREFS)
-  // כדי שכפתור «המשך» ומגירת הכלים לעולם לא יסטו זה מזה. "פרטי העסק ומדיניות"
-  // מפנה ל-/admin/settings (מדיניות וביטולים), לא לעורך הגלריה/הפרימיום.
+  // מגירת הכלים: חמשת אזורי היצירה באונבורדינג. היעדים נגזרים ממקור-האמת
+  // (SETUP_STEP_HREFS) כדי שכפתור «המשך» ומגירת הכלים לעולם לא יסטו זה מזה.
+  // "עמוד הפרימיום שלך" מפנה לעורך הפרימיום (?edit=premium), לא למסך ההגדרות.
   const steps: ToolStep[] = [
     {
       title: 'שירותים ומחירים',
@@ -266,10 +265,10 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
       href: SETUP_STEP_HREFS.brandingDone,
     },
     {
-      title: 'פרטי העסק ומדיניות',
-      sub: 'מדיניות ביטולים, כתובת ופרטי קשר',
-      done: detailsDone,
-      href: SETUP_STEP_HREFS.detailsDone,
+      title: 'עמוד הפרימיום שלך',
+      sub: 'עיצוב עמוד הנחיתה והתוכן השיווקי',
+      done: premiumDone,
+      href: SETUP_STEP_HREFS.premiumDone,
     },
   ];
 
@@ -279,7 +278,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
     'את פרטי הצוות',
     'את שעות הפעילות',
     'את המיתוג',
-    'את פרטי העסק והמדיניות',
+    'את עמוד הפרימיום שלך',
   ];
   const firstOpenIndex = setup.firstOpenIndex;
   const continueLabel = CONTINUE_LABELS[firstOpenIndex >= 0 ? firstOpenIndex : 0];

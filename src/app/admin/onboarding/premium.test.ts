@@ -17,6 +17,7 @@ import {
   premiumStepName,
   premiumStepIndex,
   premiumPipStatus,
+  isPremiumContentCreated,
 } from './premium';
 
 /**
@@ -416,4 +417,23 @@ test('premiumPipStatus: מסמן שלבים שהושלמו/נוכחי/עתידי
   assert.equal(premiumPipStatus(3, 3), 'cur');
   assert.equal(premiumPipStatus(4, 3), 'todo');
   assert.equal(premiumPipStatus(5, 3), 'todo');
+});
+
+// ── נעילת קריטריון «תוכן פרימיום נוצר» — הבסיס לצעד הפרימיום בטבעת ההשלמה ──
+test('isPremiumContentCreated: תוכן שמור ריק או NULL נחשב «לא נוצר»', () => {
+  // NULL במסד (עדיין לא נשמר תוכן פרימיום) → הצעד פתוח.
+  assert.equal(isPremiumContentCreated(null), false);
+  assert.equal(isPremiumContentCreated(undefined), false);
+  // אובייקט ריק או שדות ריקים בלבד — הנרמול משמיט אותם ומחזיר ריק.
+  assert.equal(isPremiumContentCreated({}), false);
+  assert.equal(isPremiumContentCreated({ heroHeadline: '   ', about: '' }), false);
+});
+
+test('isPremiumContentCreated: אובייקט תוכן נחיתה ממשי נחשב «נוצר»', () => {
+  // תוכן שנערך בפועל (אובייקט Prisma שמור, לא מחרוזת אשף) → הצעד הושלם.
+  assert.equal(isPremiumContentCreated({ heroHeadline: 'חוויה שמרגישים' }), true);
+  assert.equal(
+    isPremiumContentCreated({ about: 'קצת עלינו', ctaLabel: 'לקביעת תור' }),
+    true,
+  );
 });

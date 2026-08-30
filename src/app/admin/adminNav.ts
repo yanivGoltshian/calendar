@@ -71,7 +71,7 @@ export const ADMIN_WHITELIST_PATHS: string[] = ADMIN_NAV_ITEMS.filter(
   (i) => i.action === 'link' && i.href,
 ).map((i) => i.href as string);
 
-/** נתיבים שהוסרו במפורש מכל ניווט האדמין (settings נגיש רק דרך קישור העריכה בבית). */
+/** נתיבים שהוסרו במפורש מכל ניווט האדמין (ההגדרות נגישות דרך זרימותיהן וניווט ישיר, לא מטבעת ההשלמה). */
 export const ADMIN_REMOVED_PATHS: string[] = [
   '/admin/pos',
   '/admin/inventory',

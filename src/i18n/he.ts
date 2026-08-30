@@ -1301,7 +1301,7 @@ const he = {
           staff: 'הוספת צוות',
           workingHours: 'הגדרת שעות פעילות',
           branding: 'מיתוג ולוגו',
-          details: 'פרטי העסק ומדיניות',
+          details: 'עמוד הפרימיום',
         },
       },
       goLive: {

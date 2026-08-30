@@ -19,7 +19,7 @@ function flags(partial: Partial<SetupFlags>): SetupFlags {
     staffDone: false,
     workingHoursDone: false,
     brandingDone: false,
-    detailsDone: false,
+    premiumDone: false,
     ...partial,
   };
 }
@@ -55,12 +55,12 @@ test('setup: יעד ההמשך עוקב אחר הצעד החסר הראשון (�
         servicesDone: true,
         staffDone: true,
         workingHoursDone: true,
-        detailsDone: true,
+        premiumDone: true,
       }),
     ).continueHref,
     SETUP_STEP_HREFS.brandingDone,
   );
-  // רק פרטי העסק חסרים → «המשך» מוביל למסך ההגדרות/מדיניות
+  // רק עמוד הפרימיום חסר → «המשך» מוביל לעורך הפרימיום
   assert.equal(
     computeSetupState(
       flags({
@@ -70,13 +70,13 @@ test('setup: יעד ההמשך עוקב אחר הצעד החסר הראשון (�
         brandingDone: true,
       }),
     ).continueHref,
-    '/admin/settings#policy',
+    '/admin/onboarding?edit=premium',
   );
 });
 
-// נעילה: 4 מתוך 5 (חסרים רק פרטי עסק/מדיניות) — הטבעת חייבת להראות 80%<100,
-// כך ש«דילוג» על פרטי העסק לעולם לא מנפח את ההשלמה ל-100%.
-test('setup: 4/5 (פרטי עסק חסרים) → percent=80 ו-allComplete=false', () => {
+// נעילה: 4 מתוך 5 (חסר רק עמוד הפרימיום) — הטבעת חייבת להראות 80%<100,
+// כך ש«דילוג» על עמוד הפרימיום לעולם לא מנפח את ההשלמה ל-100%.
+test('setup: 4/5 (עמוד הפרימיום חסר) → percent=80 ו-allComplete=false', () => {
   const s = computeSetupState(
     flags({
       servicesDone: true,
@@ -87,7 +87,7 @@ test('setup: 4/5 (פרטי עסק חסרים) → percent=80 ו-allComplete=fals
   );
   assert.equal(s.percent, 80);
   assert.equal(s.allComplete, false);
-  assert.ok(s.percent < 100, 'הטבעת לא יכולה להראות 100% כשחסרים פרטי עסק');
+  assert.ok(s.percent < 100, 'הטבעת לא יכולה להראות 100% כשחסר עמוד הפרימיום');
 });
 
 test('setup: כשהכול הושלם, יעד ההמשך נופל לנתיב האונבורדינג', () => {
@@ -97,7 +97,7 @@ test('setup: כשהכול הושלם, יעד ההמשך נופל לנתיב הא
       staffDone: true,
       workingHoursDone: true,
       brandingDone: true,
-      detailsDone: true,
+      premiumDone: true,
     }),
   );
   assert.equal(s.continueHref, SETUP_CONTINUE_HREF);
@@ -111,7 +111,7 @@ test('setup: 100% ו-allComplete=true רק כשכל חמשת הדגלים דלו
       staffDone: true,
       workingHoursDone: true,
       brandingDone: true,
-      detailsDone: true,
+      premiumDone: true,
     }),
   );
   assert.equal(s.percent, 100);
