@@ -9,8 +9,13 @@ import {
   markOnboardingStep,
   type BusinessProfileInput,
 } from '@/server/repos/settings';
-import { createService, setServiceHidden } from '@/server/repos/services';
-import { setBusinessHours, type WorkingHoursRow } from '@/server/repos/workingHours';
+import { createService, setServiceHidden, listServices } from '@/server/repos/services';
+import { listStaff } from '@/server/repos/staff';
+import {
+  setBusinessHours,
+  getBusinessHours,
+  type WorkingHoursRow,
+} from '@/server/repos/workingHours';
 import {
   workingHoursPreset,
   parseCustomHours,
@@ -19,6 +24,7 @@ import {
 import type { SaveState } from '../settings/parse';
 import { ONBOARDING_CHECKLIST_DISMISS_COOKIE } from './checklistState';
 import { parsePremiumDraft } from './premium';
+import { computeSetupState } from './setup';
 
 /**
  * פעולות אשף ההקמה המודרך (מסלול העסק החדש):
@@ -223,10 +229,26 @@ export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promis
   if (landingContent !== null) {
     await markOnboardingStep(business.id, 'richContent');
   }
-  // יישור דגל ההשלמה לנוכחות תוכן הפרימיום — זו נקודת היישור היחידה, ומנותקת
-  // לגמרי משדות ההגדרות (כתובת/טלפון/מדיניות). כך טבעת ההשלמה, הבאנר במסך
-  // ההגדרות והכרטיס «מה הלאה» נסגרים ברגע שנוצר תוכן פרימיום ממשי.
-  await setOnboardingCompleted(business.id, landingContent !== null);
+  // יישור דגל «ההקמה הושלמה» לטבעת ההשלמה: אמת אך ורק כשכל חמשת צעדי היצירה
+  // הושלמו (שירותים, צוות, שעות פעילות, מיתוג, עמוד פרימיום), נגזר ממקור-האמת
+  // computeSetupState כך שהדגל שווה לאחוז מאה ואינו משכפל את תנאי ההשלמה. מנותק
+  // לגמרי משדות ההגדרות (כתובת/טלפון/מדיניות). כך הבאנר במסך ההגדרות והכרטיס
+  // «מה הלאה» נסגרים בדיוק כשהטבעת מלאה, ולא כשנוצר תוכן פרימיום לבדו.
+  const [services, staff, hours] = await Promise.all([
+    listServices(business.id),
+    listStaff(business.id),
+    getBusinessHours(business.id),
+  ]);
+  const setup = computeSetupState({
+    servicesDone: services.length > 0,
+    staffDone: staff.length > 0,
+    workingHoursDone: hours.length > 0,
+    brandingDone: Boolean(
+      business.logoUrl || business.brandColor || business.coverImageUrl,
+    ),
+    premiumDone: landingContent !== null,
+  });
+  await setOnboardingCompleted(business.id, setup.allComplete);
   revalidateAll(business.slug);
   return { ok: true };
 }

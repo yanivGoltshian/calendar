@@ -90,6 +90,16 @@ test('setup: 4/5 (עמוד הפרימיום חסר) → percent=80 ו-allComplet
   assert.ok(s.percent < 100, 'הטבעת לא יכולה להראות 100% כשחסר עמוד הפרימיום');
 });
 
+// נעילה: תוכן פרימיום נוצר לבדו (עומק-קישור לעורך) לפני צוות/שעות — הדגל
+// «ההקמה הושלמה» נגזר מ-allComplete, ולכן חייב להישאר false ב-20%, כדי שהבאנר
+// במסך ההגדרות והכרטיס «מה הלאה» לא ייסגרו מוקדם רק בגלל נוכחות פרימיום.
+test('setup: רק עמוד הפרימיום דלוק → percent=20 ו-allComplete=false', () => {
+  const s = computeSetupState(flags({ premiumDone: true }));
+  assert.equal(s.done, 1);
+  assert.equal(s.percent, 20);
+  assert.equal(s.allComplete, false);
+});
+
 test('setup: כשהכול הושלם, יעד ההמשך נופל לנתיב האונבורדינג', () => {
   const s = computeSetupState(
     flags({
