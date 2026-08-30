@@ -387,7 +387,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
     <main
       dir="rtl"
       style={rootStyle}
-      className={`relative min-h-screen pb-28 ${isClinicPremium ? 'bg-[color:var(--c-cream,#faf6ef)]' : 'bg-slate-50'}`}
+      className={`relative min-h-screen overflow-x-clip pb-28 ${isClinicPremium ? 'bg-[color:var(--c-cream,#faf6ef)]' : 'bg-slate-50'}`}
     >
       <JsonLd data={jsonLd} />
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { t } from '@/i18n';
 
@@ -7,9 +8,23 @@ import { t } from '@/i18n';
  * כפתור "חזרה" לעמוד הציבורי של העסק.
  * חוזר לעמוד הקודם בהיסטוריה, ואם אין היסטוריה (כניסה ישירה לקישור)
  * נופל חזרה לעמוד הבית של תור צ׳יק.
+ *
+ * כשהעמוד רץ כאפליקציה מותקנת (standalone) הכפתור מוסתר לגמרי: אין
+ * לאן "לחזור" בתוך אפליקציית העסק, וכפתור שמוביל לתור צ׳יק רק מבלבל את
+ * בעל העסק. הכפתור מוצג רק למבקר אמיתי שהגיע מחלון הראווה בדפדפן רגיל.
+ * הזיהוי זהה לזה שב-InstallApp: display-mode: standalone (או navigator.standalone
+ * ב-iOS Safari הישן).
  */
 export default function BackButton() {
   const router = useRouter();
+  const [standalone, setStandalone] = useState(false);
+
+  useEffect(() => {
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
+    setStandalone(isStandalone);
+  }, []);
 
   function handleBack() {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -18,6 +33,9 @@ export default function BackButton() {
       router.push('/');
     }
   }
+
+  // באפליקציה מותקנת אין להציג את הכפתור כלל (מונע דליפה לעמוד עסק מותקן).
+  if (standalone) return null;
 
   return (
     <button
