@@ -63,22 +63,28 @@ export async function cancelAppointmentAction(
   void exportOnCancel(id).catch(() => {});
 
   // התראת בעל העסק על ביטול שיזם הלקוח (best-effort, לעולם לא חוסמת את הביטול).
-  // היעד הוא מייל העסק עצמו (ownerEmail / owner.email) — לא מייל הפלטפורמה.
-  try {
-    await notifyOwnerOfCancellation({
-      appointmentId: appt.id,
-      businessName: appt.business.name,
-      ownerEmail: appt.business.ownerEmail,
-      ownerUserEmail: appt.business.owner?.email ?? null,
-      clientName: appt.client.name,
-      clientPhone: appt.client.phone ?? null,
-      services: appt.services.map((s) => ({ name: s.nameSnapshot })),
-      startAt: appt.startAt,
-      timezone: appt.business.timezone,
-      manageUrl: absoluteUrl('/admin/appointments'),
-    });
-  } catch {
-    // הביטול כבר בוצע והוחזר בהצלחה; כשל התראה אינו משפיע על התשובה.
+  // מכובד מתג notifyOnCancellation (ברירת מחדל דלוק). היעד הוא מייל העסק עצמו
+  // (ownerEmail / owner.email) — לא מייל הפלטפורמה. businessId ו-pushEnabled
+  // מזרימים את ערוץ ה-Web Push לבעל העסק.
+  if (appt.business.settings?.notifyOnCancellation ?? true) {
+    try {
+      await notifyOwnerOfCancellation({
+        appointmentId: appt.id,
+        businessName: appt.business.name,
+        ownerEmail: appt.business.ownerEmail,
+        ownerUserEmail: appt.business.owner?.email ?? null,
+        clientName: appt.client.name,
+        clientPhone: appt.client.phone ?? null,
+        services: appt.services.map((s) => ({ name: s.nameSnapshot })),
+        startAt: appt.startAt,
+        timezone: appt.business.timezone,
+        manageUrl: absoluteUrl('/admin/appointments'),
+        businessId: appt.business.id,
+        pushEnabled: appt.business.settings?.pushEnabled ?? false,
+      });
+    } catch {
+      // הביטול כבר בוצע והוחזר בהצלחה; כשל התראה אינו משפיע על התשובה.
+    }
   }
 
   revalidatePath('/account');

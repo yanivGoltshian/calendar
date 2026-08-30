@@ -213,9 +213,13 @@ export async function POST(req: Request) {
     }
   }
 
-  // התראת בעל העסק על הזמנה הממתינה לאישור (best-effort, לעולם לא חוסמת).
-  // היעד הוא מייל העסק עצמו (ownerEmail / owner.email) — לא מייל הפלטפורמה.
-  if (status === 'PENDING') {
+  // התראת בעל העסק על הזמנה חדשה (best-effort, לעולם לא חוסמת). מופעלת בשני
+  // המסלולים — גם תור הממתין לאישור וגם תור שאושר אוטומטית (CONFIRMED) — כדי
+  // שבעל העסק יידע על כל הזמנה, לא רק על תור שדורש אישור. מכובד מתג notifyOnBooking
+  // (ברירת מחדל דלוקה). היעד הוא מייל העסק עצמו (ownerEmail / owner.email) — לא
+  // מייל הפלטפורמה. businessId ו-pushEnabled מזרימים את ערוץ ה-Web Push.
+  if (settings?.notifyOnBooking ?? true) {
+    const pendingApproval = status === 'PENDING';
     try {
       await notifyOwnerOfBooking({
         appointmentId: appointment.id,
@@ -228,7 +232,12 @@ export async function POST(req: Request) {
         startAt,
         timezone: business.timezone,
         totalPriceAgorot: totalPrice,
-        approvalsUrl: absoluteUrl('/admin/appointments?tab=pending'),
+        requiresApproval: pendingApproval,
+        approvalsUrl: absoluteUrl(
+          pendingApproval ? '/admin/appointments?tab=pending' : '/admin/appointments',
+        ),
+        businessId: business.id,
+        pushEnabled: settings?.pushEnabled ?? false,
       });
     } catch {
       // ההזמנה כבר נוצרה והוחזרה בהצלחה; כשל התראה אינו משפיע על התשובה.

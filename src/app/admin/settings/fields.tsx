@@ -7,6 +7,7 @@ import { inputClass } from './fieldStyles';
 import { BrandColorField } from './BrandColorField';
 import { TimezoneField } from './TimezoneField';
 import { ImageUploadField } from './ImageUploadField';
+import PushOptInButton from './PushOptInButton';
 
 /**
  * קבוצות שדות משותפות למודול ההגדרות וההקמה.
@@ -366,6 +367,80 @@ export function RemindersFields({
           <span className={hintClass + ' block'}>{c.confirmationRequiredHint}</span>
         </span>
       </label>
+    </>
+  );
+}
+
+export type OwnerNotificationsValues = Pick<
+  BusinessSettings,
+  'notifyOnBooking' | 'notifyOnCancellation' | 'pushEnabled'
+>;
+
+/**
+ * מתגי התראות בעל העסק: הזמנה חדשה, ביטול, והפעלת Web Push. כפתור ההצטרפות לפוש
+ * רושם את הדפדפן הנוכחי; המתג pushEnabled שולט אם ההתראות אכן יישלחו.
+ */
+export function OwnerNotificationsFields({
+  s,
+  vapidPublicKey,
+}: {
+  s: OwnerNotificationsValues;
+  vapidPublicKey: string | null;
+}) {
+  const c = t.admin.settings.ownerNotifications;
+  return (
+    <>
+      <label className={checkRowClass}>
+        <input
+          type="checkbox"
+          name="notifyOnBooking"
+          defaultChecked={s.notifyOnBooking}
+          className={checkboxClass}
+        />
+        <span>
+          {c.bookingLabel}
+          <span className={hintClass + ' block'}>{c.bookingHint}</span>
+        </span>
+      </label>
+
+      <label className={checkRowClass}>
+        <input
+          type="checkbox"
+          name="notifyOnCancellation"
+          defaultChecked={s.notifyOnCancellation}
+          className={checkboxClass}
+        />
+        <span>
+          {c.cancellationLabel}
+          <span className={hintClass + ' block'}>{c.cancellationHint}</span>
+        </span>
+      </label>
+
+      <label className={checkRowClass}>
+        <input
+          type="checkbox"
+          name="pushEnabled"
+          defaultChecked={s.pushEnabled}
+          className={checkboxClass}
+        />
+        <span>
+          {c.pushLabel}
+          <span className={hintClass + ' block'}>{c.pushHint}</span>
+        </span>
+      </label>
+
+      <PushOptInButton
+        vapidPublicKey={vapidPublicKey}
+        labels={{
+          subscribe: c.pushSubscribe,
+          subscribed: c.pushSubscribed,
+          subscribing: c.pushSubscribing,
+          denied: c.pushDenied,
+          unsupported: c.pushUnsupported,
+          missingKey: c.pushMissingKey,
+          error: c.pushError,
+        }}
+      />
     </>
   );
 }

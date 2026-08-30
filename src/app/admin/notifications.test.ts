@@ -116,3 +116,53 @@ test('שילוב מלא — אישור, ביטול וחידוש לפי הסדר'
     ['approval', 'cancellation', 'renewal'],
   );
 });
+
+test('הזמנה מאושרת אחת — התראת הזמנה עם קישור להזמנות', () => {
+  const items = buildAdminNotifications({
+    pendingCount: 0,
+    recentBookings: 1,
+    access: { state: 'active', daysLeft: 30 },
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'booking');
+  assert.equal(items[0].href, '/admin/appointments');
+  assert.ok(items[0].title.includes('אחת') || items[0].title.length > 0);
+});
+
+test('כמה הזמנות מאושרות — הכותרת כוללת את המספר', () => {
+  const items = buildAdminNotifications({
+    pendingCount: 0,
+    recentBookings: 5,
+    access: { state: 'active', daysLeft: 30 },
+  });
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'booking');
+  assert.ok(items[0].title.includes('5'));
+});
+
+test('הזמנה מאושרת אינה משפיעה על מונה הממתינים — שתי התראות נפרדות', () => {
+  const items = buildAdminNotifications({
+    pendingCount: 2,
+    recentBookings: 3,
+    access: { state: 'active', daysLeft: 30 },
+  });
+  assert.equal(items.length, 2);
+  assert.deepEqual(
+    items.map((i) => i.kind),
+    ['approval', 'booking'],
+  );
+});
+
+test('סדר מלא — אישור, הזמנה, ביטול וחידוש', () => {
+  const items = buildAdminNotifications({
+    pendingCount: 1,
+    recentBookings: 1,
+    recentCancellations: 1,
+    access: { state: 'trialing', daysLeft: 3 },
+  });
+  assert.equal(items.length, 4);
+  assert.deepEqual(
+    items.map((i) => i.kind),
+    ['approval', 'booking', 'cancellation', 'renewal'],
+  );
+});

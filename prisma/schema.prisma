@@ -273,6 +273,9 @@ model Business {
   // בקשות שדרוג / הצעת מחיר (Standard / Premium) — קשר אדיטיבי בלבד
   planInquiries PlanInquiry[]
 
+  // מנויי Web Push של בעל העסק (מודול תיקון באג 11) — קשר אדיטיבי בלבד
+  pushSubscriptions PushSubscription[]
+
   @@index([slug])
   @@index([ownerEmail])
   // אינדקס לשאילתת המחיקה: מציאת עסקים שממתינים למחיקה ומועד המחיקה שלהם עבר.
@@ -300,6 +303,16 @@ model BusinessSettings {
   reminderChannel      ReminderChannel @default(AUTO) // ערוץ שליחת התזכורת (ברירת מחדל: נגזר אוטומטית מאופן ההרשמה)
   confirmationRequired Boolean         @default(true) // בקשת אישור הגעה מהלקוח (ברירת מחדל דלוקה; ניתן לכבות פר-עסק)
 
+  // ── התראות לבעל העסק (מודול תיקון באג 11) — כל השדות אדיטיביים ─────────────
+  // התראה על הזמנה חדשה (בפעמון ובדוא"ל/פוש). ברירת מחדל דלוקה כדי לשמר
+  // התנהגות קיימת שבה בעל העסק מצפה לדעת על תורים חדשים.
+  notifyOnBooking      Boolean @default(true)
+  // התראה על ביטול לקוח. ברירת מחדל דלוקה (עקבי עם התנהגות הפעמון הקיימת).
+  notifyOnCancellation Boolean @default(true)
+  // הפעלת Web Push לבעל העסק. ברירת מחדל כבויה — נדרשת הצטרפות מפורשת
+  // (הרשאת דפדפן + רישום מנוי) לפני שנשלחות התראות דחיפה.
+  pushEnabled          Boolean @default(false)
+
   // מצב אונבורדינג — האם ההקמה הראשונית הושלמה. נוסף במודול ההקמה.
   onboardingCompleted Boolean @default(false)
   // מעקב גרנולרי אחר צעדי ההקמה שהושלמו ואלו שדולגו. מזין את רמת העיצוב של העמוד הציבורי.
@@ -308,6 +321,21 @@ model BusinessSettings {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// מנוי Web Push של דפדפן בעל העסק (מודול תיקון באג 11). כל endpoint ייחודי;
+/// מחיקת העסק גוררת מחיקת המנויים (Cascade). p256dh/auth הם מפתחות ההצפנה של
+/// המנוי לפי תקן Web Push. אדיטיבי בלבד — לא נוגע בשום מודל קיים.
+model PushSubscription {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+
+  @@index([businessId])
 }
 
 model User {

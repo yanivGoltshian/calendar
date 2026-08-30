@@ -44,8 +44,18 @@ export type OwnerBookingPayload = {
   timezone: string;
   /** מחיר כולל באגורות. */
   totalPriceAgorot: number;
-  /** קישור מוחלט לעמוד ניהול התורים לאישור (נבנה אצל הקורא). */
+  /**
+   * האם ההזמנה ממתינה לאישור העסק. ברירת מחדל true לשמירת תאימות לאחור עם קוראים
+   * קיימים ובדיקות (עד כה ההתראה נשלחה רק לתורים ממתינים). כש-false, ההזמנה אושרה
+   * אוטומטית והנוסח משתנה בהתאם ("הזמנה חדשה" במקום "ממתינה לאישור").
+   */
+  requiresApproval?: boolean;
+  /** קישור מוחלט לעמוד ניהול התורים (נבנה אצל הקורא). */
   approvalsUrl: string;
+  /** מזהה העסק — נדרש לשליחת Web Push למנויי הדפדפן של בעל העסק (אופציונלי). */
+  businessId?: string;
+  /** האם ערוץ ה-Web Push דלוק בהגדרות העסק (ברירת מחדל false — כבוי). */
+  pushEnabled?: boolean;
 };
 
 export type NotifyOwnerBookingResult = {
@@ -83,10 +93,22 @@ export function buildBookingEmail(payload: OwnerBookingPayload): {
   const serviceNames = payload.services.map((s) => s.name).join(', ');
   const price = formatAgorot(payload.totalPriceAgorot);
 
-  const subject = `${BRAND.name} · הזמנה חדשה ממתינה לאישור · ${payload.businessName}`;
+  // ברירת מחדל true לתאימות לאחור: קורא שלא מציין requiresApproval מקבל את הנוסח
+  // הקיים ("ממתינה לאישור"). תור שאושר אוטומטית (false) מקבל נוסח "הזמנה חדשה".
+  const pendingApproval = payload.requiresApproval ?? true;
+  const headline = pendingApproval ? 'הזמנה חדשה ממתינה לאישור' : 'הזמנה חדשה התקבלה';
+  const introText = pendingApproval
+    ? 'התקבלה הזמנה חדשה הממתינה לאישורך.'
+    : 'התקבלה הזמנה חדשה בעסק שלך.';
+  const ctaText = pendingApproval ? 'לאישור התור' : 'למעבר לתור';
+  const ctaHtml = pendingApproval ? 'מעבר לאישור התור' : 'מעבר לתור';
+
+  const subject = pendingApproval
+    ? `${BRAND.name} · הזמנה חדשה ממתינה לאישור · ${payload.businessName}`
+    : `${BRAND.name} · הזמנה חדשה · ${payload.businessName}`;
 
   const lines = [
-    'התקבלה הזמנה חדשה הממתינה לאישורך.',
+    introText,
     '',
     `עסק: ${payload.businessName}`,
     `לקוח/ה: ${payload.clientName}`,
@@ -95,7 +117,7 @@ export function buildBookingEmail(payload: OwnerBookingPayload): {
     `מועד: ${when}`,
     `מחיר: ${price}`,
     '',
-    `לאישור התור: ${payload.approvalsUrl}`,
+    `${ctaText}: ${payload.approvalsUrl}`,
   ];
   const text = lines.join('\n');
 
@@ -103,8 +125,8 @@ export function buildBookingEmail(payload: OwnerBookingPayload): {
     `<tr><td style="padding:4px 12px 4px 0;font-weight:bold;white-space:nowrap">${label}</td><td style="padding:4px 0">${value}</td></tr>`;
   const html =
     `<!doctype html><html lang="he" dir="rtl"><body style="font-family:Arial,Helvetica,sans-serif;text-align:right;direction:rtl;color:#0B1526">` +
-    `<h2 style="color:#0A182D">הזמנה חדשה ממתינה לאישור</h2>` +
-    `<p>התקבלה הזמנה חדשה דרך ${BRAND.name} הממתינה לאישורך.</p>` +
+    `<h2 style="color:#0A182D">${headline}</h2>` +
+    `<p>${introText.replace('.', '')} דרך ${BRAND.name}.</p>` +
     `<table style="border-collapse:collapse;font-size:15px">` +
     row('עסק', payload.businessName) +
     row('לקוח/ה', payload.clientName) +
@@ -115,7 +137,7 @@ export function buildBookingEmail(payload: OwnerBookingPayload): {
     row('מועד', when) +
     row('מחיר', price) +
     `</table>` +
-    `<p style="margin-top:16px"><a href="${payload.approvalsUrl}" style="color:#82643C">מעבר לאישור התור</a></p>` +
+    `<p style="margin-top:16px"><a href="${payload.approvalsUrl}" style="color:#82643C">${ctaHtml}</a></p>` +
     `</body></html>`;
 
   return { subject, text, html };
@@ -152,13 +174,21 @@ export async function notifyOwnerOfBooking(
     }
   }
 
-  // ── ערוץ 2: קידום Web Push עתידי (מיטבי, stub כרגע) ───────────────────────
+  // ── ערוץ 2: Web Push לבעל העסק (מיטבי, לעולם לא חוסם) ────────────────────
+  // כשיש businessId והמתג pushEnabled אינו כבוי במפורש — שולחים למנויי הדפדפן של
+  // העסק דרך sendToBusiness (מימוש VAPID אמיתי, מתדרדר בחן ל-console כשאין מפתחות).
+  // קוראים ותיקים ללא businessId שומרים על ההתנהגות הקודמת (sendPush stub) לתאימות.
+  const pushTitle = pendingApprovalPush(payload)
+    ? `${BRAND.name} · הזמנה ממתינה לאישור`
+    : `${BRAND.name} · הזמנה חדשה`;
+  const pushBody = `${payload.clientName} קבע/ה תור בעסק ${payload.businessName}.`;
   try {
-    await getPushProvider().sendPush(
-      target ?? payload.businessName,
-      `${BRAND.name} · הזמנה ממתינה לאישור`,
-      `${payload.clientName} קבע/ה תור בעסק ${payload.businessName}.`,
-    );
+    const push = getPushProvider();
+    if (payload.businessId && payload.pushEnabled !== false) {
+      await push.sendToBusiness(payload.businessId, pushTitle, pushBody, payload.approvalsUrl);
+    } else {
+      await push.sendPush(target ?? payload.businessName, pushTitle, pushBody);
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     errors.push(`push: ${msg}`);
@@ -166,4 +196,9 @@ export async function notifyOwnerOfBooking(
   }
 
   return { emailed, skipped, emailConfigured, errors };
+}
+
+/** האם נוסח הפוש הוא "ממתינה לאישור" (ברירת מחדל true לתאימות לאחור). */
+function pendingApprovalPush(payload: OwnerBookingPayload): boolean {
+  return payload.requiresApproval ?? true;
 }

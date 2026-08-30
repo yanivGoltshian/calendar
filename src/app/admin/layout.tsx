@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getBusinessesOwnedByEmail, getBusinessById, getActiveBusiness } from '@/server/repos/business';
-import { countPendingAppointments, countRecentClientCancellations } from '@/server/repos/appointments';
+import { countPendingAppointments, countRecentClientCancellations, countRecentBookings } from '@/server/repos/appointments';
+import { getOrCreateSettings } from '@/server/repos/settings';
 import { resolveOwnerDisplayName } from '@/server/repos/staff';
 import { getBusinessAccess } from '@/server/subscription';
 import { isPlatformAdminEmail } from '@/server/platformAdmin';
@@ -127,16 +128,29 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // ספירת תורים הממתינים לאישור לחיווי (תג) על פריט "הזמנות" בסרגל הצד.
   const pendingCount = await countPendingAppointments(business.id);
 
-  // ביטולי לקוח ב-24 השעות האחרונות לתורים עתידיים (משבצות שהתפנו) — להתראת הפעמון.
-  const cancellationSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const recentCancellations = await countRecentClientCancellations(
-    business.id,
-    cancellationSince,
-  );
+  // הגדרות ההתראות של העסק — שולטות אילו פריטים מוצגים בפעמון. ברירת המחדל של
+  // notifyOnBooking/notifyOnCancellation היא true, ולכן היעדר הגדרה שקול להתנהגות
+  // הקיימת. בעל עסק שיכבה מתג, הפריט המתאים לא ייספר ולא יופיע בפעמון.
+  const ownerSettings = await getOrCreateSettings(business.id);
+  const notifyOnBooking = ownerSettings.notifyOnBooking ?? true;
+  const notifyOnCancellation = ownerSettings.notifyOnCancellation ?? true;
 
-  // מרכז ההתראות בפעמון: תורים הממתינים לאישור, ביטולי לקוח וחידוש מנוי.
+  const rollingSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  // הזמנות מאושרות ב-24 השעות האחרונות (כולל אישור אוטומטי) — להתראת הפעמון.
+  const recentBookings = notifyOnBooking
+    ? await countRecentBookings(business.id, rollingSince)
+    : 0;
+
+  // ביטולי לקוח ב-24 השעות האחרונות לתורים עתידיים (משבצות שהתפנו) — להתראת הפעמון.
+  const recentCancellations = notifyOnCancellation
+    ? await countRecentClientCancellations(business.id, rollingSince)
+    : 0;
+
+  // מרכז ההתראות בפעמון: תורים הממתינים לאישור, הזמנות חדשות, ביטולי לקוח וחידוש מנוי.
   const notifications = buildAdminNotifications({
     pendingCount,
+    recentBookings,
     recentCancellations,
     access,
   });

@@ -4,6 +4,7 @@ import {
   parseProfile,
   parsePolicy,
   parseReminders,
+  parseOwnerNotifications,
 } from './parse';
 
 /** בונה FormData מאובייקט פשוט. */
@@ -132,4 +133,37 @@ test('parseReminders: ערוץ לא חוקי ⇐ AUTO', () => {
 test('parseReminders: שעות התראה לא חוקיות ⇐ שגיאת number', () => {
   const res = parseReminders(form({ reminderLeadHours: 'xyz' }));
   assert.deepEqual(res, { ok: false, error: 'number' });
+});
+
+test('parseOwnerNotifications: תיבות מסומנות ⇐ true', () => {
+  const res = parseOwnerNotifications(
+    form({ notifyOnBooking: 'on', notifyOnCancellation: 'on', pushEnabled: 'on' }),
+  );
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.deepEqual(res.data, {
+    notifyOnBooking: true,
+    notifyOnCancellation: true,
+    pushEnabled: true,
+  });
+});
+
+test('parseOwnerNotifications: תיבות חסרות ⇐ false (טופס לא מסמן = כבוי)', () => {
+  const res = parseOwnerNotifications(form({}));
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.deepEqual(res.data, {
+    notifyOnBooking: false,
+    notifyOnCancellation: false,
+    pushEnabled: false,
+  });
+});
+
+test('parseOwnerNotifications: מיפוי חלקי — רק הזמנה דלוקה', () => {
+  const res = parseOwnerNotifications(form({ notifyOnBooking: 'on' }));
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.equal(res.data.notifyOnBooking, true);
+  assert.equal(res.data.notifyOnCancellation, false);
+  assert.equal(res.data.pushEnabled, false);
 });

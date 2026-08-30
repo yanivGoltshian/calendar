@@ -1,7 +1,7 @@
 import { t } from '@/i18n';
 import type { AccessState } from '@/server/subscription';
 
-export type AdminNotificationKind = 'approval' | 'renewal' | 'cancellation';
+export type AdminNotificationKind = 'approval' | 'booking' | 'renewal' | 'cancellation';
 
 export type AdminNotification = {
   id: string;
@@ -32,11 +32,13 @@ function renewalTitle(state: AccessState, daysLeft: number): string {
  */
 export function buildAdminNotifications(input: {
   pendingCount: number;
+  recentBookings?: number;
   recentCancellations?: number;
   access: Pick<import('@/server/subscription').BusinessAccess, 'state' | 'daysLeft'>;
 }): AdminNotification[] {
   const { pendingCount, access } = input;
   const recentCancellations = input.recentCancellations ?? 0;
+  const recentBookings = input.recentBookings ?? 0;
   const items: AdminNotification[] = [];
 
   if (pendingCount > 0) {
@@ -50,6 +52,22 @@ export function buildAdminNotifications(input: {
       kind: 'approval',
       title,
       href: '/admin/appointments?tab=pending',
+    });
+  }
+
+  // הזמנות מאושרות עדכניות (כולל אישור אוטומטי) — חלון מתגלגל של 24 שעות. כך
+  // בעל העסק רואה בפעמון גם תור שאושר אוטומטית, לא רק תורים שממתינים לאישור.
+  if (recentBookings > 0) {
+    const n = t.admin.notifications;
+    const title =
+      recentBookings === 1
+        ? n.bookingOne
+        : n.bookingMany.replace('{count}', String(recentBookings));
+    items.push({
+      id: 'recent-bookings',
+      kind: 'booking',
+      title,
+      href: '/admin/appointments',
     });
   }
 

@@ -54,6 +54,7 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
         settings={settings}
         onboardingCompleted={settings.onboardingCompleted}
         isExclusive={isExclusive}
+        vapidPublicKey={process.env.VAPID_PUBLIC_KEY ?? null}
       />
 
       <CalendarSyncSection
