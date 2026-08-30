@@ -295,6 +295,8 @@ const he = {
     bookingSuccessTitle: 'התור נקבע בהצלחה!',
     bookingSuccessBody: 'נשלח אליכם אישור באימייל. נתראה בקרוב.',
     bookingSuccessBodyNoComms: 'התור נקבע. נתראה בקרוב.',
+    viewMyAppointment: 'צפייה בתור שלי',
+    bookingConfirmedBanner: 'התור שלך נקבע',
     pendingTitle: 'הבקשה התקבלה וממתינה לאישור',
     pendingBody: 'העסק יאשר את התור בקרוב. נעדכן אתכם כשההזמנה תאושר.',
     bookAnother: 'קביעת תור נוסף',

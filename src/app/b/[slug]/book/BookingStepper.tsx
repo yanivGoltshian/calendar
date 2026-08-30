@@ -338,10 +338,10 @@ export default function BookingStepper({
           {isPending ? t.booking.pendingBody : (requireEmail ? t.booking.bookingSuccessBody : t.booking.bookingSuccessBodyNoComms)}
         </p>
         <Link
-          href={`/b/${slug}`}
+          href={authed ? '/account' : `/b/${slug}?booked=${confirmedId}`}
           className="mt-4 rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white hover:bg-brand-700"
         >
-          {t.common.back}
+          {t.booking.viewMyAppointment}
         </Link>
       </div>
     );

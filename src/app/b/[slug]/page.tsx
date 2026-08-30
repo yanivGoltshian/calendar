@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { getBusinessBySlug } from '@/server/repos/business';
 import { getClientSession } from '@/lib/session';
 import { getUpcomingAppointmentsForUserAtBusiness } from '@/server/repos/account';
+import { getAppointmentById } from '@/server/repos/appointments';
 import { buildGoogleCalendarUrl } from '@/lib/googleCalendar';
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
@@ -44,7 +45,7 @@ type Props = {
   params: Promise<{ slug: string }>;
   // אפשרות תצוגה מקדימה בלבד לאורחים (בוחר ה-/demo): 'landing' או 'booking'.
   // לעולם לא נשמר ולא נכתב ל-DB, רק משפיע על הרינדור של הבקשה הנוכחית.
-  searchParams?: Promise<{ style?: string }>;
+  searchParams?: Promise<{ style?: string; booked?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -109,6 +110,45 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
           appointments={views}
         />
       );
+    }
+  } else {
+    // באג 10 — נפילה חיננית לאורח ללא סשן לקוח: אחרי קביעת התור, מסך ההצלחה מפנה
+    // ל-/b/{slug}?booked={id}. נשלוף את התור לפי המזהה, נוודא שהוא שייך לעסק הזה
+    // ועתידי, ונציג באנר "התור שלך נקבע" עם אותו כרטיס תור (הוספה ליומן) — ללא ביטול.
+    const bookedId = ((await searchParams) ?? {}).booked;
+    if (bookedId) {
+      const appt = await getAppointmentById(bookedId);
+      if (
+        appt &&
+        appt.businessId === business.id &&
+        appt.status !== 'CANCELLED' &&
+        appt.startAt.getTime() >= Date.now()
+      ) {
+        const tz = business.timezone;
+        const clinic = t.premiumLanding.clinic.returning;
+        const title =
+          appt.services.map((s) => s.nameSnapshot).filter(Boolean).join(' + ') || business.name;
+        const staffLabel = appt.staff?.displayName ? `${clinic.withStaff} ${appt.staff.displayName}` : '';
+        const whenLabel = `${formatLongDate(formatDateString(appt.startAt, tz), tz)} • ${formatTime(
+          appt.startAt,
+          tz,
+        )}`;
+        const googleUrl = buildGoogleCalendarUrl({
+          title,
+          start: appt.startAt,
+          end: appt.endAt,
+          details: appt.staff?.displayName ? `${business.name} — ${appt.staff.displayName}` : business.name,
+          location: business.address ?? undefined,
+        });
+        returningNode = (
+          <ReturningCustomer
+            name=""
+            slug={slug}
+            heading={t.booking.bookingConfirmedBanner}
+            appointments={[{ id: appt.id, title, staffLabel, whenLabel, googleUrl, canCancel: false }]}
+          />
+        );
+      }
     }
   }
 
