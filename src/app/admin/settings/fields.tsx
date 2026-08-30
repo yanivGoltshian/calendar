@@ -1,5 +1,6 @@
 import type { Business, BusinessSettings } from '@prisma/client';
 import { BusinessType, ReminderChannel } from '@prisma/client';
+import Link from 'next/link';
 import { t } from '@/i18n';
 import { BRAND } from '@/config/brand';
 import { inputClass } from './fieldStyles';
@@ -276,8 +277,26 @@ export type RemindersValues = Pick<
   'remindersEnabled' | 'reminderChannel' | 'reminderLeadHours' | 'confirmationRequired'
 >;
 
-export function RemindersFields({ s }: { s: RemindersValues }) {
+export function RemindersFields({
+  s,
+  isExclusive,
+}: {
+  s: RemindersValues;
+  isExclusive: boolean;
+}) {
   const c = t.admin.settings.reminders;
+  // מודל הבעל-עסק: אקסקלוסיב בוחר דוא"ל / מסרון / יחד (ברירת מחדל מסרון); שאר
+  // החבילות — דוא"ל בלבד, ומסרון/יחד מוצגים מושבתים עם הפניה לשדרוג. הערך AUTO
+  // הישן אינו מוצג יותר: אקסקלוסיב נבחר מראש למסרון, שאר החבילות לדוא"ל.
+  const isManagedChannel =
+    s.reminderChannel === ReminderChannel.EMAIL ||
+    s.reminderChannel === ReminderChannel.SMS ||
+    s.reminderChannel === ReminderChannel.BOTH;
+  const selectedChannel = isExclusive
+    ? isManagedChannel
+      ? s.reminderChannel
+      : ReminderChannel.SMS
+    : ReminderChannel.EMAIL;
   return (
     <>
       <label className={checkRowClass}>
@@ -295,21 +314,31 @@ export function RemindersFields({ s }: { s: RemindersValues }) {
           <label className={labelClass}>{c.channelLabel}</label>
           <select
             name="reminderChannel"
-            defaultValue={s.reminderChannel}
+            defaultValue={selectedChannel}
             className={inputClass}
           >
-            {/* אוטומטי כברירת מחדל; מייל ומסרון נשארים כעקיפה ידנית מתחת. */}
-            <option value={ReminderChannel.AUTO}>
-              {t.admin.settings.channels.AUTO}
-            </option>
             <option value={ReminderChannel.EMAIL}>
               {t.admin.settings.channels.EMAIL}
             </option>
-            <option value={ReminderChannel.SMS}>
+            {/* מסרון ושליחה משולבת פעילים בחבילת אקסקלוסיב בלבד. */}
+            <option value={ReminderChannel.SMS} disabled={!isExclusive}>
               {t.admin.settings.channels.SMS}
             </option>
+            <option value={ReminderChannel.BOTH} disabled={!isExclusive}>
+              {t.admin.settings.channels.BOTH}
+            </option>
           </select>
-          <p className={hintClass}>{c.channelAutoHint}</p>
+          {!isExclusive && (
+            <p className={hintClass}>
+              {c.channelLockedHint}{' '}
+              <Link
+                href="/admin/upgrade"
+                className="font-medium text-[#82643C] underline-offset-2 hover:text-[#C59D5F] hover:underline"
+              >
+                {c.channelLockedUpgradeLink}
+              </Link>
+            </p>
+          )}
         </div>
         <div className="flex-1">
           <label className={labelClass}>{c.leadHoursLabel}</label>

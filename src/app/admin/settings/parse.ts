@@ -95,15 +95,28 @@ export function parsePolicy(fd: FormData): ParseResult<BookingPolicyInput> {
   };
 }
 
-/** ניתוח תצורת התזכורות. שעות התראה לא חוקיות ⇐ שגיאה; ערוץ לא חוקי ⇐ AUTO. */
-export function parseReminders(fd: FormData): ParseResult<RemindersInput> {
+/**
+ * ניתוח תצורת התזכורות. שעות התראה לא חוקיות ⇐ שגיאה; ערוץ לא חוקי ⇐ AUTO.
+ * אכיפת שרת: כשהעסק אינו אקסקלוסיב, ערוצי מסרון/יחד נכפים חזרה לדוא"ל גם אם
+ * ה-UI נעקף.
+ */
+export function parseReminders(
+  fd: FormData,
+  isExclusive = true,
+): ParseResult<RemindersInput> {
   const leadParsed = z.coerce.number().int().min(0).safeParse(fd.get('reminderLeadHours'));
   if (!leadParsed.success) return { ok: false, error: 'number' };
 
   const rawChannel = str(fd, 'reminderChannel');
-  const channel: ReminderChannel = reminderChannelValues.includes(rawChannel)
+  let channel: ReminderChannel = reminderChannelValues.includes(rawChannel)
     ? (rawChannel as ReminderChannel)
     : ReminderChannel.AUTO;
+  if (
+    !isExclusive &&
+    (channel === ReminderChannel.SMS || channel === ReminderChannel.BOTH)
+  ) {
+    channel = ReminderChannel.EMAIL;
+  }
 
   return {
     ok: true,

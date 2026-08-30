@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getActiveBusiness } from '@/server/repos/business';
+import { canSendPaidClientSms } from '@/server/subscription';
 import {
   updateBusinessProfile,
   updateBookingPolicy,
@@ -39,11 +40,12 @@ export async function saveAllSettingsAction(
   const policy = parsePolicy(fd);
   if (!policy.ok) return { ok: false, error: policy.error };
 
-  const reminders = parseReminders(fd);
-  if (!reminders.ok) return { ok: false, error: reminders.error };
-
   const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
+
+  // אכיפת התוכנית על ערוץ התזכורות: רק אקסקלוסיב רשאי לבחור מסרון/יחד.
+  const reminders = parseReminders(fd, canSendPaidClientSms(business));
+  if (!reminders.ok) return { ok: false, error: reminders.error };
 
   await updateBusinessProfile(business.id, profile.data);
   await updateBookingPolicy(business.id, policy.data);

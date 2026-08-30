@@ -290,8 +290,12 @@ export function getBusinessAppointments(
 const REMINDABLE_STATUSES: AppointmentStatus[] = ['PENDING', 'CONFIRMED'];
 
 // בחירת שדות אחידה לתצוגת קישור האישור וההודעה — שם עסק, זהות לקוח (טלפון ומייל),
-// ערוץ התזכורת של העסק (מתוך ה-relation settings, שהוא nullable), צוות ושירותים.
+// תצורת התזכורות של העסק (מתוך ה-relation settings, שהוא nullable), צוות ושירותים.
 // המייל וערוץ התזכורת דרושים לגזירת הערוץ בפועל בשכבת השליחה (resolveReminderChannel).
+// remindersEnabled/reminderLeadHours/confirmationRequired מחווטים במסלול השליחה:
+// remindersEnabled משמש כשער opt-out בשאילתה למטה, reminderLeadHours קובע מתי התור
+// בשל לתזכורת (חישוב פר-תור במטפל ה-cron), ו-confirmationRequired קובע אם ההודעה
+// כוללת את קישור האישור /c/<token> (נגזר ב-buildReminderBody/buildReminderEmail).
 // שדות החבילה (plan/subscriptionStatus/trialEndsAt/paidUntil) דרושים לחישוב
 // canSendPaidClientSms — האם מותר לשלוח מסרון בתשלום ללקוח (אקסקלוסיב פעיל בלבד).
 const reminderInclude = {
@@ -306,7 +310,14 @@ const reminderInclude = {
       subscriptionStatus: true,
       trialEndsAt: true,
       paidUntil: true,
-      settings: { select: { reminderChannel: true } },
+      settings: {
+        select: {
+          reminderChannel: true,
+          remindersEnabled: true,
+          reminderLeadHours: true,
+          confirmationRequired: true,
+        },
+      },
     },
   },
   client: { select: { id: true, name: true, phone: true, email: true } },
@@ -315,9 +326,15 @@ const reminderInclude = {
 } as const;
 
 /**
- * תורים שעל סף חלון ה-24 שעות שטרם נשלחה עבורם תזכורת.
- * הטווח (windowStart..windowEnd ב-UTC) מחושב אצל הקורא לפי תדירות ה-cron.
+ * תורים בטווח השליפה (windowStart..windowEnd ב-UTC) שטרם נשלחה עבורם תזכורת.
+ * הטווח מחושב אצל הקורא כחלון מרבי חסום (עד זמן ההקדמה הגדול ביותר האפשרי);
+ * המטפל ב-cron מסנן פר-תור לפי reminderLeadHours של כל עסק כדי לקבוע בשלות.
  * מסנן לפי reminderSentAt ריק וסטטוס פעיל, כדי שהריצה תהיה אידמפוטנטית.
+ *
+ * שער opt-out עסקי: נכללים רק תורים של עסק שהתזכורות מופעלות אצלו — או שאין לו
+ * כלל שורת settings (null ⇒ ברירת מחדל true), או ש-remindersEnabled=true. עסק
+ * שכיבה במפורש את התזכורות (remindersEnabled=false) מסונן כאן ולא נשלף. שער זה
+ * הוא נוסף מעל שער החבילה (schedulesReminders) — שניהם צריכים להתקיים כדי לשלוח.
  */
 export function getAppointmentsDueForReminder(windowStart: Date, windowEnd: Date) {
   return prisma.appointment.findMany({
@@ -325,6 +342,12 @@ export function getAppointmentsDueForReminder(windowStart: Date, windowEnd: Date
       reminderSentAt: null,
       status: { in: REMINDABLE_STATUSES },
       startAt: { gte: windowStart, lte: windowEnd },
+      business: {
+        OR: [
+          { settings: { is: null } },
+          { settings: { is: { remindersEnabled: true } } },
+        ],
+      },
     },
     orderBy: { startAt: 'asc' },
     include: reminderInclude,

@@ -23,10 +23,12 @@ export default function SettingsForm({
   business,
   settings,
   onboardingCompleted,
+  isExclusive,
 }: {
   business: Business;
   settings: BusinessSettings;
   onboardingCompleted: boolean;
+  isExclusive: boolean;
 }) {
   const s = t.admin.settings;
   const [state, formAction, pending] = useActionState(
@@ -84,7 +86,7 @@ export default function SettingsForm({
         </SettingsSection>
 
         <SettingsSection title={s.reminders.title} description={s.reminders.description}>
-          <RemindersFields s={settings} />
+          <RemindersFields s={settings} isExclusive={isExclusive} />
         </SettingsSection>
 
         {justSaved ? (

@@ -107,3 +107,99 @@ test('לא-אקסקלוסיב + AUTO + טלפון בלבד → מדולג, שע�
   });
   assert.equal(called, false);
 });
+
+test('אקסקלוסיב + AUTO + מייל וטלפון → מסרון בלבד, המייל לא נשלח (ברירת מחדל אקסקלוסיב)', async () => {
+  const smsCalls: string[] = [];
+  const emailCalls: string[] = [];
+  const res = await sendReminder(
+    makeAppt(null, { name: 'לקוח', phone: '+972500000000', email: 'a@b.com' }, true),
+    {
+      sendGuardedSms: async (req) => {
+        smsCalls.push(req.to);
+        return { status: 'sent', costAgorot: 10, crossedAlert: false };
+      },
+      sendEmail: async (to) => {
+        emailCalls.push(to);
+      },
+      emailConfigured: true,
+    },
+  );
+  assert.deepEqual(res, { status: 'sent', channel: 'SMS' });
+  assert.deepEqual(smsCalls, ['+972500000000']);
+  assert.equal(emailCalls.length, 0);
+});
+
+test('אקסקלוסיב + BOTH + מייל וטלפון → שתי שליחות (מייל ומסרון)', async () => {
+  const smsCalls: string[] = [];
+  const emailCalls: string[] = [];
+  const res = await sendReminder(
+    makeAppt({ reminderChannel: 'BOTH' }, {
+      name: 'לקוח',
+      phone: '+972500000000',
+      email: 'a@b.com',
+    }, true),
+    {
+      sendGuardedSms: async (req) => {
+        smsCalls.push(req.to);
+        return { status: 'sent', costAgorot: 10, crossedAlert: false };
+      },
+      sendEmail: async (to) => {
+        emailCalls.push(to);
+      },
+      emailConfigured: true,
+    },
+  );
+  assert.deepEqual(res, { status: 'sent', channel: 'EMAIL' });
+  assert.deepEqual(emailCalls, ['a@b.com']);
+  assert.deepEqual(smsCalls, ['+972500000000']);
+});
+
+test('לא-אקסקלוסיב + BOTH + מייל וטלפון → מייל בלבד, המסרון לא נקרא', async () => {
+  const smsCalls: string[] = [];
+  const emailCalls: string[] = [];
+  const res = await sendReminder(
+    makeAppt({ reminderChannel: 'BOTH' }, {
+      name: 'לקוח',
+      phone: '+972500000000',
+      email: 'a@b.com',
+    }, false),
+    {
+      sendGuardedSms: async (req) => {
+        smsCalls.push(req.to);
+        return { status: 'sent', costAgorot: 10, crossedAlert: false };
+      },
+      sendEmail: async (to) => {
+        emailCalls.push(to);
+      },
+      emailConfigured: true,
+    },
+  );
+  assert.deepEqual(res, { status: 'sent', channel: 'EMAIL' });
+  assert.deepEqual(emailCalls, ['a@b.com']);
+  assert.equal(smsCalls.length, 0);
+});
+
+test('לא-אקסקלוסיב + SMS מפורש + מייל וטלפון → נפילה למייל, המסרון לא נקרא', async () => {
+  const smsCalls: string[] = [];
+  const emailCalls: string[] = [];
+  const res = await sendReminder(
+    makeAppt({ reminderChannel: 'SMS' }, {
+      name: 'לקוח',
+      phone: '+972500000000',
+      email: 'a@b.com',
+    }, false),
+    {
+      sendGuardedSms: async (req) => {
+        smsCalls.push(req.to);
+        return { status: 'sent', costAgorot: 10, crossedAlert: false };
+      },
+      sendEmail: async (to) => {
+        emailCalls.push(to);
+      },
+      emailConfigured: true,
+    },
+  );
+  assert.deepEqual(res, { status: 'sent', channel: 'EMAIL' });
+  assert.deepEqual(emailCalls, ['a@b.com']);
+  assert.equal(smsCalls.length, 0);
+});

@@ -24,7 +24,8 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
   if (!business) notFound();
 
   const settings = await getOrCreateSettings(business.id);
-  const costGuardStatus = canSendPaidClientSms(business)
+  const isExclusive = canSendPaidClientSms(business);
+  const costGuardStatus = isExclusive
     ? await getCostGuardStatus(business.id)
     : null;
 
@@ -52,6 +53,7 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
         business={business}
         settings={settings}
         onboardingCompleted={settings.onboardingCompleted}
+        isExclusive={isExclusive}
       />
 
       <CalendarSyncSection
