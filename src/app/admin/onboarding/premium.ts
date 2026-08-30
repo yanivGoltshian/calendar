@@ -224,6 +224,16 @@ export function parsePremiumDraft(raw: unknown): LandingContent | null {
 }
 
 /**
+ * קובע אם נוצר תוכן פרימיום ממשי מתוך התוכן השמור של העסק (business.landingContent).
+ * שלא כמו parsePremiumDraft שמקבל מחרוזת JSON מהאשף, כאן הקלט הוא האובייקט השמור
+ * (Prisma JsonValue). מנרמל אותו: תוכן שנערך מחזיר אובייקט ⇐ true, ריק או ברירת מחדל
+ * זרעית מחזיר null ⇐ false. כך טבעת ההשלמה סופרת רק תוכן פרימיום שנוצר בפועל.
+ */
+export function isPremiumContentCreated(raw: unknown): boolean {
+  return normalizeLandingContent(raw) !== null;
+}
+
+/**
  * בונה את מפת ההצגה/הסתרה ההתחלתית של המקטעים הניתנים לכיבוי, לפי סוג העסק.
  * משמש כדי לזרוע את תיבות הסימון בתת-שלב הסגירה, בעקביות עם התנהגות עמוד הנחיתה
  * (למשל "לפני/אחרי" מודלק כברירת מחדל רק בסוגים ויזואליים, "שאלות נפוצות" באופט-אין).

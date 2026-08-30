@@ -1,7 +1,8 @@
 /* ── מקור האמת היחיד לניווט אזור הניהול ──
    כל משטח ניווט (ניווט תחתון, גיליון "עוד") נגזר מהמודל הזה בלבד, כדי שלא
    ייווצר שוב פיצול שבו נתיבים שהוסרו זולגים חזרה. הטסטים נועלים את הרשימה
-   הזו: בדיוק 13 פריטי whitelist, ואף אחד מהנתיבים שהוסרו לא מופיע. */
+   הזו: בדיוק 14 פריטי ניווט (4 בניווט התחתון ו-10 בגיליון "עוד"), ואף אחד
+   מהנתיבים שהוסרו לא מופיע. */
 
 export type AdminNavAction = 'link' | 'bell' | 'install' | 'logout';
 
@@ -21,7 +22,7 @@ export const ADMIN_BOTTOM_NAV: AdminNavItem[] = [
   { id: 'services', label: 'שירותים', href: '/admin/services', action: 'link' },
 ];
 
-/** שורות גיליון "עוד" (9 פריטים) — הטקסט verbatim מהמוקאפ המאושר. */
+/** שורות גיליון "עוד" (10 פריטים) — הטקסט verbatim מהמוקאפ המאושר. */
 export const ADMIN_MORE_ROWS: AdminNavItem[] = [
   { id: 'team', label: 'צוות', sub: 'ניהול אנשי הצוות', href: '/admin/team', action: 'link' },
   {
@@ -58,12 +59,19 @@ export const ADMIN_MORE_ROWS: AdminNavItem[] = [
     href: '/admin/upgrade',
     action: 'link',
   },
+  {
+    id: 'settings',
+    label: 'הגדרות',
+    sub: 'פרטי העסק והמדיניות',
+    href: '/admin/settings',
+    action: 'link',
+  },
   { id: 'help', label: 'עזרה ותמיכה', sub: 'מרכז העזרה והתמיכה', href: '/admin/help', action: 'link' },
   { id: 'install', label: 'התקנת האפליקציה', sub: 'הוספה למסך הבית', action: 'install' },
   { id: 'logout', label: 'התנתקות', sub: 'יציאה מהחשבון', action: 'logout' },
 ];
 
-/** כל 13 פריטי הניווט המותרים באדמין (ניווט תחתון + גיליון "עוד"). */
+/** כל 14 פריטי הניווט המותרים באדמין (ניווט תחתון + גיליון "עוד"). */
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [...ADMIN_BOTTOM_NAV, ...ADMIN_MORE_ROWS];
 
 /** הנתיבים היחידים המותרים בכל משטח ניווט (נגזר מהמודל, לשימוש בטסטים). */
@@ -71,7 +79,7 @@ export const ADMIN_WHITELIST_PATHS: string[] = ADMIN_NAV_ITEMS.filter(
   (i) => i.action === 'link' && i.href,
 ).map((i) => i.href as string);
 
-/** נתיבים שהוסרו במפורש מכל ניווט האדמין (settings נגיש רק דרך קישור העריכה בבית). */
+/** נתיבים שהוסרו במפורש מכל ניווט האדמין ואסור שיזלגו חזרה לשום משטח. */
 export const ADMIN_REMOVED_PATHS: string[] = [
   '/admin/pos',
   '/admin/inventory',
@@ -79,7 +87,6 @@ export const ADMIN_REMOVED_PATHS: string[] = [
   '/admin/marketing',
   '/admin/punch-cards',
   '/admin/onboarding',
-  '/admin/settings',
 ];
 
 /** האם נתיב הניווט התחתון פעיל עבור ה-pathname הנוכחי. */
