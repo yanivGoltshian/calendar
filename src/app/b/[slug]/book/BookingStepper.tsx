@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
 import CustomerGoogleSignIn from '@/components/auth/CustomerGoogleSignIn';
+import WaitlistJoinCTA from './WaitlistJoinCTA';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatLongDate, todayDateString, addDaysToDateString } from '@/lib/time';
 
@@ -491,7 +492,16 @@ export default function BookingStepper({
           {slotsLoading ? (
             <p className="py-8 text-center text-slate-400">{t.common.loading}</p>
           ) : slots.length === 0 ? (
-            <p className="py-8 text-center text-slate-500">{t.booking.noSlots}</p>
+            <div className="py-6">
+              <WaitlistJoinCTA
+                slug={slug}
+                date={date}
+                serviceIds={selectedServiceIds}
+                staffId={staffId}
+                defaultName={name}
+                defaultPhone={phone}
+              />
+            </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {slots.map((slot) => (

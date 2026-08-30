@@ -31,6 +31,10 @@ export type AddWaitlistInput = {
   staffId?: string | null;
   clientId?: string | null;
   desiredDate?: string | null;
+  /** חלון זמן מועדף — תחילת החלון בדקות מחצות (0–1439). אופציונלי. */
+  earliestMinute?: number | null;
+  /** חלון זמן מועדף — סוף החלון בדקות מחצות (0–1439). אופציונלי. */
+  latestMinute?: number | null;
   note?: string | null;
 };
 
@@ -75,6 +79,8 @@ export async function addWaitlistEntry(
       staffId,
       clientId,
       desiredDate: data.desiredDate ?? null,
+      earliestMinute: data.earliestMinute ?? null,
+      latestMinute: data.latestMinute ?? null,
       note: data.note ?? null,
     },
     select: { id: true },
