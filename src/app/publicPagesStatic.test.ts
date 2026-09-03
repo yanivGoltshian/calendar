@@ -6,8 +6,9 @@ import { dirname, join } from 'node:path';
 
 // חוזה ברמת המקור: מוודא ששלושת העמודים הציבוריים אינם קוראים מידע אישי בשרת
 // (אין דליפת PII לשלד הנשמר במטמון) ושהגדרת ה-route segment תואמת ליעד —
-// דף הבית סטטי מלא (force-static), ועמודי העסק ISR (revalidate=600). קורא את
-// קובצי המקור כטקסט מכיוון שייבוא מודול-העמוד חסום בבדיקות עקב שרשרת server-only.
+// דף הבית סטטי מלא (force-static) ועמודי העסק סטטיים מלאים (revalidate=false,
+// dynamicParams=true, רענון על-פי דרישה בלבד). קורא את קובצי המקור כטקסט מכיוון
+// שייבוא מודול-העמוד חסום בבדיקות עקב שרשרת server-only.
 
 const APP_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -53,10 +54,25 @@ test('דף הבית אינו קורא סשן/בעלים בשרת (זיהוי ע�
   assert.ok(home.includes('OwnerAwareCta'), 'ציפינו לרכיב הלקוח OwnerAwareCta שמחליף את ה-CTA');
 });
 
-// --- עמוד פרופיל העסק: ISR, ללא תורים אישיים בשרת ---
+// --- עמוד פרופיל העסק: סטטי מלא, ללא תורים אישיים בשרת ---
 
-test('עמוד /b/[slug] מוגדר ISR revalidate=600 (ולא force-dynamic)', () => {
-  assert.ok(profile.includes('export const revalidate = 600'), 'ציפינו ל-revalidate = 600');
+test('עמוד /b/[slug] סטטי מלא: revalidate=false, dynamicParams, generateStaticParams (ולא force-dynamic ולא ISR מבוסס-זמן)', () => {
+  assert.ok(
+    /export\s+const\s+revalidate\s*=\s*false/.test(profile),
+    'ציפינו ל-revalidate = false (מטמון עד רענון על-פי דרישה)',
+  );
+  assert.ok(
+    !/export\s+const\s+revalidate\s*=\s*\d/.test(profile),
+    'עמוד הפרופיל לא אמור להגדיר revalidate מספרי (ISR מבוסס-זמן)',
+  );
+  assert.ok(
+    /export\s+const\s+dynamicParams\s*=\s*true/.test(profile),
+    'ציפינו ל-dynamicParams = true כדי שסלאגים חדשים ייבנו בפנייה ראשונה',
+  );
+  assert.ok(
+    profile.includes('generateStaticParams'),
+    'ציפינו ל-generateStaticParams (טרום-רינדור סלאגים ידועים לזחלנים)',
+  );
   assert.ok(!profile.includes('force-dynamic'), 'עמוד הפרופיל לא אמור להיות force-dynamic');
 });
 
@@ -72,11 +88,29 @@ test('עמוד /b/[slug] אינו קורא סשן/תורים אישיים בשר
   );
 });
 
-// --- עמוד ההזמנה: ISR, ללא prefill אישי בשרת ---
+// --- עמוד ההזמנה: סטטי מלא, ללא prefill אישי ואישור מנוי בשרת ---
 
-test('עמוד /b/[slug]/book מוגדר ISR revalidate=600 (ולא force-dynamic)', () => {
-  assert.ok(book.includes('export const revalidate = 600'), 'ציפינו ל-revalidate = 600');
+test('עמוד /b/[slug]/book סטטי מלא: revalidate=false, dynamicParams (ולא force-dynamic ולא ISR מבוסס-זמן)', () => {
+  assert.ok(
+    /export\s+const\s+revalidate\s*=\s*false/.test(book),
+    'ציפינו ל-revalidate = false (מטמון עד רענון על-פי דרישה)',
+  );
+  assert.ok(
+    !/export\s+const\s+revalidate\s*=\s*\d/.test(book),
+    'עמוד ההזמנה לא אמור להגדיר revalidate מספרי (ISR מבוסס-זמן)',
+  );
+  assert.ok(
+    /export\s+const\s+dynamicParams\s*=\s*true/.test(book),
+    'ציפינו ל-dynamicParams = true כדי שסלאגים חדשים ייבנו בפנייה ראשונה',
+  );
   assert.ok(!book.includes('force-dynamic'), 'עמוד ההזמנה לא אמור להיות force-dynamic');
+});
+
+test('עמוד /b/[slug]/book אינו בודק כשירות-מנוי בשרת (הבדיקה תלוית-הזמן עברה לצד הלקוח)', () => {
+  assert.ok(
+    !book.includes('canAcceptPublicBookings('),
+    'בדיקת המנוי תלוית-הזמן חייבת לעבור ל-probe בצד הלקוח כדי שה-HTML הסטטי לא יכיל מידע תלוי-זמן',
+  );
 });
 
 test('עמוד /b/[slug]/book אינו מזין prefill אישי בשרת (BookingStepper טוען בעצמו)', () => {

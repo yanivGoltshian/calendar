@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
-import { getBusinessBySlug } from '@/server/repos/business';
+import { getBusinessBySlug, getAllBusinessSlugs } from '@/server/repos/business';
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatMinutes } from '@/lib/time';
@@ -31,6 +31,7 @@ import {
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
 import ReturningCustomerLoader from '@/components/publicLanding/ReturningCustomerLoader';
+import TodayHoursHighlight from '@/components/publicLanding/TodayHoursHighlight';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
 import { visualLevelForPublicPage } from '@/server/onboardingProgress';
 import ShareBusiness from '@/components/publicLanding/ShareBusiness';
@@ -41,14 +42,22 @@ type Props = {
   params: Promise<{ slug: string }>;
 };
 
-// ISR: שלד העמוד נשמר במטמון ומתרענן כל 600 שניות (וגם מיידית דרך revalidatePath
-// בפעולות הניהול). כל מידע אישי (חשבון הלקוח, תורים עתידיים) נטען בצד הלקוח אחרי
-// הטעינה, כך שה-HTML הנשמר במטמון זהה לכל המבקרים וללא PII.
-export const revalidate = 600;
+// סטטי מלא: השלד נשמר במטמון ללא תוקף זמן (revalidate=false) ומתרענן אך ורק על פי
+// דרישה דרך revalidatePath בפעולות הניהול. אין כאן מידע תלוי-זמן: מצב הזמינות/מנוי
+// נבדק בצד הלקוח דרך ה-API של הזמינות, והדגשת "היום" מתבצעת בדפדפן. כל מידע אישי
+// (חשבון הלקוח, תורים עתידיים) נטען בצד הלקוח, כך שה-HTML הנשמר זהה לכל המבקרים וללא PII.
+export const revalidate = false;
+export const dynamicParams = true;
 
-// יצירת עמודים לפי slug על פי דרישה (ISR) במקום רשימה סטטית מראש.
-export function generateStaticParams() {
-  return [];
+// פרה-רנדר של סלאגים ידועים מה-DB לטובת סורקים; כשאין DB בזמן build נופלים לרשימה
+// ריקה (סלאגים חדשים ייווצרו על פי דרישה בפנייה הראשונה וייכנסו למטמון).
+export async function generateStaticParams() {
+  try {
+    const businesses = await getAllBusinessSlugs();
+    return businesses.map((b) => ({ slug: b.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -65,14 +74,13 @@ export default async function BusinessPublicPage({ params }: Props) {
   // קישור התחברות (לא תלוי משתמש) לכותרת הפרימיום — מוצג לאורחים שאינם מזוהים.
   // חשבון הלקוח ומקטע "שלום .." (תורים עתידיים) נטענים בצד הלקוח דרך
   // <ReturningCustomerLoader> ו-PremiumClinicHeader resolveAccount, כדי שהשלד
-  // ה-ISR יישאר ללא PII.
+  // הסטטי יישאר ללא PII.
   const loginHref = `/login?redirect=${encodeURIComponent(`/b/${slug}`)}`;
 
   const services = business.services;
   const staff = business.staff;
   const hoursByDay = new Map<number, (typeof business.workingHours)[number]>();
   for (const wh of business.workingHours) hoursByDay.set(wh.weekday, wh);
-  const todayIdx = new Date().getDay();
 
   // מיתוג צבע לכל עסק (באג 2): כל הגוונים נגזרים מצבע המותג שנבחר באונבורדינג.
   const brand = resolveBrandColor(business.brandColor);
@@ -127,10 +135,6 @@ export default async function BusinessPublicPage({ params }: Props) {
   const isClinicPremium =
     (isLanding && Boolean(landing?.launchOffer || landing?.hotDeals)) ||
     (visualLevel >= 3 && landing != null);
-  const todayWorkingHours = hoursByDay.get(todayIdx);
-  const todayHours = todayWorkingHours
-    ? `${formatMinutes(todayWorkingHours.startMinute)}–${formatMinutes(todayWorkingHours.endMinute)}`
-    : null;
   const clinicLabels = t.premiumLanding.clinic;
   // תת-הכותרת הממותגת של הקליניקה ("טיפולי יופי ואסתטיקה...") שייכת רק לעסק הדמו
   // (skin-beauty). לכל שאר עסקי הפרימיום מזינים null כדי שהיא לא תדלוף כברירת מחדל (באג 3).
@@ -159,6 +163,11 @@ export default async function BusinessPublicPage({ params }: Props) {
     image: business.coverImageUrl ?? business.logoUrl,
     instagramUrl: business.instagramUrl,
     priceRange: '₪₪',
+    hours: business.workingHours.map((wh) => ({
+      weekday: wh.weekday,
+      startMinute: wh.startMinute,
+      endMinute: wh.endMinute,
+    })),
   });
 
   const contactRows = (
@@ -276,11 +285,12 @@ export default async function BusinessPublicPage({ params }: Props) {
       <ul className="overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-white shadow-sm">
         {[0, 1, 2, 3, 4, 5, 6].map((d) => {
           const wh = hoursByDay.get(d);
-          const isToday = d === todayIdx;
           return (
             <li
               key={d}
-              className={`flex items-center justify-between px-4 py-2.5 text-sm ${d > 0 ? 'border-t border-slate-100' : ''} ${isToday ? 'bg-[var(--biz-soft)] font-semibold' : ''}`}
+              data-hours-day={d}
+              data-today-class="bg-[var(--biz-soft)] font-semibold"
+              className={`flex items-center justify-between px-4 py-2.5 text-sm ${d > 0 ? 'border-t border-slate-100' : ''}`}
             >
               <span className="text-slate-900">{t.publicPage.weekdays[d]}</span>
               {wh ? (
@@ -304,6 +314,8 @@ export default async function BusinessPublicPage({ params }: Props) {
       className={`relative min-h-screen overflow-x-clip pb-28 ${isClinicPremium ? 'bg-[color:var(--c-cream,#faf6ef)]' : 'bg-slate-50'}`}
     >
       <JsonLd data={jsonLd} />
+      {/* הדגשת "היום" בטבלת השעות מתבצעת בצד הלקוח (ה-HTML הסטטי חף מתלות ביום/שעה). */}
+      <TodayHoursHighlight />
 
       {/* ניווט חזרה — כפתור זכוכית צף בפינה הימנית־עליונה מעל ההירו (RTL) */}
       <div className="absolute right-4 top-3 z-50 sm:right-6 sm:top-5">
@@ -316,7 +328,11 @@ export default async function BusinessPublicPage({ params }: Props) {
           name={business.name}
           logoUrl={business.logoUrl}
           phone={business.phone}
-          todayHours={todayHours}
+          workingHours={business.workingHours.map((wh) => ({
+            weekday: wh.weekday,
+            startMinute: wh.startMinute,
+            endMinute: wh.endMinute,
+          }))}
           instagramUrl={landing?.socialLinks?.instagram ?? business.instagramUrl ?? null}
           facebookUrl={landing?.socialLinks?.facebook ?? null}
           bookHref={bookHref}
@@ -414,7 +430,6 @@ export default async function BusinessPublicPage({ params }: Props) {
             phone={business.phone}
             bookHref={bookHref}
             iconKey={iconKey}
-            todayIdx={todayIdx}
             returning={
               <Suspense fallback={null}>
                 <ReturningCustomerLoader slug={slug} />

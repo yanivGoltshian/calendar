@@ -3,7 +3,7 @@ import { SITE_URL } from '@/lib/seo';
 import { getAllBusinessSlugs } from '@/server/repos/business';
 
 /**
- * מפת אתר דינמית: עמוד הבית ועמודי העסקים /b/[slug].
+ * מפת אתר דינמית: עמוד הבית, עמודי שיווק/משפט ציבוריים ועמודי העסקים /b/[slug].
  * העוזר getAllBusinessSlugs מאפשר הרחבה אוטומטית ככל שנוספים עסקים.
  */
 export const revalidate = 3600;
@@ -18,6 +18,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 1,
     },
+    // עמודי שיווק/משפט ציבוריים הניתנים לסריקה.
+    ...['/legal', '/roadmap', '/quote', '/migrate'].map((path) => ({
+      url: `${SITE_URL}${path}`,
+      lastModified: now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    })),
   ];
 
   let businessEntries: MetadataRoute.Sitemap = [];

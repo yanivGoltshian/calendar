@@ -6,6 +6,7 @@ import type { LandingLaunchOffer } from '@/lib/publicPageStyle';
 import { logout } from '@/app/account/actions';
 import { computeCountdown } from '@/lib/launchOffer';
 import { formatIsraeliPhoneDisplay } from '@/lib/phoneDisplay';
+import { formatMinutes } from '@/lib/time';
 import { heroVideoResolve } from '@/lib/videoEmbed';
 import {
   PhoneIcon,
@@ -53,7 +54,8 @@ type Props = {
   name: string;
   logoUrl?: string | null;
   phone?: string | null;
-  todayHours?: string | null; // "10:00–20:00" או null כשסגור היום
+  // שעות הפעילות השבועיות; שעת "היום" מחושבת בצד הלקוח כדי שה-HTML הסטטי לא ייצרב ליום מסוים.
+  workingHours: { weekday: number; startMinute: number; endMinute: number }[];
   instagramUrl?: string | null;
   facebookUrl?: string | null;
   bookHref: string;
@@ -85,7 +87,7 @@ export default function PremiumClinicHeader({
   name,
   logoUrl,
   phone,
-  todayHours,
+  workingHours,
   instagramUrl,
   facebookUrl,
   bookHref,
@@ -129,6 +131,16 @@ export default function PremiumClinicHeader({
     };
   }, [resolveAccount]);
 
+  // שעות "היום" מחושבות בצד הלקוח בלבד: ה-HTML הסטטי חף מיום/שעה קונקרטיים,
+  // וההצגה מתעדכנת מיד לאחר הטעינה לפי היום האמיתי בדפדפן.
+  const [todayHours, setTodayHours] = useState<string | null>(null);
+  const [hoursReady, setHoursReady] = useState(false);
+  useEffect(() => {
+    const wh = workingHours.find((w) => w.weekday === new Date().getDay());
+    setTodayHours(wh ? `${formatMinutes(wh.startMinute)}–${formatMinutes(wh.endMinute)}` : null);
+    setHoursReady(true);
+  }, [workingHours]);
+
   const effectiveAccount = resolveAccount ? resolvedAccount : account;
   const phoneDisplay = formatIsraeliPhoneDisplay(phone);
   // שם ואווטאר הלקוח לצ'יפ החשבון (דסקטופ) ולכותרת המגירה (מובייל).
@@ -165,11 +177,13 @@ export default function PremiumClinicHeader({
               <ClockIcon className="h-3.5 w-3.5" />
               <span>
                 {labels.hoursToday}:{' '}
-                {todayHours ? (
-                  <span dir="ltr" className="tabular-nums">{todayHours}</span>
-                ) : (
-                  labels.closedToday
-                )}
+                {hoursReady ? (
+                  todayHours ? (
+                    <span dir="ltr" className="tabular-nums">{todayHours}</span>
+                  ) : (
+                    labels.closedToday
+                  )
+                ) : null}
               </span>
             </span>
           </div>

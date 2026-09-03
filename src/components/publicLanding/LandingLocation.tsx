@@ -12,7 +12,6 @@ type Props = {
   workingHours: WorkingHour[];
   weekdays: readonly string[];
   closedLabel: string;
-  todayIdx: number;
   address?: string | null;
   phone?: string | null;
   directionsCta: string;
@@ -37,7 +36,6 @@ export default function LandingLocation({
   workingHours,
   weekdays,
   closedLabel,
-  todayIdx,
   address,
   phone,
   directionsCta,
@@ -121,7 +119,7 @@ export default function LandingLocation({
                       const wh = byDay.get(d);
                       if (!wh) return null;
                       return (
-                        <li key={d} className={`flex gap-2 ${d === todayIdx ? 'font-semibold text-[#c6a86a]' : ''}`}>
+                        <li key={d} data-hours-day={d} data-today-class="font-semibold text-[#c6a86a]" className="flex gap-2">
                           <span className="min-w-[3.5rem]">{weekdays[d]}</span>
                           <span dir="ltr" className="tabular-nums">
                             {formatMinutes(wh.startMinute)}–{formatMinutes(wh.endMinute)}
@@ -211,11 +209,12 @@ export default function LandingLocation({
           <ul className="overflow-hidden rounded-3xl border border-[color:var(--biz-border)] bg-white shadow-soft">
             {[0, 1, 2, 3, 4, 5, 6].map((d) => {
               const wh = byDay.get(d);
-              const isToday = d === todayIdx;
               return (
                 <li
                   key={d}
-                  className={`flex items-center justify-between px-5 py-3 text-sm ${d > 0 ? 'border-t border-slate-100' : ''} ${isToday ? 'bg-[var(--biz-soft)] font-semibold' : ''}`}
+                  data-hours-day={d}
+                  data-today-class="bg-[var(--biz-soft)] font-semibold"
+                  className={`flex items-center justify-between px-5 py-3 text-sm ${d > 0 ? 'border-t border-slate-100' : ''}`}
                 >
                   <span className="text-slate-900">{weekdays[d]}</span>
                   {wh ? (

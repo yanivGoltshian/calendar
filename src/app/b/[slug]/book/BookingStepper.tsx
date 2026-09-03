@@ -37,6 +37,8 @@ type Props = {
   googleEnabled?: boolean;
   // האם רשימת ההמתנה מופעלת לעסק (BusinessSettings.waitlistEnabled). ברירת מחדל: מופעלת.
   waitlistEnabled?: boolean;
+  // טלפון העסק — ל-CTA "התקשרו לעסק" במסך "לא זמין". לא מידע אישי (נתון עסקי ציבורי).
+  phone?: string | null;
 };
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
@@ -51,6 +53,7 @@ export default function BookingStepper({
   plan,
   googleEnabled = false,
   waitlistEnabled = true,
+  phone: businessPhone = null,
 }: Props) {
   // קישור עמוק (service/staffId/date/time) נקרא בצד הלקוח מפרמטרי ה-URL כדי שהעמוד
   // יישאר שלד ISR (ללא קריאת searchParams בשרת). האימות זהה לזה שהיה בעמוד השרת:
@@ -86,6 +89,10 @@ export default function BookingStepper({
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(deepLink);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  // מצב זמינות (מנוי/תוקף) הנבדק בצד הלקוח: העמוד סטטי (revalidate=false) ולכן אינו
+  // יכול לכלול גייט תלוי-זמן בשרת. null = בודקים (מציגים סטפר), true = חסום (מסך "לא זמין"),
+  // false = פתוח. נקבע דרך probe ל-API של הזמינות.
+  const [blocked, setBlocked] = useState<boolean | null>(null);
 
   // מילוי מוקדם מקישור עמוק: בטעינה, טוענים זמינות אמיתית ליום שנבחר ומדלגים לסיכום אם השעה עדיין פנויה.
   const deepLinkInit = useRef(false);
@@ -105,6 +112,7 @@ export default function BookingStepper({
     })
       .then((r) => r.json())
       .then((d) => {
+        if (typeof d?.blocked === 'boolean') setBlocked(d.blocked);
         const list: Slot[] = d?.ok ? d.slots : [];
         setSlots(list);
         const match = list.find((s) => s.label === preselectedTime);
@@ -230,6 +238,29 @@ export default function BookingStepper({
     };
   }, []);
 
+  // בדיקת מצב זמינות (probe) בצד הלקוח בטעינה: שולחים { slug, probe:true } ל-API של
+  // הזמינות שמחזיר את הדגל blocked (מנוי/תוקף), בלי לחשב משבצות. כשחסום מציגים מסך
+  // "לא זמין" ניטרלי. כשל רשת נופל לפתוח (fail-open ל-UX); גייט השרת ב-/api/book מגן ממילא.
+  useEffect(() => {
+    let active = true;
+    fetch('/api/availability', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug, probe: true }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!active) return;
+        setBlocked(typeof d?.blocked === 'boolean' ? d.blocked : false);
+      })
+      .catch(() => {
+        if (active) setBlocked(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [slug]);
+
   // נשמר בלחיצה על כניסת גוגל בשלב האישור, רגע לפני ההפניה שמאפסת את מצב הרכיב.
   function saveBookingDraftForAuth() {
     try {
@@ -269,6 +300,7 @@ export default function BookingStepper({
         body: JSON.stringify({ slug, staffId, serviceIds: selectedServiceIds, date: targetDate }),
       });
       const data = await res.json();
+      if (typeof data?.blocked === 'boolean') setBlocked(data.blocked);
       setSlots(res.ok && data.ok ? data.slots : []);
     } catch {
       setSlots([]);
@@ -380,6 +412,34 @@ export default function BookingStepper({
     );
   }
 
+  // מסך "לא זמין": כשה-probe החזיר שהעסק חסום (מנוי/תוקף פג) מציגים הודעה ניטרלית
+  // במקום הסטפר. נטען בצד הלקוח בלבד כך שה-HTML הסטטי אינו מכיל מידע תלוי-זמן.
+  if (blocked === true) {
+    const copy = t.publicPage.unavailable;
+    return (
+      <main className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-5 py-10 text-center">
+        <h1 className="text-xl font-semibold text-slate-900">{copy.title}</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-600">{copy.body}</p>
+        <div className="mt-6 flex w-full flex-col gap-2">
+          {businessPhone ? (
+            <a
+              href={`tel:${businessPhone}`}
+              className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
+            >
+              {copy.callCta}
+            </a>
+          ) : null}
+          <Link
+            href={`/b/${slug}`}
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            {copy.back}
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   const canProceed: Record<Step, boolean> = {
     0: selectedServiceIds.length > 0,
     1: !!staffId,
@@ -388,7 +448,6 @@ export default function BookingStepper({
     4: true,
     5: false,
   };
-
   // דילוג על שלב הצוות כאשר יש נותן שירות יחיד: המספור והמחוון נגזרים מהשלבים הגלויים בלבד.
   const visibleStepKeys: readonly (typeof STEP_KEYS)[number][] = singleStaff
     ? STEP_KEYS.filter((k) => k !== 'staff')

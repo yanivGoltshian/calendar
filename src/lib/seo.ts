@@ -130,8 +130,28 @@ export type LocalBusinessInput = {
   instagramUrl?: string | null;
   priceRange?: string;
   openingHours?: string[];
+  // שעות פעילות מובנות (0=ראשון..6=שבת) לפליטת openingHoursSpecification עשיר.
+  hours?: { weekday: number; startMinute: number; endMinute: number }[];
   geo?: { latitude: number; longitude: number } | null;
 };
+
+// המרת דקות-מחצות-הלילה ל-"HH:MM" (24 שעות) עבור openingHoursSpecification.
+function minutesToHHMM(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// אינדקס schema.org לימי השבוע (0=ראשון) — לשימוש ב-openingHoursSpecification.
+const SCHEMA_DAY_OF_WEEK = [
+  'https://schema.org/Sunday',
+  'https://schema.org/Monday',
+  'https://schema.org/Tuesday',
+  'https://schema.org/Wednesday',
+  'https://schema.org/Thursday',
+  'https://schema.org/Friday',
+  'https://schema.org/Saturday',
+] as const;
 
 /**
  * בונה JSON-LD מסוג LocalBusiness — לשימוש חוזר בעמודי העסק /b/[slug].
@@ -170,6 +190,18 @@ export function localBusinessJsonLd(business: LocalBusinessInput) {
       : {}),
     ...(business.openingHours && business.openingHours.length
       ? { openingHours: business.openingHours }
+      : {}),
+    ...(business.hours && business.hours.length
+      ? {
+          openingHoursSpecification: business.hours
+            .filter((h) => h.weekday >= 0 && h.weekday <= 6)
+            .map((h) => ({
+              '@type': 'OpeningHoursSpecification',
+              dayOfWeek: SCHEMA_DAY_OF_WEEK[h.weekday],
+              opens: minutesToHHMM(h.startMinute),
+              closes: minutesToHHMM(h.endMinute),
+            })),
+        }
       : {}),
     ...(sameAs.length ? { sameAs } : {}),
   };

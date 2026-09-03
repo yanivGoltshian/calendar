@@ -158,6 +158,11 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
   }
 
   // ניתוק מיידי של הבעלים (השבתה בפועל) והפניה למסך הכניסה.
+  // המחיקה מסתירה את העמוד הציבורי — ביטול הקאש הסטטי כדי שלא יוצג עסק שהוסר,
+  // ורענון עמוד הבית שקישור הדגמה בו נגזר מהעסק הראשון.
+  revalidatePath(`/b/${business.slug}`);
+  revalidatePath(`/b/${business.slug}/book`);
+  revalidatePath('/');
   await signOut({ redirectTo: '/business/login?deleted=1' });
 }
 
@@ -182,5 +187,9 @@ export async function restoreAccountAction(
 
   await restoreBusiness(restorable.id);
   revalidatePath('/admin');
+  // השחזור מחזיר את העמוד הציבורי לאוויר — רענון הקאש הסטטי ועמוד הבית.
+  revalidatePath(`/b/${restorable.slug}`);
+  revalidatePath(`/b/${restorable.slug}/book`);
+  revalidatePath('/');
   redirect('/admin');
 }
