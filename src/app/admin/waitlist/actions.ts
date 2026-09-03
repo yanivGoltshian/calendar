@@ -42,6 +42,10 @@ export async function setWaitlistEnabledAction(formData: FormData): Promise<void
   if (!business) return;
   await setWaitlistEnabled(business.id, enabled);
   revalidatePath('/admin/waitlist');
+  // מתג רשימת ההמתנה משפיע על ה-gate בעמוד ההזמנה (#130) ולכן מרעננים את שני
+  // עמודי ה-ISR הציבוריים כדי שהשינוי ישתקף מיד ולא רק בטיימר.
+  revalidatePath(`/b/${business.slug}`);
+  revalidatePath(`/b/${business.slug}/book`);
 }
 
 /** הוספת ממתין חדש לרשימת ההמתנה. */

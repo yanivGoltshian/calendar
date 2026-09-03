@@ -12,7 +12,12 @@ import {
 import ServiceWorkerRegistrar from './ServiceWorkerRegistrar';
 import './globals.css';
 
-export const dynamic = 'force-dynamic';
+// שים לב: אין כאן 'force-dynamic'. פריסת השורש היא שלד סטטי (html/body/JsonLd)
+// ואינה קוראת עוגיות/סשן, כך שכל נתיב קובע את אופי הרינדור שלו בעצמו: עמודים
+// שקוראים auth()/cookies()/headers() נשארים דינמיים אוטומטית, בעוד שהעמודים
+// הציבוריים (בית סטטי, /b/[slug] ו-/b/[slug]/book ב-ISR) ניתנים למטמון.
+// דגל 'force-dynamic' גורף כאן היה מכריח את כל האפליקציה ל-no-store SSR ומונע
+// מהעמוד הראשי להיבנות כסטטי.
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

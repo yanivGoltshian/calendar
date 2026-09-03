@@ -36,7 +36,6 @@ type Props = {
   phone?: string | null;
   bookHref: string;
   iconKey: SectionIconKey;
-  todayIdx: number;
   // מקטע "שלום .." ללקוח מזוהה — מוזרק בין ווידג'ט קביעת התור למקטע המבצעים.
   returning?: ReactNode;
 };
@@ -54,7 +53,6 @@ export default function LandingSections({
   phone,
   bookHref,
   iconKey,
-  todayIdx,
   returning,
 }: Props) {
   const sections = resolveLandingSections({ content, type }).filter((s) => s !== 'hero');
@@ -155,7 +153,6 @@ export default function LandingSections({
                 workingHours={workingHours}
                 weekdays={t.publicPage.weekdays}
                 closedLabel={t.publicPage.hoursClosed}
-                todayIdx={todayIdx}
                 address={address}
                 phone={phone}
                 directionsCta={l.directionsCta}

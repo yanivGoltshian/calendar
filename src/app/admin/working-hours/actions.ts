@@ -79,5 +79,9 @@ export async function saveWorkingHoursAction(
   }
 
   revalidatePath('/admin/working-hours');
+  // רענון עמודי הציבור: שעות הפעילות מוצגות בעמוד העסק (שעות + JSON-LD) ומשפיעות על
+  // חישוב הזמינות בעמוד ההזמנה, ולכן משנות תוכן ציבורי שנשמר סטטית (revalidate=false).
+  revalidatePath(`/b/${business.slug}`);
+  revalidatePath(`/b/${business.slug}/book`);
   return { ok: true };
 }

@@ -17,9 +17,9 @@ export const metadata = buildMetadata({
 });
 
 /**
- * בוחר עמודי הדגמה (/demo): מאפשר לאורח לצפות בשני סגנונות העמוד הציבורי של אותו
- * עסק הדגמה, סטנדרט (BOOKING) ופרימיום (LANDING), דרך פרמטר ?style= לתצוגה מקדימה
- * בלבד. אין כתיבה ל-DB ואין seeding, הכל נגזר מעסק ההדגמה הקיים.
+ * בוחר עמודי הדגמה (/demo): מאפשר לאורח לצפות בשני עמודי ההדגמה הציבוריים, עסק סטנדרט
+ * (מספרה, סגנון BOOKING) ועסק פרימיום (קליניקה, סגנון LANDING). כל כרטיס מקשר לעמוד
+ * הציבורי האמיתי של אותו עסק; הסגנון נגזר מהגדרת הבעלים (publicPageStyle) ולא מפרמטר URL.
  */
 export default async function DemoPage() {
   // סטנדרט = עסק שאינו פרימיום (מספרה); פרימיום = עסק ה-plan==='premium' (קליניקה skin-beauty).
@@ -66,7 +66,7 @@ export default async function DemoPage() {
                       {m.demo.standard.description}
                     </p>
                     <Button
-                      href={`/b/${standardSlug ?? premiumSlug}?style=booking`}
+                      href={`/b/${standardSlug ?? premiumSlug}`}
                       size="lg"
                       className="mt-6 w-full"
                     >
@@ -81,7 +81,7 @@ export default async function DemoPage() {
                       {m.demo.premium.description}
                     </p>
                     <Button
-                      href={`/b/${premiumSlug}?style=landing`}
+                      href={`/b/${premiumSlug}`}
                       size="lg"
                       className="mt-6 w-full"
                     >

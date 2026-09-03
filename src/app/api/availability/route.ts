@@ -16,6 +16,14 @@ const schema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
+// בדיקת "probe" קלה: מחזירה רק את מצב הזמינות (blocked) של העסק לפי slug, ללא
+// חישוב משבצות. משמשת את BookingStepper לבדיקת מצב מנוי/תוקף בצד הלקוח — כך
+// שה-HTML הסטטי (revalidate=false) לא מכיל מידע תלוי-זמן על תוקף המנוי.
+const probeSchema = z.object({
+  slug: z.string(),
+  probe: z.literal(true),
+});
+
 /**
  * חישוב שעות פנויות: מקבל עסק, איש צוות, שירותים ותאריך — ומחזיר משבצות זמן.
  */
@@ -25,6 +33,22 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
+  }
+
+  // בקשת probe: מחזירה רק את מצב הזמינות (blocked) לעסק, לפני האימות המלא של קלט
+  // חישוב המשבצות. כך הלקוח יכול לדעת אם העסק מקבל הזמנות בלי לחשוף זאת ב-HTML הסטטי.
+  const probe = probeSchema.safeParse(body);
+  if (probe.success) {
+    const business = await getBusinessBySlug(probe.data.slug);
+    if (!business) {
+      return NextResponse.json({ ok: false, error: 'business_not_found' }, { status: 404 });
+    }
+    return NextResponse.json({
+      ok: true,
+      durationMin: 0,
+      slots: [],
+      blocked: !canAcceptPublicBookings(business),
+    });
   }
 
   const parsed = schema.safeParse(body);
@@ -93,6 +117,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     durationMin,
+    blocked: false,
     slots: slots.map((s) => ({ label: s.label, startAtUtc: s.startAtUtc, endAtUtc: s.endAtUtc })),
   });
 }

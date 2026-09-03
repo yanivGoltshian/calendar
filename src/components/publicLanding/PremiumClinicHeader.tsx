@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { LandingLaunchOffer } from '@/lib/publicPageStyle';
 import { logout } from '@/app/account/actions';
 import { computeCountdown } from '@/lib/launchOffer';
 import { formatIsraeliPhoneDisplay } from '@/lib/phoneDisplay';
+import { formatMinutes } from '@/lib/time';
 import { heroVideoResolve } from '@/lib/videoEmbed';
 import {
   PhoneIcon,
@@ -53,7 +54,8 @@ type Props = {
   name: string;
   logoUrl?: string | null;
   phone?: string | null;
-  todayHours?: string | null; // "10:00–20:00" או null כשסגור היום
+  // שעות הפעילות השבועיות; שעת "היום" מחושבת בצד הלקוח כדי שה-HTML הסטטי לא ייצרב ליום מסוים.
+  workingHours: { weekday: number; startMinute: number; endMinute: number }[];
   instagramUrl?: string | null;
   facebookUrl?: string | null;
   bookHref: string;
@@ -71,6 +73,9 @@ type Props = {
   account?: { name?: string | null; email?: string | null } | null;
   accountHref?: string;
   loginHref?: string;
+  // כשמופעל (בשלד ISR ללא מידע אישי), הרכיב שולף בעצמו את זהות הלקוח בצד הלקוח
+  // מ-/api/public/customer-session אחרי הטעינה, ומתעלם מ-prop ה-account שיהיה null.
+  resolveAccount?: boolean;
   labels: Labels;
 };
 
@@ -82,7 +87,7 @@ export default function PremiumClinicHeader({
   name,
   logoUrl,
   phone,
-  todayHours,
+  workingHours,
   instagramUrl,
   facebookUrl,
   bookHref,
@@ -99,16 +104,50 @@ export default function PremiumClinicHeader({
   account = null,
   accountHref = '/account',
   loginHref = '/login',
+  resolveAccount = false,
   labels,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [resolvedAccount, setResolvedAccount] = useState<{
+    name?: string | null;
+    email?: string | null;
+  } | null>(null);
+
+  // הזרמת זהות הלקוח (hydration) עבור שלד סטטי: אין מידע אישי ב-HTML הנשמר.
+  useEffect(() => {
+    if (!resolveAccount) return;
+    let active = true;
+    fetch('/api/public/customer-session', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data?.customer) {
+          setResolvedAccount({ name: data.customer.name, email: data.customer.email });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [resolveAccount]);
+
+  // שעות "היום" מחושבות בצד הלקוח בלבד: ה-HTML הסטטי חף מיום/שעה קונקרטיים,
+  // וההצגה מתעדכנת מיד לאחר הטעינה לפי היום האמיתי בדפדפן.
+  const [todayHours, setTodayHours] = useState<string | null>(null);
+  const [hoursReady, setHoursReady] = useState(false);
+  useEffect(() => {
+    const wh = workingHours.find((w) => w.weekday === new Date().getDay());
+    setTodayHours(wh ? `${formatMinutes(wh.startMinute)}–${formatMinutes(wh.endMinute)}` : null);
+    setHoursReady(true);
+  }, [workingHours]);
+
+  const effectiveAccount = resolveAccount ? resolvedAccount : account;
   const phoneDisplay = formatIsraeliPhoneDisplay(phone);
   // שם ואווטאר הלקוח לצ'יפ החשבון (דסקטופ) ולכותרת המגירה (מובייל).
   // ראשי־התיבות נופלים חלופית לשם, למייל, ולבסוף לעיגול ריק — לעולם לא קורסים.
-  const accountName = account?.name?.trim() || account?.email?.split('@')[0]?.trim() || '';
+  const accountName = effectiveAccount?.name?.trim() || effectiveAccount?.email?.split('@')[0]?.trim() || '';
   const accountFirstName = accountName ? accountName.split(/\s+/)[0] : '';
-  const accountInitial = (accountName || account?.email?.trim() || '').charAt(0).toUpperCase();
+  const accountInitial = (accountName || effectiveAccount?.email?.trim() || '').charAt(0).toUpperCase();
   // פס המבצע מוצג רק כשיש מבצע תקין ולא הסתיים. הספירה מחושבת פעם אחת (ימים בלבד),
   // בלי טיימר מתקתק — כך אין קפיצה, אין לחץ, ואין אי-התאמת הידרציה.
   const countdown = launchOffer ? computeCountdown(launchOffer.endsAt) : null;
@@ -138,11 +177,13 @@ export default function PremiumClinicHeader({
               <ClockIcon className="h-3.5 w-3.5" />
               <span>
                 {labels.hoursToday}:{' '}
-                {todayHours ? (
-                  <span dir="ltr" className="tabular-nums">{todayHours}</span>
-                ) : (
-                  labels.closedToday
-                )}
+                {hoursReady ? (
+                  todayHours ? (
+                    <span dir="ltr" className="tabular-nums">{todayHours}</span>
+                  ) : (
+                    labels.closedToday
+                  )
+                ) : null}
               </span>
             </span>
           </div>
@@ -224,7 +265,7 @@ export default function PremiumClinicHeader({
                 if (e.key === 'Escape') setAccountOpen(false);
               }}
             >
-              {account ? (
+              {effectiveAccount ? (
                 <>
                   <button
                     type="button"
@@ -277,12 +318,12 @@ export default function PremiumClinicHeader({
                                 {accountName}
                               </span>
                             ) : null}
-                            {account.email ? (
+                            {effectiveAccount.email ? (
                               <span
                                 dir="ltr"
                                 className="truncate text-start text-xs text-[color:var(--c-ink,#1b1715)]/65"
                               >
-                                {account.email}
+                                {effectiveAccount.email}
                               </span>
                             ) : null}
                           </span>
@@ -367,7 +408,7 @@ export default function PremiumClinicHeader({
               </nav>
 
               <div className="mt-3 rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white/60 p-3">
-                {account ? (
+                {effectiveAccount ? (
                   <>
                     <div className="flex items-center gap-2.5 px-1 pb-2">
                       <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-base font-bold text-[color:var(--c-ink,#1b1715)]">
@@ -377,14 +418,14 @@ export default function PremiumClinicHeader({
                         <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--biz-strong)]">
                           {labels.menu.connectedLabel}
                         </span>
-                        {account.name ? (
+                        {effectiveAccount.name ? (
                           <span className="truncate text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
-                            {account.name}
+                            {effectiveAccount.name}
                           </span>
                         ) : null}
-                        {account.email ? (
+                        {effectiveAccount.email ? (
                           <span dir="ltr" className="truncate text-start text-xs text-[color:var(--c-ink,#1b1715)]/70">
-                            {account.email}
+                            {effectiveAccount.email}
                           </span>
                         ) : null}
                       </span>

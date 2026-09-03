@@ -41,6 +41,7 @@ function checkbox(formData: FormData, key: string): boolean {
 function revalidatePublic(slug: string) {
   revalidatePath('/admin/services');
   revalidatePath(`/b/${slug}`);
+  revalidatePath(`/b/${slug}/book`);
 }
 
 /** יצירה או עדכון של שירות (חתימת useActionState). */
@@ -147,6 +148,11 @@ export async function loadServiceTemplatesAction() {
   // רענון היומן ומסך השירותים כדי שהתצוגה תתעדכן מיד לאחר הזריעה.
   revalidatePath('/admin');
   revalidatePath('/admin/services');
+  // זריעת שירותי תבנית משנה את השירותים המוצגים בעמודי הציבור — רענון על-פי דרישה.
+  if (created > 0) {
+    revalidatePath(`/b/${business.slug}`);
+    revalidatePath(`/b/${business.slug}/book`);
+  }
 
   // נשארים במסך השירותים כדי שהבעלים יערוך או ימחק את שירותי התבנית מיד.
   redirect(created > 0 ? '/admin/services?seeded=1' : '/admin/services');
