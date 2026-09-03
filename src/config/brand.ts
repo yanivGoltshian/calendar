@@ -19,3 +19,13 @@ export const BRAND = {
 } as const;
 
 export type Brand = typeof BRAND;
+
+/**
+ * סלאג עסק ההדגמה הקנוני, שנזרע תמיד בפרודקשן (ראו prisma/seed.ts).
+ *
+ * משמש כ-fallback יציב ל-gate של קישור ההדגמה בדף הבית הסטטי: בזמן build אין
+ * DATABASE_URL, ולכן getFirstBusiness() נכשל ומחזיר null — בלי ה-fallback הזה
+ * ה-gate מתאפס וקישורי ההדגמה נושרים מה-HTML הסטטי הנאפה. הערך משמש אך ורק
+ * כ-gate בוליאני (truthy) ולעולם לא לבניית ה-href, שמפנה תמיד לבוחר הסטטי /demo.
+ */
+export const DEMO_BUSINESS_SLUG = 'demo-barbershop';
