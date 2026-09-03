@@ -11,6 +11,7 @@ import { displayPhone } from '@/lib/crypto';
 import { formatLongDate } from '@/lib/time';
 import type { WaitlistStatus } from '@prisma/client';
 import WaitlistForm from './WaitlistForm';
+import WaitlistToggle from './WaitlistToggle';
 import { notifyAction, promoteAction, cancelAction } from './actions';
 import { MascotEmptyState } from '@/components/brand/MascotEmptyState';
 
@@ -36,6 +37,9 @@ export default async function AdminWaitlistPage({ searchParams }: Props) {
   if (!business) notFound();
 
   const w = t.admin.waitlistModule;
+
+  // מקור האמת היחיד לדגל; ברירת מחדל true שומרת התנהגות קיימת.
+  const waitlistEnabled = business.settings?.waitlistEnabled ?? true;
 
   const status =
     sp.status === 'WAITING' ||
@@ -68,6 +72,18 @@ export default async function AdminWaitlistPage({ searchParams }: Props) {
         <p className="mt-1 text-sm text-[#8f8478]">{w.subtitle}</p>
       </header>
 
+      <WaitlistToggle enabled={waitlistEnabled} label={w.toggleLabel} />
+
+      {!waitlistEnabled ? (
+        <div className="mb-5 rounded-xl border border-[#e7ddcd] bg-[#f7f2ea] px-4 py-3 text-sm text-[#6e655f]">
+          {w.disabledBanner}
+        </div>
+      ) : null}
+
+      <div
+        className={waitlistEnabled ? undefined : 'pointer-events-none select-none opacity-50'}
+        aria-disabled={!waitlistEnabled}
+      >
       <div className="mb-5 flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const active = (status ?? 'all') === f;
@@ -174,6 +190,7 @@ export default async function AdminWaitlistPage({ searchParams }: Props) {
         services={services.map((s) => ({ id: s.id, name: s.name }))}
         staff={staff.map((s) => ({ id: s.id, name: s.displayName }))}
       />
+      </div>
     </main>
   );
 }

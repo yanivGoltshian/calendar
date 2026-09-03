@@ -109,6 +109,18 @@ export async function updateOwnerNotifications(
   });
 }
 
+/**
+ * כיבוי/הפעלה של רשימת ההמתנה פר-עסק (BusinessSettings.waitlistEnabled).
+ * מקור האמת היחיד לדגל; נכתב מעמוד ניהול רשימת ההמתנה בלבד (/admin/waitlist).
+ */
+export async function setWaitlistEnabled(businessId: string, enabled: boolean) {
+  return prisma.businessSettings.upsert({
+    where: { businessId },
+    update: { waitlistEnabled: enabled },
+    create: { businessId, waitlistEnabled: enabled },
+  });
+}
+
 /** סימון השלמת ההקמה המודרכת (BusinessSettings). */
 export async function setOnboardingCompleted(businessId: string, completed: boolean) {
   return prisma.businessSettings.upsert({

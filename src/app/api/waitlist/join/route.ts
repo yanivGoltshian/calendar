@@ -87,6 +87,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'business_inactive' }, { status: 403 });
   }
 
+  // הגנת-שרת: אם בעל העסק כיבה את רשימת ההמתנה, דוחים את ההצטרפות (מעבר להסתרת ה-UI).
+  if (business.settings?.waitlistEnabled === false) {
+    return NextResponse.json({ ok: false, error: 'waitlist_disabled' }, { status: 403 });
+  }
+
   const result = await addWaitlistEntry(business.id, {
     name: parsed.name,
     phone: parsed.phone,

@@ -9,6 +9,8 @@ import {
   promoteWaitlistEntry,
   cancelWaitlistEntry,
 } from '@/server/repos/waitlist';
+import { setWaitlistEnabled } from '@/server/repos/settings';
+import { parseWaitlistEnabled } from './parse';
 import { isValidIsraeliMobile } from '@/lib/crypto';
 import { canSendPaidClientSms } from '@/server/subscription';
 
@@ -29,6 +31,18 @@ export type AddWaitlistState = {
   ok: boolean;
   error?: string;
 };
+
+/**
+ * הפעלה/כיבוי של רשימת ההמתנה לעסק הפעיל. מקור האמת היחיד לדגל
+ * BusinessSettings.waitlistEnabled; נקרא מהטוגל בראש עמוד /admin/waitlist.
+ */
+export async function setWaitlistEnabledAction(formData: FormData): Promise<void> {
+  const enabled = parseWaitlistEnabled(formData);
+  const business = await getActiveBusiness();
+  if (!business) return;
+  await setWaitlistEnabled(business.id, enabled);
+  revalidatePath('/admin/waitlist');
+}
 
 /** הוספת ממתין חדש לרשימת ההמתנה. */
 export async function addWaitlistAction(
@@ -54,6 +68,11 @@ export async function addWaitlistAction(
 
   const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'generic' };
+
+  // הגנה בעומק: גם אם ה-UI מושבת, לא מוסיפים ממתין כשרשימת ההמתנה כבויה.
+  if (business.settings?.waitlistEnabled === false) {
+    return { ok: false, error: 'disabled' };
+  }
 
   await addWaitlistEntry(business.id, {
     name: parsed.data.name,
