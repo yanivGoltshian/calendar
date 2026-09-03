@@ -5,8 +5,10 @@ import {
 } from '@/server/reminders/resolveChannel';
 import { sendGuardedSms } from '@/server/billing/costGuard';
 import { t } from '@/i18n';
+import { BRAND } from '@/config/brand';
 import { absoluteUrl } from '@/lib/seo';
 import { DEFAULT_TZ, formatDateString, formatLongDate, formatTime } from '@/lib/time';
+import { renderMessage } from '@/server/messages/render';
 
 /**
  * שכבת שליחת תזכורות. מרכזת את בניית תוכן ההודעה ואת שליחתה ביעדים שנגזרו ללקוח.
@@ -173,12 +175,35 @@ function errText(err: unknown): string {
  * מיפוי התוצאה: sent => נשלח; blocked (הגעה לתקרה) => skipped, כדי שה-cron יסמן
  * ולא ינסה שוב ללא הרף; failed => כשל חולף שיינתן לו ניסיון חוזר בריצה הבאה.
  */
+/**
+ * משתני התבנית לנתיב הדריסה של הבעלים (מחושבים רק כשצריך; משמשים כשקיימת דריסה).
+ * manageUrl = קישור האישור /c/<token> כשהאישור דלוק (ברירת מחדל), אחרת ריק.
+ */
+function reminderVars(appt: ReminderAppointment): Record<string, string> {
+  const tz = appt.business.timezone || DEFAULT_TZ;
+  const dateStr = formatDateString(appt.startAt, tz);
+  const confirmationRequired = appt.business.settings?.confirmationRequired ?? true;
+  return {
+    businessName: appt.business.name,
+    date: formatLongDate(dateStr, tz),
+    time: formatTime(appt.startAt, tz),
+    manageUrl: confirmationRequired ? absoluteUrl(`/c/${appt.confirmToken}`) : '',
+    brand: BRAND.name,
+  };
+}
+
 async function sendViaSms(
   appt: ReminderAppointment,
   to: string,
   deps: SendReminderDeps,
 ): Promise<SendReminderResult> {
-  const body = buildReminderBody(appt);
+  const { text: body } = await renderMessage(
+    appt.business.id,
+    'reminder',
+    'sms',
+    reminderVars(appt),
+    { text: buildReminderBody(appt) },
+  );
   const send = deps.sendGuardedSms ?? sendGuardedSms;
 
   try {
@@ -216,9 +241,16 @@ async function sendViaEmail(
   if (!configured) {
     return { status: 'skipped', reason: 'email provider not configured' };
   }
-  const { subject, text, html } = buildReminderEmail(appt);
+  const fb = buildReminderEmail(appt);
+  const { subject, text, html } = await renderMessage(
+    appt.business.id,
+    'reminder',
+    'email',
+    reminderVars(appt),
+    fb,
+  );
   try {
-    await send(to, subject, text, html);
+    await send(to, subject ?? fb.subject, text, html ?? fb.html);
     return { status: 'sent', channel: 'EMAIL' };
   } catch (err) {
     return { status: 'failed', channel: 'EMAIL', error: errText(err) };

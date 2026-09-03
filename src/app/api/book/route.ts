@@ -196,6 +196,7 @@ export async function POST(req: Request) {
       try {
         await notifyClientOfBooking({
           appointmentId: appointment.id,
+          businessId: business.id,
           businessName: business.name,
           clientName,
           clientEmail: clientEmail ?? null,

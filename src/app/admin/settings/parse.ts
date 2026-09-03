@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { BusinessType, ReminderChannel } from '@prisma/client';
 import { MAX_HERO_IMAGES } from '@/lib/publicPageStyle';
+import {
+  MESSAGE_KEYS,
+  getTemplateDef,
+  type MessageChannel,
+} from '@/server/messages/registry';
+import type { MessageTemplateInput } from '@/server/messages/save';
 import type {
   BusinessProfileInput,
   BookingPolicyInput,
@@ -160,4 +166,25 @@ export function parseOwnerNotifications(fd: FormData): ParseResult<OwnerNotifica
       pushEnabled: checkbox(fd, 'pushEnabled'),
     },
   };
+}
+
+/**
+ * ניתוח דריסות תבניות ההודעות ללקוחות מתוך הטופס. עובר על כל מפתח × ערוץ נתמך
+ * (שמות שדות `tmpl.<key>.<channel>.body` ו-`...subject` למייל), חותך רווחים,
+ * ומחזיר את הערכים הגולמיים. ההחלטה אם לשמור דריסה או לשחזר לברירת-המחדל נעשית
+ * בשכבת ה-repo (resolveTemplateSave), ולכן כאן אין וולידציה שנכשלת — מנתח טהור.
+ */
+export function parseMessageTemplates(fd: FormData): MessageTemplateInput[] {
+  const out: MessageTemplateInput[] = [];
+  for (const key of MESSAGE_KEYS) {
+    const def = getTemplateDef(key);
+    (['email', 'sms'] as MessageChannel[]).forEach((channel) => {
+      if (!def.channels[channel]) return;
+      const body = str(fd, `tmpl.${key}.${channel}.body`);
+      const subject =
+        channel === 'email' ? nullableStr(fd, `tmpl.${key}.${channel}.subject`) : null;
+      out.push({ key, channel, subject, body });
+    });
+  }
+  return out;
 }

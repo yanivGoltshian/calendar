@@ -6,7 +6,10 @@ import {
   parseReminders,
   parseOwnerNotifications,
   parseLandingHeroImages,
+  parseMessageTemplates,
 } from './parse';
+import { resolveTemplateSave } from '@/server/messages/save';
+import { getChannelDefault } from '@/server/messages/registry';
 
 /** בונה FormData מאובייקט פשוט. */
 function form(entries: Record<string, string>): FormData {
@@ -183,4 +186,72 @@ test('parseLandingHeroImages: בלי שדות ⇐ מערך ריק', () => {
 test('parseLandingHeroImages: מדלג על תמונה ראשונה ריקה ושומר את השנייה', () => {
   const images = parseLandingHeroImages(form({ heroImage0: '   ', heroImage1: 'data:image/jpeg;base64,CCCC' }));
   assert.deepEqual(images, ['data:image/jpeg;base64,CCCC']);
+});
+
+test('parseMessageTemplates: מחזיר ערך לכל מפתח × ערוץ נתמך, ומנקה רווחים', () => {
+  const entries = parseMessageTemplates(
+    form({
+      'tmpl.booking_confirmation.email.subject': '  נושא ערוך  ',
+      'tmpl.booking_confirmation.email.body': '  גוף ערוך  ',
+      'tmpl.booking_confirmation.sms.body': '  מסרון ערוך  ',
+    }),
+  );
+  // 5 מפתחות × 2 ערוצים = 10 ערכים.
+  assert.equal(entries.length, 10);
+
+  const email = entries.find((e) => e.key === 'booking_confirmation' && e.channel === 'email');
+  assert.deepEqual(email, {
+    key: 'booking_confirmation',
+    channel: 'email',
+    subject: 'נושא ערוך',
+    body: 'גוף ערוך',
+  });
+
+  const sms = entries.find((e) => e.key === 'booking_confirmation' && e.channel === 'sms');
+  assert.deepEqual(sms, {
+    key: 'booking_confirmation',
+    channel: 'sms',
+    subject: null,
+    body: 'מסרון ערוך',
+  });
+});
+
+test('parseMessageTemplates: SMS לעולם אינו קורא נושא (גם אם נשלח)', () => {
+  const entries = parseMessageTemplates(
+    form({
+      'tmpl.booking_confirmation.sms.subject': 'לא רלוונטי',
+      'tmpl.booking_confirmation.sms.body': 'גוף',
+    }),
+  );
+  const sms = entries.find((e) => e.key === 'booking_confirmation' && e.channel === 'sms');
+  assert.equal(sms?.subject, null);
+});
+
+test('parseMessageTemplates → resolveTemplateSave: עריכה נשמרת, ריק/ברירת-מחדל נמחקים (round-trip)', () => {
+  const def = getChannelDefault('booking_confirmation', 'email')!;
+  const entries = parseMessageTemplates(
+    form({
+      // ערוך → upsert
+      'tmpl.booking_confirmation.email.subject': 'נושא חדש',
+      'tmpl.booking_confirmation.email.body': 'גוף חדש',
+      // ריק → delete (שחזור)
+      'tmpl.booking_approval.email.body': '',
+      // זהה לברירת מחדל → delete
+      'tmpl.reminder.email.subject': getChannelDefault('reminder', 'email')!.subject!,
+      'tmpl.reminder.email.body': getChannelDefault('reminder', 'email')!.body,
+    }),
+  );
+  const byId = (key: string, channel: string) =>
+    entries.find((e) => e.key === key && e.channel === channel)!;
+
+  assert.deepEqual(resolveTemplateSave(byId('booking_confirmation', 'email')), {
+    action: 'upsert',
+    subject: 'נושא חדש',
+    body: 'גוף חדש',
+  });
+  assert.deepEqual(resolveTemplateSave(byId('booking_approval', 'email')), { action: 'delete' });
+  assert.deepEqual(resolveTemplateSave(byId('reminder', 'email')), { action: 'delete' });
+  // שדות שלא נשלחו בטופס: גוף ריק ⇒ delete (שחזור), מבטיח אי-שמירה בטעות.
+  assert.deepEqual(resolveTemplateSave(byId('waitlist_freed', 'sms')), { action: 'delete' });
+  assert.ok(def.body.length > 0);
 });

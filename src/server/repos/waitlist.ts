@@ -7,6 +7,7 @@ import {
   resolveWaitlistNotifyChannel,
   buildWaitlistNotifyEmail,
 } from '@/server/repos/waitlistNotify';
+import { renderMessage } from '@/server/messages/render';
 import type { WaitlistStatus } from '@prisma/client';
 
 /**
@@ -105,7 +106,10 @@ export async function notifyWaitlistEntry(
   id: string,
   opts?: { isExclusive?: boolean },
 ): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'not_waiting' }> {
-  const entry = await prisma.waitlistEntry.findFirst({ where: { id, businessId } });
+  const entry = await prisma.waitlistEntry.findFirst({
+    where: { id, businessId },
+    include: { business: { select: { name: true } } },
+  });
   if (!entry) return { ok: false, reason: 'not_found' };
   if (entry.status !== 'WAITING') return { ok: false, reason: 'not_waiting' };
 
@@ -118,8 +122,22 @@ export async function notifyWaitlistEntry(
     email: entry.email,
   });
 
+  // משתני התבנית לנתיב הדריסה (משמשים רק כשקיימת דריסת-בעלים).
+  const vars = {
+    clientName: entry.name,
+    businessName: entry.business?.name ?? '',
+    brand: BRAND.name,
+  };
+
   if (channel === 'sms') {
-    const message = `${BRAND.name}: התפנה תור! ${entry.name}, נשמח לתאם לך מועד. השיבו להודעה זו ליצירת קשר.`;
+    const fallback = `${BRAND.name}: התפנה תור! ${entry.name}, נשמח לתאם לך מועד. השיבו להודעה זו ליצירת קשר.`;
+    const { text: message } = await renderMessage(
+      businessId,
+      'waitlist_freed',
+      'sms',
+      vars,
+      { text: fallback },
+    );
     await sendGuardedSms({
       businessId,
       to: entry.phone,
@@ -130,8 +148,15 @@ export async function notifyWaitlistEntry(
   } else if (channel === 'email' && entry.email) {
     // בליעה מכוונת: כשל SMTP אינו מפיל את היידוע ואינו חוסם את סימון NOTIFIED.
     try {
-      const { subject, text, html } = buildWaitlistNotifyEmail(entry.name);
-      await sendReminderEmail(entry.email, subject, text, html);
+      const fb = buildWaitlistNotifyEmail(entry.name);
+      const { subject, text, html } = await renderMessage(
+        businessId,
+        'waitlist_freed',
+        'email',
+        vars,
+        fb,
+      );
+      await sendReminderEmail(entry.email, subject ?? fb.subject, text, html ?? fb.html);
     } catch {
       // best-effort — מתעלמים משגיאת שליחה.
     }

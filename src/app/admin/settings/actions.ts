@@ -16,8 +16,10 @@ import {
   parseReminders,
   parseOwnerNotifications,
   parseLandingHeroImages,
+  parseMessageTemplates,
   type SaveState,
 } from './parse';
+import { saveMessageTemplateOverrides } from '@/server/repos/messageTemplates';
 
 /** מצב אחיד לכל טופס הגדרות (useActionState). מיוצא מחדש מ-parse. */
 export type { SaveState } from './parse';
@@ -71,6 +73,9 @@ export async function saveAllSettingsAction(
   await updateBookingPolicy(business.id, policy.data);
   await updateReminders(business.id, reminders.data);
   await updateOwnerNotifications(business.id, ownerNotifications.data);
+  // דריסות תבניות ההודעות ללקוחות: תמיד נשמרות (upsert/מחיקה לכל שדה), בלי
+  // וולידציה שנכשלת — נוסח ריק או זהה לברירת-המחדל פשוט משחזר.
+  await saveMessageTemplateOverrides(business.id, parseMessageTemplates(fd));
 
   revalidateAll(business.slug);
   return { ok: true };

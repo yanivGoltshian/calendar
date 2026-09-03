@@ -2,6 +2,7 @@ import { BRAND } from '@/config/brand';
 import { emailConfigured, sendEmail } from '@/server/providers/email';
 import { sendGuardedSms } from '@/server/billing/costGuard';
 import { formatDateString, formatLongDate, formatTime } from '@/lib/time';
+import { renderMessage } from '@/server/messages/render';
 
 /**
  * התראת הלקוח על אישור התור על ידי בעל העסק (מעבר PENDING → CONFIRMED).
@@ -142,13 +143,31 @@ export async function notifyClientOfApproval(
   const email = payload.clientEmail?.trim() || null;
   const phone = payload.clientPhone?.trim() || null;
 
+  // משתני התבנית לנתיב הדריסה (מחושבים פעם אחת; משמשים רק כשקיימת דריסת-בעלים).
+  const dateStr = formatDateString(payload.startAt, payload.timezone);
+  const vars = {
+    clientName: payload.clientName,
+    businessName: payload.businessName,
+    date: formatLongDate(dateStr, payload.timezone),
+    time: formatTime(payload.startAt, payload.timezone),
+    manageUrl: payload.manageUrl ?? '',
+    brand: BRAND.name,
+  };
+
   // ── ערוץ 1: מייל ללקוח (פרימיום/אקסקלוסיב בלבד, כשיש כתובת) ───────────────
   if (!payload.canEmail || !email) {
     emailSkipped = true;
   } else {
     try {
-      const { subject, text, html } = buildApprovalEmail(payload);
-      await sendEmail(email, subject, text, html);
+      const fb = buildApprovalEmail(payload);
+      const { subject, text, html } = await renderMessage(
+        payload.businessId,
+        'booking_approval',
+        'email',
+        vars,
+        fb,
+      );
+      await sendEmail(email, subject ?? fb.subject, text, html);
       emailed = true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -159,7 +178,13 @@ export async function notifyClientOfApproval(
 
   // ── ערוץ 2: מסרון בתשלום — אקסקלוסיב בלבד, דרך שער העלות, כשיש טלפון ───────
   if (payload.isExclusive && phone) {
-    const message = buildApprovalMessage(payload);
+    const { text: message } = await renderMessage(
+      payload.businessId,
+      'booking_approval',
+      'sms',
+      vars,
+      { text: buildApprovalMessage(payload) },
+    );
     const guardedSend = deps.sendGuardedSms ?? sendGuardedSms;
     try {
       const res = await guardedSend({

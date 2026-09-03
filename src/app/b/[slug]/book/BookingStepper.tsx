@@ -501,6 +501,8 @@ export default function BookingStepper({
                 defaultName={name}
                 defaultPhone={phone}
                 defaultEmail={email}
+                authed={authed}
+                googleEnabled={googleEnabled}
                 variant="full"
               />
             </div>
@@ -531,6 +533,8 @@ export default function BookingStepper({
                 defaultName={name}
                 defaultPhone={phone}
                 defaultEmail={email}
+                authed={authed}
+                googleEnabled={googleEnabled}
                 variant="partial"
               />
             </div>

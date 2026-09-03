@@ -2,6 +2,7 @@ import { BRAND } from '@/config/brand';
 import { sendEmail } from '@/server/providers/email';
 import { sendWhatsApp } from '@/server/providers/messaging';
 import { formatDateString, formatLongDate, formatTime } from '@/lib/time';
+import { renderMessage } from '@/server/messages/render';
 
 /**
  * אישור הזמנה מיידי ללקוח כאשר התור נקבע ואושר על המקום (CONFIRMED ללא אישור עסק).
@@ -28,6 +29,8 @@ export type BookingConfirmationPayload = {
   services: BookingConfirmationService[];
   startAt: Date;
   timezone: string;
+  /** מזהה העסק, לטעינת דריסת-תבנית של הבעלים (אופציונלי; ללא ערך → ברירת מחדל). */
+  businessId?: string | null;
   /** האם לשלוח מייל אישור (פרימיום/אקסקלוסיב). */
   canEmail: boolean;
   /** האם לשלוח וואטסאפ אישור (אקסקלוסיב). */
@@ -108,11 +111,30 @@ export async function notifyClientOfBooking(
   const email = payload.clientEmail?.trim() || null;
   const phone = payload.clientPhone?.trim() || null;
 
+  // משתני התבנית לנתיב הדריסה (מחושבים פעם אחת; משמשים רק כשקיימת דריסת-בעלים).
+  const dateStr = formatDateString(payload.startAt, payload.timezone);
+  const vars = {
+    clientName: payload.clientName,
+    businessName: payload.businessName,
+    services: payload.services.map((s) => s.name).join(', '),
+    date: formatLongDate(dateStr, payload.timezone),
+    time: formatTime(payload.startAt, payload.timezone),
+    manageUrl: payload.manageUrl ?? '',
+    brand: BRAND.name,
+  };
+
   // ── ערוץ 1: מייל אישור (פרימיום/אקסקלוסיב, כשיש כתובת) ────────────────────
   if (payload.canEmail && email) {
     try {
-      const { subject, text, html } = buildConfirmationEmail(payload);
-      await sendEmail(email, subject, text, html);
+      const fb = buildConfirmationEmail(payload);
+      const { subject, text, html } = await renderMessage(
+        payload.businessId,
+        'booking_confirmation',
+        'email',
+        vars,
+        fb,
+      );
+      await sendEmail(email, subject ?? fb.subject, text, html);
       emailed = true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -125,7 +147,14 @@ export async function notifyClientOfBooking(
   // ערוץ נתיק: ספק ההודעות עשוי להיות stub המדפיס ללוג עד לחיווט Azure ACS.
   if (payload.canWhatsapp && phone) {
     try {
-      await sendWhatsApp(phone, buildConfirmationMessage(payload));
+      const { text } = await renderMessage(
+        payload.businessId,
+        'booking_confirmation',
+        'sms',
+        vars,
+        { text: buildConfirmationMessage(payload) },
+      );
+      await sendWhatsApp(phone, text);
       messaged = true;
       messageChannel = 'whatsapp';
     } catch (err) {
