@@ -1,6 +1,6 @@
 import { getFirstBusiness } from '@/server/repos/business';
 import { buildMetadata, SITE_URL } from '@/lib/seo';
-import { BRAND } from '@/config/brand';
+import { BRAND, DEMO_BUSINESS_SLUG } from '@/config/brand';
 import { t } from '@/i18n';
 import { Navbar, Footer, Container, Section, Button, Card, Badge } from '@/components/ui';
 import { Reveal, Stagger, StaggerItem, FadeIn } from '@/components/motion';
@@ -23,8 +23,9 @@ const m = t.marketing;
 // ומוגש עם כותרת ניתנת-למטמון (לא no-store). אינו קורא עוגיות ולכן אינו מכיל
 // מידע אישי. זיהוי "בעלים חוזר" (החלפת CTA) והצגת קישור החשבון עברו להידרציה
 // בצד הלקוח (ראו OwnerAwareCta ו-Navbar selfResolveAccount) כדי לשמור על UX זהה.
-// לינק ההדגמה (getFirstBusiness) נאפה בזמן build ומתרענן על-פי דרישה דרך
-// revalidatePath('/') בעת יצירה או עריכה של עסק.
+// ה-gate של קישור ההדגמה תמיד נוכח ב-HTML הסטטי: בזמן build (ללא DB) הוא נשען על
+// fallback יציב מהקונפיג (DEMO_BUSINESS_SLUG), ומתרענן על-פי דרישה דרך
+// revalidatePath('/') לסלאג העסק הראשון האמיתי בעת יצירה או עריכה של עסק.
 export const dynamic = 'force-static';
 
 export const metadata = buildMetadata({
@@ -37,15 +38,16 @@ const trustStats = Object.values(m.trust.stats);
 export default async function HomePage() {
   // getFirstBusiness קורא ל-Prisma. בזמן build ללא Postgres מקומי הקריאה עלולה
   // להיכשל (prisma:error Validation Error) — עוטפים ב-try/catch כדי שהרינדור
-  // הסטטי תמיד יצליח (שלד אורח ללא לינק הדגמה). בזמן build עם DB או ברענון
-  // על-פי דרישה (revalidatePath('/')) הלינק האמיתי נאפה מחדש.
+  // הסטטי תמיד יצליח. כדי שקישור ההדגמה לא יישמט מה-HTML הנאפה כשאין DB, ה-gate
+  // נשען על fallback יציב מהקונפיג (DEMO_BUSINESS_SLUG). בזמן build עם DB או ברענון
+  // על-פי דרישה (revalidatePath('/')) מוחלף בסלאג העסק הראשון האמיתי.
   let business: Awaited<ReturnType<typeof getFirstBusiness>> = null;
   try {
     business = await getFirstBusiness();
   } catch {
     business = null;
   }
-  const demoSlug = business?.slug;
+  const demoSlug = business?.slug ?? DEMO_BUSINESS_SLUG;
   const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
   // כפתורי ההדגמה בדף הבית מפנים לבוחר /demo (סטנדרט מול פרימיום) במקום לעמוד יחיד.
   // ה-gate על demoHref נשמר: הבוחר מוצג רק כשקיים עסק הדגמה.
