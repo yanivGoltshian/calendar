@@ -76,8 +76,13 @@ export async function saveAllSettingsAction(
   await updateReminders(business.id, reminders.data);
   await updateOwnerNotifications(business.id, ownerNotifications.data);
   // דריסות תבניות ההודעות ללקוחות: תמיד נשמרות (upsert/מחיקה לכל שדה), בלי
-  // וולידציה שנכשלת — נוסח ריק או זהה לברירת-המחדל פשוט משחזר.
-  await saveMessageTemplateOverrides(business.id, parseMessageTemplates(fd));
+  // וולידציה שנכשלת — נוסח ריק או זהה לברירת-המחדל פשוט משחזר. הקשר ערכי-העסק
+  // מועבר כדי ששמירה של תבנית מלאת-פרטים ללא עריכה תזוהה כברירת-מחדל ותימחק.
+  await saveMessageTemplateOverrides(business.id, parseMessageTemplates(fd), {
+    businessName: business.name,
+    businessPhone: business.phone,
+    businessAddress: business.address,
+  });
 
   revalidateAll(business.slug);
   return { ok: true };

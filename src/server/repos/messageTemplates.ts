@@ -3,6 +3,7 @@ import {
   resolveTemplateSave,
   type MessageTemplateInput,
 } from '@/server/messages/save';
+import type { BusinessTemplateContext } from '@/server/messages/businessTokens';
 
 /**
  * Repo של דריסות תבניות ההודעות (MessageTemplate).
@@ -39,13 +40,16 @@ export async function listMessageTemplateOverrides(
 /**
  * שומר את דריסות התבניות מהטופס: לכל ערך מחליט resolveTemplateSave אם למחוק
  * (שחזור) או לכתוב דריסה. מחיקה עם deleteMany כדי לא לזרוק כשאין שורה קיימת.
+ * ctx (הקשר ערכי-העסק) מועבר להשוואה מודעת-פרטים, כדי ששמירה של תבנית מלאה
+ * ללא עריכה תזוהה כברירת-מחדל ותימחק במקום ליצור דריסה מיותרת.
  */
 export async function saveMessageTemplateOverrides(
   businessId: string,
   inputs: MessageTemplateInput[],
+  ctx?: BusinessTemplateContext,
 ): Promise<void> {
   for (const input of inputs) {
-    const op = resolveTemplateSave(input);
+    const op = resolveTemplateSave(input, ctx);
     if (op.action === 'delete') {
       await prisma.messageTemplate.deleteMany({
         where: { businessId, key: input.key, channel: input.channel },

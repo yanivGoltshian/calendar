@@ -3,6 +3,10 @@ import {
   type MessageChannel,
   type MessageKey,
 } from './registry';
+import {
+  fillBusinessTokens,
+  type BusinessTemplateContext,
+} from './businessTokens';
 
 /**
  * לוגיקת שמירה טהורה לדריסות תבניות ההודעות. אין כאן גישה ל-DB — רק החלטה,
@@ -29,16 +33,26 @@ export type TemplateSaveOp =
  * - גוף (ונושא, למייל) זהים לברירת-המחדל ⇐ מחיקה (אין טעם לשמור דריסה זהה).
  * - אחרת ⇐ שמירת דריסה. נושא נשמר למייל בלבד; נושא ריק ⇐ null (נופל חזרה
  *   לנושא ברירת-המחדל בזמן הרינדור).
+ *
+ * ctx אופציונלי: כשמסופק, ההשוואה נעשית מול ברירת-המחדל לאחר מילוי משתני-העסק,
+ * כך ששמירה של תבנית מלאת-פרטים ללא עריכה עדיין מזוהה כזהה לברירת-המחדל ונמחקת,
+ * ואינה יוצרת דריסה מיותרת שמקבעת ערכים ומשנה את רינדור המייל.
  */
-export function resolveTemplateSave(input: MessageTemplateInput): TemplateSaveOp {
+export function resolveTemplateSave(
+  input: MessageTemplateInput,
+  ctx?: BusinessTemplateContext,
+): TemplateSaveOp {
   const def = getChannelDefault(input.key, input.channel);
   const body = input.body.trim();
   const subject = input.subject && input.subject.trim() ? input.subject.trim() : null;
 
   if (!body) return { action: 'delete' };
 
-  const defBody = def?.body ?? '';
-  const defSubject = def?.subject ?? null;
+  const rawDefBody = def?.body ?? '';
+  const rawDefSubject = def?.subject ?? null;
+  const defBody = ctx ? fillBusinessTokens(rawDefBody, ctx) : rawDefBody;
+  const defSubject =
+    ctx && rawDefSubject != null ? fillBusinessTokens(rawDefSubject, ctx) : rawDefSubject;
   const bodySame = body === defBody;
   const subjectSame =
     input.channel === 'email' ? (subject ?? defSubject) === defSubject : true;
