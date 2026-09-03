@@ -36,6 +36,10 @@ export type BookingConfirmationPayload = {
   /** האם לשלוח וואטסאפ אישור (אקסקלוסיב). */
   canWhatsapp: boolean;
   manageUrl?: string | null;
+  /** טלפון העסק לחתימת המייל (אופציונלי). */
+  businessPhone?: string | null;
+  /** כתובת העסק לחתימת המייל (אופציונלי). */
+  businessAddress?: string | null;
 };
 
 export type BookingConfirmationResult = {
@@ -65,11 +69,16 @@ export function buildConfirmationEmail(payload: BookingConfirmationPayload): {
   const lines = [
     `שלום ${payload.clientName},`,
     '',
-    `התור שלך בעסק ${payload.businessName} נקבע ואושר.`,
+    `שמחים לאשר שהתור שלך ב${payload.businessName} נקבע בהצלחה. אנחנו כבר מצפים לראותך.`,
     '',
     ...(serviceNames ? [`שירות/ים: ${serviceNames}`] : []),
     `מועד: ${when}`,
-    ...(payload.manageUrl ? ['', `פרטי העסק: ${payload.manageUrl}`] : []),
+    ...(payload.manageUrl ? ['', `לצפייה בפרטי התור, לשינוי מועד או לביטול: ${payload.manageUrl}`] : []),
+    '',
+    `נשמח לעמוד לרשותך לכל שאלה,`,
+    `צוות ${payload.businessName}`,
+    ...(payload.businessPhone ? [`טלפון: ${payload.businessPhone}`] : []),
+    ...(payload.businessAddress ? [`כתובת: ${payload.businessAddress}`] : []),
   ];
   const text = lines.join('\n');
 
@@ -78,14 +87,18 @@ export function buildConfirmationEmail(payload: BookingConfirmationPayload): {
   const html =
     `<!doctype html><html lang="he" dir="rtl"><body style="font-family:Arial,Helvetica,sans-serif;text-align:right;direction:rtl;color:#0B1526">` +
     `<h2 style="color:#0A182D">אישור הזמנה</h2>` +
-    `<p>שלום ${payload.clientName}, התור שלך בעסק ${payload.businessName} נקבע ואושר דרך ${BRAND.name}.</p>` +
+    `<p>שלום ${payload.clientName}, שמחים לאשר שהתור שלך ב${payload.businessName} נקבע בהצלחה. אנחנו כבר מצפים לראותך.</p>` +
     `<table style="border-collapse:collapse;font-size:15px">` +
     (serviceNames ? row('שירות/ים', serviceNames) : '') +
     row('מועד', when) +
     `</table>` +
     (payload.manageUrl
-      ? `<p style="margin-top:16px"><a href="${payload.manageUrl}" style="color:#82643C">מעבר לעמוד העסק</a></p>`
+      ? `<p style="margin-top:16px"><a href="${payload.manageUrl}" style="color:#82643C">לצפייה בפרטי התור, לשינוי מועד או לביטול</a></p>`
       : '') +
+    `<p style="margin-top:16px">נשמח לעמוד לרשותך לכל שאלה,<br>צוות ${payload.businessName}` +
+    (payload.businessPhone ? `<br>טלפון: ${payload.businessPhone}` : '') +
+    (payload.businessAddress ? `<br>כתובת: ${payload.businessAddress}` : '') +
+    `</p>` +
     `</body></html>`;
 
   return { subject, text, html };
@@ -94,7 +107,7 @@ export function buildConfirmationEmail(payload: BookingConfirmationPayload): {
 /** נוסח הודעת הוואטסאפ הקצרה לאישור ההזמנה. */
 export function buildConfirmationMessage(payload: BookingConfirmationPayload): string {
   const when = buildWhen(payload);
-  return `${BRAND.name}: שלום ${payload.clientName}, התור שלך בעסק ${payload.businessName} נקבע ואושר. מועד: ${when}.`;
+  return `${BRAND.name}: שלום ${payload.clientName}, התור שלך ב${payload.businessName} נקבע בהצלחה למועד ${when}. נשמח לראותך!`;
 }
 
 /**
@@ -120,6 +133,8 @@ export async function notifyClientOfBooking(
     date: formatLongDate(dateStr, payload.timezone),
     time: formatTime(payload.startAt, payload.timezone),
     manageUrl: payload.manageUrl ?? '',
+    businessPhone: payload.businessPhone ?? '',
+    businessAddress: payload.businessAddress ?? '',
     brand: BRAND.name,
   };
 

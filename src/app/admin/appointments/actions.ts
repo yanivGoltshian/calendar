@@ -69,6 +69,8 @@ export async function approveAppointmentAction(formData: FormData) {
       timezone: business.timezone,
       canEmail,
       isExclusive,
+      businessPhone: business.phone,
+      businessAddress: business.address,
       manageUrl: absoluteUrl(`/b/${business.slug}`),
     });
   } catch {

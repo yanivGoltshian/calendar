@@ -206,6 +206,8 @@ export async function POST(req: Request) {
           timezone: business.timezone,
           canEmail,
           canWhatsapp,
+          businessPhone: business.phone,
+          businessAddress: business.address,
           manageUrl: absoluteUrl(`/b/${business.slug}`),
         });
       } catch {

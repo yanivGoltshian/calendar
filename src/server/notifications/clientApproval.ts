@@ -49,6 +49,10 @@ export type ClientApprovalPayload = {
   isExclusive: boolean;
   /** קישור מוחלט לעמוד העסק/התור (אופציונלי). */
   manageUrl?: string | null;
+  /** טלפון העסק לחתימת המייל (אופציונלי). */
+  businessPhone?: string | null;
+  /** כתובת העסק לחתימת המייל (אופציונלי). */
+  businessAddress?: string | null;
 };
 
 /** הזרקת תלות לבדיקות — עוקפת את שער העלות האמיתי (שכותב ל-DB). */
@@ -93,11 +97,16 @@ export function buildApprovalEmail(payload: ClientApprovalPayload): {
   const lines = [
     `שלום ${payload.clientName},`,
     '',
-    `התור שלך בעסק ${payload.businessName} אושר.`,
+    `בקשת התור שלך ב${payload.businessName} אושרה, והמועד שמור עבורך. נשמח לראותך.`,
     '',
     ...(serviceNames ? [`שירות/ים: ${serviceNames}`] : []),
     `מועד: ${when}`,
-    ...(payload.manageUrl ? ['', `פרטי העסק: ${payload.manageUrl}`] : []),
+    ...(payload.manageUrl ? ['', `לצפייה בפרטי התור, לשינוי מועד או לביטול: ${payload.manageUrl}`] : []),
+    '',
+    `נשמח לעמוד לרשותך לכל שאלה,`,
+    `צוות ${payload.businessName}`,
+    ...(payload.businessPhone ? [`טלפון: ${payload.businessPhone}`] : []),
+    ...(payload.businessAddress ? [`כתובת: ${payload.businessAddress}`] : []),
   ];
   const text = lines.join('\n');
 
@@ -106,14 +115,18 @@ export function buildApprovalEmail(payload: ClientApprovalPayload): {
   const html =
     `<!doctype html><html lang="he" dir="rtl"><body style="font-family:Arial,Helvetica,sans-serif;text-align:right;direction:rtl;color:#0B1526">` +
     `<h2 style="color:#0A182D">התור שלך אושר</h2>` +
-    `<p>שלום ${payload.clientName}, התור שלך בעסק ${payload.businessName} אושר דרך ${BRAND.name}.</p>` +
+    `<p>שלום ${payload.clientName}, בקשת התור שלך ב${payload.businessName} אושרה והמועד שמור עבורך. נשמח לראותך.</p>` +
     `<table style="border-collapse:collapse;font-size:15px">` +
     (serviceNames ? row('שירות/ים', serviceNames) : '') +
     row('מועד', when) +
     `</table>` +
     (payload.manageUrl
-      ? `<p style="margin-top:16px"><a href="${payload.manageUrl}" style="color:#82643C">מעבר לעמוד העסק</a></p>`
+      ? `<p style="margin-top:16px"><a href="${payload.manageUrl}" style="color:#82643C">לצפייה בפרטי התור, לשינוי מועד או לביטול</a></p>`
       : '') +
+    `<p style="margin-top:16px">נשמח לעמוד לרשותך לכל שאלה,<br>צוות ${payload.businessName}` +
+    (payload.businessPhone ? `<br>טלפון: ${payload.businessPhone}` : '') +
+    (payload.businessAddress ? `<br>כתובת: ${payload.businessAddress}` : '') +
+    `</p>` +
     `</body></html>`;
 
   return { subject, text, html };
@@ -122,7 +135,7 @@ export function buildApprovalEmail(payload: ClientApprovalPayload): {
 /** נוסח הודעת הטקסט הקצרה (SMS) על אישור התור. */
 export function buildApprovalMessage(payload: ClientApprovalPayload): string {
   const when = buildWhen(payload);
-  return `${BRAND.name}: שלום ${payload.clientName}, התור שלך בעסק ${payload.businessName} אושר. מועד: ${when}.`;
+  return `${BRAND.name}: שלום ${payload.clientName}, בקשת התור שלך ב${payload.businessName} אושרה למועד ${when}. נשמח לראותך!`;
 }
 
 /**
@@ -151,6 +164,8 @@ export async function notifyClientOfApproval(
     date: formatLongDate(dateStr, payload.timezone),
     time: formatTime(payload.startAt, payload.timezone),
     manageUrl: payload.manageUrl ?? '',
+    businessPhone: payload.businessPhone ?? '',
+    businessAddress: payload.businessAddress ?? '',
     brand: BRAND.name,
   };
 
