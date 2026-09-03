@@ -18,6 +18,7 @@ const addSchema = z.object({
     .string()
     .trim()
     .refine((v) => isValidIsraeliMobile(v), 'phone'),
+  email: z.string().trim().email('email').optional(),
   serviceId: z.string().trim().optional(),
   staffId: z.string().trim().optional(),
   desiredDate: z.string().trim().optional(),
@@ -37,6 +38,7 @@ export async function addWaitlistAction(
   const parsed = addSchema.safeParse({
     name: formData.get('name'),
     phone: formData.get('phone'),
+    email: formData.get('email') || undefined,
     serviceId: formData.get('serviceId') || undefined,
     staffId: formData.get('staffId') || undefined,
     desiredDate: formData.get('desiredDate') || undefined,
@@ -45,7 +47,8 @@ export async function addWaitlistAction(
 
   if (!parsed.success) {
     const code = parsed.error.issues[0]?.message;
-    const error = code === 'name' || code === 'phone' ? code : 'generic';
+    const error =
+      code === 'name' || code === 'phone' || code === 'email' ? code : 'generic';
     return { ok: false, error };
   }
 
@@ -55,6 +58,7 @@ export async function addWaitlistAction(
   await addWaitlistEntry(business.id, {
     name: parsed.data.name,
     phone: parsed.data.phone,
+    email: parsed.data.email ?? null,
     serviceId: parsed.data.serviceId ?? null,
     staffId: parsed.data.staffId ?? null,
     desiredDate: parsed.data.desiredDate ?? null,

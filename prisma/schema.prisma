@@ -633,6 +633,7 @@ model WaitlistEntry {
   // פרטי קשר (למקרה שאין רשומת לקוח מקושרת)
   name  String
   phone String
+  email String? // ערוץ יידוע נוסף ללקוח (מייל "התפנה תור!") בחבילות ללא מסרון בתשלום
 
   // חלון זמן מבוקש
   desiredDate    String? // YYYY-MM-DD (מקומי)

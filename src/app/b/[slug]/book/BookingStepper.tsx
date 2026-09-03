@@ -500,24 +500,39 @@ export default function BookingStepper({
                 staffId={staffId}
                 defaultName={name}
                 defaultPhone={phone}
+                defaultEmail={email}
+                variant="full"
               />
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {slots.map((slot) => (
-                <button
-                  key={slot.startAtUtc}
-                  type="button"
-                  onClick={() => setSelectedSlot(slot)}
-                  className={`rounded-lg border py-2.5 text-center font-medium transition ${
-                    selectedSlot?.startAtUtc === slot.startAtUtc
-                      ? 'border-brand-600 bg-brand-600 text-white'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-brand-400'
-                  }`}
-                >
-                  {slot.label}
-                </button>
-              ))}
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {slots.map((slot) => (
+                  <button
+                    key={slot.startAtUtc}
+                    type="button"
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`rounded-lg border py-2.5 text-center font-medium transition ${
+                      selectedSlot?.startAtUtc === slot.startAtUtc
+                        ? 'border-brand-600 bg-brand-600 text-white'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-brand-400'
+                    }`}
+                  >
+                    {slot.label}
+                  </button>
+                ))}
+              </div>
+              {/* זמינות חלקית: יש מועדים ביום אך ייתכן שלא בשעה המבוקשת — מציעים רשימת המתנה. */}
+              <WaitlistJoinCTA
+                slug={slug}
+                date={date}
+                serviceIds={selectedServiceIds}
+                staffId={staffId}
+                defaultName={name}
+                defaultPhone={phone}
+                defaultEmail={email}
+                variant="partial"
+              />
             </div>
           )}
         </div>
