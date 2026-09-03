@@ -121,3 +121,13 @@ export function parseEditBusinessInput(raw: EditBusinessRaw): EditBusinessResult
   const planNotes = raw.planNotes.trim() || null;
   return { ok: true, data: { name, phone, ownerEmail, planNotes } };
 }
+
+/**
+ * פענוח מצב תיבת הסימון "הצג באתר" מתוך ערך שדה הטופס.
+ * תיבת סימון HTML נשלחת רק כשהיא מסומנת (ערך כלשהו, בדרך כלל 'on'); כשאינה מסומנת
+ * השדה נעדר לחלוטין (null/undefined). לכן נוכחות ערך => listed=true, היעדרות => listed=false.
+ * טהור וחסר תלות ב-FormData כדי שיהיה בר-בדיקת יחידה.
+ */
+export function parseListedCheckbox(raw: string | null | undefined): boolean {
+  return raw != null;
+}

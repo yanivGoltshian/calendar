@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
 import { getPlatformAdminEmail } from '@/server/platformAdmin';
-import { isSlugConfirmed, parseEditBusinessInput } from './logic';
+import { isSlugConfirmed, parseEditBusinessInput, parseListedCheckbox } from './logic';
 
 /**
  * פעולות שרת לקונסולת ניהול-העל. כל פעולה בודקת מחדש את שער האדמין בצד השרת
@@ -146,6 +146,28 @@ export async function revertToBasicAction(formData: FormData): Promise<void> {
   });
 
   revalidatePath('/superadmin');
+}
+
+/**
+ * עדכון דגל התצוגה הציבורית (listed) לעסק בודד מקונסולת ניהול-העל.
+ * הדגל המאוחד שולט יחד בשלושה: הופעה בעמוד הרשימה /businesses, הופעה במפת האתר,
+ * והתרת אינדוקס בעמוד /b/[slug]. לכן לאחר העדכון מרעננים גם את מפת האתר וגם את הרשימה.
+ * תיבת סימון: נוכחות => true, היעדרות => false (parseListedCheckbox).
+ */
+export async function setBusinessListedAction(formData: FormData): Promise<void> {
+  await assertPlatformAdmin();
+  const businessId = readBusinessId(formData);
+
+  const listed = parseListedCheckbox(formData.get('listed') as string | null);
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { listed },
+  });
+
+  revalidatePath('/superadmin');
+  revalidatePath('/businesses');
+  revalidatePath('/sitemap.xml');
 }
 
 /** עריכת פרטי עסק: שם (חובה), טלפון, מייל בעלים והערת חבילה. אימות/ניקוי בלוגיקה טהורה. */

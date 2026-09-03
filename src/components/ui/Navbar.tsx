@@ -39,7 +39,23 @@ export function Navbar({
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [resolvedAccount, setResolvedAccount] = useState(false);
+  const [directoryVisible, setDirectoryVisible] = useState(false);
   const reduce = useReducedMotion();
+
+  // הזרמת מצב שער הספרייה עבור שלד סטטי: דף הבית סטטי ואינו סופר עסקים בזמן רינדור,
+  // לכן הקישור ל-/businesses נשלף בצד הלקוח ומוצג רק כשמספר העסקים המוצגים ≥ 3.
+  useEffect(() => {
+    let active = true;
+    fetch('/api/public/directory-status', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data?.visible === true) setDirectoryVisible(true);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // הזרמת זהות הלקוח (hydration) עבור שלד סטטי: אין מידע אישי ב-HTML הנשמר.
   useEffect(() => {
@@ -111,6 +127,14 @@ export function Navbar({
               {link.label}
             </a>
           ))}
+          {directoryVisible && (
+            <Link
+              href="/businesses"
+              className="rounded-full px-4 py-2 text-sm font-medium text-sand-600 transition-colors hover:bg-sand-100 hover:text-sand-900 dark:text-sand-300 dark:hover:bg-sand-800 dark:hover:text-sand-50"
+            >
+              {t.marketing.nav.businesses}
+            </Link>
+          )}
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
@@ -198,6 +222,15 @@ export function Navbar({
                 >
                   {t.marketing.nav.demo}
                 </a>
+              )}
+              {directoryVisible && (
+                <Link
+                  href="/businesses"
+                  onClick={() => setOpen(false)}
+                  className="rounded-xl px-4 py-3 text-base font-medium text-sand-700 transition-colors hover:bg-sand-100 dark:text-sand-200 dark:hover:bg-sand-800"
+                >
+                  {t.marketing.nav.businesses}
+                </Link>
               )}
               <div className="mt-3 flex flex-col gap-2 border-t border-sand-200/70 pt-4 dark:border-sand-800/70">
                 {accountVisible ? (

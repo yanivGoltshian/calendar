@@ -11,6 +11,7 @@ import {
   upgradeExclusiveAction,
   revertToBasicAction,
   editBusinessDetailsAction,
+  setBusinessListedAction,
 } from './actions';
 import PublicSiteLink from './PublicSiteLink';
 import { DeleteBusinessForm } from './DeleteBusinessForm';
@@ -543,6 +544,36 @@ export default async function SuperadminPage() {
                           style={{ backgroundColor: NAVY_GLOW, color: GOLD_LIGHT }}
                         >
                           {s.edit.submit}
+                        </button>
+                      </form>
+                    </Section>
+
+                    <Section title={s.listed.title}>
+                      <form
+                        action={setBusinessListedAction}
+                        className="flex flex-col gap-2 pt-2"
+                      >
+                        <input type="hidden" name="businessId" value={b.id} />
+                        <label className="flex items-start gap-2">
+                          <input
+                            type="checkbox"
+                            name="listed"
+                            defaultChecked={b.listed}
+                            className="mt-1 h-4 w-4 shrink-0"
+                          />
+                          <span className="text-xs" style={{ color: TEXT_MUTED }}>
+                            {s.listed.checkboxLabel}
+                          </span>
+                        </label>
+                        <p className="text-[11px] leading-relaxed" style={{ color: TEXT_MUTED }}>
+                          {s.listed.hint}
+                        </p>
+                        <button
+                          type="submit"
+                          className="min-h-[44px] rounded-lg px-3 py-2 text-xs font-bold"
+                          style={{ backgroundColor: NAVY_GLOW, color: GOLD_LIGHT }}
+                        >
+                          {s.listed.submit}
                         </button>
                       </form>
                     </Section>

@@ -205,6 +205,10 @@ model Business {
   coverImageUrl   String?
   timezone        String          @default("Asia/Jerusalem")
   type            BusinessType?
+  // דגל תצוגה ציבורית מאוחד (אדיטיבי, ברירת מחדל true → שומר על התנהגות קיימת).
+  // שולט יחד בשלושה: הופעה בעמוד הרשימה /businesses, הופעה במפת האתר, והתרת
+  // אינדוקס בעמוד /b/[slug]. עסק עם listed=false מוסתר מכולם ומקבל noindex.
+  listed          Boolean         @default(true)
   // בחירת סגנון העמוד הציבורי (אדיטיבי, ברירת מחדל = עמוד הזמנות).
   publicPageStyle PublicPageStyle @default(BOOKING)
   // תוכן עמוד הנחיתה (אופציונלי): { heroHeadline?, heroSubtext?, benefits?:[{title,text}],

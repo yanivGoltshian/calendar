@@ -1,12 +1,20 @@
 import type { MetadataRoute } from 'next';
 import { SITE_URL } from '@/lib/seo';
-import { getAllBusinessSlugs } from '@/server/repos/business';
+import { getListedBusinessSlugs } from '@/server/repos/business';
 
 /**
- * מפת אתר דינמית: עמוד הבית, עמודי שיווק/משפט ציבוריים ועמודי העסקים /b/[slug].
- * העוזר getAllBusinessSlugs מאפשר הרחבה אוטומטית ככל שנוספים עסקים.
+ * מפת אתר דינמית: עמוד הבית, עמודי שיווק/משפט ציבוריים, עמוד ספריית העסקים
+ * /businesses ועמודי העסקים המוצגים /b/[slug].
+ *
+ * force-dynamic (ולא revalidate): הבאג בפרודקשן היה שהמפה נבנתה בזמן build ללא DB,
+ * הוגשה ריקה מעמודי עסק, וה-revalidate לא מילא אותה בפועל. רינדור דינמי בזמן בקשה
+ * מבטיח שהמפה תמיד משקפת את מצב ה-DB העדכני. השאילתה עטופה ב-try/catch כך שכשל DB
+ * מחזיר לפחות את העמודים הסטטיים במקום להפיל את המסלול.
+ *
+ * getListedBusinessSlugs מחזיר עסקים מוצגים בלבד (listed=true), כך שעסקים מוסתרים
+ * אינם נכנסים למפה — אותו דגל מאוחד ששולט ברשימה ובאינדוקס.
  */
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
@@ -17,6 +25,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 1,
+    },
+    // עמוד ספריית העסקים הציבורי.
+    {
+      url: `${SITE_URL}/businesses`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.7,
     },
     // עמודי שיווק/משפט ציבוריים הניתנים לסריקה.
     ...['/legal', '/roadmap', '/quote', '/migrate'].map((path) => ({
@@ -29,7 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let businessEntries: MetadataRoute.Sitemap = [];
   try {
-    const businesses = await getAllBusinessSlugs();
+    const businesses = await getListedBusinessSlugs();
     businessEntries = businesses.map((b) => ({
       url: `${SITE_URL}/b/${b.slug}`,
       lastModified: b.updatedAt ?? now,

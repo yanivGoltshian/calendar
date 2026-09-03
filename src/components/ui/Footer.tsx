@@ -4,6 +4,7 @@ import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { LEGAL_LINKS } from '@/content/legal/links';
 import { Container } from './Container';
+import { DirectoryFooterLink } from './DirectoryFooterLink';
 
 /** Footer — כותרת תחתונה עם קישורי שער, קרדיט ופרטי מותג. */
 export function Footer({ demoSlug, absoluteLinks = false }: { demoSlug?: string; absoluteLinks?: boolean }) {
@@ -63,6 +64,7 @@ export function Footer({ demoSlug, absoluteLinks = false }: { demoSlug?: string;
                   </Link>
                 </li>
               )}
+              <DirectoryFooterLink />
             </ul>
           </nav>
 
