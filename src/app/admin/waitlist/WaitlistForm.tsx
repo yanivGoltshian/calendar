@@ -30,9 +30,11 @@ export default function WaitlistForm({ services, staff }: Props) {
       ? w.errorName
       : state.error === 'phone'
         ? w.errorPhone
-        : state.error
-          ? w.errorGeneric
-          : null;
+        : state.error === 'email'
+          ? w.errorEmail
+          : state.error
+            ? w.errorGeneric
+            : null;
 
   return (
     <section className="mt-8 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
@@ -55,6 +57,19 @@ export default function WaitlistForm({ services, staff }: Props) {
               className={inputClass}
             />
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-[#4a4038]">{w.emailLabel}</label>
+          <input
+            name="email"
+            type="email"
+            dir="ltr"
+            inputMode="email"
+            maxLength={200}
+            placeholder={w.emailPlaceholder}
+            className={inputClass}
+          />
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row">

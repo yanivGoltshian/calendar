@@ -22,6 +22,7 @@ const bodySchema = z.object({
   slug: z.string().min(1),
   name: z.string().trim().min(1).max(120),
   phone: z.string().trim().min(1).max(40),
+  email: z.string().trim().email().optional(),
   serviceId: z.string().min(1).optional(),
   staffId: z.string().min(1).optional(),
   desiredDate: z
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
   const result = await addWaitlistEntry(business.id, {
     name: parsed.name,
     phone: parsed.phone,
+    email: parsed.email ?? null,
     serviceId: parsed.serviceId ?? null,
     staffId: parsed.staffId ?? null,
     desiredDate: parsed.desiredDate ?? null,

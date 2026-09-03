@@ -337,7 +337,23 @@ const he = {
       errorGeneric: 'שליחת הבקשה נכשלה. נסו שוב עוד רגע.',
       errorPhone: 'יש להזין מספר טלפון נייד ישראלי תקין.',
       errorMissing: 'יש למלא שם וטלפון.',
+      errorEmail: 'כתובת אימייל לא תקינה.',
       rateLimited: 'יותר מדי בקשות. נסו שוב בעוד רגע.',
+      // שדה אימייל אופציונלי — ערוץ יידוע נוסף ללקוח בחבילות ללא מסרון בתשלום.
+      emailLabel: 'אימייל (רשות)',
+      emailPlaceholder: 'name@example.com',
+      emailHint: 'נשלח עדכון גם למייל כשמתפנה מקום.',
+      // רשימת המתנה בזמינות חלקית: מוצג לצד המועדים כשיש תורים ביום אך לא בשעה המבוקשת.
+      partialTitle: 'לא מצאתם שעה מתאימה?',
+      partialSubtitle: 'השעה שרציתם תפוסה? הצטרפו לרשימת ההמתנה ונעדכן אתכם כשמתפנה מקום בחלון הזמן שלכם.',
+      partialCta: 'הצטרפו לרשימת המתנה',
+      // תוכן מייל היידוע "התפנה תור!" ללקוח (חבילות ללא מסרון בתשלום), best-effort.
+      notifyEmail: {
+        subject: 'התפנה תור!',
+        heading: 'התפנה תור!',
+        greeting: 'שלום',
+        body: 'התפנה מקום מתאים ונשמח לתאם לכם מועד. השיבו למייל זה ליצירת קשר.',
+      },
     },
   },
   auth: {
@@ -1786,6 +1802,8 @@ const he = {
       namePlaceholder: 'שם מלא',
       phoneLabel: 'טלפון',
       phonePlaceholder: '050-0000000',
+      emailLabel: 'אימייל (רשות)',
+      emailPlaceholder: 'name@example.com',
       serviceLabel: 'שירות',
       serviceNone: 'ללא שירות',
       staffLabel: 'איש צוות',
@@ -1794,6 +1812,7 @@ const he = {
       noteLabel: 'הערה',
       errorName: 'נא להזין שם לקוח.',
       errorPhone: 'נא להזין מספר טלפון תקין.',
+      errorEmail: 'נא להזין כתובת אימייל תקינה.',
       errorGeneric: 'הפעולה נכשלה. אנא נסו שוב.',
       successAdded: 'הלקוח נוסף לרשימת ההמתנה.',
       submitAdd: 'הוספה לרשימה',

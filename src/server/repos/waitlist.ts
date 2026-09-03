@@ -1,7 +1,12 @@
 import { prisma } from '@/lib/db';
 import { sendGuardedSms } from '@/server/billing/costGuard';
+import { sendReminderEmail } from '@/server/providers/email';
 import { normalizePhone } from '@/lib/crypto';
 import { BRAND } from '@/config/brand';
+import {
+  resolveWaitlistNotifyChannel,
+  buildWaitlistNotifyEmail,
+} from '@/server/repos/waitlistNotify';
 import type { WaitlistStatus } from '@prisma/client';
 
 /**
@@ -27,6 +32,8 @@ export function listWaitlist(businessId: string, status?: WaitlistStatus) {
 export type AddWaitlistInput = {
   name: string;
   phone: string;
+  /** אימייל אופציונלי — ערוץ יידוע נוסף ללקוח בחבילות ללא מסרון בתשלום. */
+  email?: string | null;
   serviceId?: string | null;
   staffId?: string | null;
   clientId?: string | null;
@@ -75,6 +82,7 @@ export async function addWaitlistEntry(
       businessId,
       name: data.name,
       phone: normalizePhone(data.phone),
+      email: data.email?.trim() ? data.email.trim() : null,
       serviceId,
       staffId,
       clientId,
@@ -101,10 +109,16 @@ export async function notifyWaitlistEntry(
   if (!entry) return { ok: false, reason: 'not_found' };
   if (entry.status !== 'WAITING') return { ok: false, reason: 'not_waiting' };
 
-  // מסרון רשימת המתנה בתשלום שמור לאקסקלוסיב בלבד, ועובר דרך שער העלות (sendGuardedSms).
-  // בפרימיום/בסיס אין ערוץ מסרון בתשלום ואין מייל על רשומת המתנה ידנית, לכן הרשומה מסומנת
-  // NOTIFIED לצורך מעקב הצוות בלבד — בדיוק ההתנהגות הקיימת כשספק ההודעות במצב console.
-  if (opts?.isExclusive) {
+  // ערוץ היידוע ללקוח נבחר לפי החבילה: מסרון בתשלום לאקסקלוסיב (דרך שער העלות), ובחבילות
+  // ללא מסרון בתשלום — מייל "התפנה תור!" אם קיים אימייל ברשומה. בפרודקשן ספק ה-SMS במצב
+  // console ולכן המייל הוא הערוץ שמגיע ללקוח בפועל. השליחה best-effort ולעולם אינה חוסמת
+  // את מעבר הסטטוס ל-NOTIFIED.
+  const channel = resolveWaitlistNotifyChannel({
+    isExclusive: opts?.isExclusive,
+    email: entry.email,
+  });
+
+  if (channel === 'sms') {
     const message = `${BRAND.name}: התפנה תור! ${entry.name}, נשמח לתאם לך מועד. השיבו להודעה זו ליצירת קשר.`;
     await sendGuardedSms({
       businessId,
@@ -113,6 +127,14 @@ export async function notifyWaitlistEntry(
       clientId: entry.clientId,
       channel: 'sms',
     });
+  } else if (channel === 'email' && entry.email) {
+    // בליעה מכוונת: כשל SMTP אינו מפיל את היידוע ואינו חוסם את סימון NOTIFIED.
+    try {
+      const { subject, text, html } = buildWaitlistNotifyEmail(entry.name);
+      await sendReminderEmail(entry.email, subject, text, html);
+    } catch {
+      // best-effort — מתעלמים משגיאת שליחה.
+    }
   }
 
   await prisma.waitlistEntry.update({

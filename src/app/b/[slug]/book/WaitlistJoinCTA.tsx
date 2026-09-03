@@ -12,7 +12,15 @@ type Props = {
   staffId?: string | null;
   defaultName?: string;
   defaultPhone?: string;
+  defaultEmail?: string;
+  // 'full' — יום ללא זמינות כלל (ברירת מחדל). 'partial' — יש מועדים אך לא בשעה המבוקשת.
+  variant?: 'full' | 'partial';
 };
+
+/** בדיקת פורמט אימייל קלה בצד לקוח (השרת מאמת שוב עם zod). */
+function isLikelyEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
 
 /** המרת "HH:MM" למספר דקות מחצות (0–1439). מחזיר undefined אם הקלט ריק/לא תקין. */
 function timeToMinutes(value: string): number | undefined {
@@ -36,10 +44,13 @@ export default function WaitlistJoinCTA({
   staffId,
   defaultName,
   defaultPhone,
+  defaultEmail,
+  variant = 'full',
 }: Props) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(defaultName ?? '');
   const [phone, setPhone] = useState(defaultPhone ?? '');
+  const [email, setEmail] = useState(defaultEmail ?? '');
   const [fromTime, setFromTime] = useState('');
   const [toTime, setToTime] = useState('');
   const [busy, setBusy] = useState(false);
@@ -47,11 +58,19 @@ export default function WaitlistJoinCTA({
   const [done, setDone] = useState(false);
 
   const w = t.booking.waitlist;
+  const heading = variant === 'partial' ? w.partialTitle : w.title;
+  const subtitle = variant === 'partial' ? w.partialSubtitle : w.subtitle;
+  const ctaLabel = variant === 'partial' ? w.partialCta : w.cta;
 
   async function submit() {
     setError('');
     if (!name.trim() || !phone.trim()) {
       setError(w.errorMissing);
+      return;
+    }
+    const trimmedEmail = email.trim();
+    if (trimmedEmail && !isLikelyEmail(trimmedEmail)) {
+      setError(w.errorEmail);
       return;
     }
     setBusy(true);
@@ -64,6 +83,7 @@ export default function WaitlistJoinCTA({
         phone: phone.trim(),
         desiredDate: date,
       };
+      if (trimmedEmail) body.email = trimmedEmail;
       if (serviceIds[0]) body.serviceId = serviceIds[0];
       if (staffId) body.staffId = staffId;
       if (earliestMinute != null) body.earliestMinute = earliestMinute;
@@ -111,8 +131,8 @@ export default function WaitlistJoinCTA({
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-5 py-6 text-center shadow-sm">
-      <h3 className="text-lg font-bold text-slate-900">{w.title}</h3>
-      <p className="mx-auto mt-1 max-w-sm text-sm leading-relaxed text-slate-600">{w.subtitle}</p>
+      <h3 className="text-lg font-bold text-slate-900">{heading}</h3>
+      <p className="mx-auto mt-1 max-w-sm text-sm leading-relaxed text-slate-600">{subtitle}</p>
 
       {open ? (
         <div className="mt-5 space-y-3 text-right">
@@ -138,6 +158,20 @@ export default function WaitlistJoinCTA({
               className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base"
               autoComplete="tel"
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">{w.emailLabel}</label>
+            <input
+              type="email"
+              dir="ltr"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={w.emailPlaceholder}
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base"
+              autoComplete="email"
+            />
+            <p className="mt-1 text-xs text-slate-400">{w.emailHint}</p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-700">{w.windowLabel}</label>
@@ -187,7 +221,7 @@ export default function WaitlistJoinCTA({
           onClick={() => setOpen(true)}
           className="mt-4 inline-flex items-center justify-center rounded-xl bg-brand-600 px-6 py-3 text-base font-bold text-white transition hover:bg-brand-700"
         >
-          {w.cta}
+          {ctaLabel}
         </button>
       )}
     </div>
