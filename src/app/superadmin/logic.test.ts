@@ -8,6 +8,7 @@ import {
   isSlugConfirmed,
   metricsFor,
   parseEditBusinessInput,
+  parseListedCheckbox,
   shapeBusinessMetrics,
 } from './logic';
 
@@ -115,4 +116,13 @@ test('parseEditBusinessInput דוחה מייל לא תקין אך מתיר מי�
   });
   assert.equal(emptyEmail.ok, true);
   if (emptyEmail.ok) assert.equal(emptyEmail.data.ownerEmail, null);
+});
+
+test('parseListedCheckbox מזהה סימון מול היעדר תיבת הסימון', () => {
+  // תיבה מסומנת: הדפדפן שולח ערך כלשהו (בדרך כלל 'on') => listed=true
+  assert.equal(parseListedCheckbox('on'), true);
+  assert.equal(parseListedCheckbox(''), true);
+  // תיבה לא מסומנת: השדה נעדר לחלוטין => listed=false
+  assert.equal(parseListedCheckbox(null), false);
+  assert.equal(parseListedCheckbox(undefined), false);
 });

@@ -9,6 +9,9 @@ export type BusinessPageMetadataInput = {
   name: string;
   slug: string;
   description?: string | null;
+  // דגל התצוגה המאוחד. כאשר listed=false → העמוד מקבל noindex,follow=false
+  // (מוסתר מהאינדוקס יחד עם הסתרתו מהרשימה וממפת האתר). undefined/true → אינדוקס רגיל.
+  listed?: boolean | null;
 };
 
 /**
@@ -34,5 +37,7 @@ export function buildBusinessPageMetadata(
       `קביעת תור אונליין אצל ${business.name}. בחירת שירות, בחירת מועד ואישור מיידי.`,
     path: `/b/${business.slug}`,
     image: null,
+    // עסק שאינו מוצג (listed=false) — noindex,nofollow; אחרת אינדוקס רגיל.
+    noIndex: business.listed === false,
   });
 }

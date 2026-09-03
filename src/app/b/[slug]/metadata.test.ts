@@ -49,6 +49,31 @@ test('buildMetadata עם image:null משמיט תמונות לגמרי', () => {
   assert.ok(!JSON.stringify(meta).includes('og-card.jpg'));
 });
 
+test('עסק עם listed=false מקבל robots noindex,nofollow', () => {
+  const meta = buildBusinessPageMetadata({
+    name: 'עסק מוסתר',
+    slug: 'esek',
+    description: null,
+    listed: false,
+  });
+  assert.deepEqual((meta as { robots?: unknown }).robots, { index: false, follow: false });
+});
+
+test('עסק עם listed=true מאונדקס רגיל (robots index,follow)', () => {
+  const meta = buildBusinessPageMetadata({
+    name: 'עסק גלוי',
+    slug: 'skin-beauty',
+    description: null,
+    listed: true,
+  });
+  assert.deepEqual((meta as { robots?: unknown }).robots, { index: true, follow: true });
+});
+
+test('עסק ללא דגל listed (undefined) מאונדקס רגיל — תאימות לאחור', () => {
+  const meta = buildBusinessPageMetadata({ name: 'עסק', slug: 'x', description: null });
+  assert.deepEqual((meta as { robots?: unknown }).robots, { index: true, follow: true });
+});
+
 test('buildMetadata עם image כמחרוזת דורס את כרטיס הפלטפורמה', () => {
   const url = 'https://cdn.example.com/logo.png';
   const meta = buildMetadata({ title: 'X', path: '/x', image: url });

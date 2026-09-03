@@ -127,6 +127,62 @@ export async function getAllBusinessSlugs(): Promise<{ slug: string; updatedAt: 
 }
 
 /**
+ * כרטיס עסק לעמוד הרשימה הציבורי /businesses — שדות תצוגה בלבד.
+ * מסונן ל-listed=true בלבד (הדגל המאוחד) ולעסקים שאינם ממתינים למחיקה.
+ */
+export type ListedBusinessCard = {
+  slug: string;
+  name: string;
+  description: string | null;
+  address: string | null;
+  type: BusinessType | null;
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+  brandColor: string | null;
+};
+
+/**
+ * שליפת העסקים המוצגים בלבד (listed=true) לעמוד הרשימה הציבורי /businesses.
+ * מסנן גם עסקים שממתינים למחיקה. ממוין לפי מועד יצירה עולה ליציבות התצוגה.
+ */
+export async function getListedBusinesses(): Promise<ListedBusinessCard[]> {
+  return prisma.business.findMany({
+    where: { listed: true, accountStatus: { not: 'PENDING_DELETION' } },
+    select: {
+      slug: true,
+      name: true,
+      description: true,
+      address: true,
+      type: true,
+      logoUrl: true,
+      coverImageUrl: true,
+      brandColor: true,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+/**
+ * שליפת ה-slugs של העסקים המוצגים בלבד (listed=true) — למפת האתר.
+ * מקביל ל-getAllBusinessSlugs אך מכבד את דגל התצוגה המאוחד, כך שרק עמודי עסק
+ * שמותר לאנדקס נכנסים ל-sitemap.
+ */
+export async function getListedBusinessSlugs(): Promise<{ slug: string; updatedAt: Date }[]> {
+  return prisma.business.findMany({
+    where: { listed: true, accountStatus: { not: 'PENDING_DELETION' } },
+    select: { slug: true, updatedAt: true },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+/** ספירת העסקים המוצגים (listed=true) — לשער הקישור בניווט (≥3). */
+export async function countListedBusinesses(): Promise<number> {
+  return prisma.business.count({
+    where: { listed: true, accountStatus: { not: 'PENDING_DELETION' } },
+  });
+}
+
+/**
  * שליפת שדות המיתוג בלבד של עסק לפי slug — לשימוש במניפסט, באייקון של ה-PWA
  * ובכרטיס השיתוף (OG). כולל coverImageUrl (תמונת העסק) שכרטיס השיתוף מעדיף
  * על הלוגו. שולף מעט שדות כדי לא להעמיס, ומחזיר null כשהעסק לא קיים.
