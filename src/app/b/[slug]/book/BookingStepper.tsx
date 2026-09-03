@@ -6,6 +6,7 @@ import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
 import CustomerGoogleSignIn from '@/components/auth/CustomerGoogleSignIn';
 import WaitlistJoinCTA from './WaitlistJoinCTA';
+import { shouldShowWaitlist } from './waitlistGate';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatLongDate, todayDateString, addDaysToDateString } from '@/lib/time';
 
@@ -35,6 +36,8 @@ type Props = {
   customer?: { name: string; phone: string; email: string } | null;
   // האם כניסת גוגל זמינה בסביבה (GOOGLE_CLIENT_ID/SECRET מוגדרים).
   googleEnabled?: boolean;
+  // האם רשימת ההמתנה מופעלת לעסק (BusinessSettings.waitlistEnabled). ברירת מחדל: מופעלת.
+  waitlistEnabled?: boolean;
 };
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
@@ -53,6 +56,7 @@ export default function BookingStepper({
   plan,
   customer = null,
   googleEnabled = false,
+  waitlistEnabled = true,
 }: Props) {
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
@@ -493,18 +497,29 @@ export default function BookingStepper({
             <p className="py-8 text-center text-slate-400">{t.common.loading}</p>
           ) : slots.length === 0 ? (
             <div className="py-6">
-              <WaitlistJoinCTA
-                slug={slug}
-                date={date}
-                serviceIds={selectedServiceIds}
-                staffId={staffId}
-                defaultName={name}
-                defaultPhone={phone}
-                defaultEmail={email}
-                authed={authed}
-                googleEnabled={googleEnabled}
-                variant="full"
-              />
+              {shouldShowWaitlist(waitlistEnabled) ? (
+                <WaitlistJoinCTA
+                  slug={slug}
+                  date={date}
+                  serviceIds={selectedServiceIds}
+                  staffId={staffId}
+                  defaultName={name}
+                  defaultPhone={phone}
+                  defaultEmail={email}
+                  authed={authed}
+                  googleEnabled={googleEnabled}
+                  variant="full"
+                />
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center">
+                  <p className="font-semibold text-slate-700">
+                    {t.booking.waitlist.disabledFullTitle}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {t.booking.waitlist.disabledFullSubtitle}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
@@ -525,18 +540,20 @@ export default function BookingStepper({
                 ))}
               </div>
               {/* זמינות חלקית: יש מועדים ביום אך ייתכן שלא בשעה המבוקשת — מציעים רשימת המתנה. */}
-              <WaitlistJoinCTA
-                slug={slug}
-                date={date}
-                serviceIds={selectedServiceIds}
-                staffId={staffId}
-                defaultName={name}
-                defaultPhone={phone}
-                defaultEmail={email}
-                authed={authed}
-                googleEnabled={googleEnabled}
-                variant="partial"
-              />
+              {shouldShowWaitlist(waitlistEnabled) ? (
+                <WaitlistJoinCTA
+                  slug={slug}
+                  date={date}
+                  serviceIds={selectedServiceIds}
+                  staffId={staffId}
+                  defaultName={name}
+                  defaultPhone={phone}
+                  defaultEmail={email}
+                  authed={authed}
+                  googleEnabled={googleEnabled}
+                  variant="partial"
+                />
+              ) : null}
             </div>
           )}
         </div>

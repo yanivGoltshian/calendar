@@ -99,6 +99,7 @@ export default async function BookPage({ params, searchParams }: Props) {
         plan={business.plan}
         customer={customer}
         googleEnabled={authProviderStatus.google}
+        waitlistEnabled={business.settings?.waitlistEnabled ?? true}
       />
     </main>
   );

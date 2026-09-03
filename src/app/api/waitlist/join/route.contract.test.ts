@@ -91,3 +91,15 @@ test('קוד המסלול: הסכימה כוללת email אופציונלי עם
 test('קוד המסלול: המייל מועבר ל-addWaitlistEntry', () => {
   assert.match(routeSrc, /email:\s*parsed\.email\s*\?\?\s*null/);
 });
+
+// --- אימות קוד המקור: הגנת-שרת כשרשימת ההמתנה כבויה לעסק ---
+
+test('קוד המסלול: נבדק הדגל waitlistEnabled === false', () => {
+  assert.match(routeSrc, /business\.settings\?\.waitlistEnabled\s*===\s*false/);
+});
+
+test('קוד המסלול: מוחזר waitlist_disabled בסטטוס 403 כשכבוי', () => {
+  assert.match(routeSrc, /error:\s*'waitlist_disabled'/);
+  assert.match(routeSrc, /waitlist_disabled[\s\S]*?status:\s*403/);
+});
+
