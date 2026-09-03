@@ -59,6 +59,8 @@ test('booking_confirmation: ברירות-המחדל זהות לבנאי (שיר�
     canEmail: true,
     canWhatsapp: true,
     manageUrl: MANAGE_URL,
+    businessPhone: '050-0000000',
+    businessAddress: 'רחוב הדגמה 1, תל אביב',
   };
   const dateStr = formatDateString(payload.startAt, TZ);
   const vars = {
@@ -68,6 +70,8 @@ test('booking_confirmation: ברירות-המחדל זהות לבנאי (שיר�
     date: formatLongDate(dateStr, TZ),
     time: formatTime(payload.startAt, TZ),
     manageUrl: MANAGE_URL,
+    businessPhone: '050-0000000',
+    businessAddress: 'רחוב הדגמה 1, תל אביב',
     brand: BRAND.name,
   };
 
@@ -92,6 +96,8 @@ test('booking_approval: ברירות-המחדל זהות לבנאי (ללא שי
     canEmail: true,
     isExclusive: true,
     manageUrl: MANAGE_URL,
+    businessPhone: '050-0000000',
+    businessAddress: 'רחוב הדגמה 1, תל אביב',
   };
   const dateStr = formatDateString(payload.startAt, TZ);
   const vars = {
@@ -100,6 +106,8 @@ test('booking_approval: ברירות-המחדל זהות לבנאי (ללא שי
     date: formatLongDate(dateStr, TZ),
     time: formatTime(payload.startAt, TZ),
     manageUrl: MANAGE_URL,
+    businessPhone: '050-0000000',
+    businessAddress: 'רחוב הדגמה 1, תל אביב',
     brand: BRAND.name,
   };
 
@@ -151,7 +159,7 @@ test('waitlist_freed: ברירות-המחדל זהות לבנאי המייל ו�
   assert.equal(substitute(subject('waitlist_freed', 'email'), vars), email.subject);
 
   // ה-SMS מוגדר inline ב-notifyWaitlistEntry; משווים למחרוזת המקורית המדויקת.
-  const smsExpected = `${BRAND.name}: התפנה תור! ${clientName}, נשמח לתאם לך מועד. השיבו להודעה זו ליצירת קשר.`;
+  const smsExpected = `${BRAND.name}: התפנה תור! ${clientName}, נשמח לשמור לך מועד. השיבו להודעה זו לתיאום.`;
   assert.equal(substitute(body('waitlist_freed', 'sms'), vars), smsExpected);
 });
 

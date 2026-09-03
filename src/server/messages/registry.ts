@@ -58,6 +58,8 @@ const V = {
   date: { name: 'date', label: 'תאריך' },
   time: { name: 'time', label: 'שעה' },
   manageUrl: { name: 'manageUrl', label: 'קישור לעמוד/ניהול' },
+  businessPhone: { name: 'businessPhone', label: 'טלפון העסק' },
+  businessAddress: { name: 'businessAddress', label: 'כתובת העסק' },
 } as const;
 
 /**
@@ -94,6 +96,8 @@ export const MESSAGE_TEMPLATES: Record<MessageKey, MessageTemplateDef> = {
       V.date,
       V.time,
       V.manageUrl,
+      V.businessPhone,
+      V.businessAddress,
       V.brand,
     ],
     channels: {
@@ -102,16 +106,21 @@ export const MESSAGE_TEMPLATES: Record<MessageKey, MessageTemplateDef> = {
         body: [
           `שלום {{clientName}},`,
           ``,
-          `התור שלך בעסק {{businessName}} נקבע ואושר.`,
+          `שמחים לאשר שהתור שלך ב{{businessName}} נקבע בהצלחה. אנחנו כבר מצפים לראותך.`,
           ``,
           `שירות/ים: {{services}}`,
           `מועד: {{date}} · {{time}}`,
           ``,
-          `פרטי העסק: {{manageUrl}}`,
+          `לצפייה בפרטי התור, לשינוי מועד או לביטול: {{manageUrl}}`,
+          ``,
+          `נשמח לעמוד לרשותך לכל שאלה,`,
+          `צוות {{businessName}}`,
+          `טלפון: {{businessPhone}}`,
+          `כתובת: {{businessAddress}}`,
         ].join('\n'),
       },
       sms: {
-        body: `{{brand}}: שלום {{clientName}}, התור שלך בעסק {{businessName}} נקבע ואושר. מועד: {{date}} · {{time}}.`,
+        body: `{{brand}}: שלום {{clientName}}, התור שלך ב{{businessName}} נקבע בהצלחה למועד {{date}} · {{time}}. נשמח לראותך!`,
       },
     },
   },
@@ -126,6 +135,8 @@ export const MESSAGE_TEMPLATES: Record<MessageKey, MessageTemplateDef> = {
       V.date,
       V.time,
       V.manageUrl,
+      V.businessPhone,
+      V.businessAddress,
       V.brand,
     ],
     channels: {
@@ -134,15 +145,20 @@ export const MESSAGE_TEMPLATES: Record<MessageKey, MessageTemplateDef> = {
         body: [
           `שלום {{clientName}},`,
           ``,
-          `התור שלך בעסק {{businessName}} אושר.`,
+          `בקשת התור שלך ב{{businessName}} אושרה, והמועד שמור עבורך. נשמח לראותך.`,
           ``,
           `מועד: {{date}} · {{time}}`,
           ``,
-          `פרטי העסק: {{manageUrl}}`,
+          `לצפייה בפרטי התור, לשינוי מועד או לביטול: {{manageUrl}}`,
+          ``,
+          `נשמח לעמוד לרשותך לכל שאלה,`,
+          `צוות {{businessName}}`,
+          `טלפון: {{businessPhone}}`,
+          `כתובת: {{businessAddress}}`,
         ].join('\n'),
       },
       sms: {
-        body: `{{brand}}: שלום {{clientName}}, התור שלך בעסק {{businessName}} אושר. מועד: {{date}} · {{time}}.`,
+        body: `{{brand}}: שלום {{clientName}}, בקשת התור שלך ב{{businessName}} אושרה למועד {{date}} · {{time}}. נשמח לראותך!`,
       },
     },
   },
@@ -171,10 +187,10 @@ export const MESSAGE_TEMPLATES: Record<MessageKey, MessageTemplateDef> = {
     channels: {
       email: {
         subject: `{{brand}} · התפנה תור!`,
-        body: `שלום {{clientName}},\nהתפנה מקום מתאים ונשמח לתאם לכם מועד. השיבו למייל זה ליצירת קשר.`,
+        body: `שלום {{clientName}},\nהתפנה מקום מתאים עבורך ונשמח לשמור לך מועד. השיבו למייל זה ונחזור אליכם בהקדם לתיאום.`,
       },
       sms: {
-        body: `{{brand}}: התפנה תור! {{clientName}}, נשמח לתאם לך מועד. השיבו להודעה זו ליצירת קשר.`,
+        body: `{{brand}}: התפנה תור! {{clientName}}, נשמח לשמור לך מועד. השיבו להודעה זו לתיאום.`,
       },
     },
   },

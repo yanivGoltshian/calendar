@@ -130,7 +130,7 @@ export async function notifyWaitlistEntry(
   };
 
   if (channel === 'sms') {
-    const fallback = `${BRAND.name}: התפנה תור! ${entry.name}, נשמח לתאם לך מועד. השיבו להודעה זו ליצירת קשר.`;
+    const fallback = `${BRAND.name}: התפנה תור! ${entry.name}, נשמח לשמור לך מועד. השיבו להודעה זו לתיאום.`;
     const { text: message } = await renderMessage(
       businessId,
       'waitlist_freed',
