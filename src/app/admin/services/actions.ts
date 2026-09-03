@@ -41,6 +41,7 @@ function checkbox(formData: FormData, key: string): boolean {
 function revalidatePublic(slug: string) {
   revalidatePath('/admin/services');
   revalidatePath(`/b/${slug}`);
+  revalidatePath(`/b/${slug}/book`);
 }
 
 /** יצירה או עדכון של שירות (חתימת useActionState). */

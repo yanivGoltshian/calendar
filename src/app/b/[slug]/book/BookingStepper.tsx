@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { t } from '@/i18n';
 import { Mascot } from '@/components/brand/Mascot';
@@ -9,6 +10,11 @@ import WaitlistJoinCTA from './WaitlistJoinCTA';
 import { shouldShowWaitlist } from './waitlistGate';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatLongDate, todayDateString, addDaysToDateString } from '@/lib/time';
+import {
+  parseCustomerSession,
+  computeEmailFieldVisibility,
+  type PublicCustomer,
+} from '@/lib/bookingPrefill';
 
 type Service = {
   id: string;
@@ -26,14 +32,7 @@ type Props = {
   businessName: string;
   services: Service[];
   staff: Staff[];
-  preselectedServiceId?: string | null;
-  // קישור עמוק מלא מהווידג'ט: איש צוות, תאריך ושעה שנבחרו (מאומתים בצד השרת של העמוד).
-  preselectedStaffId?: string | null;
-  preselectedDate?: string | null;
-  preselectedTime?: string | null;
   plan: 'basic' | 'premium' | 'exclusive';
-  // לקוח מחובר (עוגיית client_session): מאפשר מילוי מוקדם והסתרת שדה המייל.
-  customer?: { name: string; phone: string; email: string } | null;
   // האם כניסת גוגל זמינה בסביבה (GOOGLE_CLIENT_ID/SECRET מוגדרים).
   googleEnabled?: boolean;
   // האם רשימת ההמתנה מופעלת לעסק (BusinessSettings.waitlistEnabled). ברירת מחדל: מופעלת.
@@ -49,15 +48,24 @@ export default function BookingStepper({
   businessName,
   services,
   staff,
-  preselectedServiceId,
-  preselectedStaffId,
-  preselectedDate,
-  preselectedTime,
   plan,
-  customer = null,
   googleEnabled = false,
   waitlistEnabled = true,
 }: Props) {
+  // קישור עמוק (service/staffId/date/time) נקרא בצד הלקוח מפרמטרי ה-URL כדי שהעמוד
+  // יישאר שלד ISR (ללא קריאת searchParams בשרת). האימות זהה לזה שהיה בעמוד השרת:
+  // שירות/צוות מול הרשימות, תאריך בתבנית תקינה שאינו בעבר, ושעה בתבנית תקינה.
+  const searchParams = useSearchParams();
+  const spService = searchParams.get('service');
+  const spStaffId = searchParams.get('staffId');
+  const spDate = searchParams.get('date');
+  const spTime = searchParams.get('time');
+  const preselectedServiceId = services.find((s) => s.id === spService)?.id ?? null;
+  const preselectedStaffId = staff.find((m) => m.id === spStaffId)?.id ?? null;
+  const preselectedDate =
+    spDate && /^\d{4}-\d{2}-\d{2}$/.test(spDate) && spDate >= todayDateString() ? spDate : null;
+  const preselectedTime = spTime && /^\d{2}:\d{2}$/.test(spTime) ? spTime : null;
+
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
   const hasPreselected = !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
@@ -118,15 +126,14 @@ export default function BookingStepper({
   // מצב אישור הזמנת אורח (ללא OTP). מדיניות פרטי הקשר נגזרת ממסלול העסק:
   // בכל המסלולים שם וטלפון חובה. מייל נדרש רק בפרימיום/אקסקלוסיב (לאישור, תזכורות
   // והרשמת לקוח); בסטנדרט שדה המייל מוסתר כי אין תקשורת ללקוח הקצה.
-  const requireEmail = plan === 'premium' || plan === 'exclusive';
-  // לקוח מחובר: פרטי הקשר ממולאים מראש ושדה המייל מוסתר (מוגש בשקט).
-  const authed = !!customer;
-  const authedEmail = customer?.email?.trim() ?? '';
-  const hideEmailField = authed && authedEmail.length > 0;
-  const showEmailField = requireEmail && !hideEmailField;
-  const [phone, setPhone] = useState(customer?.phone ?? '');
-  const [email, setEmail] = useState(customer?.email ?? '');
-  const [name, setName] = useState(customer?.name ?? '');
+  // לקוח מחובר (עוגיית client_session) נטען בצד הלקוח דרך /api/public/customer-session,
+  // כך שפרטי הקשר אינם נאפים לשלד ה-ISR. כשמזוהה: פרטי הקשר ממולאים מראש ושדה המייל מוסתר.
+  const [sessionCustomer, setSessionCustomer] = useState<PublicCustomer | null>(null);
+  const authed = !!sessionCustomer;
+  const { requireEmail, showEmailField } = computeEmailFieldVisibility(plan, sessionCustomer);
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
@@ -199,6 +206,28 @@ export default function BookingStepper({
     // חוזרים בדיוק לשלב האישור עם המשבצת המשוחזרת (או לשלב השעה אם לא נשמרה משבצת).
     setStep(hasSlot ? 5 : 3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // טעינת סשן הלקוח בצד הלקוח (במקום prop מהשרת) כדי לשמור את השלד ללא PII.
+  // כשמזוהה לקוח: ממלאים מראש שם/טלפון/מייל (הלקוח המחובר גובר על טיוטה/קלט קיים)
+  // ומסתירים את שדה המייל — התנהגות זהה ל-PR #128/#129, רק לאחר ההידרציה.
+  useEffect(() => {
+    let active = true;
+    fetch('/api/public/customer-session', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!active) return;
+        const c = parseCustomerSession(d);
+        if (!c) return;
+        setSessionCustomer(c);
+        if (c.name) setName(c.name);
+        if (c.phone) setPhone(c.phone);
+        if (c.email) setEmail(c.email);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   // נשמר בלחיצה על כניסת גוגל בשלב האישור, רגע לפני ההפניה שמאפסת את מצב הרכיב.

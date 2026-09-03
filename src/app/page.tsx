@@ -1,6 +1,4 @@
-import { getFirstBusiness, getBusinessesOwnedByEmail } from '@/server/repos/business';
-import { auth } from '@/auth';
-import { getClientSession } from '@/lib/session';
+import { getFirstBusiness } from '@/server/repos/business';
 import { buildMetadata, SITE_URL } from '@/lib/seo';
 import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
@@ -17,12 +15,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import InstallApp from '@/components/pwa/InstallApp';
 import { homeHeroCta, ownerPrimaryHref, ownerPrimaryLabel } from './business/ownerRouting';
+import { OwnerAwareCta } from './OwnerAwareCta';
 
 const m = t.marketing;
 
-// קריאת auth() קוראת עוגיות והופכת את הדף לדינמי. זה מקובל: הדף צריך לדעת אם
-// המבקר הוא בעלים חוזר כדי לכוון אותו לאזור הניהול במקום לטופס ההקמה.
-export const dynamic = 'force-dynamic';
+// שלד סטטי מלא: התוכן השיווקי מגיע כולו ממילון ה-i18n ולכן הדף נבנה בזמן build
+// ומוגש עם כותרת ניתנת-למטמון (לא no-store). אינו קורא עוגיות ולכן אינו מכיל
+// מידע אישי. זיהוי "בעלים חוזר" (החלפת CTA) והצגת קישור החשבון עברו להידרציה
+// בצד הלקוח (ראו OwnerAwareCta ו-Navbar selfResolveAccount) כדי לשמור על UX זהה.
+// לינק ההדגמה (getFirstBusiness) נאפה בזמן build ומתרענן על-פי דרישה דרך
+// revalidatePath('/') בעת יצירה או עריכה של עסק.
+export const dynamic = 'force-static';
 
 export const metadata = buildMetadata({
   title: `תוכנה לזימון תורים וניהול עסק · ${BRAND.name}`,
@@ -32,25 +35,27 @@ export const metadata = buildMetadata({
 const trustStats = Object.values(m.trust.stats);
 
 export default async function HomePage() {
-  const business = await getFirstBusiness();
+  // getFirstBusiness קורא ל-Prisma. בזמן build ללא Postgres מקומי הקריאה עלולה
+  // להיכשל (prisma:error Validation Error) — עוטפים ב-try/catch כדי שהרינדור
+  // הסטטי תמיד יצליח (שלד אורח ללא לינק הדגמה). בזמן build עם DB או ברענון
+  // על-פי דרישה (revalidatePath('/')) הלינק האמיתי נאפה מחדש.
+  let business: Awaited<ReturnType<typeof getFirstBusiness>> = null;
+  try {
+    business = await getFirstBusiness();
+  } catch {
+    business = null;
+  }
   const demoSlug = business?.slug;
   const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
   // כפתורי ההדגמה בדף הבית מפנים לבוחר /demo (סטנדרט מול פרימיום) במקום לעמוד יחיד.
   // ה-gate על demoHref נשמר: הבוחר מוצג רק כשקיים עסק הדגמה.
   const chooserHref = '/demo';
 
-  // זיהוי בעלים חוזר: תמיד לגזור מ-session?.user?.email קודם, ואז לשלוף את העסקים
-  // של אותו email. לא להשתמש ב-getActiveBusiness לזיהוי כי הוא נופל ל-getFirstBusiness
-  // עבור אורחים ומחזיר עסק שרירותי (איתות שגוי של "בעלים חוזר").
-  const session = await auth();
-  const ownerEmail = session?.user?.email;
-  const owned = ownerEmail ? await getBusinessesOwnedByEmail(ownerEmail) : [];
-  const isReturningOwner = owned.length > 0;
-  // לקוח מחובר (עוגיית client_session): מציג קישור לאזור האישי בסרגל הניווט.
-  const clientSession = await getClientSession();
-  const showAccount = Boolean(clientSession);
-  const heroCta = homeHeroCta(isReturningOwner);
-  const ctaPrimaryHref = ownerPrimaryHref(isReturningOwner);
+  // שלד אורח בלבד: אין קריאת עוגיות בשרת. שני הווריאנטים (אורח ובעלים) מחושבים
+  // בזמן build מתוך ownerRouting (מקור אמת יחיד, ללא מידע אישי) ומועברים אל
+  // OwnerAwareCta, שמרנדר את וריאנט האורח ומחליף לווריאנט הבעלים לאחר העלייה.
+  const heroGuest = homeHeroCta(false);
+  const heroOwner = homeHeroCta(true);
 
   const spotlightAudiences = ['barber', 'nails'];
   const gridAudiences = Object.entries(m.audiences.items).filter(
@@ -70,7 +75,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
-      <Navbar demoSlug={demoSlug} showAccount={showAccount} />
+      <Navbar demoSlug={demoSlug} selfResolveAccount />
 
       <main className="flex-1">
         {/* HERO */}
@@ -118,17 +123,23 @@ export default async function HomePage() {
               </Reveal>
               <Reveal delay={0.2}>
                 <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
-                  <Button href={heroCta.primaryHref} size="lg" className="w-full sm:w-auto">
-                    {heroCta.primaryLabel}
-                  </Button>
-                  <Button
-                    href={heroCta.secondaryHref}
+                  <OwnerAwareCta
+                    guestHref={heroGuest.primaryHref}
+                    guestLabel={heroGuest.primaryLabel}
+                    ownerHref={heroOwner.primaryHref}
+                    ownerLabel={heroOwner.primaryLabel}
+                    size="lg"
+                    className="w-full sm:w-auto"
+                  />
+                  <OwnerAwareCta
+                    guestHref={heroGuest.secondaryHref}
+                    guestLabel={heroGuest.secondaryLabel}
+                    ownerHref={heroOwner.secondaryHref}
+                    ownerLabel={heroOwner.secondaryLabel}
                     variant="secondary"
                     size="lg"
                     className="w-full sm:w-auto"
-                  >
-                    {heroCta.secondaryLabel}
-                  </Button>
+                  />
                   {demoHref && (
                     <Button href={chooserHref} variant="ghost" size="lg" className="w-full sm:w-auto">
                       {m.hero.secondaryCta}
@@ -318,9 +329,15 @@ export default async function HomePage() {
                     ))}
                   </ul>
                   <div className="mt-auto">
-                    <Button href={ctaPrimaryHref} variant="primary" size="lg" className="w-full">
-                      {ownerPrimaryLabel(isReturningOwner, q.ctaGuest)}
-                    </Button>
+                    <OwnerAwareCta
+                      guestHref={ownerPrimaryHref(false)}
+                      guestLabel={q.ctaGuest}
+                      ownerHref={ownerPrimaryHref(true)}
+                      ownerLabel={ownerPrimaryLabel(true, q.ctaGuest)}
+                      variant="primary"
+                      size="lg"
+                      className="w-full"
+                    />
                   </div>
                 </Card>
               </Reveal>
@@ -442,9 +459,15 @@ export default async function HomePage() {
                   </h2>
                   <p className="mx-auto mt-4 max-w-xl text-lg text-white/90">{m.finalCta.subtitle}</p>
                   <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                    <Button href={ctaPrimaryHref} variant="accent" size="lg" className="w-full sm:w-auto">
-                      {ownerPrimaryLabel(isReturningOwner, m.finalCta.primaryCta)}
-                    </Button>
+                    <OwnerAwareCta
+                      guestHref={ownerPrimaryHref(false)}
+                      guestLabel={m.finalCta.primaryCta}
+                      ownerHref={ownerPrimaryHref(true)}
+                      ownerLabel={ownerPrimaryLabel(true, m.finalCta.primaryCta)}
+                      variant="accent"
+                      size="lg"
+                      className="w-full sm:w-auto"
+                    />
                     {demoHref && (
                       <Button
                         href={chooserHref}

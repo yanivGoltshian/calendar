@@ -1,15 +1,12 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import type { CSSProperties, ReactNode } from 'react';
+import { Suspense } from 'react';
+import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import { getBusinessBySlug } from '@/server/repos/business';
-import { getClientSession } from '@/lib/session';
-import { getUpcomingAppointmentsForUserAtBusiness } from '@/server/repos/account';
-import { getAppointmentById } from '@/server/repos/appointments';
-import { buildGoogleCalendarUrl } from '@/lib/googleCalendar';
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
-import { formatDuration, formatMinutes, formatDateString, formatLongDate, formatTime } from '@/lib/time';
+import { formatDuration, formatMinutes } from '@/lib/time';
 import { localBusinessJsonLd, absoluteUrl } from '@/lib/seo';
 import { buildBusinessPageMetadata } from './metadata';
 import { JsonLd } from '@/components/JsonLd';
@@ -33,9 +30,7 @@ import {
 } from '@/components/publicLanding/icons';
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
-import ReturningCustomer, {
-  type ReturningAppointmentView,
-} from '@/components/publicLanding/ReturningCustomer';
+import ReturningCustomerLoader from '@/components/publicLanding/ReturningCustomerLoader';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
 import { visualLevelForPublicPage } from '@/server/onboardingProgress';
 import ShareBusiness from '@/components/publicLanding/ShareBusiness';
@@ -44,10 +39,17 @@ import AnnouncementBar from '@/components/publicLanding/AnnouncementBar';
 
 type Props = {
   params: Promise<{ slug: string }>;
-  // אפשרות תצוגה מקדימה בלבד לאורחים (בוחר ה-/demo): 'landing' או 'booking'.
-  // לעולם לא נשמר ולא נכתב ל-DB, רק משפיע על הרינדור של הבקשה הנוכחית.
-  searchParams?: Promise<{ style?: string; booked?: string }>;
 };
+
+// ISR: שלד העמוד נשמר במטמון ומתרענן כל 600 שניות (וגם מיידית דרך revalidatePath
+// בפעולות הניהול). כל מידע אישי (חשבון הלקוח, תורים עתידיים) נטען בצד הלקוח אחרי
+// הטעינה, כך שה-HTML הנשמר במטמון זהה לכל המבקרים וללא PII.
+export const revalidate = 600;
+
+// יצירת עמודים לפי slug על פי דרישה (ISR) במקום רשימה סטטית מראש.
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -55,103 +57,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return buildBusinessPageMetadata(business);
 }
 
-export default async function BusinessPublicPage({ params, searchParams }: Props) {
+export default async function BusinessPublicPage({ params }: Props) {
   const { slug } = await params;
   const business = await getBusinessBySlug(slug);
   if (!business) notFound();
 
-  // מצב התחברות הלקוח — מוזרם לתפריט ההמבורגר בכותרת הקליניקה (זהות + התחברות/התנתקות).
-  const clientSession = await getClientSession();
-  const headerAccount = clientSession
-    ? { name: clientSession.name ?? null, email: clientSession.email ?? null }
-    : null;
+  // קישור התחברות (לא תלוי משתמש) לכותרת הפרימיום — מוצג לאורחים שאינם מזוהים.
+  // חשבון הלקוח ומקטע "שלום .." (תורים עתידיים) נטענים בצד הלקוח דרך
+  // <ReturningCustomerLoader> ו-PremiumClinicHeader resolveAccount, כדי שהשלד
+  // ה-ISR יישאר ללא PII.
   const loginHref = `/login?redirect=${encodeURIComponent(`/b/${slug}`)}`;
-
-  // מקטע "שלום .." — תורים עתידיים של לקוח מזוהה בעסק זה, עם הוספה ליומן Google וביטול.
-  // מחושב כולו בשרת (כולל אזור זמן) ומוזרק בין ווידג'ט קביעת התור למקטע המבצעים.
-  let returningNode: ReactNode = null;
-  if (clientSession) {
-    const upcoming = await getUpcomingAppointmentsForUserAtBusiness(
-      { userId: clientSession.userId, phone: clientSession.phone, email: clientSession.email },
-      business.id,
-    );
-    if (upcoming.length > 0) {
-      const nowMs = Date.now();
-      const tz = business.timezone;
-      const views: ReturningAppointmentView[] = upcoming.map((appt) => {
-        const clinic = t.premiumLanding.clinic.returning;
-        const title =
-          appt.services.map((s) => s.nameSnapshot).filter(Boolean).join(' + ') || business.name;
-        const staffLabel = appt.staff?.displayName
-          ? `${clinic.withStaff} ${appt.staff.displayName}`
-          : '';
-        const whenLabel = `${formatLongDate(formatDateString(appt.startAt, tz), tz)} • ${formatTime(
-          appt.startAt,
-          tz,
-        )}`;
-        const googleUrl = buildGoogleCalendarUrl({
-          title,
-          start: appt.startAt,
-          end: appt.endAt,
-          details: appt.staff?.displayName ? `${business.name} — ${appt.staff.displayName}` : business.name,
-          location: business.address ?? undefined,
-        });
-        const windowHours = appt.business.settings?.cancellationWindowHours ?? 0;
-        const canCancel = nowMs < appt.startAt.getTime() - windowHours * 3_600_000;
-        return { id: appt.id, title, staffLabel, whenLabel, googleUrl, canCancel };
-      });
-      returningNode = (
-        <ReturningCustomer
-          name={
-            clientSession.name?.trim() ||
-            clientSession.email?.split('@')[0]?.trim() ||
-            ''
-          }
-          slug={slug}
-          appointments={views}
-        />
-      );
-    }
-  } else {
-    // באג 10 — נפילה חיננית לאורח ללא סשן לקוח: אחרי קביעת התור, מסך ההצלחה מפנה
-    // ל-/b/{slug}?booked={id}. נשלוף את התור לפי המזהה, נוודא שהוא שייך לעסק הזה
-    // ועתידי, ונציג באנר "התור שלך נקבע" עם אותו כרטיס תור (הוספה ליומן) — ללא ביטול.
-    const bookedId = ((await searchParams) ?? {}).booked;
-    if (bookedId) {
-      const appt = await getAppointmentById(bookedId);
-      if (
-        appt &&
-        appt.businessId === business.id &&
-        appt.status !== 'CANCELLED' &&
-        appt.startAt.getTime() >= Date.now()
-      ) {
-        const tz = business.timezone;
-        const clinic = t.premiumLanding.clinic.returning;
-        const title =
-          appt.services.map((s) => s.nameSnapshot).filter(Boolean).join(' + ') || business.name;
-        const staffLabel = appt.staff?.displayName ? `${clinic.withStaff} ${appt.staff.displayName}` : '';
-        const whenLabel = `${formatLongDate(formatDateString(appt.startAt, tz), tz)} • ${formatTime(
-          appt.startAt,
-          tz,
-        )}`;
-        const googleUrl = buildGoogleCalendarUrl({
-          title,
-          start: appt.startAt,
-          end: appt.endAt,
-          details: appt.staff?.displayName ? `${business.name} — ${appt.staff.displayName}` : business.name,
-          location: business.address ?? undefined,
-        });
-        returningNode = (
-          <ReturningCustomer
-            name=""
-            slug={slug}
-            heading={t.booking.bookingConfirmedBanner}
-            appointments={[{ id: appt.id, title, staffLabel, whenLabel, googleUrl, canCancel: false }]}
-          />
-        );
-      }
-    }
-  }
 
   const services = business.services;
   const staff = business.staff;
@@ -175,15 +90,9 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
   } as unknown as CSSProperties;
 
   // מצב העמוד (באג 3): הזמנת תורים ממוקדת מול עמוד נחיתה עשיר, נשלט מהניהול.
-  // תצוגה מקדימה בלבד: פרמטר ?style=landing|booking מאפשר לאורח לצפות בשני הסגנונות
-  // (משמש את בוחר ה-/demo). זו עקיפה מקומית לרינדור בלבד, לא נשמרת ולא נכתבת ל-DB.
-  const styleParam = ((await searchParams) ?? {}).style?.toLowerCase();
-  const pageStyle =
-    styleParam === 'landing'
-      ? 'LANDING'
-      : styleParam === 'booking'
-        ? 'BOOKING'
-        : normalizePublicPageStyle(business.publicPageStyle);
+  // הוסרה עקיפת ?style= (תצוגה מקדימה לאורח) כדי לאפשר שלד ISR ללא קריאת searchParams
+  // בשרת. מצב העמוד נגזר כעת אך ורק מ-business.publicPageStyle (הגדרת הבעלים).
+  const pageStyle = normalizePublicPageStyle(business.publicPageStyle);
   const styleIsLanding = pageStyle === 'LANDING';
   const iconKey = sectionIconKey(business.type);
 
@@ -421,7 +330,7 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
           heroCtaLabel={heroCtaLabel}
           updatesText={landing?.announcement ?? null}
           launchOffer={landing?.launchOffer}
-          account={headerAccount}
+          resolveAccount
           accountHref="/account"
           loginHref={loginHref}
           labels={{
@@ -506,7 +415,11 @@ export default async function BusinessPublicPage({ params, searchParams }: Props
             bookHref={bookHref}
             iconKey={iconKey}
             todayIdx={todayIdx}
-            returning={returningNode}
+            returning={
+              <Suspense fallback={null}>
+                <ReturningCustomerLoader slug={slug} />
+              </Suspense>
+            }
           />
         ) : (
           <>

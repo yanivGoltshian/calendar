@@ -37,6 +37,8 @@ function revalidateAll(slug: string): void {
   revalidatePath('/admin/settings');
   revalidatePath('/admin');
   revalidatePath(`/b/${slug}`);
+  revalidatePath(`/b/${slug}/book`);
+  revalidatePath('/');
 }
 
 /** ₪ → אגורות (מספר שלם); מחזיר 0 עבור קלט ריק או לא-תקין. */

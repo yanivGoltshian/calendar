@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 import { createBusiness } from '@/server/repos/business';
 import { parseCreateBusinessInput } from './parseInput';
@@ -55,6 +56,10 @@ export async function createBusinessAction(
   } catch {
     return { error: t.business.create.errorGeneric };
   }
+
+  // עסק חדש עשוי להיות עסק ההדגמה הראשון (getFirstBusiness) שנאפה בשלד הסטטי של
+  // דף הבית — מרעננים את '/' על-פי דרישה כדי שלינק ההדגמה יופיע מיד.
+  revalidatePath('/');
 
   // בעלים חדש (הקמה טרם הושלמה) נכנס לאשף ההקמה המודרך.
   // redirect זורק NEXT_REDIRECT ולכן חייב להיות מחוץ ל-try/catch.

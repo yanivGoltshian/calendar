@@ -29,6 +29,8 @@ function revalidateAll(slug: string): void {
   revalidatePath('/admin/settings');
   revalidatePath('/admin/onboarding');
   revalidatePath(`/b/${slug}`);
+  revalidatePath(`/b/${slug}/book`);
+  revalidatePath('/');
 }
 
 /**
