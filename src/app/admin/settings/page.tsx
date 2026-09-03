@@ -5,6 +5,7 @@ import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
 import { getOrCreateSettings } from '@/server/repos/settings';
+import { listMessageTemplateOverrides } from '@/server/repos/messageTemplates';
 import { canSendPaidClientSms } from '@/server/subscription';
 import { getCostGuardStatus } from '@/server/billing/costGuard';
 import SettingsForm from './SettingsForm';
@@ -24,6 +25,7 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
   if (!business) notFound();
 
   const settings = await getOrCreateSettings(business.id);
+  const templateOverrides = await listMessageTemplateOverrides(business.id);
   const isExclusive = canSendPaidClientSms(business);
   const costGuardStatus = isExclusive
     ? await getCostGuardStatus(business.id)
@@ -52,6 +54,7 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
       <SettingsForm
         business={business}
         settings={settings}
+        templateOverrides={templateOverrides}
         onboardingCompleted={settings.onboardingCompleted}
         isExclusive={isExclusive}
         vapidPublicKey={process.env.VAPID_PUBLIC_KEY ?? null}

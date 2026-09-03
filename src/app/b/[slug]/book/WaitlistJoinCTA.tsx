@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { t } from '@/i18n';
+import CustomerGoogleSignIn from '@/components/auth/CustomerGoogleSignIn';
+import { shouldShowWaitlistGoogle, waitlistGoogleCallbackUrl } from './waitlistGoogle';
 
 type Props = {
   slug: string;
@@ -13,6 +15,10 @@ type Props = {
   defaultName?: string;
   defaultPhone?: string;
   defaultEmail?: string;
+  // האם הלקוח מחובר (סשן לקוח קיים). מחובר → הפרטים מולאו מהסשן ואין כפתור גוגל.
+  authed?: boolean;
+  // האם ההתחברות עם גוגל מופעלת בעסק. משמש יחד עם authed להצגת כפתור הגוגל.
+  googleEnabled?: boolean;
   // 'full' — יום ללא זמינות כלל (ברירת מחדל). 'partial' — יש מועדים אך לא בשעה המבוקשת.
   variant?: 'full' | 'partial';
 };
@@ -45,6 +51,8 @@ export default function WaitlistJoinCTA({
   defaultName,
   defaultPhone,
   defaultEmail,
+  authed,
+  googleEnabled,
   variant = 'full',
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -61,6 +69,8 @@ export default function WaitlistJoinCTA({
   const heading = variant === 'partial' ? w.partialTitle : w.title;
   const subtitle = variant === 'partial' ? w.partialSubtitle : w.subtitle;
   const ctaLabel = variant === 'partial' ? w.partialCta : w.cta;
+  // כפתור גוגל מוצג רק ללקוח לא-מחובר כשההתחברות עם גוגל מופעלת בעסק.
+  const showGoogle = shouldShowWaitlistGoogle(authed, googleEnabled);
 
   async function submit() {
     setError('');
@@ -136,6 +146,12 @@ export default function WaitlistJoinCTA({
 
       {open ? (
         <div className="mt-5 space-y-3 text-right">
+          {showGoogle ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-center">
+              <p className="mb-2 text-sm text-slate-600">{t.account.googlePrompt}</p>
+              <CustomerGoogleSignIn callbackUrl={waitlistGoogleCallbackUrl(slug)} />
+            </div>
+          ) : null}
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-700">{w.nameLabel}</label>
             <input

@@ -1,4 +1,5 @@
 import { BRAND } from '@/config/brand';
+import { renderMessage } from '@/server/messages/render';
 
 /**
  * שכבת שליחת מייל עבור קודי אימות (OTP) לבעלי עסק וללקוחות.
@@ -48,7 +49,16 @@ export async function sendEmailOtp(to: string, code: string): Promise<void> {
     return;
   }
 
-  const { subject, text, html } = buildOtpMessage(code);
+  const fallback = buildOtpMessage(code);
+  // OTP אינו משויך לעסק (businessId=null) ולכן renderMessage מחזיר את ברירת
+  // המחדל כפי שהיא — מעבר דרך שכבת ההודעות לשלמות ולעקביות, ללא שינוי בפלט.
+  const { subject, text, html } = await renderMessage(
+    null,
+    'otp_login',
+    'email',
+    { code, brand: BRAND.name },
+    fallback,
+  );
 
   // ייבוא דינמי כדי שהאפליקציה תיבנה ותרוץ גם בלי חבילת nodemailer בזמן ריצה
   // כאשר מייל אינו בשימוש (למשל בילד שבו התלות לא הותקנה).

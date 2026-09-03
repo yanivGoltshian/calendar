@@ -11,6 +11,10 @@ import {
   RemindersFields,
   OwnerNotificationsFields,
 } from './fields';
+import {
+  MessageTemplatesFields,
+  type TemplateOverrides,
+} from './MessageTemplatesFields';
 import { saveAllSettingsAction, type SaveState } from './actions';
 
 const initialSaveState: SaveState = { ok: false };
@@ -23,12 +27,14 @@ const initialSaveState: SaveState = { ok: false };
 export default function SettingsForm({
   business,
   settings,
+  templateOverrides,
   onboardingCompleted,
   isExclusive,
   vapidPublicKey,
 }: {
   business: Business;
   settings: BusinessSettings;
+  templateOverrides: TemplateOverrides;
   onboardingCompleted: boolean;
   isExclusive: boolean;
   vapidPublicKey: string | null;
@@ -97,6 +103,13 @@ export default function SettingsForm({
           description={s.ownerNotifications.description}
         >
           <OwnerNotificationsFields s={settings} vapidPublicKey={vapidPublicKey} />
+        </SettingsSection>
+
+        <SettingsSection
+          title={s.messageTemplates.title}
+          description={s.messageTemplates.description}
+        >
+          <MessageTemplatesFields overrides={templateOverrides} />
         </SettingsSection>
 
         {justSaved ? (

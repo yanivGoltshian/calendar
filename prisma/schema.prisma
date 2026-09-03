@@ -276,10 +276,40 @@ model Business {
   // מנויי Web Push של בעל העסק (מודול תיקון באג 11) — קשר אדיטיבי בלבד
   pushSubscriptions PushSubscription[]
 
+  // תבניות הודעות ללקוחות (מותאמות אישית לעסק) — קשר אדיטיבי בלבד.
+  // ללא רשומה → נשלח טקסט ברירת המחדל הקיים (תואם לאחור לחלוטין).
+  messageTemplates MessageTemplate[]
+
   @@index([slug])
   @@index([ownerEmail])
   // אינדקס לשאילתת המחיקה: מציאת עסקים שממתינים למחיקה ומועד המחיקה שלהם עבר.
   @@index([accountStatus, purgeScheduledFor])
+}
+
+// ── תבניות הודעות ללקוחות (Message Templates) — מודל אדיטיבי בלבד ──────────────
+// מאפשר לבעל העסק לערוך את נוסח ההודעות הנשלחות ללקוחות הקצה (מייל/מסרון) לכל
+// סוג הודעה (key) וערוץ (channel). ללא רשומה מתאימה → מנוע הרינדור מחזיר את טקסט
+// ברירת המחדל המקורי, כך שהפלט זהה בית-לבית להתנהגות הקיימת (תאימות לאחור מלאה).
+// subject רלוונטי למייל בלבד (null במסרון). body הוא טקסט פשוט עם placeholders {{var}}.
+model MessageTemplate {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // סוג ההודעה: otp_login | booking_confirmation | booking_approval | reminder | waitlist_freed
+  key     String
+  // ערוץ ההודעה: email | sms
+  channel String
+  // נושא המייל (null במסרון). טקסט פשוט עם placeholders.
+  subject String?
+  // גוף ההודעה. טקסט פשוט בלבד — ה-HTML למייל נבנה על-ידי המערכת (escape + מעטפת RTL).
+  body String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, key, channel])
+  @@index([businessId])
 }
 
 model BusinessSettings {
