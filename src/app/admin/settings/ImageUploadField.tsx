@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { clamp, computeCropRect, outputSize } from '@/lib/imageCrop';
 import { encodeUnderLimit } from '@/lib/imageEncode';
+import { imageUrl, MAX_SOURCE_IMAGE_BYTES } from '@/lib/media';
 
 export interface ImageUploadLabels {
   choose: string;
@@ -18,18 +19,12 @@ export interface ImageUploadLabels {
   tooLarge: string;
 }
 
-/** השהיה קצרה לפני קיבוע החיתוך, כדי לא לדחוס בכל פריים של גרירה/זום. */
-const COMMIT_DEBOUNCE_MS = 180;
-
 type BakeResult = { dataUrl: string } | { error: string } | null;
 
 /**
  * העלאת תמונה מהמחשב + חיתוך/התאמה לצורה שמוצגת באתר.
- * לוגו = ריבוע (יחס 1), באנר = רחב (16/9). התוצאה נשמרת כ-data URL
- * בשדה המחרוזת הקיים (ללא אחסון ענן). עובד במגע/נייד ובכיווניות RTL.
- *
- * החיתוך חל אוטומטית וללא כפתור אישור: בבחירת קובץ נקבע מיד חיתוך ברירת מחדל,
- * וכל גרירה/זום מתקבעים אחרי השהיה קצרה. אין שלב 'החלה'.
+ * The canvas is a local preview only. Completing the crop uploads once and
+ * persists a bounded storage URL, never the local base64 representation.
  */
 export function ImageUploadField({
   name,
@@ -52,6 +47,7 @@ export function ImageUploadField({
 }) {
   const [value, setValue] = useState<string>(defaultValue ?? '');
   const [editing, setEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -93,6 +89,19 @@ export function ImageUploadField({
     }
     hiddenRef.current?.dispatchEvent(new Event('input', { bubbles: true }));
   }, [value]);
+
+  useEffect(() => {
+    const form = hiddenRef.current?.form;
+    const preventPrematureSave = (event: Event) => {
+      if (editing || uploading) {
+        event.preventDefault();
+        event.stopPropagation();
+        setError('יש לסיים או לבטל את התאמת התמונה לפני שמירה.');
+      }
+    };
+    form?.addEventListener('submit', preventPrematureSave, true);
+    return () => form?.removeEventListener('submit', preventPrematureSave, true);
+  }, [editing, uploading]);
 
   /** מקבע את החיתוך הנוכחי ל-data URL תחת תקרת הגודל, או מחזיר שגיאה. */
   function bake(z: number, off: { x: number; y: number }): BakeResult {
@@ -137,23 +146,29 @@ export function ImageUploadField({
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > MAX_SOURCE_IMAGE_BYTES) {
+      setError(labels.tooLarge);
+      return;
+    }
     prevValueRef.current = value;
     revokeSrc();
     const url = URL.createObjectURL(file);
     srcUrlRef.current = url;
     const img = new Image();
     img.onload = () => {
+      if (img.naturalWidth * img.naturalHeight > 20_000_000) {
+        setError(labels.tooLarge);
+        revokeSrc();
+        return;
+      }
       imgRef.current = img;
       setZoom(1);
       setOffset({ x: 0, y: 0 });
       setError(null);
       setEditing(true);
-      // קיבוע מיידי של חיתוך ברירת המחדל, כדי שהערך יהיה חי בלי להמתין.
-      const r = bake(1, { x: 0, y: 0 });
-      if (r && 'dataUrl' in r) setValue(r.dataUrl);
-      else if (r && 'error' in r) setError(r.error);
     };
+    img.onerror = () => { setError('הקובץ אינו תמונה תקינה. אפשר לבחור קובץ אחר.'); revokeSrc(); };
     img.src = url;
     // מאפשר לבחור שוב את אותו קובץ בעתיד
     e.target.value = '';
@@ -201,24 +216,6 @@ export function ImageUploadField({
     );
   }, [editing, zoom, offset, targetAspect, maxWidth, maxHeight, mime]);
 
-  // קיבוע מושהה: אחרי שהגרירה/הזום נרגעים, מקבעים את החיתוך פעם אחת.
-  // השגיאה (אם התמונה גדולה מדי) עולה רק אחרי ההרגעה, ולא באמצע הגרירה.
-  useEffect(() => {
-    if (!editing || !imgRef.current) return;
-    const id = setTimeout(() => {
-      const r = bake(zoom, offset);
-      if (!r) return;
-      if ('error' in r) {
-        setError(r.error);
-        return;
-      }
-      setError(null);
-      setValue(r.dataUrl);
-    }, COMMIT_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, zoom, offset]);
-
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y };
@@ -243,7 +240,7 @@ export function ImageUploadField({
     }
   }
 
-  /** פתיחת מכוון ההתאמה על תמונה קיימת (data URL), בלי כתובת blob. */
+  /** Legacy data stays local; remote adjustments use the same-origin image route. */
   function adjust() {
     if (!value) return;
     prevValueRef.current = value;
@@ -256,25 +253,40 @@ export function ImageUploadField({
       setError(null);
       setEditing(true);
     };
-    img.src = value;
+    img.onerror = () => setError('לא ניתן לטעון את התמונה להתאמה. אפשר לבחור קובץ חדש.');
+    img.src = value.startsWith('data:') ? value : imageUrl(value, 1600);
   }
 
-  /** סיום ההתאמה: מקבע את המצב הנוכחי (הערך כבר חי) וסוגר את המכוון. */
-  function done() {
+  /** The persisted value changes only after the final crop upload succeeds. */
+  async function done() {
+    if (uploading) return;
     const r = bake(zoom, offset);
     if (r && 'error' in r) {
       setError(r.error);
       return;
     }
-    if (r && 'dataUrl' in r) setValue(r.dataUrl);
+    if (!r || !('dataUrl' in r)) return;
+    setUploading(true);
     setError(null);
-    setEditing(false);
-    revokeSrc();
-    imgRef.current = null;
+    try {
+      const blob = await (await fetch(r.dataUrl)).blob();
+      const form = new FormData();
+      form.set('file', blob, 'crop.jpg');
+      const response = await fetch('/api/upload/media', { method: 'POST', body: form });
+      const result = await response.json();
+      if (!response.ok || typeof result.url !== 'string') throw new Error(result.error || 'ההעלאה נכשלה.');
+      setValue(result.url);
+      setEditing(false);
+      revokeSrc();
+      imgRef.current = null;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'ההעלאה נכשלה.');
+    } finally { setUploading(false); }
   }
 
   /** ביטול: החזרת הערך שהיה לפני פתיחת המכוון וסגירתו. */
   function cancel() {
+    if (uploading) return;
     setValue(prevValueRef.current);
     setEditing(false);
     setError(null);
@@ -296,7 +308,7 @@ export function ImageUploadField({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp"
         onChange={onFile}
         className="hidden"
       />
@@ -323,6 +335,7 @@ export function ImageUploadField({
               {labels.empty}
             </span>
           )}
+          {!editing && error ? <p role="alert" className="mt-2 text-sm text-red-700">{error}</p> : null}
 
           <div className="flex flex-col gap-2">
             <button
@@ -396,6 +409,7 @@ export function ImageUploadField({
             <button
               type="button"
               onClick={cancel}
+              disabled={uploading}
               className="rounded-lg border border-[#d6c8b4] px-3 py-1.5 text-sm text-[#6e655f] hover:bg-white"
             >
               {labels.cancel}
@@ -403,9 +417,10 @@ export function ImageUploadField({
             <button
               type="button"
               onClick={done}
+              disabled={uploading}
               className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
             >
-              {labels.done}
+              {uploading ? 'מעלה…' : labels.done}
             </button>
           </div>
         </div>

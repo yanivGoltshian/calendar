@@ -17,10 +17,6 @@ name: Deploy to Azure (manual)
 on:
   workflow_dispatch:
     inputs:
-      imageTag:
-        description: "תג האימג' לבנייה ופרישה"
-        required: false
-        default: latest
       deployInfra:
         description: "להריץ פריסת Bicep (תשתית)?"
         type: boolean
@@ -40,11 +36,17 @@ env:
   IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
+  validate:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
   # ---------- בנייה ודחיפה של האימג' ל-GHCR (חינם) ----------
   build-and-push:
+    needs: validate
     runs-on: ubuntu-latest
     outputs:
-      image: ${{ steps.meta.outputs.image }}
+      image: ${{ steps.provenance.outputs.image }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,11 +54,10 @@ jobs:
       - name: Set image reference
         id: meta
         run: |
-          TAG="${{ github.event.inputs.imageTag }}"
-          TAG="${TAG:-latest}"
           # GHCR דורש שם repository באותיות קטנות; הבעלים yanivGoltshian מעורב אותיות.
           IMAGE_LC="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
-          echo "image=${IMAGE_LC}:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "repository=${IMAGE_LC}" >> "$GITHUB_OUTPUT"
+          echo "image=${IMAGE_LC}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -69,12 +70,19 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.image }}
+          provenance: mode=max
+          sbom: true
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
           build-args: |
+            APP_REVISION=${{ github.sha }}
             NEXT_PUBLIC_APP_URL=${{ secrets.APP_PUBLIC_URL }}
             NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
             NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
@@ -83,6 +91,15 @@ jobs:
             NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Record immutable deployment identity
+        id: provenance
+        env:
+          IMAGE_REPOSITORY: ${{ steps.meta.outputs.repository }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "image=${IMAGE_REPOSITORY}@${IMAGE_DIGEST}" >> "$GITHUB_OUTPUT"
+          printf 'Revision: `%s`\n\nImage: `%s@%s`\n' "$GITHUB_SHA" "$IMAGE_REPOSITORY" "$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"
 
   # ---------- פריסת תשתית ועדכון האפליקציה ----------
   deploy:

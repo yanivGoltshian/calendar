@@ -9,6 +9,8 @@ import { BRAND } from '@/config/brand';
 import { absoluteUrl } from '@/lib/seo';
 import { DEFAULT_TZ, formatDateString, formatLongDate, formatTime } from '@/lib/time';
 import { renderMessage } from '@/server/messages/render';
+import { canDeliverClientEmail } from '@/server/billing/deliveryPolicy';
+import { deliverEmailOnce } from '@/server/billing/emailDelivery';
 
 /**
  * שכבת שליחת תזכורות. מרכזת את בניית תוכן ההודעה ואת שליחתה ביעדים שנגזרו ללקוח.
@@ -137,21 +139,14 @@ export function buildReminderEmail(appt: ReminderAppointment): {
   return { subject, text, html };
 }
 
-/**
- * תוצאת שליחה מובנית (איחוד מבחין):
- *   sent    — נשלח בפועל בערוץ שנגזר (מסרון או מייל), או נרשם ללוג במתאם
- *             console בפיתוח.
- *   skipped — לא ניתן/נדרש לשלוח, אך מסמנים כדי שהריצה תישאר אידמפוטנטית ולא
- *             תיתקע. מכסה: יעד חסר (למשל AUTO ללקוח בלי מייל ובלי טלפון), ערוץ
- *             שהוגדר ידנית ללא כתובת מתאימה, מסרון שאינו דלוק בחבילה, חסימה בתקרת
- *             העלות החודשית, וספק לא כשיר (console בפרודקשן / חוסר קרדנשלס / מייל
- *             לא מוגדר). אינו כשל.
- *   failed  — כשל שליחה חולף (רשת/דחיית ספק). אין לסמן — ייעשה ניסיון חוזר.
- */
+/** Skips/preparation failures remain unsent and retryable. Only ambiguous
+ * dispatch outcomes require quarantine rather than automatic retry. */
 export type SendReminderResult =
-  | { status: 'sent'; channel: ReminderChannel }
+  | { status: 'sent'; channel: ReminderChannel; duplicate?: boolean }
   | { status: 'skipped'; reason: string }
-  | { status: 'failed'; channel: ReminderChannel; error: string };
+  | { status: 'failed'; channel: ReminderChannel; error: string; deliveredChannels?: ReminderChannel[] };
+export type PreparedReminder = () => Promise<SendReminderResult>;
+const preparedResult = (result: SendReminderResult): PreparedReminder => async () => result;
 
 /**
  * הזרקת תלויות לשכבת השליחה — מאפשרת בדיקות יחידה בלי לגעת ב-DB או בספק אמיתי.
@@ -161,20 +156,18 @@ export type SendReminderResult =
 export type SendReminderDeps = {
   sendGuardedSms?: typeof sendGuardedSms;
   sendEmail?: typeof sendReminderEmail;
+  deliverEmail?: typeof deliverEmailOnce;
+  canDeliverEmail?: typeof canDeliverClientEmail;
   emailConfigured?: boolean;
 };
 
-function errText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+export class ReminderPreparationError extends Error {
+  constructor() {
+    super('preparation_failed');
+    this.name = 'ReminderPreparationError';
+  }
 }
 
-/**
- * שליחת תזכורת בערוץ המסרון (SMS) דרך נקודת האכיפה המרכזית sendGuardedSms.
- * הנקודה בודקת את תקרת העלות החודשית של העסק, שולחת בפועל דרך שכבת הספקים, ומתעדת
- * את העלות ביומן ההודעות. היעד (to) נגזר מראש ומובטח שאינו ריק.
- * מיפוי התוצאה: sent => נשלח; blocked (הגעה לתקרה) => skipped, כדי שה-cron יסמן
- * ולא ינסה שוב ללא הרף; failed => כשל חולף שיינתן לו ניסיון חוזר בריצה הבאה.
- */
 /**
  * משתני התבנית לנתיב הדריסה של הבעלים (מחושבים רק כשצריך; משמשים כשקיימת דריסה).
  * manageUrl = קישור האישור /c/<token> כשהאישור דלוק (ברירת מחדל), אחרת ריק.
@@ -192,11 +185,11 @@ function reminderVars(appt: ReminderAppointment): Record<string, string> {
   };
 }
 
-async function sendViaSms(
+async function prepareViaSms(
   appt: ReminderAppointment,
   to: string,
   deps: SendReminderDeps,
-): Promise<SendReminderResult> {
+): Promise<PreparedReminder> {
   const { text: body } = await renderMessage(
     appt.business.id,
     'reminder',
@@ -206,24 +199,33 @@ async function sendViaSms(
   );
   const send = deps.sendGuardedSms ?? sendGuardedSms;
 
-  try {
-    const result = await send({
-      businessId: appt.business.id,
-      to,
-      body,
-      clientId: appt.client.id,
-      channel: 'sms',
-    });
-    if (result.status === 'sent') {
-      return { status: 'sent', channel: 'SMS' };
+  return async () => {
+    try {
+      const result = await send({
+        businessId: appt.business.id,
+        to,
+        body,
+        clientId: appt.client.id,
+        channel: 'sms',
+        appointmentId: appt.id,
+        idempotencyKey: `reminder:${appt.id}:sms`,
+      });
+      if (result.status === 'sent') {
+        return { status: 'sent', channel: 'SMS', ...(result.duplicate ? { duplicate: true } : {}) };
+      }
+      if (result.status === 'blocked') {
+        if (result.reason === 'delivery_outcome_unknown') {
+          return { status: 'failed', channel: 'SMS', error: 'delivery_outcome_unknown' };
+        }
+        return { status: 'skipped', reason: result.reason ?? 'monthly SMS cost cap reached' };
+      }
+      return { status: 'failed', channel: 'SMS', error: result.error };
+    } catch {
+      // The guarded boundary reports provider uncertainty as a result; an escaped
+      // exception is from preparation/reservation, before a provider is invoked.
+      return { status: 'failed', channel: 'SMS', error: 'preparation_failed' };
     }
-    if (result.status === 'blocked') {
-      return { status: 'skipped', reason: 'monthly SMS cost cap reached' };
-    }
-    return { status: 'failed', channel: 'SMS', error: result.error };
-  } catch (err) {
-    return { status: 'failed', channel: 'SMS', error: errText(err) };
-  }
+  };
 }
 
 /**
@@ -231,15 +233,19 @@ async function sendViaSms(
  * אם ספק המייל אינו מוגדר — מדלגים בחן (skipped) במקום לדווח "נשלח" על נפילת console.
  * היעד (to) נגזר מראש ומובטח שאינו ריק.
  */
-async function sendViaEmail(
+async function prepareViaEmail(
   appt: ReminderAppointment,
   to: string,
   deps: SendReminderDeps,
-): Promise<SendReminderResult> {
+): Promise<PreparedReminder> {
   const configured = deps.emailConfigured ?? emailConfigured;
   const send = deps.sendEmail ?? sendReminderEmail;
   if (!configured) {
-    return { status: 'skipped', reason: 'email provider not configured' };
+    return preparedResult({ status: 'skipped', reason: 'email provider not configured' });
+  }
+  if ((deps.canDeliverEmail || !deps.sendEmail) &&
+      !await (deps.canDeliverEmail ?? canDeliverClientEmail)(appt.business.id, appt.id)) {
+    return preparedResult({ status: 'skipped', reason: 'email_entitlement_denied' });
   }
   const fb = buildReminderEmail(appt);
   const { subject, text, html } = await renderMessage(
@@ -249,26 +255,38 @@ async function sendViaEmail(
     reminderVars(appt),
     fb,
   );
-  try {
-    await send(to, subject ?? fb.subject, text, html ?? fb.html);
-    return { status: 'sent', channel: 'EMAIL' };
-  } catch (err) {
-    return { status: 'failed', channel: 'EMAIL', error: errText(err) };
-  }
+  return async () => {
+    try {
+      if (!deps.sendEmail) {
+        const result = await (deps.deliverEmail ?? deliverEmailOnce)({
+          businessId: appt.business.id, appointmentId: appt.id, clientId: appt.client.id,
+          idempotencyKey: `reminder:${appt.id}:email`,
+          to, subject: subject ?? fb.subject, text, html: html ?? fb.html,
+        });
+        if (result.status === 'sent') return { status: 'sent', channel: 'EMAIL', ...(result.duplicate ? { duplicate: true } : {}) };
+        if (result.status === 'blocked') return { status: 'skipped', reason: result.reason };
+        return { status: 'failed', channel: 'EMAIL', error: result.status === 'unknown' ? 'delivery_outcome_unknown' : result.reason };
+      }
+      await send(to, subject ?? fb.subject, text, html ?? fb.html);
+      return { status: 'sent', channel: 'EMAIL' };
+    } catch (err) {
+      if (!deps.sendEmail) {
+        // deliverEmailOnce catches provider/acceptance failures itself. Its
+        // unhandled DB errors precede provider dispatch and are safe to retry.
+        return { status: 'failed', channel: 'EMAIL', error: 'preparation_failed' };
+      }
+      const rejected = ['EAUTH', 'EENVELOPE', 'ECONNECTION', 'ECONNREFUSED', 'ENOTFOUND'].includes((err as NodeJS.ErrnoException)?.code ?? '');
+      return { status: 'failed', channel: 'EMAIL', error: rejected ? 'provider_rejected' : 'delivery_outcome_unknown' };
+    }
+  };
 }
 
-/**
- * שליחת הודעת תזכורת ללקוח ביעדים שנגזרו לו (resolveReminderTargets).
- * לעולם אינה זורקת חריגה — מחזירה תוצאה מובנית כדי שה-cron ירוץ על אצווה בבטחה,
- * ולעולם אינה שולחת ליעד ריק. בהעדפת BOTH של עסק אקסקלוסיב ייתכנו שני יעדים ואז
- * נשלחות שתי הודעות. אגרגציה: אם לפחות אחת נשלחה => sent (מסומן, ללא ניסיון חוזר);
- * אחרת אם לפחות אחת נכשלה => failed (ניסיון חוזר); אחרת => skipped (מסומן). יעד חסר,
- * מסרון שאינו דלוק בחבילה, או חסימת תקרה => skipped.
- */
-export async function sendReminder(
+/** Prepare without provider side effects; the returned function is the dispatch
+ * boundary. Preparation may throw. Dispatch returns per-channel delivery state. */
+export async function prepareReminder(
   appt: ReminderAppointment,
   deps: SendReminderDeps = {},
-): Promise<SendReminderResult> {
+): Promise<PreparedReminder> {
   // ה-relation settings הוא nullable; כשאין רשומה מתייחסים לברירת המחדל AUTO (כמו
   // בסכימה), כך שהיעדים נגזרים מזהות הלקוח ואף לקוח לא נשמט בגלל היעדר הגדרות.
   const channelPref = appt.business.settings?.reminderChannel ?? 'AUTO';
@@ -276,31 +294,53 @@ export async function sendReminder(
   // ואז היעדים נגזרים למייל בלבד או מדלגים — לעולם לא מגיע לערוץ בתשלום.
   const targets = resolveReminderTargets(appt.client, channelPref, appt.business.isExclusive);
   if (targets.length === 0) {
-    // אין יעד ראוי — מדלגים עם הנימוק מהעטיפה resolveReminderChannel, כדי שה-cron
-    // יסמן ולא ינסה שוב ללא הרף.
     const resolved = resolveReminderChannel(appt.client, channelPref, appt.business.isExclusive);
     const reason = resolved.kind === 'skip' ? resolved.reason : 'no reminder target resolved';
-    return { status: 'skipped', reason };
+    return preparedResult({ status: 'skipped', reason });
   }
 
-  // ערוץ המסרון (SMS) נשלח דרך שער העלות (sendGuardedSms); ערוץ המייל דרך email.
-  let firstSent: SendReminderResult | null = null;
-  let firstFailed: SendReminderResult | null = null;
-  let firstSkipped: SendReminderResult | null = null;
+  // Finish every channel's eligibility check and rendering before any channel
+  // may dispatch; a preparation failure cannot hide an already accepted send.
+  const prepared: PreparedReminder[] = [];
   for (const target of targets) {
-    const result =
-      target.channel === 'EMAIL'
-        ? await sendViaEmail(appt, target.to, deps)
-        : await sendViaSms(appt, target.to, deps);
-    if (result.status === 'sent') {
-      if (!firstSent) firstSent = result;
-    } else if (result.status === 'failed') {
-      if (!firstFailed) firstFailed = result;
-    } else if (!firstSkipped) {
-      firstSkipped = result;
-    }
+    prepared.push(await (target.channel === 'EMAIL'
+      ? prepareViaEmail(appt, target.to, deps)
+      : prepareViaSms(appt, target.to, deps)));
   }
-  if (firstSent) return firstSent;
-  if (firstFailed) return firstFailed;
-  return firstSkipped ?? { status: 'skipped', reason: 'no reminder target resolved' };
+  return async () => {
+    // ערוץ המסרון (SMS) נשלח דרך שער העלות (sendGuardedSms); ערוץ המייל דרך email.
+    let firstSent: SendReminderResult | null = null;
+    let firstFailed: SendReminderResult | null = null;
+    let firstSkipped: SendReminderResult | null = null;
+    const deliveredChannels: ReminderChannel[] = [];
+    for (const dispatch of prepared) {
+      const result = await dispatch();
+      if (result.status === 'sent') {
+        if (!firstSent) firstSent = result;
+        if (!result.duplicate) deliveredChannels.push(result.channel);
+      } else if (result.status === 'failed') {
+        if (!firstFailed || result.error === 'delivery_outcome_unknown') firstFailed = result;
+      } else if (!firstSkipped) {
+        firstSkipped = result;
+      }
+    }
+    if (firstFailed) return { ...firstFailed, ...(deliveredChannels.length ? { deliveredChannels } : {}) };
+    if (firstSent) {
+      return { status: 'sent', channel: firstSent.channel, ...(!deliveredChannels.length ? { duplicate: true } : {}) };
+    }
+    return firstSkipped ?? { status: 'skipped', reason: 'no reminder target resolved' };
+  };
+}
+
+export async function sendReminder(
+  appt: ReminderAppointment,
+  deps: SendReminderDeps = {},
+): Promise<SendReminderResult> {
+  let dispatch: PreparedReminder;
+  try {
+    dispatch = await prepareReminder(appt, deps);
+  } catch {
+    throw new ReminderPreparationError();
+  }
+  return dispatch();
 }

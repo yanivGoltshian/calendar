@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { generateOtpCode, hashOtp, verifyOtp, normalizeEmail } from '@/lib/crypto';
+import { generateOtpCode, hashOtp, verifyOtp, normalizeEmail, normalizePhone } from '@/lib/crypto';
 
 const OTP_TTL_MINUTES = 5;
 const MAX_ATTEMPTS = 5;
@@ -56,12 +56,14 @@ export async function checkOtp(phone: string, code: string): Promise<OtpVerifyRe
   return { ok: true };
 }
 
-/** מציאת משתמש לפי טלפון או יצירתו. */
+/** Call only after successful OTP/Firebase verification, never for asserted contact details. */
 export async function findOrCreateUserByPhone(phone: string, name?: string) {
+  const normalized = normalizePhone(phone);
+  const phoneVerifiedAt = new Date();
   return prisma.user.upsert({
-    where: { phone },
-    update: name ? { name } : {},
-    create: { phone, name, role: 'CLIENT' },
+    where: { phone: normalized },
+    update: { phoneVerifiedAt, ...(name ? { name } : {}) },
+    create: { phone: normalized, phoneVerifiedAt, name, role: 'CLIENT' },
   });
 }
 

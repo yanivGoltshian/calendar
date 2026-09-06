@@ -489,7 +489,7 @@ export default function InstallApp({
         >
           {emblem ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={emblem} alt="" width={64} height={64} className="h-16 w-16 object-contain" />
+            <img src={emblem} alt="" width={64} height={64} loading="lazy" decoding="async" className="h-16 w-16 object-contain" />
           ) : (
             <span className="text-2xl font-bold">{initial}</span>
           )}

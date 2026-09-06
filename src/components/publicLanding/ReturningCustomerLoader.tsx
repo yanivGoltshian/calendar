@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import ReturningCustomer, {
   type ReturningAppointmentView,
 } from './ReturningCustomer';
+import BookingConfirmationBanner from './BookingConfirmationBanner';
 
 type ReturningData =
   | { mode: 'returning'; name: string; appointments: ReturningAppointmentView[] }
@@ -38,13 +39,12 @@ export default function ReturningCustomerLoader({ slug }: { slug: string }) {
     };
   }, [slug, booked]);
 
-  if (!data || data.mode === 'none' || data.appointments.length === 0) return null;
+  if (!data || data.mode === 'none') return null;
 
   if (data.mode === 'booked') {
-    return (
-      <ReturningCustomer name="" slug={slug} heading={data.heading} appointments={data.appointments} />
-    );
+    return <BookingConfirmationBanner heading={data.heading} />;
   }
 
+  if (data.appointments.length === 0) return null;
   return <ReturningCustomer name={data.name} slug={slug} appointments={data.appointments} />;
 }

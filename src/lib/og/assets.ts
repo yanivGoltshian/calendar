@@ -4,7 +4,9 @@
  * הן את האייקון הריבועי (icon/route.tsx) והן את כרטיס השיתוף (opengraph-image.tsx).
  */
 
-import { absoluteUrl } from '@/lib/seo';
+import { readSafeImage } from '@/server/media/safeFetch';
+import { decodeLegacyImage } from '@/server/media/publicContent';
+import { optimizeImage } from '@/server/media/image';
 
 /**
  * User-Agent ישן במכוון: Google Fonts מגיש TTF (במקום WOFF/WOFF2) ל-UA ישנים,
@@ -35,16 +37,10 @@ export async function loadHebrewFont(weight: number = 700): Promise<ArrayBuffer 
 export async function loadLogo(url: string | null): Promise<string | null> {
   if (!url) return null;
   try {
-    // נתיבים יחסיים (למשל /brand/business/skin.jpg) נכשלים ב-fetch צד-שרת;
-    // ממירים למוחלט דרך SITE_URL (בפרוד = הדומיין הממותג) לפני הטעינה.
-    const target = url.startsWith('/') ? absoluteUrl(url) : url;
-    const res = await fetch(target);
-    if (!res.ok) return null;
-    const type = res.headers.get('content-type') ?? 'image/png';
-    if (!type.startsWith('image/')) return null;
-    const buf = await res.arrayBuffer();
-    const base64 = Buffer.from(buf).toString('base64');
-    return `data:${type};base64,${base64}`;
+    const input = url.startsWith('data:') ? decodeLegacyImage(url) : await readSafeImage(url);
+    if (!input) return null;
+    const image = await optimizeImage(input, 960);
+    return `data:image/webp;base64,${image.toString('base64')}`;
   } catch {
     return null;
   }

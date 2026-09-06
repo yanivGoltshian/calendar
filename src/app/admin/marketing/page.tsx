@@ -14,7 +14,7 @@ import { canSendPaidClientSms } from '@/server/subscription';
 import { getCampaignDeliveryStatus } from '@/server/campaigns/delivery';
 import { displayPhone } from '@/lib/crypto';
 import { formatDateString, formatTime } from '@/lib/time';
-import type { CampaignStatus } from '@prisma/client';
+import type { CampaignStatus, MessageStatus } from '@prisma/client';
 import CampaignForm from './CampaignForm';
 import { sendCampaignAction } from './actions';
 
@@ -30,6 +30,20 @@ const STATUS_STYLE: Record<CampaignStatus, string> = {
   SENDING: 'bg-amber-100 text-amber-700',
   SENT: 'bg-green-100 text-green-700',
   FAILED: 'bg-red-100 text-red-700',
+};
+
+const MESSAGE_STATUS_LABEL: Record<MessageStatus, string> = {
+  ...t.admin.marketingModule.messageStatuses,
+  RESERVED: 'ממתינה לשליחה או לאישור מסירה',
+  UNKNOWN: 'מסירה לא ודאית — נדרשת בדיקה',
+};
+
+const MESSAGE_STATUS_STYLE: Record<MessageStatus, string> = {
+  SENT: 'bg-green-100 text-green-700',
+  FAILED: 'bg-red-100 text-red-700',
+  BLOCKED: 'bg-amber-100 text-amber-700',
+  RESERVED: 'bg-blue-100 text-blue-700',
+  UNKNOWN: 'bg-amber-100 text-amber-700',
 };
 
 export default async function AdminMarketingPage() {
@@ -177,15 +191,12 @@ export default async function AdminMarketingPage() {
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    log.status === 'SENT'
-                      ? 'bg-green-100 text-green-700'
-                      : log.status === 'BLOCKED'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-red-100 text-red-700'
-                  }`}
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${MESSAGE_STATUS_STYLE[log.status]}`}
+                  title={log.status === 'UNKNOWN' || log.status === 'RESERVED'
+                    ? 'אין אישור מסירה סופי. יש לבדוק את מצב ההודעה לפני ניסיון שליחה נוסף.'
+                    : undefined}
                 >
-                  {m.messageStatuses[log.status]}
+                  {MESSAGE_STATUS_LABEL[log.status]}
                 </span>
               </li>
             ))}

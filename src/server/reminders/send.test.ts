@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sendReminder, type ReminderAppointment } from './send';
+import { sendReminder, ReminderPreparationError, type ReminderAppointment } from './send';
 
 /**
  * בדיקות ל-sendReminder — גזירת ערוץ התזכורת מתוך העדפת העסק (relation settings)
@@ -40,6 +40,33 @@ test('settings=null → ברירת מחדל AUTO: לקוח ללא מייל ול�
     status: 'skipped',
     reason: 'client has neither email nor phone',
   });
+});
+
+test('unconfigured email is skipped and never reported as sent', async () => {
+    let sends = 0;
+    const result = await sendReminder(
+      makeAppt({ reminderChannel: 'EMAIL' }, { name: 'Guest', email: 'guest@example.test' }, false),
+      { emailConfigured: false, sendEmail: async () => { sends++; } },
+    );
+    assert.deepEqual(result, { status: 'skipped', reason: 'email provider not configured' });
+    assert.equal(sends, 0);
+});
+
+test('direct send wrapper prepares both channels before any provider call', async () => {
+  let providerCalls = 0;
+  await assert.rejects(sendReminder(
+    makeAppt({ reminderChannel: 'BOTH' }, { name: 'Guest', email: 'guest@example.test', phone: '+972500000000' }),
+    {
+      emailConfigured: true,
+      canDeliverEmail: async () => { throw new Error('eligibility database unavailable'); },
+      sendEmail: async () => { providerCalls++; },
+      sendGuardedSms: async () => {
+        providerCalls++;
+        return { status: 'sent', costAgorot: 10, crossedAlert: false };
+      },
+    },
+  ), ReminderPreparationError);
+  assert.equal(providerCalls, 0);
 });
 
 test('ערוץ מפורש מתוך settings מכובד: EMAIL ללקוח בלי מייל מדולג (לא נופל לטלפון)', async () => {

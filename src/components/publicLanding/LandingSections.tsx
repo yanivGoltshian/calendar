@@ -26,6 +26,7 @@ import WhatsAppFab from './WhatsAppFab';
 type WorkingHour = { weekday: number; startMinute: number; endMinute: number };
 
 type Props = {
+  timeZone?: string;
   content: LandingContent | null;
   type: string | null;
   services: LandingService[];
@@ -43,6 +44,7 @@ type Props = {
 // מנצח המקטעים של עמוד הנחיתה — מרנדר את המקטעים (מלבד ההירו) בסדר שנפתר
 // מ-resolveLandingSections, תוך כיבוד מתגי הבעלים ושמירה על מקטעים תלויי-נתונים.
 export default function LandingSections({
+  timeZone = 'Asia/Jerusalem',
   content,
   type,
   services,
@@ -72,7 +74,7 @@ export default function LandingSections({
       {/* ווידג'ט קביעת תור אינליין — חלון ראווה יוקרתי במרכז העמוד, מוצג רק בפרימיום.
           הבחירה מודגמת כאן והאישור הסופי מתבצע באשף קביעת התור המאובטח. */}
       {isClinicPremium && services.length > 0 ? (
-        <LandingBooking slug={slug} services={services} staff={staff} bookHref={bookHref} labels={clinic.booking} />
+        <LandingBooking timeZone={timeZone} slug={slug} services={services} staff={staff} bookHref={bookHref} labels={clinic.booking} />
       ) : null}
       {/* מקטע "שלום .." ללקוח מזוהה — בין ווידג'ט קביעת התור למבצעים (סדר המוקאפ). */}
       {isClinicPremium ? returning : null}

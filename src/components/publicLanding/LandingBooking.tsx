@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeftIcon } from './icons';
+import { useBusinessDate } from './useBusinessDate';
 
 export type BookingLabels = {
   title: string;
@@ -29,6 +30,7 @@ type StaffMember = { id: string; displayName: string };
 type Slot = { label: string; startAtUtc: string; endAtUtc: string };
 
 type Props = {
+  timeZone?: string;
   slug: string;
   services: { id: string; name: string }[];
   staff?: StaffMember[];
@@ -46,29 +48,38 @@ function ymd(y: number, m: number, d: number) {
 
 // ווידג'ט קביעת תור אינטראקטיבי: לוח חודש אמיתי + שעות פנויות אמיתיות מ-/api/availability.
 // הבחירה נישאת לאשף המאובטח דרך פרמטרים בקישור, תוך שמירה על העיצוב היוקרתי כפי שהוא.
-export default function LandingBooking({ slug, services, staff, bookHref, labels }: Props) {
+export default function LandingBooking({ slug, services, staff, bookHref, labels, timeZone = 'Asia/Jerusalem' }: Props) {
   const serviceChips = services.slice(0, 5);
   const staffList = staff ?? [];
   const staffChips: StaffMember[] = [{ id: '', displayName: labels.staffAny }, ...staffList.slice(0, 3)];
 
-  const now = useMemo(() => new Date(), []);
-  const todayStr = ymd(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayStr = useBusinessDate(timeZone);
 
   const [serviceId, setServiceId] = useState(serviceChips[0]?.id ?? '');
   const [selectedStaffId, setSelectedStaffId] = useState(''); // '' = כל הצוות
-  const [date, setDate] = useState(todayStr);
-  const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() });
+  const [date, setDate] = useState('');
+  const [view, setView] = useState({ y: 0, m: 0 });
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [time, setTime] = useState('');
+
+  useEffect(() => {
+    if (!todayStr) return;
+    if (!date || date < todayStr) {
+      setDate(todayStr);
+      setTime('');
+      const [y, m] = todayStr.split('-').map(Number);
+      setView({ y, m: m - 1 });
+    }
+  }, [todayStr, date]);
 
   // כשלא נבחר איש צוות ספציפי ("כל הצוות") — שולחים את איש הצוות הראשון כברירת מחדל לשאילתה.
   const queryStaffId = selectedStaffId || staffList[0]?.id || '';
 
   // שליפת שעות פנויות אמיתיות בכל שינוי של טיפול / צוות / תאריך.
   useEffect(() => {
-    if (!serviceId || !queryStaffId || !date) {
+    if (!serviceId || !queryStaffId || !todayStr || !date || date < todayStr) {
       setSlots([]);
       return;
     }
@@ -95,10 +106,11 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
     return () => {
       cancelled = true;
     };
-  }, [slug, serviceId, queryStaffId, date]);
+  }, [slug, serviceId, queryStaffId, date, todayStr]);
 
   // תאי לוח החודש בתצוגה, כולל ריפוד תחילת השבוע והשבתת ימים שחלפו.
   const cells = useMemo(() => {
+    if (!todayStr || !view.y) return [];
     const startOffset = new Date(view.y, view.m, 1).getDay();
     const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
     const arr: { key: string; day: number; dateStr: string | null; past: boolean }[] = [];
@@ -110,7 +122,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
     return arr;
   }, [view, todayStr]);
 
-  const atCurrentMonth = view.y === now.getFullYear() && view.m === now.getMonth();
+  const atCurrentMonth = !todayStr || ymd(view.y, view.m, 1) <= `${todayStr.slice(0, 7)}-01`;
   function shiftMonth(delta: number) {
     setView((v) => {
       const dt = new Date(v.y, v.m + delta, 1);
@@ -129,8 +141,9 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
     return `${labels.weekdays[wd]} ${pad(d)}/${pad(m)}`;
   }
 
+  const dateReady = !!todayStr && !!date && date >= todayStr;
   const summary =
-    treatmentName && time
+    dateReady && treatmentName && time
       ? `${treatmentName} · ${formatDateLabel(date)} · ${time} · ${whoName}`
       : labels.summaryEmpty;
 
@@ -138,8 +151,8 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
   const params = new URLSearchParams();
   if (serviceId) params.set('service', serviceId);
   if (queryStaffId) params.set('staffId', queryStaffId);
-  if (date) params.set('date', date);
-  if (time) params.set('time', time);
+  if (dateReady) params.set('date', date);
+  if (dateReady && time) params.set('time', time);
   const bookQuery = params.toString();
   const ctaHref = bookQuery ? `${bookHref}?${bookQuery}` : bookHref;
 
@@ -219,11 +232,12 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                   <ArrowLeftIcon className="h-4 w-4 rotate-180" />
                 </button>
                 <span className="text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
-                  {labels.months[view.m]} {view.y}
+                  {todayStr && view.y ? `${labels.months[view.m]} ${view.y}` : labels.loadingSlots}
                 </span>
                 <button
                   type="button"
                   onClick={() => shiftMonth(1)}
+                  disabled={!todayStr || !view.y}
                   aria-label={labels.nextMonth}
                   className="flex h-7 w-7 items-center justify-center rounded-lg text-[color:var(--c-ink,#1b1715)]/70 transition hover:bg-white"
                 >
@@ -264,7 +278,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
           {/* שעה */}
           <div>
             <p className="mb-2 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.timeLabel}</p>
-            {slotsLoading ? (
+            {!dateReady || slotsLoading ? (
               <p className="py-3 text-sm text-[color:var(--c-ink,#1b1715)]/50">{labels.loadingSlots}</p>
             ) : slots.length === 0 ? (
               <p className="py-3 text-sm text-[color:var(--c-ink,#1b1715)]/50">{labels.noSlots}</p>

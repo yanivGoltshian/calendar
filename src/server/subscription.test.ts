@@ -127,3 +127,21 @@ test('canVerifyClientPhone mirrors paid client sms gate', () => {
 test('canSendOwnerVerificationSms always allowed', () => {
   assert.equal(canSendOwnerVerificationSms(), true);
 });
+
+test('deletion-pending accounts lose all resource capabilities despite valid trial/payment', () => {
+  for (const plan of ['basic', 'premium', 'exclusive'] as const) {
+    const business = input({
+      plan, trialEndsAt: future(30), paidUntil: future(30), accountStatus: 'PENDING_DELETION',
+    });
+    assert.equal(getBusinessAccess(business).active, false);
+    assert.equal(canAcceptPublicBookings(business), false);
+    assert.equal(canSendPaidClientSms(business), false);
+    assert.equal(canVerifyClientPhone(business), false);
+  }
+});
+
+test('explicit active lifecycle preserves eligible basic free trial', () => {
+  const business = input({ accountStatus: 'ACTIVE', plan: 'basic', trialEndsAt: future(30) });
+  assert.equal(getBusinessAccess(business).state, 'trialing');
+  assert.equal(canAcceptPublicBookings(business), true);
+});

@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import MediaImage from './MediaImage';
+import { useBusinessDate } from '@/components/publicLanding/useBusinessDate';
+import { weekdayForDateString } from '@/lib/time';
+import { imageUrl } from '@/lib/media';
 import type { LandingLaunchOffer } from '@/lib/publicPageStyle';
 import { logout } from '@/app/account/actions';
 import { computeCountdown } from '@/lib/launchOffer';
@@ -51,6 +55,7 @@ type Labels = {
 };
 
 type Props = {
+  timeZone?: string;
   name: string;
   logoUrl?: string | null;
   phone?: string | null;
@@ -84,6 +89,7 @@ type Props = {
 // "לקביעת תור" שפותח את אשף קביעת התור, פס מבצע עדין (טקסט · מקומות · ימים בלבד,
 // ללא שעון מתקתק) שמוסתר כשאין מבצע או כשהסתיים, והירו מפוצל עם וידאו או תמונות. RTL מלא ונגיש.
 export default function PremiumClinicHeader({
+  timeZone = 'Asia/Jerusalem',
   name,
   logoUrl,
   phone,
@@ -108,6 +114,7 @@ export default function PremiumClinicHeader({
   labels,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [embedLoaded, setEmbedLoaded] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [resolvedAccount, setResolvedAccount] = useState<{
     name?: string | null;
@@ -133,13 +140,10 @@ export default function PremiumClinicHeader({
 
   // שעות "היום" מחושבות בצד הלקוח בלבד: ה-HTML הסטטי חף מיום/שעה קונקרטיים,
   // וההצגה מתעדכנת מיד לאחר הטעינה לפי היום האמיתי בדפדפן.
-  const [todayHours, setTodayHours] = useState<string | null>(null);
-  const [hoursReady, setHoursReady] = useState(false);
-  useEffect(() => {
-    const wh = workingHours.find((w) => w.weekday === new Date().getDay());
-    setTodayHours(wh ? `${formatMinutes(wh.startMinute)}–${formatMinutes(wh.endMinute)}` : null);
-    setHoursReady(true);
-  }, [workingHours]);
+  const today = useBusinessDate(timeZone);
+  const wh = today ? workingHours.find((w) => w.weekday === weekdayForDateString(today, timeZone)) : null;
+  const todayHours = wh ? `${formatMinutes(wh.startMinute)}–${formatMinutes(wh.endMinute)}` : null;
+  const hoursReady = !!today;
 
   const effectiveAccount = resolveAccount ? resolvedAccount : account;
   const phoneDisplay = formatIsraeliPhoneDisplay(phone);
@@ -221,7 +225,7 @@ export default function PremiumClinicHeader({
             <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-[color:var(--c-gold,#c6a86a)]/40 bg-[color:var(--c-cream,#faf6ef)] shadow-soft sm:h-12 sm:w-12">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt={name} className="h-full w-full object-cover" />
+                <MediaImage src={logoUrl} alt={name} sizes="64px" className="h-full w-full object-cover" />
               ) : (
                 <span className="text-lg font-bold text-[color:var(--biz-strong)]">{name.charAt(0)}</span>
               )}
@@ -513,46 +517,10 @@ export default function PremiumClinicHeader({
         <div className="absolute inset-0 -z-10">
           {primary ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={primary} alt={labels.heroImageAlt} className="absolute inset-0 h-full w-full object-cover" />
+            <MediaImage src={primary} alt={labels.heroImageAlt} priority sizes="100vw" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
             <span aria-hidden className="absolute inset-0 bg-[color:var(--c-ink,#1b1715)]" />
           )}
-          {hv ? (
-            <div className="absolute inset-y-0 left-0 w-[46%] overflow-hidden sm:w-[34%]">
-              {hv.kind === 'embed' ? (
-                <iframe
-                  src={hv.src}
-                  className="absolute inset-0 h-full w-full"
-                  style={{ pointerEvents: 'none' }}
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  aria-hidden
-                  title={labels.heroImageAlt}
-                  frameBorder={0}
-                />
-              ) : (
-                <>
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                  <video
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    poster={heroPosterUrl ?? secondary ?? undefined}
-                    aria-label={labels.heroImageAlt}
-                    className="h-full w-full object-cover"
-                  >
-                    <source src={hv.src} type="video/mp4" />
-                  </video>
-                </>
-              )}
-              {/* נוצת מעבר בקצה הפנימי של הווידאו */}
-              <span
-                aria-hidden
-                className="absolute inset-y-0 right-0 w-24"
-                style={{ background: 'linear-gradient(to left, rgba(44,37,34,0.72), transparent)' }}
-              />
-            </div>
-          ) : null}
           {/* מסכת ברונזה להקראת טקסט לבן + זוהר תחתון חמים */}
           <span
             aria-hidden
@@ -566,7 +534,7 @@ export default function PremiumClinicHeader({
           />
         </div>
 
-        <div className="mx-auto w-full max-w-5xl px-5 py-16 sm:py-20">
+        <div className={`mx-auto w-full max-w-5xl px-5 py-16 sm:py-20 ${hv ? 'grid items-center gap-8 md:grid-cols-2' : ''}`}>
           <div className="max-w-xl">
             {heroEyebrow ? (
               <span className="inline-flex items-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/45 bg-white/10 px-4 py-1.5 text-xs font-bold tracking-[0.02em] text-[color:var(--c-gold,#c6a86a)] backdrop-blur-sm">
@@ -610,6 +578,36 @@ export default function PremiumClinicHeader({
               </a>
             </div>
           </div>
+          {hv ? (
+            <div className="aspect-video overflow-hidden rounded-2xl bg-black shadow-elevated">
+              {hv.kind === 'embed' && !embedLoaded ? (
+                <button type="button" onClick={() => setEmbedLoaded(true)} className="flex h-full w-full items-center justify-center gap-3 bg-slate-900 px-6 text-white">
+                  <span aria-hidden>▶</span>
+                  <span>טעינת הסרטון</span>
+                </button>
+              ) : hv.kind === 'embed' ? (
+                <iframe
+                  src={hv.src}
+                  loading="lazy"
+                  className="h-full w-full"
+                  allow="encrypted-media; picture-in-picture"
+                  title={labels.heroImageAlt}
+                  allowFullScreen
+                />
+              ) : (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video
+                  src={hv.src}
+                  preload="none"
+                  controls
+                  playsInline
+                  poster={heroPosterUrl || secondary ? imageUrl((heroPosterUrl || secondary)!, 960) : undefined}
+                  aria-label={labels.heroImageAlt}
+                  className="h-full w-full object-contain"
+                />
+              )}
+            </div>
+          ) : null}
         </div>
       </section>
     </header>

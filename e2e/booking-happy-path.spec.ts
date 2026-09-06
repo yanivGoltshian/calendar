@@ -1,12 +1,16 @@
-import { test, expect, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { STRINGS } from './strings';
 import { serverReachable, BUSINESS_SLUG, ALLOW_BOOKING } from './helpers';
+import { prisma } from '../src/lib/db';
+import { updateAppointmentStatus } from '../src/server/repos/appointments';
+import { t } from '../src/i18n';
 
 /**
  * Flow 8 (full) + Flow 9 — Public booking happy path ending in a real
  * appointment, booked as a guest (no OTP needed for guest booking).
  *
- * This WRITES to the database, so it is triple-gated and skipped by default:
+ * This writes only to the required isolated release database:
  *   - E2E_BASE_URL      → a reachable, seeded server
  *   - E2E_BUSINESS_SLUG → a business with a service, a bookable staff member,
  *                         and working hours
@@ -80,13 +84,41 @@ test.describe('Booking happy path (guest) — confirmed appointment', () => {
 
     // Step 5 — guest details + confirm
     await page.locator('input[type="text"]').first().fill('בדיקה אוטומטית');
-    await page.getByRole('button', { name: STRINGS.booking.guestEmail }).click();
-    await page.locator('input[type="email"]').first().fill('e2e-guest@example.com');
+    await page.locator('input[type="tel"]').fill('0509786222');
+    await page.locator('input[type="email"]').first().fill('e2e-guest@example.invalid');
+    const attemptKeys: string[] = [];
+    let cancelledId = '';
+    await page.route('**/api/book', async (route) => {
+      attemptKeys.push(route.request().headers()['idempotency-key']);
+      const response = await route.fetch();
+      if (attemptKeys.length === 1) {
+        const body = await response.json();
+        expect(body.ok).toBe(true);
+        cancelledId = body.appointmentId;
+        const appointment = await prisma.appointment.findUniqueOrThrow({ where: { id: cancelledId } });
+        await updateAppointmentStatus(cancelledId, 'CANCELLED', { businessId: appointment.businessId });
+        await route.abort('failed');
+      } else {
+        await route.fulfill({ response });
+      }
+    });
+    await page.getByRole('button', { name: STRINGS.booking.confirmBooking }).click();
+    await expect(page.getByText(t.common.error, { exact: true })).toBeVisible();
+    // The lost response replays the now-cancelled record, never a false confirmation.
+    await page.getByRole('button', { name: STRINGS.booking.confirmBooking }).click();
+    await expect(page.getByText(t.booking.bookingNoLongerActive, { exact: true })).toBeVisible();
+    expect(attemptKeys[1]).toBe(attemptKeys[0]);
+    await expect(page.getByText(STRINGS.booking.successTitle)).toBeHidden();
+    await page.getByRole('button', { name: TIME_RE }).first().click();
+    await next.click();
+    await page.getByRole('button', { name: STRINGS.booking.continueToConfirm }).click();
     await page.getByRole('button', { name: STRINGS.booking.confirmBooking }).click();
 
     // Confirmed (approval off) or pending (approval on) — either is a success.
     const success = page.getByText(STRINGS.booking.successTitle);
     const pending = page.getByText(STRINGS.booking.pendingTitle);
     await expect(success.or(pending)).toBeVisible({ timeout: 15_000 });
+    expect(attemptKeys[2]).not.toBe(attemptKeys[0]);
+    expect((await prisma.appointment.findUniqueOrThrow({ where: { id: cancelledId } })).status).toBe('CANCELLED');
   });
 });

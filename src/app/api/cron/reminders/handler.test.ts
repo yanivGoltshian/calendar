@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Prisma } from '@prisma/client';
 
 import { handleReminderCron, type ReminderDeps } from './handler';
-import type { SendReminderResult } from '@/server/reminders/send';
+import { prepareReminder, type SendReminderResult } from '@/server/reminders/send';
 
 /**
  * בדיקות יחידה למטפל ה-cron של התזכורות. משתמשות בהזרקת תלויות (ReminderDeps)
@@ -55,6 +55,10 @@ function makeDeps(overrides: DepsOverride = {}): ReminderDeps {
     getAppointmentsDueForReminder:
       (async () => []) as unknown as ReminderDeps['getAppointmentsDueForReminder'],
     markReminderSent: async () => 1,
+    claimReminder: async () => 'test-claim',
+    beginReminderDispatch: async () => true,
+    completeReminder: async (id, _token, at) => overrides.markReminderSent ? overrides.markReminderSent(id, at) : 1,
+    releaseReminder: async () => undefined,
     sendReminder: async (): Promise<SendReminderResult> => ({
       status: 'skipped',
       reason: 'test',
@@ -88,6 +92,87 @@ function knownError(code: string): Prisma.PrismaClientKnownRequestError {
   });
 }
 
+test('pre-provider eligibility failure releases the claim and a healthy retry sends once', async () => {
+  setSecret(SECRET);
+  let healthy = false, claimed = false, providerCalls = 0, dispatchBegins = 0;
+  const deps = makeDeps({
+    getAppointmentsDueForReminder: async () => [{
+      ...oneDueRow, client: { ...oneDueRow.client, email: 'guest@example.test' },
+    }] as never,
+    claimReminder: async () => {
+      if (claimed) return null;
+      claimed = true;
+      return 'claim';
+    },
+    prepareReminder: (appt) => prepareReminder(appt, {
+      emailConfigured: true,
+      canDeliverEmail: async () => {
+        if (!healthy) throw knownError('P1001');
+        return true;
+      },
+      sendEmail: async () => { providerCalls++; },
+    }),
+    beginReminderDispatch: async () => { dispatchBegins++; return true; },
+    releaseReminder: async (_id, _token, error, uncertain) => {
+      assert.equal(error, 'preparation_failed');
+      assert.ok(!uncertain);
+      claimed = false;
+    },
+  });
+  const failed = await (await handleReminderCron(reqWith(SECRET), deps)).json();
+  assert.equal(failed.counts.failed, 1);
+  assert.equal(failed.counts.uncertain, 0);
+  assert.equal(providerCalls, 0);
+  assert.equal(dispatchBegins, 0);
+  assert.equal(claimed, false);
+  healthy = true;
+  const retried = await (await handleReminderCron(reqWith(SECRET), deps)).json();
+  assert.equal(retried.counts.sent, 1);
+  assert.equal(retried.counts.claimedElsewhere, 0);
+  assert.equal(providerCalls, 1);
+});
+
+test('an exception after dispatch starts still quarantines the claim', async () => {
+  setSecret(SECRET);
+  let providerCalls = 0, quarantined = false;
+  const result = await handleReminderCron(reqWith(SECRET), makeDeps({
+    getAppointmentsDueForReminder: async () => [oneDueRow] as never,
+    prepareReminder: async () => async () => {
+      providerCalls++;
+      throw new Error('provider response lost');
+    },
+    releaseReminder: async (_id, _token, error, uncertain) => {
+      quarantined = error === 'delivery_outcome_unknown' && uncertain === true;
+    },
+  }));
+  assert.equal((await result.json()).counts.uncertain, 1);
+  assert.equal(providerCalls, 1);
+  assert.equal(quarantined, true);
+});
+
+test('partial/duplicate/unconfigured outcomes have honest counters and safe finalization', async () => {
+  setSecret(SECRET);
+  for (const scenario of ['partial', 'duplicate', 'unconfigured']) {
+    let completed = 0, released = 0;
+    const result = await handleReminderCron(reqWith(SECRET), makeDeps({
+      getAppointmentsDueForReminder: async () => [oneDueRow] as never,
+      sendReminder: async () => scenario === 'unconfigured'
+        ? { status: 'skipped', reason: 'email provider not configured' }
+        : scenario === 'duplicate'
+        ? { status: 'sent', channel: 'EMAIL', duplicate: true }
+        : { status: 'failed', channel: 'EMAIL', error: 'provider_rejected', deliveredChannels: ['SMS'] },
+      completeReminder: async () => ++completed,
+      releaseReminder: async () => { released++; },
+    }));
+    const body = await result.json();
+    assert.equal(body.counts.sent, scenario === 'partial' ? 1 : 0);
+    assert.equal(body.counts.failed, scenario === 'partial' ? 1 : 0);
+    assert.equal(body.counts.skipped, scenario === 'unconfigured' ? 1 : 0);
+    assert.equal(completed, scenario === 'duplicate' ? 1 : 0);
+    assert.equal(released, scenario === 'duplicate' ? 0 : 1);
+  }
+});
+
 test('כשל DB חולף (P2024) מחזיר 200 מנוון עם code, לאחר ניסיון חוזר', async () => {
   setSecret(SECRET);
   let calls = 0;
@@ -113,6 +198,8 @@ test('כשל DB חולף (P2024) מחזיר 200 מנוון עם code, לאחר �
     skipped: 0,
     alreadyMarked: 0,
     notYetDue: 0,
+    claimedElsewhere: 0,
+    uncertain: 0,
   });
   // כשל חולף → ניסיון חוזר בודד → נקרא פעמיים.
   assert.equal(calls, 2);
@@ -151,6 +238,8 @@ test('מסלול תקין ללא תורים → 200 ok:true, found:0', async () 
     skipped: 0,
     alreadyMarked: 0,
     notYetDue: 0,
+    claimedElsewhere: 0,
+    uncertain: 0,
   });
 });
 
@@ -186,7 +275,7 @@ test('CRON_SECRET לא מוגדר → 500 cron_secret_unset (תקלת תצורה
   }
 });
 
-test('כשל DB באמצע הלולאה (markReminderSent) → 200 מנוון עם ספירה חלקית', async () => {
+test('post-send storage failure reports accepted send and unknown finalization', async () => {
   setSecret(SECRET);
   const deps = makeDeps({
     getAppointmentsDueForReminder: (async () => [
@@ -206,15 +295,16 @@ test('כשל DB באמצע הלולאה (markReminderSent) → 200 מנוון ע
   const body = (await res.json()) as Record<string, unknown>;
   assert.equal(body.ok, false);
   assert.equal(body.degraded, true);
-  assert.equal(body.code, 'P2022');
-  // נמצא תור אחד, אך אף אחד לא סומן כ-sent כי הכשל קרה לפני הספירה.
+  assert.equal(body.code, 'delivery_outcome_unknown');
   assert.deepEqual(body.counts, {
     found: 1,
-    sent: 0,
+    sent: 1,
     failed: 0,
     skipped: 0,
     alreadyMarked: 0,
     notYetDue: 0,
+    claimedElsewhere: 0,
+    uncertain: 1,
   });
 });
 
@@ -254,6 +344,8 @@ test('סלקטיביות בשלות: תור בשל נשלח ומסומן, תור
     skipped: 0,
     alreadyMarked: 0,
     notYetDue: 1,
+    claimedElsewhere: 0,
+    uncertain: 0,
   });
 });
 
@@ -288,6 +380,8 @@ test('הקדמת 48 שעות: תור ~48 שעות קדימה בשל, תור רח
     skipped: 0,
     alreadyMarked: 0,
     notYetDue: 1,
+    claimedElsewhere: 0,
+    uncertain: 0,
   });
 });
 
@@ -323,5 +417,7 @@ test('הקדמת שעתיים: תור שעה קדימה בשל (מוכיח שא�
     skipped: 0,
     alreadyMarked: 0,
     notYetDue: 1,
+    claimedElsewhere: 0,
+    uncertain: 0,
   });
 });

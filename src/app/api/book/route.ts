@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { getBusinessBySlug } from '@/server/repos/business';
 import { getServicesByIds } from '@/server/repos/services';
-import {
-  createAppointment,
-  hasConflict,
-} from '@/server/repos/appointments';
-import { findOrCreateClient } from '@/server/repos/clients';
-import { createReminder } from '@/server/repos/reminders';
+import { createAppointment } from '@/server/repos/appointments';
+import { BookingError } from '@/server/booking/policy';
+import { bookingDigest } from '@/server/booking/quotas';
 import { notifyOwnerOfBooking } from '@/server/notifications/ownerBooking';
 import { notifyClientOfBooking } from '@/server/notifications/bookingConfirmation';
 import { exportOnCreate } from '@/server/google/appointmentSync';
@@ -15,23 +13,17 @@ import { getBusinessAccess, canAcceptPublicBookings } from '@/server/subscriptio
 import { absoluteUrl } from '@/lib/seo';
 import { getClientSession } from '@/lib/session';
 import { resolveGuestIdentity } from '@/server/booking/guestIdentity';
-import { checkBookRequestAllowed } from '@/server/repos/bookRateLimit';
-import {
-  canEmailClients,
-  canWhatsappClients,
-  requiresClientEmail,
-  schedulesReminders,
-} from '@/server/tier';
-import { t } from '@/i18n';
+import { canEmailClients, canWhatsappClients, requiresClientEmail } from '@/server/tier';
 
 const bodySchema = z.object({
   slug: z.string().min(1),
   staffId: z.string().min(1),
-  serviceIds: z.array(z.string().min(1)).min(1),
+  serviceIds: z.array(z.string().min(1).max(100)).min(1).max(20),
   startAtUtc: z.string().datetime(),
-  name: z.string().trim().min(1).optional(),
+  name: z.string().trim().min(1).max(120).optional(),
   phone: z.string().optional(),
   email: z.string().optional(),
+  idempotencyKey: z.string().min(8).max(128).optional(),
 });
 
 /** חילוץ כתובת ה-IP של הלקוח מכותרות ה-proxy (best-effort). */
@@ -52,15 +44,7 @@ export async function POST(req: Request) {
   // חוסם את התור, ולכן זה בטוח ל-MVP.
   const session = await getClientSession();
 
-  // הגבלת קצב מבוססת IP למניעת ספאם של הזמנות אורח.
   const ip = extractClientIp(req);
-  const rateLimit = checkBookRequestAllowed(ip);
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { ok: false, error: 'rate_limited', reason: rateLimit.reason, message: t.auth.tooManyRequests },
-      { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } },
-    );
-  }
 
   let parsed;
   try {
@@ -126,65 +110,85 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'invalid_time' }, { status: 400 });
   }
 
-  // אכיפת מדיניות ההזמנות של העסק (עם ברירות מחדל תואמות ל-BusinessSettings).
   const settings = business.settings;
-  const minLeadMinutes = settings?.minLeadTimeMinutes ?? 120;
-  const maxAdvanceDays = settings?.maxAdvanceBookingDays ?? 60;
-  const requiresApproval = settings?.bookingRequiresApproval ?? false;
-  const reminderLeadHours = settings?.reminderLeadHours ?? 24;
-
-  const now = Date.now();
-  if (startAt.getTime() < now + minLeadMinutes * 60_000) {
-    return NextResponse.json({ ok: false, error: 'too_early' }, { status: 400 });
-  }
-  if (startAt.getTime() > now + maxAdvanceDays * 24 * 60 * 60 * 1000) {
-    return NextResponse.json({ ok: false, error: 'too_far' }, { status: 400 });
-  }
 
   const totalDuration = services.reduce((sum, s) => sum + s.durationMin, 0);
   const totalPrice = services.reduce((sum, s) => sum + s.priceAgorot, 0);
   const endAt = new Date(startAt.getTime() + totalDuration * 60_000);
 
-  // בדיקת התנגשות אחרונה לפני יצירה (מונע קביעה כפולה על אותה משבצת).
-  if (await hasConflict(parsed.staffId, startAt, endAt)) {
-    return NextResponse.json({ ok: false, error: 'slot_taken' }, { status: 409 });
+  const requestHash = bookingDigest(
+    JSON.stringify({
+      businessId: business.id,
+      staffId: parsed.staffId,
+      serviceIds: [...parsed.serviceIds].sort(),
+      startAtUtc: startAt.toISOString(),
+      name: clientName,
+      phone: clientPhone,
+      email: clientEmail,
+    }),
+  );
+  // Only a caller-held key can replay a guest receipt; contact details alone cannot.
+  const key = req.headers.get('Idempotency-Key') ?? parsed.idempotencyKey ?? randomUUID();
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(key)) {
+    return NextResponse.json(
+      { ok: false, error: 'invalid_idempotency_key' },
+      { status: 400 },
+    );
   }
-
-  // יצירה/איתור לקוח לפי טלפון (מהתחברות או מהזמנת אורח).
-  const client = await findOrCreateClient({
-    businessId: business.id,
-    phone: clientPhone,
-    email: clientEmail,
-    name: clientName,
-    userId: clientUserId,
-  });
-
-  // סטטוס התחלתי לפי מדיניות: PENDING כשנדרש אישור עסק, אחרת CONFIRMED.
-  const status = requiresApproval ? 'PENDING' : 'CONFIRMED';
-
-  const appointment = await createAppointment({
-    businessId: business.id,
-    clientId: client.id,
-    staffId: parsed.staffId,
-    startAt,
-    endAt,
-    services: services.map((s) => ({
-      id: s.id,
-      name: s.name,
-      durationMin: s.durationMin,
-      priceAgorot: s.priceAgorot,
-    })),
-    totalPriceAgorot: totalPrice,
-    status,
-  });
-
-  // תזכורת רק במסלולים ששולחים תזכורות (פרימיום/אקסקלוסיב). בסטנדרט אין תקשורת ללקוח
-  // ולכן לא נקבעת תזכורת. השליחה עצמה תמומש ב-worker עתידי.
-  if (schedulesReminders(business.plan)) {
-    const reminderLeadMs = reminderLeadHours * 60 * 60 * 1000;
-    const sendAt = new Date(Math.max(startAt.getTime() - reminderLeadMs, Date.now() + 60_000));
-    await createReminder(appointment.id, sendAt);
+  const scope = bookingDigest(
+    JSON.stringify({
+      businessId: business.id,
+      userId: clientUserId,
+      phone: clientPhone,
+      email: clientEmail,
+    }),
+  );
+  let appointment;
+  try {
+    appointment = await createAppointment({
+      businessId: business.id,
+      clientIdentity: {
+        name: clientName,
+        phone: clientPhone,
+        email: clientEmail,
+        userId: clientUserId,
+      },
+      idempotency: { scope, key, requestHash },
+      source: ip ?? undefined,
+      publicBooking: true,
+      staffId: parsed.staffId,
+      startAt,
+      endAt,
+      services: services.map((s) => ({
+        id: s.id,
+        name: s.name,
+        durationMin: s.durationMin,
+        priceAgorot: s.priceAgorot,
+      })),
+      totalPriceAgorot: totalPrice,
+    });
+  } catch (error) {
+    if (error instanceof BookingError) {
+      console.warn(
+        JSON.stringify({
+          event: 'booking_denied',
+          businessId: business.id,
+          reason: error.code,
+        }),
+      );
+      return NextResponse.json(
+        { ok: false, error: error.code },
+        {
+          status: error.httpStatus,
+          ...(error.httpStatus === 429 ? { headers: { 'Retry-After': '3600' } } : {}),
+        },
+      );
+    }
+    throw error;
   }
+  const status = appointment.status;
+  if (appointment.replayed)
+    return NextResponse.json({ ok: true, appointmentId: appointment.id, status });
 
   // אישור הזמנה מיידי ללקוח בנתיב CONFIRMED לפי הרשאות המסלול (best-effort, לעולם לא
   // חוסם). המנוי חייב להיות פעיל כדי לפתוח ערוצים בתשלום. בסטנדרט אין ערוצי תקשורת.
@@ -210,8 +214,11 @@ export async function POST(req: Request) {
           businessAddress: business.address,
           manageUrl: absoluteUrl(`/b/${business.slug}`),
         });
-      } catch {
-        // ההזמנה כבר נוצרה והוחזרה בהצלחה; כשל התראה אינו משפיע על התשובה.
+      } catch (error) {
+        console.error('booking_client_notification_failed', {
+          appointmentId: appointment.id,
+          error: error instanceof Error ? error.name : 'unknown',
+        });
       }
     }
   }
@@ -242,8 +249,11 @@ export async function POST(req: Request) {
         businessId: business.id,
         pushEnabled: settings?.pushEnabled ?? false,
       });
-    } catch {
-      // ההזמנה כבר נוצרה והוחזרה בהצלחה; כשל התראה אינו משפיע על התשובה.
+    } catch (error) {
+      console.error('booking_owner_notification_failed', {
+        appointmentId: appointment.id,
+        error: error instanceof Error ? error.name : 'unknown',
+      });
     }
   }
 

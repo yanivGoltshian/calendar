@@ -486,6 +486,11 @@ export default async function SuperadminPage() {
                     <Section title={s.edit.title}>
                       <form action={editBusinessDetailsAction} className="flex flex-col gap-2 pt-2">
                         <input type="hidden" name="businessId" value={b.id} />
+                        <input type="hidden" name="listingSubmitted" value="1" />
+                        <label className="flex min-h-[44px] items-center gap-2 text-xs">
+                          <input type="checkbox" name="listed" defaultChecked={b.listed} />
+                          {s.edit.listedLabel}
+                        </label>
                         <label>
                           <span className="mb-1 block text-xs" style={{ color: TEXT_MUTED }}>
                             {s.edit.nameLabel}

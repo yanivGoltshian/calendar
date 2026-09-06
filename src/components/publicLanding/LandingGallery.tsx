@@ -1,4 +1,5 @@
 import SectionHeading from './SectionHeading';
+import MediaImage from './MediaImage';
 
 type Props = { title: string; images: string[]; eyebrow?: string };
 
@@ -22,7 +23,7 @@ export default function LandingGallery({ title, images, eyebrow }: Props) {
             className={`group relative m-0 overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-[var(--biz-soft)] shadow-soft ${spanFor(i)}`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <MediaImage
               src={url}
               alt=""
               loading="lazy"

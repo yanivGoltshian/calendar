@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { STRINGS } from './strings';
 import { serverReachable } from './helpers';
 
@@ -25,11 +25,7 @@ test.describe('Owner login (/business/login)', () => {
 
     // Email sign-in is gated by AUTH provider env; only assert it when rendered.
     const emailInput = page.locator('input[type="email"]');
-    if (await emailInput.count()) {
-      await expect(emailInput.first()).toBeVisible();
-      await expect(
-        page.getByRole('button', { name: STRINGS.ownerLogin.emailSubmit }),
-      ).toBeVisible();
-    }
+    await expect(emailInput.first()).toBeVisible();
+    await expect(page.getByRole('button', { name: STRINGS.ownerLogin.emailSubmit })).toBeVisible();
   });
 });

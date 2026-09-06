@@ -3,7 +3,7 @@ import { buildMetadata, SITE_URL } from '@/lib/seo';
 import { BRAND, DEMO_BUSINESS_SLUG } from '@/config/brand';
 import { t } from '@/i18n';
 import { Navbar, Footer, Container, Section, Button, Card, Badge } from '@/components/ui';
-import { Reveal, Stagger, StaggerItem, FadeIn } from '@/components/motion';
+import { Reveal, Stagger, StaggerItem } from '@/components/motion';
 import { HeroVisual } from '@/components/landing/HeroVisual';
 import { FaqAccordion } from '@/components/landing/FaqAccordion';
 import { MascotTip } from '@/components/landing/MascotTip';
@@ -86,7 +86,7 @@ export default async function HomePage() {
           <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-grid opacity-[0.05]" />
           <Container className="grid items-center gap-14 py-8 sm:py-12 lg:grid-cols-2 lg:gap-10 lg:py-16">
             <div className="text-center lg:text-start">
-              <FadeIn>
+              <div>
                 <div className="mb-6 flex items-center justify-center">
                   <Image
                     src="/brand/torchick-emblem-mark.png"
@@ -97,16 +97,16 @@ export default async function HomePage() {
                     className="h-20 w-20 object-contain sm:h-24 sm:w-24"
                   />
                 </div>
-              </FadeIn>
-              <FadeIn>
+              </div>
+              <div>
                 <Badge tone="brand" className="mb-5">
                   <span className="inline-flex items-center gap-1.5">
                     <SparkleIcon aria-hidden className="h-3.5 w-3.5" />
                     {m.hero.badge}
                   </span>
                 </Badge>
-              </FadeIn>
-              <Reveal>
+              </div>
+              <div>
                 {/*
                   וריאנט כותרת ל-A/B — יניב בוחר כיוון:
                   ראשי (פעיל):  m.hero.title / m.hero.titleAccent / m.hero.subtitle
@@ -117,13 +117,13 @@ export default async function HomePage() {
                   {m.hero.title}{' '}
                   <span className="text-gradient">{m.hero.titleAccent}</span>
                 </h1>
-              </Reveal>
-              <Reveal delay={0.1}>
+              </div>
+              <div>
                 <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-sand-600 dark:text-sand-300 lg:mx-0">
                   {m.hero.subtitle}
                 </p>
-              </Reveal>
-              <Reveal delay={0.2}>
+              </div>
+              <div>
                 <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
                   <OwnerAwareCta
                     guestHref={heroGuest.primaryHref}
@@ -148,14 +148,14 @@ export default async function HomePage() {
                     </Button>
                   )}
                 </div>
-              </Reveal>
-              <Reveal delay={0.3}>
+              </div>
+              <div>
                 <p className="mt-5 text-sm text-sand-500">{m.hero.microcopy}</p>
-              </Reveal>
+              </div>
             </div>
-            <FadeIn delay={0.15}>
+            <div>
               <HeroVisual />
-            </FadeIn>
+            </div>
           </Container>
         </section>
 

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import type { DocumentType, PaymentMethod } from '@prisma/client';
 import { getActiveBusiness } from '@/server/repos/business';
+import { prisma } from '@/lib/db';
 import {
   createSale,
   getSaleWithDetails,
@@ -134,6 +135,18 @@ export async function setSaleLinksAction(formData: FormData): Promise<void> {
 
   const business = await getActiveBusiness();
   if (!business) return;
+  const [client, appointment, staff] = await Promise.all([
+    clientId
+      ? prisma.client.findFirst({ where: { id: clientId, businessId: business.id }, select: { id: true } })
+      : null,
+    appointmentId
+      ? prisma.appointment.findFirst({ where: { id: appointmentId, businessId: business.id }, select: { id: true } })
+      : null,
+    staffId
+      ? prisma.staffMember.findFirst({ where: { id: staffId, businessId: business.id }, select: { id: true } })
+      : null,
+  ]);
+  if ((clientId && !client) || (appointmentId && !appointment) || (staffId && !staff)) return;
   await setSaleLinks(business.id, saleId, {
     clientId: clientId || null,
     appointmentId: appointmentId || null,

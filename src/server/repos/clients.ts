@@ -3,9 +3,16 @@ import { normalizePhone } from '@/lib/crypto';
 import type { Prisma } from '@prisma/client';
 
 /**
- * מציאת לקוח בעסק לפי זהות (userId / טלפון / מייל), או יצירתו אוטומטית.
- * לפחות אחד מבין phone/email/userId חייב להתקבל. שומר על תאימות לאחור: כאשר
- * מתקבל טלפון, האיתור מתבצע דרך המפתח הייחודי המורכב businessId_phone כמו קודם.
+ * userId must come from a verified server session, never submitted booking fields.
+ * Contact assertions are not ownership proof: every guest gets a separate unlinked
+ * record, and legacy records require an explicit proof-of-ownership migration.
+ * Passing the booking transaction keeps guest contact creation atomic with booking.
+ *
+ * Migration: leave identityVerifiedAt NULL on every preexisting record, including
+ * records with userId. Never backfill it from matching phone/email or an existing
+ * userId: the old linking path accepted guest assertions. Restore access only after
+ * independently proving ownership of the selected appointments; split legacy
+ * mixed-owner records before attaching userId and recording the verification time.
  */
 export async function findOrCreateClient(params: {
   businessId: string;
@@ -13,51 +20,45 @@ export async function findOrCreateClient(params: {
   email?: string | null;
   name: string;
   userId?: string;
-}) {
+}, db: Prisma.TransactionClient = prisma) {
   const phone = params.phone ?? undefined;
   const email = params.email ?? undefined;
   if (!phone && !email && !params.userId) {
     throw new Error('findOrCreateClient: requires at least one of phone/email/userId');
   }
 
-  // איתור לקוח קיים לפי הזהות הזמינה, לפי סדר עדיפויות.
-  let existing = null;
   if (params.userId) {
-    existing = await prisma.client.findFirst({
-      where: { businessId: params.businessId, userId: params.userId },
+    const existing = await db.client.findFirst({
+      where: {
+        businessId: params.businessId,
+        userId: params.userId,
+        identityVerifiedAt: { not: null },
+      },
     });
-  }
-  if (!existing && phone) {
-    existing = await prisma.client.findUnique({
-      where: { businessId_phone: { businessId: params.businessId, phone } },
-    });
-  }
-  if (!existing && email) {
-    existing = await prisma.client.findFirst({
-      where: { businessId: params.businessId, email },
-    });
+    if (existing) return existing;
   }
 
-  if (existing) {
-    // השלמת פרטים חסרים (קישור משתמש, שם, טלפון, מייל) אם התקבלו כעת.
-    const patch: Prisma.ClientUpdateInput = {};
-    if (!existing.userId && params.userId) patch.user = { connect: { id: params.userId } };
-    if (!existing.name && params.name) patch.name = params.name;
-    if (!existing.phone && phone) patch.phone = phone;
-    if (!existing.email && email) patch.email = email;
-    if (Object.keys(patch).length > 0) {
-      return prisma.client.update({ where: { id: existing.id }, data: patch });
-    }
-    return existing;
-  }
+  // Contact matching may deny a booking, but must never grant access or reuse
+  // another person's record. Preserve existing blocked-contact booking policy.
+  const blockedContacts: Prisma.ClientWhereInput[] = [
+    ...(phone ? [{ phone }] : []),
+    ...(email ? [{ email }] : []),
+    ...(params.userId ? [{ userId: params.userId }] : []),
+  ];
+  const blocked = await db.client.findFirst({
+    where: { businessId: params.businessId, blocked: true, OR: blockedContacts },
+    select: { id: true },
+  });
 
-  return prisma.client.create({
+  return db.client.create({
     data: {
       businessId: params.businessId,
       phone: phone ?? null,
       email: email ?? null,
       name: params.name,
       userId: params.userId,
+      identityVerifiedAt: params.userId ? new Date() : null,
+      blocked: Boolean(blocked),
     },
   });
 }

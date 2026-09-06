@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getActiveBusiness } from '@/server/repos/business';
 import { prisma } from '@/lib/db';
+import { Prisma } from '@prisma/client';
+import { permittedPushEndpoint } from '@/server/providers/pushPolicy';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,15 +42,26 @@ export async function POST(req: Request) {
   const p256dh = typeof sub?.keys?.p256dh === 'string' ? sub.keys.p256dh : '';
   const authKey = typeof sub?.keys?.auth === 'string' ? sub.keys.auth : '';
 
-  if (!endpoint || !p256dh || !authKey) {
+  if (!permittedPushEndpoint(endpoint) || !p256dh || !authKey) {
     return NextResponse.json({ error: 'מנוי דחיפה חסר או שגוי.' }, { status: 400 });
   }
 
-  await prisma.pushSubscription.upsert({
-    where: { endpoint },
-    create: { businessId: business.id, endpoint, p256dh, auth: authKey },
-    update: { businessId: business.id, p256dh, auth: authKey },
-  });
+  try {
+    await prisma.pushSubscription.upsert({
+      where: { endpoint, businessId: business.id },
+      create: { businessId: business.id, endpoint, p256dh, auth: authKey },
+      update: { p256dh, auth: authKey },
+    });
+  } catch (error) {
+    // An endpoint already registered to another tenant must never be reassigned.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === 'P2002' || error.code === 'P2025')
+    ) {
+      return NextResponse.json({ error: 'אין הרשאה.' }, { status: 403 });
+    }
+    throw error;
+  }
 
   return NextResponse.json({ ok: true });
 }

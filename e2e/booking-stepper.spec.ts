@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { STRINGS } from './strings';
 import { serverReachable, BUSINESS_SLUG } from './helpers';
 

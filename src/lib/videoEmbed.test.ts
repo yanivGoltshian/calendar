@@ -9,11 +9,11 @@ test('ריק / null / undefined → null', () => {
   assert.equal(heroVideoResolve('   '), null);
 });
 
-test('youtu.be קצר → embed עם playlist=id', () => {
+test('youtu.be קצר → embed ללא autoplay ועם controls', () => {
   const hv = heroVideoResolve('https://youtu.be/dQw4w9WgXcQ');
   assert.deepEqual(hv, {
     kind: 'embed',
-    src: 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&modestbranding=1&rel=0&playlist=dQw4w9WgXcQ',
+    src: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&playsinline=1&rel=0',
   });
 });
 
@@ -21,7 +21,7 @@ test('youtube watch?v= → embed', () => {
   const hv = heroVideoResolve('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s');
   assert.equal(hv?.kind, 'embed');
   assert.ok(hv && hv.src.includes('/embed/dQw4w9WgXcQ?'));
-  assert.ok(hv && hv.src.includes('playlist=dQw4w9WgXcQ'));
+  assert.ok(hv && hv.src.includes('autoplay=0'));
 });
 
 test('youtube shorts → embed', () => {
@@ -30,11 +30,11 @@ test('youtube shorts → embed', () => {
   assert.ok(hv && hv.src.includes('/embed/dQw4w9WgXcQ?'));
 });
 
-test('vimeo → embed רקע', () => {
+test('vimeo → embed עם נגן נשלט', () => {
   const hv = heroVideoResolve('https://vimeo.com/123456789');
   assert.deepEqual(hv, {
     kind: 'embed',
-    src: 'https://player.vimeo.com/video/123456789?autoplay=1&muted=1&loop=1&background=1',
+    src: 'https://player.vimeo.com/video/123456789?autoplay=0&controls=1',
   });
 });
 

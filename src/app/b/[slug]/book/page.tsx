@@ -5,12 +5,17 @@ import { getAllBusinessSlugs, getBusinessBySlug } from '@/server/repos/business'
 import { t } from '@/i18n';
 import { authProviderStatus } from '@/auth';
 import BookingStepper from './BookingStepper';
+import { buildMetadata } from '@/lib/seo';
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
 
-export const metadata: Metadata = { title: t.booking.title };
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const business = await getBusinessBySlug(slug);
+  return buildMetadata({ title: `${t.booking.title} · ${business?.name ?? ''}`, path: `/b/${slug}/book`, noIndex: true });
+}
 
 // עמוד סטטי לחלוטין: שלד אשף ההזמנה נשמר במטמון ללא תפוגה ומתרענן רק על פי דרישה
 // דרך revalidatePath בפעולות הבעלים. בדיקת המנוי (עסק שפג תוקפו) הוסרה מהשרת ועברה
@@ -55,6 +60,7 @@ export default async function BookPage({ params }: Props) {
     <main className="mx-auto max-w-2xl px-5 py-6">
       <Suspense fallback={null}>
         <BookingStepper
+          timeZone={business.timezone}
           slug={business.slug}
           businessName={business.name}
           phone={business.phone}

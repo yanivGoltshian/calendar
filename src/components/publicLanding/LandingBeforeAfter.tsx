@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import SectionHeading from './SectionHeading';
+import MediaImage from './MediaImage';
 
 export type BeforeAfterItem = { beforeUrl: string; afterUrl: string; label?: string };
 
@@ -45,11 +46,11 @@ function Slider({ item, beforeLabel, afterLabel }: { item: BeforeAfterItem; befo
     >
       {/* תמונת ה"אחרי" כבסיס */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={item.afterUrl} alt={afterLabel} className="absolute inset-0 h-full w-full object-cover" draggable={false} />
+      <MediaImage src={item.afterUrl} alt={afterLabel} className="absolute inset-0 h-full w-full object-cover" draggable={false} />
       {/* תמונת ה"לפני" חתוכה לפי המיקום (RTL: חושפים מימין) */}
       <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${pos}%)` }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={item.beforeUrl} alt={beforeLabel} className="h-full w-full object-cover" draggable={false} />
+        <MediaImage src={item.beforeUrl} alt={beforeLabel} className="h-full w-full object-cover" draggable={false} />
       </div>
 
       <span className="pointer-events-none absolute end-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white">

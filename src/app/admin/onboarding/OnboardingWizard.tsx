@@ -694,35 +694,39 @@ export default function OnboardingWizard({
   const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
   const heroVideoInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Advance for the submitted action, not older success objects recreated by RSC revalidation.
   const [servicesState, servicesFormAction, servicesPending] = useActionState(
-    saveServices,
+    async (previous: SaveState, formData: FormData) => {
+      const result = await saveServices(previous, formData);
+      if (result.ok) setStep(1);
+      return result;
+    },
     initialSaveState,
   );
-  const [hoursState, hoursFormAction, hoursPending] = useActionState(saveHours, initialSaveState);
+  const [hoursState, hoursFormAction, hoursPending] = useActionState(
+    async (previous: SaveState, formData: FormData) => {
+      const result = await saveHours(previous, formData);
+      if (result.ok) setStep(2);
+      return result;
+    },
+    initialSaveState,
+  );
   const [brandingState, brandingFormAction, brandingPending] = useActionState(
-    saveBranding,
+    async (previous: SaveState, formData: FormData) => {
+      const result = await saveBranding(previous, formData);
+      if (result.ok) setPremiumPhase('editor');
+      return result;
+    },
     initialSaveState,
   );
   const [premiumState, premiumFormAction, premiumPending] = useActionState(
-    savePremiumLanding,
+    async (previous: SaveState, formData: FormData) => {
+      const result = await savePremiumLanding(previous, formData);
+      if (result.ok) setPremiumPhase(nextTargetRef.current);
+      return result;
+    },
     initialSaveState,
   );
-
-  useEffect(() => {
-    if (servicesState.ok) setStep(1);
-  }, [servicesState]);
-  useEffect(() => {
-    if (hoursState.ok) setStep(2);
-  }, [hoursState]);
-  // אחרי המיתוג: מעבר רציף ישר לעורך עמוד הפרימיום (בלי שער ביניים).
-  useEffect(() => {
-    if (brandingState.ok) setPremiumPhase('editor');
-  }, [brandingState]);
-  // אחרי שמירת פרימיום מוצלחת: מעבר ליעד שנקבע (תת-שלב הבא / סיכום).
-  useEffect(() => {
-    if (!premiumState.ok) return;
-    setPremiumPhase(nextTargetRef.current);
-  }, [premiumState]);
   // גלילה לראש התצוגה בכל מעבר בין שלבים (המשך/דלג/חזרה, וכל מעבר 1/5→5/5 בעורך).
   useEffect(() => {
     if (typeof window === 'undefined') return;

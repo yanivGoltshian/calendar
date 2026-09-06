@@ -40,7 +40,8 @@ export async function submitQuoteRequest(
   const sessionEmail = session?.user?.email;
   if (!sessionEmail) return { ok: false, error: 'auth' };
 
-  const business = await getActiveBusiness();
+  // Requesting billing assistance remains available after a subscription expires.
+  const business = await getActiveBusiness({ allowInactive: true });
   if (!business || business.ownerEmail !== sessionEmail) {
     return { ok: false, error: 'auth' };
   }

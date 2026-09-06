@@ -30,6 +30,7 @@ const basePayload: ClientApprovalPayload = {
 function fakeGuardDeps(): NotifyClientApprovalDeps {
   return {
     sendGuardedSms: async () => ({ status: 'sent', costAgorot: 10, crossedAlert: false }),
+    deliverEmail: async () => ({ status: 'sent' }),
   };
 }
 

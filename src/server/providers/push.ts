@@ -1,3 +1,6 @@
+import type { PushSubscription } from 'web-push';
+import { permittedPushEndpoint, sendPinnedPush, type PushTransportDependencies } from './pushPolicy';
+
 /**
  * ספק התראות Web Push (PWA) לבעל העסק.
  *
@@ -20,6 +23,14 @@ export interface PushProvider {
 }
 
 type VapidConfig = { publicKey: string; privateKey: string; subject: string };
+export type PushProviderDependencies = {
+  vapid?: VapidConfig | null;
+  subscriptions?: {
+    list: (businessId: string) => Promise<Array<{ endpoint: string; p256dh: string; auth: string }>>;
+    remove: (businessId: string, endpoints: string[]) => Promise<unknown>;
+  };
+  transport?: PushTransportDependencies;
+};
 
 /** קריאת מפתחות VAPID מהסביבה. מחזיר null כשחסר מפתח ציבורי או פרטי. */
 function readVapidConfig(): VapidConfig | null {
@@ -33,13 +44,14 @@ function readVapidConfig(): VapidConfig | null {
 }
 
 class WebPushProvider implements PushProvider {
+  constructor(private readonly dependencies: PushProviderDependencies = {}) {}
   async sendPush(userId: string, title: string, body: string): Promise<void> {
     // eslint-disable-next-line no-console
     console.log(`\n🔔 [PUSH → ${userId}] ${title}: ${body}\n`);
   }
 
   async sendToBusiness(businessId: string, title: string, body: string, url?: string): Promise<void> {
-    const vapid = readVapidConfig();
+    const vapid = this.dependencies.vapid === undefined ? readVapidConfig() : this.dependencies.vapid;
     if (!vapid) {
       // אין VAPID — התדרדרות בחן ל-console, ללא גישה למסד או לחבילה.
       // eslint-disable-next-line no-console
@@ -48,14 +60,17 @@ class WebPushProvider implements PushProvider {
     }
 
     try {
-      const [{ default: webpush }, { prisma }] = await Promise.all([
-        import('web-push'),
-        import('@/lib/db'),
-      ]);
-
-      webpush.setVapidDetails(vapid.subject, vapid.publicKey, vapid.privateKey);
-
-      const subs = await prisma.pushSubscription.findMany({ where: { businessId } });
+      const { default: webpush } = await import('web-push');
+      const subscriptions = this.dependencies.subscriptions ?? await (async () => {
+        const { prisma } = await import('@/lib/db');
+        return {
+          list: (id: string) => prisma.pushSubscription.findMany({ where: { businessId: id } }),
+          remove: (id: string, endpoints: string[]) => prisma.pushSubscription.deleteMany({
+            where: { businessId: id, endpoint: { in: endpoints } },
+          }),
+        };
+      })();
+      const subs = await subscriptions.list(businessId);
       if (subs.length === 0) return;
 
       const payload = JSON.stringify({ title, body, url: url ?? '/admin' });
@@ -64,10 +79,13 @@ class WebPushProvider implements PushProvider {
       await Promise.all(
         subs.map(async (sub) => {
           try {
-            await webpush.sendNotification(
-              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-              payload,
-            );
+            // Stored rows predate the registration guard; never trust their endpoints.
+            if (!permittedPushEndpoint(sub.endpoint)) throw new Error('push_origin');
+            const subscription: PushSubscription = {
+              endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth },
+            };
+            const details = webpush.generateRequestDetails(subscription, payload, { vapidDetails: vapid });
+            await sendPinnedPush(details, this.dependencies.transport);
           } catch (err) {
             // 404/410 — המנוי בוטל בדפדפן; מסמנים לגזימה. יתר השגיאות רק מתועדות.
             const statusCode =
@@ -85,9 +103,7 @@ class WebPushProvider implements PushProvider {
       );
 
       if (deadEndpoints.length > 0) {
-        await prisma.pushSubscription
-          .deleteMany({ where: { endpoint: { in: deadEndpoints } } })
-          .catch(() => {});
+        await subscriptions.remove(businessId, deadEndpoints).catch(() => {});
       }
     } catch (err) {
       // כל כשל בלתי צפוי (ייבוא/מסד) אינו חוסם — רק מתועד.
@@ -99,7 +115,11 @@ class WebPushProvider implements PushProvider {
 
 let provider: PushProvider | null = null;
 
+export function createPushProvider(dependencies: PushProviderDependencies = {}): PushProvider {
+  return new WebPushProvider(dependencies);
+}
+
 export function getPushProvider(): PushProvider {
-  if (!provider) provider = new WebPushProvider();
+  if (!provider) provider = createPushProvider();
   return provider;
 }

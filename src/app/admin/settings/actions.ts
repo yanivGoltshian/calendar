@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getActiveBusiness } from '@/server/repos/business';
 import { canSendPaidClientSms } from '@/server/subscription';
-import { normalizeLandingContent } from '@/lib/publicPageStyle';
+import { normalizeLandingContent, type LandingContent } from '@/lib/publicPageStyle';
 import {
   updateBusinessProfile,
   updateBookingPolicy,
@@ -20,6 +20,7 @@ import {
   type SaveState,
 } from './parse';
 import { saveMessageTemplateOverrides } from '@/server/repos/messageTemplates';
+import { isSafeBusinessMediaWrite } from './mediaValidation';
 
 /** מצב אחיד לכל טופס הגדרות (useActionState). מיוצא מחדש מ-parse. */
 export type { SaveState } from './parse';
@@ -64,12 +65,22 @@ export async function saveAllSettingsAction(
   // נשלח landingContent כלל, כדי לשמר את התוכן הקיים כפי שהוא.
   const profileData = { ...profile.data };
   if (business.publicPageStyle === 'LANDING') {
-    const existing = normalizeLandingContent(business.landingContent) ?? {};
-    profileData.landingContent = normalizeLandingContent({
+    const existing = business.landingContent && typeof business.landingContent === 'object' &&
+      !Array.isArray(business.landingContent) ? business.landingContent : {};
+    const displayed = normalizeLandingContent(existing)?.heroImages ?? [];
+    const stored = Array.isArray(existing.heroImages) ? existing.heroImages : [];
+    profileData.landingContent = {
       ...existing,
-      heroImages: parseLandingHeroImages(fd),
-    });
+      heroImages: parseLandingHeroImages(fd).map((image, index) => {
+        const original = stored[index];
+        // The legacy editor truncated embedded URLs; an unchanged displayed value
+        // preserves its original bytes rather than rewriting a broken image.
+        return typeof original === 'string' && /^data:/i.test(original) &&
+          image === displayed[index] ? original : image;
+      }),
+    } as LandingContent;
   }
+  if (!isSafeBusinessMediaWrite(profileData, business)) return { ok: false, error: 'bad_request' };
 
   await updateBusinessProfile(business.id, profileData);
   await updateBookingPolicy(business.id, policy.data);

@@ -162,17 +162,23 @@ export async function editBusinessDetailsAction(formData: FormData): Promise<voi
   // קלט לא תקין (שם ריק / מייל פגום) — לא משנים דבר.
   if (!parsed.ok) return;
 
-  await prisma.business.update({
+  const business = await prisma.business.update({
     where: { id: businessId },
     data: {
       name: parsed.data.name,
       phone: parsed.data.phone,
       ownerEmail: parsed.data.ownerEmail,
       planNotes: parsed.data.planNotes,
+      ...(formData.get('listingSubmitted') === '1' ? { listed: formData.get('listed') === 'on' } : {}),
     },
+    select: { slug: true },
   });
 
   revalidatePath('/superadmin');
+  revalidatePath(`/b/${business.slug}`);
+  revalidatePath('/businesses');
+  revalidatePath('/sitemap.xml');
+  revalidatePath('/');
 }
 
 /**

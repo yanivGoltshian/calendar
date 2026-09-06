@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ArrowLeftIcon } from './icons';
+import MediaImage from './MediaImage';
 
 type Props = {
   eyebrow?: string;
@@ -46,7 +47,7 @@ function FaceImg({ src }: { src: string }) {
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <MediaImage sizes="230px"
         src={src}
         alt=""
         width={CUBE}

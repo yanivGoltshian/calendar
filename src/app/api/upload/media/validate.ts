@@ -33,6 +33,9 @@ export function validateMediaFile(input: {
   size: number;
 }): MediaValidationResult {
   const meta = ALLOWED_MEDIA[input.type];
+  if (!Number.isFinite(input.size) || input.size <= 0) {
+    return { ok: false, status: 400, error: 'הקובץ ריק או אינו תקין.' };
+  }
   if (!meta) {
     return {
       ok: false,

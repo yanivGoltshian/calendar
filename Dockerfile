@@ -13,16 +13,16 @@
 # ============================================================================
 
 # ---------- שלב 1: התקנת תלויות ----------
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 # libc6-compat נדרש עבור מנועי Prisma על alpine (musl)
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 
 # ---------- שלב 2: בנייה ----------
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
@@ -52,7 +52,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ---------- שלב 3: ריצה (runner) ----------
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 RUN apk add --no-cache openssl
 WORKDIR /app
 
@@ -60,6 +60,10 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ARG APP_REVISION
+ENV APP_REVISION=${APP_REVISION}
+LABEL org.opencontainers.image.revision=${APP_REVISION}
+LABEL org.opencontainers.image.source="https://github.com/yanivGoltshian/calendar"
 
 # משתמש לא-root מטעמי אבטחה
 RUN addgroup --system --gid 1001 nodejs \
