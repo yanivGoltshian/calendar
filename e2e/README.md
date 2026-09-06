@@ -16,7 +16,9 @@ Never use production credentials, databases, recipients or storage.
 
 `TEST_PG_BIN` can select the PostgreSQL binary directory. Local defaults are
 PostgreSQL14 on port55449 and the app on port3149; CI installs PostgreSQL16.
-Use Node22 locally to match CI, rather than the machine's default Node25.
+Use Node22 and npm10.9.8 locally to match CI, rather than the machine's default
+Node25/npm11. Switching only the Node binary does not switch npm. Maintain the
+lock with the CI npm version so optional cross-platform dependencies remain present.
 
 ## Required browser scope
 
