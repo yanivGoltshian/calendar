@@ -48,11 +48,12 @@ async function pickFirstAvailableSlot(page: Page): Promise<boolean> {
 }
 
 test.describe('Booking happy path (guest) — confirmed appointment', () => {
-  test('books an appointment through all six steps', async ({ page }) => {
+  test('books an appointment through all six steps', async ({ page }, info) => {
     test.skip(!(await serverReachable()), 'app server not reachable — set E2E_BASE_URL');
     test.skip(!BUSINESS_SLUG, 'no seeded business — set E2E_BUSINESS_SLUG');
     test.skip(!ALLOW_BOOKING, 'booking mutates data — set E2E_ALLOW_BOOKING=1 to run');
 
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/b/${BUSINESS_SLUG}/book`);
     const next = page.getByRole('button', { name: STRINGS.common.next });
 
@@ -80,6 +81,10 @@ test.describe('Booking happy path (guest) — confirmed appointment', () => {
     await next.click();
 
     // Step 4 — summary → continue to confirm
+    await info.attach('guest-summary-390.png', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
     await page.getByRole('button', { name: STRINGS.booking.continueToConfirm }).click();
 
     // Step 5 — guest details + confirm
@@ -95,8 +100,12 @@ test.describe('Booking happy path (guest) — confirmed appointment', () => {
         const body = await response.json();
         expect(body.ok).toBe(true);
         cancelledId = body.appointmentId;
-        const appointment = await prisma.appointment.findUniqueOrThrow({ where: { id: cancelledId } });
-        await updateAppointmentStatus(cancelledId, 'CANCELLED', { businessId: appointment.businessId });
+        const appointment = await prisma.appointment.findUniqueOrThrow({
+          where: { id: cancelledId },
+        });
+        await updateAppointmentStatus(cancelledId, 'CANCELLED', {
+          businessId: appointment.businessId,
+        });
         await route.abort('failed');
       } else {
         await route.fulfill({ response });
@@ -106,7 +115,9 @@ test.describe('Booking happy path (guest) — confirmed appointment', () => {
     await expect(page.getByText(t.common.error, { exact: true })).toBeVisible();
     // The lost response replays the now-cancelled record, never a false confirmation.
     await page.getByRole('button', { name: STRINGS.booking.confirmBooking }).click();
-    await expect(page.getByText(t.booking.bookingNoLongerActive, { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(t.booking.bookingNoLongerActive, { exact: true }),
+    ).toBeVisible();
     expect(attemptKeys[1]).toBe(attemptKeys[0]);
     await expect(page.getByText(STRINGS.booking.successTitle)).toBeHidden();
     await page.getByRole('button', { name: TIME_RE }).first().click();
@@ -118,7 +129,13 @@ test.describe('Booking happy path (guest) — confirmed appointment', () => {
     const success = page.getByText(STRINGS.booking.successTitle);
     const pending = page.getByText(STRINGS.booking.pendingTitle);
     await expect(success.or(pending)).toBeVisible({ timeout: 15_000 });
+    await info.attach('guest-confirmed-390.png', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
     expect(attemptKeys[2]).not.toBe(attemptKeys[0]);
-    expect((await prisma.appointment.findUniqueOrThrow({ where: { id: cancelledId } })).status).toBe('CANCELLED');
+    expect(
+      (await prisma.appointment.findUniqueOrThrow({ where: { id: cancelledId } })).status,
+    ).toBe('CANCELLED');
   });
 });

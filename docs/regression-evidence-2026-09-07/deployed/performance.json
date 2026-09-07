@@ -1,0 +1,33 @@
+{
+  "profile": {
+    "width": 390,
+    "height": 844,
+    "bytesPerSecond": 200000,
+    "latencyMs": 150,
+    "cpuSlowdown": 4
+  },
+  "samples": [
+    {
+      "lcpMs": 784,
+      "transferredBytes": 310096,
+      "videoTransferredBytes": 0,
+      "videoPlaying": false,
+      "decodedVideoWidth": 0
+    },
+    {
+      "lcpMs": 788,
+      "transferredBytes": 310096,
+      "videoTransferredBytes": 0,
+      "videoPlaying": false,
+      "decodedVideoWidth": 0
+    },
+    {
+      "lcpMs": 788,
+      "transferredBytes": 310096,
+      "videoTransferredBytes": 0,
+      "videoPlaying": false,
+      "decodedVideoWidth": 0
+    }
+  ],
+  "scope": "Local production builds, identical synthetic seed and media, current locked runtime dependencies for all three source revisions."
+}

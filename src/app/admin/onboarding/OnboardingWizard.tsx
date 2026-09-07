@@ -39,6 +39,7 @@ import {
   type LandingBenefit,
 } from '@/lib/publicPageStyle';
 import { ALLOWED_MEDIA } from '@/app/api/upload/media/validate';
+import DecorativeHeroMedia from '@/components/publicLanding/DecorativeHeroMedia';
 
 /** תת-קבוצה סריאליזבילית של שירות, לרינדור שורות ההחלפה בצעד השירותים. */
 export type WizardService = {
@@ -1644,14 +1645,10 @@ export default function OnboardingWizard({
                           'pv-hero',
                           <>
                             {premiumDraft.heroVideoUrl ? (
-                              <video
+                              <DecorativeHeroMedia
                                 className="pv-hero-video"
-                                src={premiumDraft.heroVideoUrl}
+                                url={premiumDraft.heroVideoUrl}
                                 poster={heroImages[0] || undefined}
-                                autoPlay
-                                muted
-                                loop
-                                playsInline
                               />
                             ) : heroImages[0] ? (
                               // eslint-disable-next-line @next/next/no-img-element

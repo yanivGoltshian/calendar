@@ -21,7 +21,7 @@ export function heroVideoResolve(url: string | null | undefined): HeroVideo | nu
     const id = yt[1];
     return {
       kind: 'embed',
-      src: `https://www.youtube-nocookie.com/embed/${id}?autoplay=0&controls=1&playsinline=1&rel=0`,
+      src: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&loop=1&controls=0&playsinline=1&rel=0&playlist=${id}`,
     };
   }
 
@@ -30,7 +30,7 @@ export function heroVideoResolve(url: string | null | undefined): HeroVideo | nu
     const id = vm[1];
     return {
       kind: 'embed',
-      src: `https://player.vimeo.com/video/${id}?autoplay=0&controls=1`,
+      src: `https://player.vimeo.com/video/${id}?autoplay=1&muted=1&loop=1&background=1`,
     };
   }
 
