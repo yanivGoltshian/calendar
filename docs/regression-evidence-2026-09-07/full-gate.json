@@ -1,0 +1,381 @@
+{
+  "node": "v22.23.2",
+  "database": "isolated",
+  "fullReleaseGate": true,
+  "completedAt": "2026-09-07T14:57:35.973Z",
+  "counts": {
+    "migrations": 38,
+    "unit": 855,
+    "integration": 56,
+    "browser": {
+      "total": 29,
+      "expected": 29,
+      "unexpected": 0,
+      "flaky": 0,
+      "skipped": 0,
+      "ok": true
+    }
+  },
+  "sourceHashes": {
+    "src/components/publicLanding/DecorativeHeroMedia.tsx": "f541eff091d90fa0e4d8f565d887187bfbd907218c8cee2b3c12717db2fda80e",
+    "src/components/publicLanding/PremiumClinicHeader.tsx": "43c8ceba5819d7ad9fd8f945102b5d8ff5638492c2c158d1e2d525b46118c2cc",
+    "src/app/admin/onboarding/OnboardingWizard.tsx": "2a6e4430b76f24a5deddb7d18eed6df3b33c49cb678f17115851b4caaa9ce1f8",
+    "src/lib/videoEmbed.ts": "08df8059b33775a7ddd207040a7a5fdbad8f3b0545ee5e787d0731e2b69bad99",
+    "src/i18n/he.ts": "4bb5668fc3df7e9c3e96f82bb57144ba9d7807013df6584fc43cbb11d04aae68",
+    "src/server/media/image.ts": "5def6450d4616acba6116734e899e0b190c3168ee8001a48f4c9ee7a97fb6b05",
+    "src/server/media/uploadHandler.ts": "e2c2a3ef2f09e03444821f65bbb5b6a7f2a82ca1585108c441c0b1a854ce96bc",
+    "src/lib/og/assets.ts": "b6d791af8b3621522255b07b00379186d2d7e7c23c93b7064ea48bbfba05ab89",
+    "package-lock.json": "1120e49790172c1da645e7d20332066f1e3769cf9b86916e7172ef05b375f694",
+    "e2e/booking-happy-path.spec.ts": "3f4753505e0eb940f508e332a211e8cb28f070f9b93acc1546b1ff3f677e8e04",
+    "e2e/booking-stepper.spec.ts": "46aad1eb95ee096085cc8559425157e114b2547fbb3294e5877c4875c17849b7",
+    "e2e/core-integrity.spec.ts": "f31f76d51a6699518857d1d3c07f1878bc776ffd16684b1d8c534252302f2f7e",
+    "e2e/customer-login.spec.ts": "353d4344ed8cf4d26c676e2f6463fc3ad1b3201a4e0aff2a4462b79aad5d43ef",
+    "e2e/fixtures.ts": "b76ac0be652a4651eddc1591201b8ae85a7bbae451f3060c82c1ba539c06d838",
+    "e2e/helpers.ts": "1110a92cfc0587e06f60c408545671062462267bd7cb37027e659019e25532b2",
+    "e2e/hero-regression.spec.ts": "cdb6b1595808fe01baa49ebafca48a32399df073fbcbb51c572d35f0077ef39f",
+    "e2e/legacy-media.spec.ts": "a110fa573c855999866dee446d9552f87a57d5140b3c3a354d49d4b56b2fd301",
+    "e2e/login-regression.spec.ts": "e43cac8d331e6729eafd80487adc891309ee6e7c88ad3b1e2e8d26fe3ff556be",
+    "e2e/media-seo.spec.ts": "14d70699b918cca1d4466f043cb2cd713df8dbdf69016a55b8e7f76fc6d6c8c9",
+    "e2e/mobilePerformance.ts": "3b1fae79265c6659938770aa6eb19e258b861526821de52054656addf6c4281c",
+    "e2e/owner-login.spec.ts": "dabce2222e79a262ed1d2f9e0c4b3906b7e07fc0db95cfd56e7035801ecdac20",
+    "e2e/public-business.spec.ts": "b96a1d35e5333a2451c7c591048ac097670c87593ed87ddb2282ad2839b7221b",
+    "e2e/public-matrix.spec.ts": "fb30afaa10096dd2394827f717c88c0dccffd504cfc85fec74a039b168093ec0",
+    "e2e/requiredReporter.ts": "ffd16ba938f1ba7d896a3e4ef94534b004193c25416ad7c8ae920fe668e2c007",
+    "e2e/strings.ts": "2de0768e5d186a162d993f094c99c052519cff5e429353fd86a5003418ef947a",
+    "e2e/visualFixtures.ts": "1d18b0f0082ca95320d9dc4f901df19309e1187dad30060af12229957aee3d20",
+    "e2e/waitlist-regression.spec.ts": "30897a7a9afcdcc01864e4366cb809be2bb9b669212f0633f432724a9c29cf02",
+    "e2e/assets/hero-portrait.mp4": "e2cda7dde2472cc709c796bff06952a9c55fce0b351f648771b2e1ef1ba35862",
+    "scripts/test-release.mjs": "9e49163870278db6c9256ad7fda72f7c59009bcb2584c6aa5638913922e29f11",
+    "scripts/compare-public-ui.ts": "2af72ed81db79ecbfdb47cafef3f8f15cb32fb37b400fe582da3fc776eab7644",
+    "scripts/seed-visual-comparison.ts": "28c3b6035698beed5e50c846290dacc90c65abb5e80d2bc23028ba6e28424c5e",
+    "src/lib/og/assets.test.ts": "2ac2a4722a7e87d06a2559903dcfcc614188303030a4cb6d50e4c2f9ee0b522a",
+    "src/lib/videoEmbed.test.ts": "61602ec428972b7633a0b0f730227b7c5436ead4b2ab2324bf1586e5dade7c45",
+    "src/server/media/image.test.ts": "9c5f805aba48220062b206d2f84c1c6ccf92ec6ab428f5068a0b14472d65476b",
+    "src/server/media/route.test.ts": "4e9d559553d0a005a5a05b1349e1e2afd4dd6b02841b8443074e58fcf3e3964f",
+    "src/data/clinicDemo.ts": "3718b4a804360e4314d22082947e78a8ec94827fe8885d21d9e9ca03bbffba16",
+    "public/images/clinic/videos/clinic-hero.mp4": "b48c1b0a0485dbaad6b0a1c5d1be3c7902535f8e7400b01e67292bebf4b26034",
+    "public/images/clinic/videos/clinic-hero-poster.jpg": "adc8cea1e060a153938d4c78a438a7bc63f41ed2071405cea821e75c693deb36"
+  },
+  "tests": [
+    {
+      "file": "booking-happy-path.spec.ts",
+      "title": "books an appointment through all six steps",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1515
+        }
+      ]
+    },
+    {
+      "file": "booking-stepper.spec.ts",
+      "title": "step 0 gates \"next\" until a service is picked, then advances to staff",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 255
+        }
+      ]
+    },
+    {
+      "file": "core-integrity.spec.ts",
+      "title": "verified customer cancellation persists atomically and cancels reminder intent",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 691
+        }
+      ]
+    },
+    {
+      "file": "core-integrity.spec.ts",
+      "title": "owner OTP, uploads, sequential onboarding, editor playback and publication",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 7769
+        }
+      ]
+    },
+    {
+      "file": "core-integrity.spec.ts",
+      "title": "anonymous admin mutation APIs fail closed for valid shaped requests",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 10
+        }
+      ]
+    },
+    {
+      "file": "customer-login.spec.ts",
+      "title": "email channel toggle reveals the email field and send-code button",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 227
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "decorative public hero at 360px preserves crop, playback and booking access",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4149
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "decorative public hero at 390px preserves crop, playback and booking access",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3361
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "decorative public hero at 768px preserves crop, playback and booking access",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4204
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "decorative public hero at 1366px preserves crop, playback and booking access",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4275
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "hero reduced-motion keeps poster, dimensions and manual fallback",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1036
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "hero save-data keeps poster, dimensions and manual fallback",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 795
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "hero autoplay-denied keeps poster, dimensions and manual fallback",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 838
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "hero broken-video keeps poster, dimensions and manual fallback",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 694
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "youtube decorative embed uses isolated provider stub and defers under reduced motion",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 789
+        }
+      ]
+    },
+    {
+      "file": "hero-regression.spec.ts",
+      "title": "vimeo decorative embed uses isolated provider stub and defers under reduced motion",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 769
+        }
+      ]
+    },
+    {
+      "file": "legacy-media.spec.ts",
+      "title": "large legacy images stay outside full-page HTML and use bounded WebP variants",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1580
+        }
+      ]
+    },
+    {
+      "file": "login-regression.spec.ts",
+      "title": "customer email login: delivery stub, invalid OTP, retry and real account session",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 673
+        }
+      ]
+    },
+    {
+      "file": "login-regression.spec.ts",
+      "title": "customer phone login: delivery stub, invalid OTP, retry and real account session",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 658
+        }
+      ]
+    },
+    {
+      "file": "media-seo.spec.ts",
+      "title": "real cached Next page bounds legacy SSR/images and hydrates calendar dates across midnight",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 47026
+        }
+      ]
+    },
+    {
+      "file": "owner-login.spec.ts",
+      "title": "shows heading + customer-login link; email OTP form when the provider is enabled",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 432
+        }
+      ]
+    },
+    {
+      "file": "public-business.spec.ts",
+      "title": "renders a booking CTA linking to the booking stepper",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 347
+        }
+      ]
+    },
+    {
+      "file": "public-matrix.spec.ts",
+      "title": "public page matrix and navigation at 360px RTL",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 15890
+        }
+      ]
+    },
+    {
+      "file": "public-matrix.spec.ts",
+      "title": "public page matrix and navigation at 390px RTL",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 11351
+        }
+      ]
+    },
+    {
+      "file": "public-matrix.spec.ts",
+      "title": "public page matrix and navigation at 768px RTL",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 13294
+        }
+      ]
+    },
+    {
+      "file": "public-matrix.spec.ts",
+      "title": "public page matrix and navigation at 1366px RTL",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 10311
+        }
+      ]
+    },
+    {
+      "file": "public-matrix.spec.ts",
+      "title": "install guidance, keyboard dismissal and generated PWA icons work with legacy logos",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2260
+        }
+      ]
+    },
+    {
+      "file": "public-matrix.spec.ts",
+      "title": "anonymous admin navigation remains gated and public customer login channels remain usable",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1501
+        }
+      ]
+    },
+    {
+      "file": "waitlist-regression.spec.ts",
+      "title": "guest waitlist validates details, survives transport failure and saves one tenant-scoped request",
+      "outcome": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 487
+        }
+      ]
+    }
+  ],
+  "scope": "Isolated local standalone production build; delivery, upload storage, and embedded providers stubbed. No physical-device, real-provider, or production-capacity acceptance."
+}

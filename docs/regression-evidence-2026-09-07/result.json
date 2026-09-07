@@ -1,0 +1,141 @@
+{
+  "revisions": [
+    [
+      "pre-audit",
+      "0ea8d5d8240daa024e89f4b4df415499f32b7799"
+    ],
+    [
+      "deployed",
+      "0db8ad6a73ef394381f49621e69570544a198e2c"
+    ]
+  ],
+  "comparisons": [
+    {
+      "page": "clinic",
+      "width": 360,
+      "passed": true,
+      "beforeHeight": 536.75,
+      "deployedHeight": 748.75,
+      "afterHeight": 536.75
+    },
+    {
+      "page": "published",
+      "width": 360,
+      "passed": true,
+      "beforeHeight": 520,
+      "deployedHeight": 712.75,
+      "afterHeight": 520
+    },
+    {
+      "page": "clinic",
+      "width": 390,
+      "passed": true,
+      "beforeHeight": 520,
+      "deployedHeight": 662.75,
+      "afterHeight": 520
+    },
+    {
+      "page": "published",
+      "width": 390,
+      "passed": true,
+      "beforeHeight": 520,
+      "deployedHeight": 626.75,
+      "afterHeight": 520
+    },
+    {
+      "page": "clinic",
+      "width": 768,
+      "passed": true,
+      "beforeHeight": 600,
+      "deployedHeight": 600,
+      "afterHeight": 600
+    },
+    {
+      "page": "published",
+      "width": 768,
+      "passed": true,
+      "beforeHeight": 600,
+      "deployedHeight": 600,
+      "afterHeight": 600
+    },
+    {
+      "page": "clinic",
+      "width": 1366,
+      "passed": true,
+      "beforeHeight": 600,
+      "deployedHeight": 600,
+      "afterHeight": 600
+    },
+    {
+      "page": "published",
+      "width": 1366,
+      "passed": true,
+      "beforeHeight": 600,
+      "deployedHeight": 600,
+      "afterHeight": 600
+    }
+  ],
+  "embedComparisons": [
+    {
+      "page": "youtube",
+      "width": 360,
+      "passed": true,
+      "provider": "controlled local iframe response; external playback not tested"
+    },
+    {
+      "page": "vimeo",
+      "width": 360,
+      "passed": true,
+      "provider": "controlled local iframe response; external playback not tested"
+    },
+    {
+      "page": "youtube",
+      "width": 390,
+      "passed": true,
+      "provider": "controlled local iframe response; external playback not tested"
+    },
+    {
+      "page": "vimeo",
+      "width": 390,
+      "passed": true,
+      "provider": "controlled local iframe response; external playback not tested"
+    },
+    {
+      "page": "youtube",
+      "width": 768,
+      "passed": true,
+      "provider": "controlled local iframe response; external playback not tested"
+    },
+    {
+      "page": "vimeo",
+      "width": 768,
+      "passed": true,
+      "provider": "controlled local iframe response; external playback not tested"
+    },
+    {
+      "page": "youtube",
+      "width": 1366,
+      "passed": true,
+      "provider": "controlled local iframe response; external playback not tested"
+    },
+    {
+      "page": "vimeo",
+      "width": 1366,
+      "passed": true,
+      "provider": "controlled local iframe response; external playback not tested"
+    }
+  ],
+  "candidateSource": "working tree",
+  "candidateHashes": {
+    "src/components/publicLanding/DecorativeHeroMedia.tsx": "f541eff091d90fa0e4d8f565d887187bfbd907218c8cee2b3c12717db2fda80e",
+    "src/components/publicLanding/PremiumClinicHeader.tsx": "43c8ceba5819d7ad9fd8f945102b5d8ff5638492c2c158d1e2d525b46118c2cc",
+    "src/app/admin/onboarding/OnboardingWizard.tsx": "2a6e4430b76f24a5deddb7d18eed6df3b33c49cb678f17115851b4caaa9ce1f8",
+    "src/lib/videoEmbed.ts": "08df8059b33775a7ddd207040a7a5fdbad8f3b0545ee5e787d0731e2b69bad99",
+    "src/i18n/he.ts": "4bb5668fc3df7e9c3e96f82bb57144ba9d7807013df6584fc43cbb11d04aae68",
+    "src/server/media/image.ts": "5def6450d4616acba6116734e899e0b190c3168ee8001a48f4c9ee7a97fb6b05",
+    "src/server/media/uploadHandler.ts": "e2c2a3ef2f09e03444821f65bbb5b6a7f2a82ca1585108c441c0b1a854ce96bc",
+    "src/lib/og/assets.ts": "b6d791af8b3621522255b07b00379186d2d7e7c23c93b7064ea48bbfba05ab89",
+    "package-lock.json": "1120e49790172c1da645e7d20332066f1e3769cf9b86916e7172ef05b375f694"
+  },
+  "screenshots": "Deterministic synthetic video seek=0.5s; same browser clock, locale and viewport."
+}

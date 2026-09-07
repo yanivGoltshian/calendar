@@ -5,13 +5,15 @@ import { prisma } from '../src/lib/db';
 import { bookingFixture, cleanupFixture } from '../integration/fixtures';
 import { createAppointment } from '../src/server/repos/appointments';
 import { t } from '../src/i18n';
+import sharp from 'sharp';
+import { HERO_VIDEO } from './visualFixtures';
 
 test.afterAll(() => prisma.$disconnect());
 
 test('verified customer cancellation persists atomically and cancels reminder intent', async ({
   context,
   page,
-}) => {
+}, info) => {
   const f = await bookingFixture();
   const email = `${randomUUID()}@example.invalid`;
   const user = await prisma.user.create({
@@ -43,6 +45,10 @@ test('verified customer cancellation persists atomically and cancels reminder in
       },
     ]);
     await page.goto('/account');
+    await info.attach('customer-account.png', {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
     await page.getByRole('button', { name: t.account.cancelCta, exact: true }).click();
     await page
       .getByRole('button', { name: t.account.cancelConfirm, exact: true })
@@ -69,10 +75,12 @@ test('verified customer cancellation persists atomically and cancels reminder in
   }
 });
 
-test('owner OTP, creation, sequential onboarding and publication require no navigation workaround', async ({
+test('owner OTP, uploads, sequential onboarding, editor playback and publication', async ({
   context,
   page,
-}) => {
+}, info) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
   const email = `${randomUUID()}@example.invalid`;
   const code = '654321';
   await prisma.otpCode.create({
@@ -84,17 +92,19 @@ test('owner OTP, creation, sequential onboarding and publication require no navi
       expiresAt: new Date(Date.now() + 300_000),
     },
   });
-  const csrf = await (await context.request.get('/api/auth/csrf')).json();
-  const login = await context.request.post('/api/auth/callback/owner-email', {
-    form: {
-      csrfToken: csrf.csrfToken,
-      email,
-      code,
-      callbackUrl: `${BASE_URL}/business/new`,
-    },
-    headers: { 'X-Auth-Return-Redirect': '1' },
+  // Stub delivery only; verify the seeded OTP through the real auth callback.
+  await page.route('**/api/otp/email/request', (route) => {
+    expect(route.request().postDataJSON().email).toBe(email);
+    return route.fulfill({ json: { ok: true } });
   });
-  expect(login.ok()).toBeTruthy();
+  await page.goto('/business/login?redirect=%2Fbusiness%2Fnew');
+  await page.locator('input[type=email]').fill(email);
+  await page
+    .getByRole('button', { name: t.business.login.emailSubmit, exact: true })
+    .click();
+  await page.locator('input[name=code]').fill(code);
+  await page.locator('form:has(input[name=code]) button[type=submit]').click();
+  await expect(page).toHaveURL(/\/business\/new$/);
   expect((await (await context.request.get('/api/auth/session')).json()).user.email).toBe(
     email,
   );
@@ -139,6 +149,48 @@ test('owner OTP, creation, sequential onboarding and publication require no navi
       exact: true,
     }),
   ).toBeVisible({ timeout: 15_000 });
+  const image = await sharp({
+    create: { width: 200, height: 160, channels: 3, background: '#317575' },
+  })
+    .png()
+    .toBuffer();
+  let uploadAttempts = 0;
+  await page.route('**/api/upload/media', (route) => {
+    uploadAttempts++;
+    return uploadAttempts === 1
+      ? route.fulfill({ status: 503, json: { error: 'תקלה מלאכותית בהעלאה' } })
+      : route.fulfill({ json: { url: '/icons/icon-192.png' } });
+  });
+  await page
+    .locator('input[type=file][accept^="image"]')
+    .setInputFiles({ name: 'synthetic.png', mimeType: 'image/png', buffer: image });
+  await expect(page.locator('canvas')).toBeVisible();
+  await page
+    .getByRole('button', { name: t.admin.onboarding.branding.finishCta, exact: true })
+    .click();
+  await expect(
+    page.getByText('יש לסיים או לבטל את התאמת התמונה לפני שמירה.'),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: t.admin.settings.profile.image.cancel, exact: true })
+    .click();
+  await page
+    .locator('input[type=file][accept^="image"]')
+    .setInputFiles({ name: 'synthetic.png', mimeType: 'image/png', buffer: image });
+  await page.locator('input[type=range]').fill('1.5');
+  await page
+    .getByRole('button', { name: t.admin.settings.profile.image.done, exact: true })
+    .click();
+  await expect(page.getByText('תקלה מלאכותית בהעלאה')).toBeVisible();
+  await page
+    .getByRole('button', { name: t.admin.settings.profile.image.done, exact: true })
+    .click();
+  await expect(page.locator('input[name=logoUrl]')).toHaveValue('/icons/icon-192.png');
+  expect(uploadAttempts).toBe(2);
+  await info.attach('branding-upload.png', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
   await page.locator('button[aria-pressed]').first().click();
   await page
     .getByRole('button', { name: t.admin.onboarding.branding.finishCta, exact: true })
@@ -150,8 +202,35 @@ test('owner OTP, creation, sequential onboarding and publication require no navi
     .filter({ hasText: t.admin.onboarding.premium.editor.wizard.about.headlineLabel })
     .locator('input')
     .fill('Synthetic published welcome');
+  await page
+    .getByRole('button', {
+      name: t.admin.onboarding.premium.editor.wizard.about.bgImgvid,
+      exact: true,
+    })
+    .click();
+  await page.route('**/api/upload/hero-video', (route) =>
+    route.fulfill({ json: { url: HERO_VIDEO } }),
+  );
+  await page
+    .locator('input[type=file][accept^="video"]')
+    .setInputFiles('e2e/assets/hero-portrait.mp4');
+  await expect(page.getByText(HERO_VIDEO, { exact: true })).toBeVisible();
   await page.locator('.pw-next').click();
   await page.locator('.pw-next').click();
+  await expect
+    .poll(() =>
+      page
+        .locator('.pw-preview video')
+        .evaluate(
+          (v: HTMLVideoElement) =>
+            !v.paused && v.currentTime > 0.1 && !v.controls && v.videoWidth === 180,
+        ),
+    )
+    .toBe(true);
+  await info.attach('editor-preview.png', {
+    body: await page.locator('.pw-preview').screenshot(),
+    contentType: 'image/png',
+  });
   await page.locator('form.pw-phone button[type=submit]').click();
   await expect
     .poll(
@@ -166,6 +245,29 @@ test('owner OTP, creation, sequential onboarding and publication require no navi
   const result = await page.goto(`/b/${business.slug}`);
   expect(result!.status()).toBe(200);
   await expect(page.locator(`a[href="/b/${business.slug}/book"]`).first()).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator('header video')
+        .evaluate(
+          (v: HTMLVideoElement) =>
+            !v.paused && v.currentTime > 0.1 && getComputedStyle(v).objectFit === 'cover',
+        ),
+    )
+    .toBe(true);
+  await info.attach('newly-published.png', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+  await page.goto('/admin');
+  await expect(page).not.toHaveURL(/\/business\/login/);
+  await page.getByRole('button', { name: 'תפריט', exact: true }).click();
+  const settings = page.locator('a[href="/admin/settings"]:visible').first();
+  await settings.click();
+  await expect(page).toHaveURL(/\/admin\/settings/);
+  expect(
+    (await prisma.business.findUniqueOrThrow({ where: { id: business.id } })).logoUrl,
+  ).toBe('/icons/icon-192.png');
 });
 
 test('anonymous admin mutation APIs fail closed for valid shaped requests', async ({

@@ -1,7 +1,7 @@
 import { getBusinessAccess, type BusinessAccessInput } from '@/server/subscription';
 import { validateMediaFile, MAX_VIDEO_BYTES } from '@/app/api/upload/media/validate';
 import { boundedFormData, MediaError, validVideoSignature } from './uploadPolicy';
-import { optimizeImage } from './image';
+import { optimizeUploadImage } from './image';
 
 type UploadBusiness = BusinessAccessInput & { id: string; accountStatus: string };
 type UploadDependencies = {
@@ -51,7 +51,7 @@ export function createUploadHandler(dependencies: UploadDependencies) {
       let ext = check.ext;
       if (check.kind === 'image') {
         try {
-          input = await optimizeImage(input);
+          input = await optimizeUploadImage(input);
         } catch {
           throw new MediaError('התמונה אינה תקינה או חורגת ממגבלת העיבוד.', 415);
         }

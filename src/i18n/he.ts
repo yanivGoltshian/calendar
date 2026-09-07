@@ -100,6 +100,12 @@ const he = {
   // מרחב שמות ייעודי לעמוד הנחיתה הפרימיום (עיצוב בוטיק), נפרד מ-publicPage.landing.
   premiumLanding: {
     heroSecondaryCta: 'לצפייה בשירותים',
+    heroMedia: {
+      title: 'סרטון רקע של העסק',
+      pause: 'השהיית סרטון הרקע',
+      play: 'הפעלת סרטון הרקע',
+      unavailable: 'סרטון הרקע אינו זמין כרגע. ניתן להמשיך לקביעת תור.',
+    },
     servicesLede: 'בחרו את השירות שמתאים לכם וקבעו תור בכמה הקשות פשוטות.',
     sectionEyebrow: {
       highlights: 'למה אנחנו',

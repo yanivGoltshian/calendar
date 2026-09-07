@@ -3,15 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import MediaImage from './MediaImage';
+import DecorativeHeroMedia from './DecorativeHeroMedia';
 import { useBusinessDate } from '@/components/publicLanding/useBusinessDate';
 import { weekdayForDateString } from '@/lib/time';
-import { imageUrl } from '@/lib/media';
 import type { LandingLaunchOffer } from '@/lib/publicPageStyle';
 import { logout } from '@/app/account/actions';
 import { computeCountdown } from '@/lib/launchOffer';
 import { formatIsraeliPhoneDisplay } from '@/lib/phoneDisplay';
 import { formatMinutes } from '@/lib/time';
-import { heroVideoResolve } from '@/lib/videoEmbed';
 import {
   PhoneIcon,
   ClockIcon,
@@ -114,7 +113,6 @@ export default function PremiumClinicHeader({
   labels,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [embedLoaded, setEmbedLoaded] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [resolvedAccount, setResolvedAccount] = useState<{
     name?: string | null;
@@ -159,7 +157,6 @@ export default function PremiumClinicHeader({
 
   const primary = heroImages[0];
   const secondary = heroImages[1];
-  const hv = heroVideoResolve(heroVideoUrl);
 
   return (
     <header className="overflow-hidden bg-[color:var(--c-cream,#faf6ef)]">
@@ -521,20 +518,28 @@ export default function PremiumClinicHeader({
           ) : (
             <span aria-hidden className="absolute inset-0 bg-[color:var(--c-ink,#1b1715)]" />
           )}
+        </div>
+        {heroVideoUrl ? (
+          <DecorativeHeroMedia
+            url={heroVideoUrl}
+            poster={heroPosterUrl || secondary || primary}
+            className="absolute inset-y-0 left-0 -z-10 w-[46%] overflow-hidden sm:w-[34%]"
+            feather
+          />
+        ) : null}
           {/* מסכת ברונזה להקראת טקסט לבן + זוהר תחתון חמים */}
           <span
             aria-hidden
-            className="absolute inset-0"
+            className="pointer-events-none absolute inset-0 -z-10"
             style={{ background: 'linear-gradient(to right, rgba(44,37,34,0.14), rgba(44,37,34,0.5) 52%, rgba(44,37,34,0.88))' }}
           />
           <span
             aria-hidden
-            className="absolute inset-0"
+            className="pointer-events-none absolute inset-0 -z-10"
             style={{ background: 'linear-gradient(to top, rgba(140,103,72,0.38), transparent 58%)' }}
           />
-        </div>
 
-        <div className={`mx-auto w-full max-w-5xl px-5 py-16 sm:py-20 ${hv ? 'grid items-center gap-8 md:grid-cols-2' : ''}`}>
+        <div className="mx-auto w-full max-w-5xl px-5 py-16 sm:py-20">
           <div className="max-w-xl">
             {heroEyebrow ? (
               <span className="inline-flex items-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/45 bg-white/10 px-4 py-1.5 text-xs font-bold tracking-[0.02em] text-[color:var(--c-gold,#c6a86a)] backdrop-blur-sm">
@@ -578,36 +583,6 @@ export default function PremiumClinicHeader({
               </a>
             </div>
           </div>
-          {hv ? (
-            <div className="aspect-video overflow-hidden rounded-2xl bg-black shadow-elevated">
-              {hv.kind === 'embed' && !embedLoaded ? (
-                <button type="button" onClick={() => setEmbedLoaded(true)} className="flex h-full w-full items-center justify-center gap-3 bg-slate-900 px-6 text-white">
-                  <span aria-hidden>▶</span>
-                  <span>טעינת הסרטון</span>
-                </button>
-              ) : hv.kind === 'embed' ? (
-                <iframe
-                  src={hv.src}
-                  loading="lazy"
-                  className="h-full w-full"
-                  allow="encrypted-media; picture-in-picture"
-                  title={labels.heroImageAlt}
-                  allowFullScreen
-                />
-              ) : (
-                // eslint-disable-next-line jsx-a11y/media-has-caption
-                <video
-                  src={hv.src}
-                  preload="none"
-                  controls
-                  playsInline
-                  poster={heroPosterUrl || secondary ? imageUrl((heroPosterUrl || secondary)!, 960) : undefined}
-                  aria-label={labels.heroImageAlt}
-                  className="h-full w-full object-contain"
-                />
-              )}
-            </div>
-          ) : null}
         </div>
       </section>
     </header>

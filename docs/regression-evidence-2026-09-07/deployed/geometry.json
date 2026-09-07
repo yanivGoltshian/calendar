@@ -1,0 +1,650 @@
+[
+  {
+    "page": "home",
+    "width": 360,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 65,
+      "width": 360,
+      "height": 1034.1875,
+      "top": 65,
+      "right": 360,
+      "bottom": 1099.1875,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "demo",
+    "width": 360,
+    "overflow": false,
+    "hero": {
+      "x": 20,
+      "y": 311,
+      "width": 320,
+      "height": 140,
+      "top": 311,
+      "right": 340,
+      "bottom": 451,
+      "left": 20
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "basic",
+    "width": 360,
+    "overflow": false,
+    "hero": {
+      "x": 20,
+      "y": 242,
+      "width": 320,
+      "height": 120,
+      "top": 242,
+      "right": 340,
+      "bottom": 362,
+      "left": 20
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "clinic",
+    "width": 360,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 109,
+      "width": 360,
+      "height": 748.75,
+      "top": 109,
+      "right": 360,
+      "bottom": 857.75,
+      "left": 0
+    },
+    "embed": null,
+    "video": {
+      "x": 20,
+      "y": 613.75,
+      "width": 320,
+      "height": 180,
+      "top": 613.75,
+      "right": 340,
+      "bottom": 793.75,
+      "left": 20,
+      "fit": "contain",
+      "controls": true,
+      "muted": false,
+      "autoplay": false,
+      "loop": false,
+      "inline": true,
+      "playing": false,
+      "currentTime": 0,
+      "decodedWidth": 0
+    },
+    "errors": []
+  },
+  {
+    "page": "published",
+    "width": 360,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 97,
+      "width": 360,
+      "height": 712.75,
+      "top": 97,
+      "right": 360,
+      "bottom": 809.75,
+      "left": 0
+    },
+    "embed": null,
+    "video": {
+      "x": 20,
+      "y": 565.75,
+      "width": 320,
+      "height": 180,
+      "top": 565.75,
+      "right": 340,
+      "bottom": 745.75,
+      "left": 20,
+      "fit": "contain",
+      "controls": true,
+      "muted": false,
+      "autoplay": false,
+      "loop": false,
+      "inline": true,
+      "playing": false,
+      "currentTime": 0,
+      "decodedWidth": 0
+    },
+    "errors": []
+  },
+  {
+    "page": "youtube",
+    "width": 360,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 97,
+      "width": 360,
+      "height": 712.75,
+      "top": 97,
+      "right": 360,
+      "bottom": 809.75,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "vimeo",
+    "width": 360,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 97,
+      "width": 360,
+      "height": 712.75,
+      "top": 97,
+      "right": 360,
+      "bottom": 809.75,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "home",
+    "width": 390,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 65,
+      "width": 390,
+      "height": 1004.9375,
+      "top": 65,
+      "right": 390,
+      "bottom": 1069.9375,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "demo",
+    "width": 390,
+    "overflow": false,
+    "hero": {
+      "x": 20,
+      "y": 311,
+      "width": 350,
+      "height": 114,
+      "top": 311,
+      "right": 370,
+      "bottom": 425,
+      "left": 20
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "basic",
+    "width": 390,
+    "overflow": false,
+    "hero": {
+      "x": 20,
+      "y": 242,
+      "width": 350,
+      "height": 120,
+      "top": 242,
+      "right": 370,
+      "bottom": 362,
+      "left": 20
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "clinic",
+    "width": 390,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 109,
+      "width": 390,
+      "height": 662.75,
+      "top": 109,
+      "right": 390,
+      "bottom": 771.75,
+      "left": 0
+    },
+    "embed": null,
+    "video": {
+      "x": 20,
+      "y": 510.875,
+      "width": 350,
+      "height": 196.875,
+      "top": 510.875,
+      "right": 370,
+      "bottom": 707.75,
+      "left": 20,
+      "fit": "contain",
+      "controls": true,
+      "muted": false,
+      "autoplay": false,
+      "loop": false,
+      "inline": true,
+      "playing": false,
+      "currentTime": 0,
+      "decodedWidth": 0
+    },
+    "errors": []
+  },
+  {
+    "page": "published",
+    "width": 390,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 97,
+      "width": 390,
+      "height": 626.75,
+      "top": 97,
+      "right": 390,
+      "bottom": 723.75,
+      "left": 0
+    },
+    "embed": null,
+    "video": {
+      "x": 20,
+      "y": 462.875,
+      "width": 350,
+      "height": 196.875,
+      "top": 462.875,
+      "right": 370,
+      "bottom": 659.75,
+      "left": 20,
+      "fit": "contain",
+      "controls": true,
+      "muted": false,
+      "autoplay": false,
+      "loop": false,
+      "inline": true,
+      "playing": false,
+      "currentTime": 0,
+      "decodedWidth": 0
+    },
+    "errors": []
+  },
+  {
+    "page": "youtube",
+    "width": 390,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 97,
+      "width": 390,
+      "height": 626.75,
+      "top": 97,
+      "right": 390,
+      "bottom": 723.75,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "vimeo",
+    "width": 390,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 97,
+      "width": 390,
+      "height": 626.75,
+      "top": 97,
+      "right": 390,
+      "bottom": 723.75,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "home",
+    "width": 768,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 73,
+      "width": 768,
+      "height": 896.5,
+      "top": 73,
+      "right": 768,
+      "bottom": 969.5,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "demo",
+    "width": 768,
+    "overflow": false,
+    "hero": {
+      "x": 20,
+      "y": 369,
+      "width": 728,
+      "height": 88,
+      "top": 369,
+      "right": 748,
+      "bottom": 457,
+      "left": 20
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "basic",
+    "width": 768,
+    "overflow": false,
+    "hero": {
+      "x": 20,
+      "y": 300,
+      "width": 728,
+      "height": 120,
+      "top": 300,
+      "right": 748,
+      "bottom": 420,
+      "left": 20
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "clinic",
+    "width": 768,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 117,
+      "width": 768,
+      "height": 600,
+      "top": 117,
+      "right": 768,
+      "bottom": 717,
+      "left": 0
+    },
+    "embed": null,
+    "video": {
+      "x": 20,
+      "y": 319.125,
+      "width": 348,
+      "height": 195.75,
+      "top": 319.125,
+      "right": 368,
+      "bottom": 514.875,
+      "left": 20,
+      "fit": "contain",
+      "controls": true,
+      "muted": false,
+      "autoplay": false,
+      "loop": false,
+      "inline": true,
+      "playing": false,
+      "currentTime": 0,
+      "decodedWidth": 0
+    },
+    "errors": []
+  },
+  {
+    "page": "published",
+    "width": 768,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 109,
+      "width": 768,
+      "height": 600,
+      "top": 109,
+      "right": 768,
+      "bottom": 709,
+      "left": 0
+    },
+    "embed": null,
+    "video": {
+      "x": 20,
+      "y": 311.125,
+      "width": 348,
+      "height": 195.75,
+      "top": 311.125,
+      "right": 368,
+      "bottom": 506.875,
+      "left": 20,
+      "fit": "contain",
+      "controls": true,
+      "muted": false,
+      "autoplay": false,
+      "loop": false,
+      "inline": true,
+      "playing": false,
+      "currentTime": 0,
+      "decodedWidth": 0
+    },
+    "errors": []
+  },
+  {
+    "page": "youtube",
+    "width": 768,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 109,
+      "width": 768,
+      "height": 600,
+      "top": 109,
+      "right": 768,
+      "bottom": 709,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "vimeo",
+    "width": 768,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 109,
+      "width": 768,
+      "height": 600,
+      "top": 109,
+      "right": 768,
+      "bottom": 709,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "home",
+    "width": 1366,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 73,
+      "width": 1366,
+      "height": 724.65625,
+      "top": 73,
+      "right": 1366,
+      "bottom": 797.65625,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "demo",
+    "width": 1366,
+    "overflow": false,
+    "hero": {
+      "x": 319,
+      "y": 369,
+      "width": 728,
+      "height": 88,
+      "top": 369,
+      "right": 1047,
+      "bottom": 457,
+      "left": 319
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "basic",
+    "width": 1366,
+    "overflow": false,
+    "hero": {
+      "x": 319,
+      "y": 300,
+      "width": 728,
+      "height": 120,
+      "top": 300,
+      "right": 1047,
+      "bottom": 420,
+      "left": 319
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "clinic",
+    "width": 1366,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 117,
+      "width": 1366,
+      "height": 600,
+      "top": 117,
+      "right": 1366,
+      "bottom": 717,
+      "left": 0
+    },
+    "embed": null,
+    "video": {
+      "x": 191,
+      "y": 283.125,
+      "width": 476,
+      "height": 267.75,
+      "top": 283.125,
+      "right": 667,
+      "bottom": 550.875,
+      "left": 191,
+      "fit": "contain",
+      "controls": true,
+      "muted": false,
+      "autoplay": false,
+      "loop": false,
+      "inline": true,
+      "playing": false,
+      "currentTime": 0,
+      "decodedWidth": 0
+    },
+    "errors": []
+  },
+  {
+    "page": "published",
+    "width": 1366,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 109,
+      "width": 1366,
+      "height": 600,
+      "top": 109,
+      "right": 1366,
+      "bottom": 709,
+      "left": 0
+    },
+    "embed": null,
+    "video": {
+      "x": 191,
+      "y": 275.125,
+      "width": 476,
+      "height": 267.75,
+      "top": 275.125,
+      "right": 667,
+      "bottom": 542.875,
+      "left": 191,
+      "fit": "contain",
+      "controls": true,
+      "muted": false,
+      "autoplay": false,
+      "loop": false,
+      "inline": true,
+      "playing": false,
+      "currentTime": 0,
+      "decodedWidth": 0
+    },
+    "errors": []
+  },
+  {
+    "page": "youtube",
+    "width": 1366,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 109,
+      "width": 1366,
+      "height": 600,
+      "top": 109,
+      "right": 1366,
+      "bottom": 709,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  },
+  {
+    "page": "vimeo",
+    "width": 1366,
+    "overflow": false,
+    "hero": {
+      "x": 0,
+      "y": 109,
+      "width": 1366,
+      "height": 600,
+      "top": 109,
+      "right": 1366,
+      "bottom": 709,
+      "left": 0
+    },
+    "embed": null,
+    "video": null,
+    "errors": []
+  }
+]
