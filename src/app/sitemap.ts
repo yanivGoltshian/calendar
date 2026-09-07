@@ -1,12 +1,12 @@
 import type { MetadataRoute } from 'next';
 import { SITE_URL } from '@/lib/seo';
-import { getAllBusinessSlugs } from '@/server/repos/business';
+import { getListedBusinesses } from '@/server/repos/publicDirectory';
 
 /**
  * מפת אתר דינמית: עמוד הבית, עמודי שיווק/משפט ציבוריים ועמודי העסקים /b/[slug].
- * העוזר getAllBusinessSlugs מאפשר הרחבה אוטומטית ככל שנוספים עסקים.
+ * נכללים רק עסקים שעומדים בתנאי הפרסום והחשיפה.
  */
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
@@ -19,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     // עמודי שיווק/משפט ציבוריים הניתנים לסריקה.
-    ...['/legal', '/roadmap', '/quote', '/migrate'].map((path) => ({
+    ...['/legal', '/roadmap', '/businesses', '/migrate'].map((path) => ({
       url: `${SITE_URL}${path}`,
       lastModified: now,
       changeFrequency: 'monthly' as const,
@@ -27,19 +27,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  let businessEntries: MetadataRoute.Sitemap = [];
-  try {
-    const businesses = await getAllBusinessSlugs();
-    businessEntries = businesses.map((b) => ({
+  const businesses = await getListedBusinesses();
+  const businessEntries: MetadataRoute.Sitemap = businesses.map((b) => ({
       url: `${SITE_URL}/b/${b.slug}`,
       lastModified: b.updatedAt ?? now,
       changeFrequency: 'weekly',
       priority: 0.8,
-    }));
-  } catch {
-    // אם מסד הנתונים אינו זמין בזמן הבנייה, מחזירים לפחות את העמודים הסטטיים.
-    businessEntries = [];
-  }
+  }));
 
   return [...staticEntries, ...businessEntries];
 }

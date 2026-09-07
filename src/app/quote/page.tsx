@@ -5,11 +5,14 @@ import { getBusinessesOwnedByEmail } from '@/server/repos/business';
 import { getClientSession } from '@/lib/session';
 import { bookingUrl } from '@/lib/booking-link';
 import PublicQuoteForm, { type PublicQuoteDefaults } from './PublicQuoteForm';
+import { buildMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: t.quote.public.title,
   description: t.quote.public.subtitle,
-};
+  path: '/quote',
+  noIndex: true,
+});
 
 export const dynamic = 'force-dynamic';
 

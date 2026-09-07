@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import type { Prisma } from '@prisma/client';
 
 /**
  * מאגר שעות עבודה — לעסק (scope BUSINESS) או לאיש צוות (scope STAFF).
@@ -63,7 +64,7 @@ export type WorkingHoursClient = {
   workingHours: {
     findMany(args: {
       where: { scope: 'STAFF' | 'BUSINESS'; staffId?: string; businessId?: string };
-      orderBy?: unknown;
+      orderBy?: Prisma.WorkingHoursOrderByWithRelationInput[];
     }): Promise<EffectiveHoursRow[]>;
   };
 };
@@ -79,7 +80,7 @@ export type WorkingHoursClient = {
 export async function getEffectiveStaffWorkingHours(
   businessId: string,
   staffId: string,
-  client: WorkingHoursClient = prisma as unknown as WorkingHoursClient,
+  client: WorkingHoursClient = prisma,
 ): Promise<EffectiveHoursRow[]> {
   const staffHours = await client.workingHours.findMany({
     where: { scope: 'STAFF', staffId },

@@ -80,7 +80,8 @@ async function main() {
       // עסק הדגמה הוא דוגמת התוכנית הבסיסית (הסטנדרטית) בעמוד /demo.
       // subscriptionStatus=active ו-paidUntil רחוק שומרים אותו פעיל וללא חסימה גם באזור הניהול.
       plan: 'basic',
-      subscriptionStatus: 'active',
+      subscriptionStatus: 'trialing',
+      trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       premiumSince: new Date(),
       paidUntil: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000),
       settings: {

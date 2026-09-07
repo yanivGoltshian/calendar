@@ -39,15 +39,14 @@ export async function approveAppointmentAction(formData: FormData) {
   if (appt?.businessId !== business.id) return;
 
   // מודיעים ללקוח רק כשמדובר באישור אמיתי של תור שהמתין לאישור.
-  const wasPending = appt.status === 'PENDING';
-
-  await updateAppointmentStatus(id, 'CONFIRMED');
+  const updated = await updateAppointmentStatus(id, 'CONFIRMED', {
+    businessId: business.id, expectedStatus: 'PENDING',
+  });
+  if (!updated) return;
   // ייצוא/עדכון האירוע ביומן הבעלים (fire-and-forget, אידמפוטנטי).
   void exportOnCreate(id).catch(() => {});
   revalidatePath('/admin/appointments');
   revalidatePath('/admin');
-
-  if (!wasPending) return;
 
   // ערוצי התקשורת נגזרים מהמסלול (tier) בזמן ריצה, כך ששדרוג משתקף מיד. המנוי חייב
   // להיות פעיל כדי לפתוח ערוצים בתשלום. המסרון בתשלום שמור לאקסקלוסיב בלבד.
@@ -82,7 +81,10 @@ export async function approveAppointmentAction(formData: FormData) {
 export async function cancelAppointmentAction(formData: FormData) {
   const id = String(formData.get('appointmentId') || '');
   if (!(await assertBelongsToBusiness(id))) return;
-  await updateAppointmentStatus(id, 'CANCELLED');
+  const business = await getActiveBusiness();
+  if (!business) return;
+  const updated = await updateAppointmentStatus(id, 'CANCELLED', { businessId: business.id });
+  if (!updated) return;
   // מחיקת האירוע המיוצא מיומן הבעלים (fire-and-forget, מדלג אם אין).
   void exportOnCancel(id).catch(() => {});
   revalidatePath('/admin/appointments');

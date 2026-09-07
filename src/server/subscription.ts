@@ -1,4 +1,4 @@
-import type { BusinessPlan, SubscriptionStatus } from '@prisma/client';
+import type { AccountStatus, BusinessPlan, SubscriptionStatus } from '@prisma/client';
 import { t } from '@/i18n';
 
 /**
@@ -12,6 +12,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** תת-קבוצת השדות הדרושים לחישוב הגישה (כל רשומת Business עונה על כך). */
 export type BusinessAccessInput = {
+  /** Required at resource-consuming boundaries; optional for legacy display-only projections. */
+  accountStatus?: AccountStatus;
   plan: BusinessPlan;
   subscriptionStatus: SubscriptionStatus;
   trialEndsAt: Date | null;
@@ -56,6 +58,9 @@ function isPaidPlan(plan: BusinessPlan): boolean {
 export function getBusinessAccess(business: BusinessAccessInput): BusinessAccess {
   const nowMs = Date.now();
   const { plan, trialEndsAt, paidUntil } = business;
+  if (business.accountStatus !== undefined && business.accountStatus !== 'ACTIVE') {
+    return { active: false, state: 'expired', daysLeft: 0, trialEndsAt, paidUntil };
+  }
 
   // מסלולים בתשלום — פרימיום ואקסקלוסיב. הבסיס (סטנדרט) הוא מסלול הניסיון/החינם.
   const paidActive =

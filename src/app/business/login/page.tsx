@@ -5,12 +5,11 @@ import { t } from '@/i18n';
 import { Container, Section, Card } from '@/components/ui';
 import { describeAuthError } from '@/lib/authErrors';
 import { OwnerSignIn } from './OwnerSignIn';
+import { buildMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: `${t.business.login.title} · תור צ׳יק`,
-};
+export const metadata = buildMetadata({ title: t.business.login.title, path: '/business/login', noIndex: true });
 
 /**
  * כניסת בעלי עסק (מובחנת מכניסת הלקוח ב-/login).

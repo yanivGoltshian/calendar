@@ -12,10 +12,13 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "test:e2e": "playwright test",
+    "test:integration": "node --import tsx --test --test-concurrency=1 \"integration/**/*.test.ts\"",
+    "test:release": "node scripts/test-release.mjs",
     "gen:icons": "node scripts/gen-icons.mjs",
     "gen:admin-icons": "node scripts/gen-admin-icons.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "node scripts/migrate-safe.mjs",
     "prisma:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force"
@@ -31,16 +34,18 @@
     "firebase": "^12.17.1",
     "firebase-admin": "^14.2.0",
     "framer-motion": "^12.43.0",
-    "next": "15.5.22",
+    "next": "15.5.24",
     "next-auth": "^5.0.0-beta.32",
     "nodemailer": "^8.0.11",
     "qrcode-generator": "^2.0.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "sharp": "^0.35.0",
     "web-push": "^3.6.7",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@jridgewell/trace-mapping": "^0.3.31",
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.13.1",
     "@types/nodemailer": "^8.0.1",
@@ -48,15 +53,21 @@
     "@types/react-dom": "^19.0.3",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
-    "eslint-config-next": "15.5.22",
+    "esbuild": "^0.28.2",
+    "eslint-config-next": "15.5.24",
     "eslint-config-prettier": "^9.1.0",
     "playwright": "^1.62.1",
-    "postcss": "^8.5.1",
+    "postcss": "^8.5.26",
     "prettier": "^3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "prisma": "^6.19.3",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
-  }
+  },
+  "overrides": {
+    "postcss": "$postcss",
+    "sharp": "$sharp"
+  },
+  "engines": { "node": ">=22.15.0 <23 || >=25 <26" }
 }

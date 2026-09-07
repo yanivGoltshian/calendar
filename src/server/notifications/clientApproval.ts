@@ -1,8 +1,10 @@
 import { BRAND } from '@/config/brand';
-import { emailConfigured, sendEmail } from '@/server/providers/email';
+import { emailConfigured } from '@/server/providers/email';
 import { sendGuardedSms } from '@/server/billing/costGuard';
 import { formatDateString, formatLongDate, formatTime } from '@/lib/time';
-import { renderMessage } from '@/server/messages/render';
+import { escapeHtml, renderMessage } from '@/server/messages/render';
+import { safeMessageLink } from '@/server/messages/safeLink';
+import { deliverEmailOnce } from '@/server/billing/emailDelivery';
 
 /**
  * התראת הלקוח על אישור התור על ידי בעל העסק (מעבר PENDING → CONFIRMED).
@@ -58,6 +60,7 @@ export type ClientApprovalPayload = {
 /** הזרקת תלות לבדיקות — עוקפת את שער העלות האמיתי (שכותב ל-DB). */
 export type NotifyClientApprovalDeps = {
   sendGuardedSms?: typeof sendGuardedSms;
+  deliverEmail?: typeof deliverEmailOnce;
 };
 
 export type NotifyClientApprovalResult = {
@@ -90,6 +93,7 @@ export function buildApprovalEmail(payload: ClientApprovalPayload): {
   html: string;
 } {
   const when = buildWhen(payload);
+  const manageUrl = safeMessageLink(payload.manageUrl);
   const serviceNames = payload.services.map((s) => s.name).join(', ');
 
   const subject = `${BRAND.name} · התור שלך אושר · ${payload.businessName}`;
@@ -101,7 +105,7 @@ export function buildApprovalEmail(payload: ClientApprovalPayload): {
     '',
     ...(serviceNames ? [`שירות/ים: ${serviceNames}`] : []),
     `מועד: ${when}`,
-    ...(payload.manageUrl ? ['', `לצפייה בפרטי התור, לשינוי מועד או לביטול: ${payload.manageUrl}`] : []),
+    ...(manageUrl ? ['', `לצפייה בפרטי התור או לביטול: ${manageUrl}`, 'לשינוי המועד יש לבטל את התור ולהזמין תור חדש, בכפוף לזמינות ולמדיניות הביטול.'] : []),
     '',
     `נשמח לעמוד לרשותך לכל שאלה,`,
     `צוות ${payload.businessName}`,
@@ -111,21 +115,21 @@ export function buildApprovalEmail(payload: ClientApprovalPayload): {
   const text = lines.join('\n');
 
   const row = (label: string, value: string) =>
-    `<tr><td style="padding:4px 12px 4px 0;font-weight:bold;white-space:nowrap">${label}</td><td style="padding:4px 0">${value}</td></tr>`;
+    `<tr><td style="padding:4px 12px 4px 0;font-weight:bold;white-space:nowrap">${escapeHtml(label)}</td><td style="padding:4px 0">${escapeHtml(value)}</td></tr>`;
   const html =
     `<!doctype html><html lang="he" dir="rtl"><body style="font-family:Arial,Helvetica,sans-serif;text-align:right;direction:rtl;color:#0B1526">` +
     `<h2 style="color:#0A182D">התור שלך אושר</h2>` +
-    `<p>שלום ${payload.clientName}, בקשת התור שלך ב${payload.businessName} אושרה והמועד שמור עבורך. נשמח לראותך.</p>` +
+    `<p>שלום ${escapeHtml(payload.clientName)}, בקשת התור שלך ב${escapeHtml(payload.businessName)} אושרה והמועד שמור עבורך. נשמח לראותך.</p>` +
     `<table style="border-collapse:collapse;font-size:15px">` +
     (serviceNames ? row('שירות/ים', serviceNames) : '') +
     row('מועד', when) +
     `</table>` +
-    (payload.manageUrl
-      ? `<p style="margin-top:16px"><a href="${payload.manageUrl}" style="color:#82643C">לצפייה בפרטי התור, לשינוי מועד או לביטול</a></p>`
+    (manageUrl
+      ? `<p style="margin-top:16px"><a href="${escapeHtml(manageUrl)}" style="color:#82643C">לצפייה בפרטי התור או לביטול</a><br>לשינוי המועד יש לבטל את התור ולהזמין תור חדש, בכפוף לזמינות ולמדיניות הביטול.</p>`
       : '') +
-    `<p style="margin-top:16px">נשמח לעמוד לרשותך לכל שאלה,<br>צוות ${payload.businessName}` +
-    (payload.businessPhone ? `<br>טלפון: ${payload.businessPhone}` : '') +
-    (payload.businessAddress ? `<br>כתובת: ${payload.businessAddress}` : '') +
+    `<p style="margin-top:16px">נשמח לעמוד לרשותך לכל שאלה,<br>צוות ${escapeHtml(payload.businessName)}` +
+    (payload.businessPhone ? `<br>טלפון: ${escapeHtml(payload.businessPhone)}` : '') +
+    (payload.businessAddress ? `<br>כתובת: ${escapeHtml(payload.businessAddress)}` : '') +
     `</p>` +
     `</body></html>`;
 
@@ -163,7 +167,7 @@ export async function notifyClientOfApproval(
     businessName: payload.businessName,
     date: formatLongDate(dateStr, payload.timezone),
     time: formatTime(payload.startAt, payload.timezone),
-    manageUrl: payload.manageUrl ?? '',
+    manageUrl: safeMessageLink(payload.manageUrl) ?? '',
     businessPhone: payload.businessPhone ?? '',
     businessAddress: payload.businessAddress ?? '',
     brand: BRAND.name,
@@ -182,8 +186,13 @@ export async function notifyClientOfApproval(
         vars,
         fb,
       );
-      await sendEmail(email, subject ?? fb.subject, text, html);
-      emailed = true;
+      const result = await (deps.deliverEmail ?? deliverEmailOnce)({
+        businessId: payload.businessId, appointmentId: payload.appointmentId,
+        clientId: payload.clientId, idempotencyKey: `booking-approval:${payload.appointmentId}`,
+        to: email, subject: subject ?? fb.subject, text, html,
+      });
+      emailed = result.status === 'sent';
+      if (result.status !== 'sent') errors.push(`email: ${result.reason}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`email: ${msg}`);
@@ -207,6 +216,8 @@ export async function notifyClientOfApproval(
         to: phone,
         body: message,
         clientId: payload.clientId ?? null,
+        appointmentId: payload.appointmentId,
+        idempotencyKey: `booking-approval:${payload.appointmentId}`,
         channel: 'sms',
       });
       if (res.status === 'sent') {

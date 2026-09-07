@@ -9,7 +9,14 @@ import CustomerGoogleSignIn from '@/components/auth/CustomerGoogleSignIn';
 import WaitlistJoinCTA from './WaitlistJoinCTA';
 import { shouldShowWaitlist } from './waitlistGate';
 import { formatAgorot } from '@/lib/money';
-import { formatDuration, formatLongDate, todayDateString, addDaysToDateString } from '@/lib/time';
+import { formatDuration, formatLongDate, addDaysToDateString } from '@/lib/time';
+import { useBusinessDate } from '@/components/publicLanding/useBusinessDate';
+import { bookingContactFeedback } from '@/lib/bookingContactFeedback';
+import {
+  bookingAttemptForPayload,
+  isSuccessfulBookingReceipt,
+  type BookingAttempt,
+} from '@/lib/bookingIdempotency';
 import {
   parseCustomerSession,
   computeEmailFieldVisibility,
@@ -28,6 +35,7 @@ type Staff = { id: string; displayName: string; title: string | null };
 type Slot = { label: string; startAtUtc: string; endAtUtc: string };
 
 type Props = {
+  timeZone?: string;
   slug: string;
   businessName: string;
   services: Service[];
@@ -45,7 +53,14 @@ type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 const STEP_KEYS = ['services', 'staff', 'date', 'time', 'summary', 'confirm'] as const;
 
-export default function BookingStepper({
+export default function BookingStepper(props: Props) {
+  const today = useBusinessDate(props.timeZone);
+  if (!today) return <p role="status">{t.common.loading}</p>;
+  return <BookingStepperContent {...props} businessToday={today} />;
+}
+
+function BookingStepperContent({
+  businessToday,
   slug,
   businessName,
   services,
@@ -54,7 +69,7 @@ export default function BookingStepper({
   googleEnabled = false,
   waitlistEnabled = true,
   phone: businessPhone = null,
-}: Props) {
+}: Props & { businessToday: string }) {
   // קישור עמוק (service/staffId/date/time) נקרא בצד הלקוח מפרמטרי ה-URL כדי שהעמוד
   // יישאר שלד ISR (ללא קריאת searchParams בשרת). האימות זהה לזה שהיה בעמוד השרת:
   // שירות/צוות מול הרשימות, תאריך בתבנית תקינה שאינו בעבר, ושעה בתבנית תקינה.
@@ -66,16 +81,22 @@ export default function BookingStepper({
   const preselectedServiceId = services.find((s) => s.id === spService)?.id ?? null;
   const preselectedStaffId = staff.find((m) => m.id === spStaffId)?.id ?? null;
   const preselectedDate =
-    spDate && /^\d{4}-\d{2}-\d{2}$/.test(spDate) && spDate >= todayDateString() ? spDate : null;
+    spDate && /^\d{4}-\d{2}-\d{2}$/.test(spDate) && spDate >= businessToday
+      ? spDate
+      : null;
   const preselectedTime = spTime && /^\d{2}:\d{2}$/.test(spTime) ? spTime : null;
 
   const singleStaff = staff.length === 1;
   // קישור עמוק משירות: מתחילים עם השירות מסומן ומדלגים על שלב בחירת השירותים; עם נותן שירות יחיד מדלגים גם על שלב הצוות.
-  const hasPreselected = !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
+  const hasPreselected =
+    !!preselectedServiceId && services.some((s) => s.id === preselectedServiceId);
   // קישור עמוק מלא: שירות + איש צוות + תאריך + שעה תקינים → נטען זמינות ונקפוץ לסיכום.
   const dlStaffId =
-    preselectedStaffId && staff.some((m) => m.id === preselectedStaffId) ? preselectedStaffId : null;
-  const deepLink = hasPreselected && !!dlStaffId && !!preselectedDate && !!preselectedTime;
+    preselectedStaffId && staff.some((m) => m.id === preselectedStaffId)
+      ? preselectedStaffId
+      : null;
+  const deepLink =
+    hasPreselected && !!dlStaffId && !!preselectedDate && !!preselectedTime;
   const [step, setStep] = useState<Step>(
     deepLink ? 3 : hasPreselected ? (singleStaff ? 2 : 1) : 0,
   );
@@ -85,7 +106,9 @@ export default function BookingStepper({
   const [staffId, setStaffId] = useState<string>(
     dlStaffId ?? (singleStaff ? staff[0].id : ''),
   );
-  const [date, setDate] = useState<string>(deepLink ? (preselectedDate as string) : todayDateString());
+  const [date, setDate] = useState<string>(
+    deepLink ? (preselectedDate as string) : businessToday,
+  );
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(deepLink);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -138,14 +161,30 @@ export default function BookingStepper({
   // כך שפרטי הקשר אינם נאפים לשלד ה-ISR. כשמזוהה: פרטי הקשר ממולאים מראש ושדה המייל מוסתר.
   const [sessionCustomer, setSessionCustomer] = useState<PublicCustomer | null>(null);
   const authed = !!sessionCustomer;
-  const { requireEmail, showEmailField } = computeEmailFieldVisibility(plan, sessionCustomer);
+  const { requireEmail, showEmailField } = computeEmailFieldVisibility(
+    plan,
+    sessionCustomer,
+  );
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const bookingAttempt = useRef<BookingAttempt | null>(null);
+  const bookingInFlight = useRef(false);
+  const bookingCompleted = useRef(false);
   const [error, setError] = useState('');
   const [confirmedId, setConfirmedId] = useState<string | null>(null);
   const [bookedStatus, setBookedStatus] = useState<'PENDING' | 'CONFIRMED'>('CONFIRMED');
+  const contactFeedback = bookingContactFeedback(name, phone, email, showEmailField);
+
+  useEffect(() => {
+    if (date < businessToday && !confirmedId) {
+      setDate(businessToday);
+      setSelectedSlot(null);
+      setSlots([]);
+      setStep(2);
+    }
+  }, [businessToday, date, confirmedId]);
 
   const selectedServices = services.filter((s) => selectedServiceIds.includes(s.id));
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.durationMin, 0);
@@ -187,10 +226,12 @@ export default function BookingStepper({
       return;
     }
     // תוקף קצר: מתעלמים מטיוטה בת יותר מ-30 דקות.
-    if (d.v !== 1 || typeof d.ts !== 'number' || Date.now() - d.ts > 30 * 60 * 1000) return;
+    if (d.v !== 1 || typeof d.ts !== 'number' || Date.now() - d.ts > 30 * 60 * 1000)
+      return;
     const svc = Array.isArray(d.selectedServiceIds)
       ? (d.selectedServiceIds as unknown[]).filter(
-          (id): id is string => typeof id === 'string' && services.some((s) => s.id === id),
+          (id): id is string =>
+            typeof id === 'string' && services.some((s) => s.id === id),
         )
       : [];
     if (svc.length === 0) return;
@@ -297,7 +338,12 @@ export default function BookingStepper({
       const res = await fetch('/api/availability', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ slug, staffId, serviceIds: selectedServiceIds, date: targetDate }),
+        body: JSON.stringify({
+          slug,
+          staffId,
+          serviceIds: selectedServiceIds,
+          date: targetDate,
+        }),
       });
       const data = await res.json();
       if (typeof data?.blocked === 'boolean') setBlocked(data.blocked);
@@ -321,26 +367,51 @@ export default function BookingStepper({
   }
 
   async function submitBooking() {
+    if (bookingInFlight.current || bookingCompleted.current) return;
+    if (!contactFeedback.valid || !selectedSlot || date < businessToday) {
+      setError(
+        !contactFeedback.phoneValid
+          ? t.auth.invalidPhone
+          : !contactFeedback.emailValid
+            ? t.auth.invalidEmail
+            : t.booking.guestMissingFields,
+      );
+      return;
+    }
+    bookingInFlight.current = true;
     setBusy(true);
     setError('');
     try {
+      const body = JSON.stringify({
+        slug,
+        staffId,
+        serviceIds: selectedServiceIds,
+        startAtUtc: selectedSlot.startAtUtc,
+        name,
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+      });
+      bookingAttempt.current = await bookingAttemptForPayload(
+        bookingAttempt.current,
+        body,
+        sessionCustomer ? JSON.stringify(sessionCustomer) : null,
+      );
       const bookRes = await fetch('/api/book', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          slug,
-          staffId,
-          serviceIds: selectedServiceIds,
-          startAtUtc: selectedSlot?.startAtUtc,
-          name,
-          phone: phone.trim() || undefined,
-          email: email.trim() || undefined,
-        }),
+        headers: {
+          'content-type': 'application/json',
+          'Idempotency-Key': bookingAttempt.current.key,
+        },
+        body,
       });
       const bookData = await bookRes.json();
       if (!bookRes.ok || !bookData.ok) {
         if (bookRes.status === 429) {
-          setError(typeof bookData.message === 'string' ? bookData.message : t.auth.tooManyRequests);
+          setError(
+            typeof bookData.message === 'string'
+              ? bookData.message
+              : t.auth.tooManyRequests,
+          );
           return;
         }
         if (bookRes.status >= 500) {
@@ -369,11 +440,29 @@ export default function BookingStepper({
         );
         return;
       }
+      if (typeof bookData.appointmentId !== 'string' || !bookData.appointmentId) {
+        setError(t.common.error);
+        return;
+      }
+      if (['CANCELLED', 'DONE', 'NO_SHOW'].includes(bookData.status)) {
+        bookingAttempt.current = null;
+        setStep(3);
+        await loadSlots(date);
+        setError(t.booking.bookingNoLongerActive);
+        return;
+      }
+      if (!isSuccessfulBookingReceipt(bookData)) {
+        setError(t.booking.bookingNoLongerActive);
+        return;
+      }
+      bookingCompleted.current = true;
+      bookingAttempt.current = null;
       setConfirmedId(bookData.appointmentId);
-      setBookedStatus(bookData.status === 'PENDING' ? 'PENDING' : 'CONFIRMED');
+      setBookedStatus(bookData.status);
     } catch {
       setError(t.common.error);
     } finally {
+      bookingInFlight.current = false;
       setBusy(false);
     }
   }
@@ -400,7 +489,7 @@ export default function BookingStepper({
           {isPending ? t.booking.pendingTitle : t.booking.bookingSuccessTitle}
         </h1>
         <p className="text-slate-600">
-          {isPending ? t.booking.pendingBody : (requireEmail ? t.booking.bookingSuccessBody : t.booking.bookingSuccessBodyNoComms)}
+          {isPending ? t.booking.pendingBody : t.booking.bookingSuccessBody}
         </p>
         <Link
           href={authed ? '/account' : `/b/${slug}?booked=${confirmedId}`}
@@ -459,7 +548,10 @@ export default function BookingStepper({
       {/* כותרת + מחוון שלבים */}
       <div className="mb-6">
         <div className="mb-2 flex items-center justify-between">
-          <Link href={`/b/${slug}`} className="text-sm text-slate-500 hover:text-slate-700">
+          <Link
+            href={`/b/${slug}`}
+            className="text-sm text-slate-500 hover:text-slate-700"
+          >
             ← {businessName}
           </Link>
           <span className="text-sm text-slate-400">
@@ -474,11 +566,15 @@ export default function BookingStepper({
             />
           ))}
         </div>
-        <h1 className="mt-4 text-xl font-bold text-slate-900">{t.booking.steps[STEP_KEYS[step]]}</h1>
+        <h1 className="mt-4 text-xl font-bold text-slate-900">
+          {t.booking.steps[STEP_KEYS[step]]}
+        </h1>
       </div>
 
       {error ? (
-        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
       ) : null}
 
       {/* ----- שלב 0: שירותים ----- */}
@@ -501,7 +597,9 @@ export default function BookingStepper({
                 <div>
                   <p className="font-medium text-slate-900">{s.name}</p>
                   {!s.hideDuration ? (
-                    <p className="text-sm text-slate-500">{formatDuration(s.durationMin)}</p>
+                    <p className="text-sm text-slate-500">
+                      {formatDuration(s.durationMin)}
+                    </p>
                   ) : null}
                 </div>
                 <div className="flex items-center gap-3">
@@ -558,8 +656,8 @@ export default function BookingStepper({
           <input
             type="date"
             value={date}
-            min={todayDateString()}
-            max={addDaysToDateString(todayDateString(), 60)}
+            min={businessToday}
+            max={addDaysToDateString(businessToday, 60)}
             onChange={(e) => setDate(e.target.value)}
             className="w-full rounded-xl border border-slate-300 px-4 py-3 text-lg"
           />
@@ -575,8 +673,8 @@ export default function BookingStepper({
             <input
               type="date"
               value={date}
-              min={todayDateString()}
-              max={addDaysToDateString(todayDateString(), 60)}
+              min={businessToday}
+              max={addDaysToDateString(businessToday, 60)}
               onChange={(e) => changeDate(e.target.value)}
               className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
             />
@@ -660,7 +758,9 @@ export default function BookingStepper({
               </div>
               <div className="flex justify-between">
                 <dt className="text-slate-500">{t.booking.staff}</dt>
-                <dd className="font-medium text-slate-900">{selectedStaff?.displayName}</dd>
+                <dd className="font-medium text-slate-900">
+                  {selectedStaff?.displayName}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-slate-500">{t.booking.date}</dt>
@@ -672,11 +772,15 @@ export default function BookingStepper({
               </div>
               <div className="flex justify-between border-t border-slate-100 pt-3">
                 <dt className="text-slate-500">{t.booking.totalDuration}</dt>
-                <dd className="font-medium text-slate-900">{formatDuration(totalDuration)}</dd>
+                <dd className="font-medium text-slate-900">
+                  {formatDuration(totalDuration)}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-slate-500">{t.booking.totalPrice}</dt>
-                <dd className="text-lg font-bold text-slate-900">{formatAgorot(totalPrice)}</dd>
+                <dd className="text-lg font-bold text-slate-900">
+                  {formatAgorot(totalPrice)}
+                </dd>
               </div>
             </dl>
           </div>
@@ -696,9 +800,13 @@ export default function BookingStepper({
               />
             </div>
           ) : null}
-          <p className="text-slate-600">{requireEmail ? t.booking.guestHintPremium : t.booking.guestHintStandard}</p>
+          <p className="text-slate-600">
+            {requireEmail ? t.booking.guestHintPremium : t.booking.guestHintStandard}
+          </p>
           <div>
-            <label className="mb-1 block text-sm text-slate-600">{t.booking.guestName}</label>
+            <label className="mb-1 block text-sm text-slate-600">
+              {t.booking.guestName}
+            </label>
             <input
               type="text"
               value={name}
@@ -708,36 +816,54 @@ export default function BookingStepper({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-slate-600">{t.booking.guestPhone}</label>
+            <label className="mb-1 block text-sm text-slate-600">
+              {t.booking.guestPhone}
+            </label>
             <input
               type="tel"
               inputMode="tel"
               dir="ltr"
               autoComplete="tel"
               value={phone}
+              aria-invalid={!!phone && !contactFeedback.phoneValid}
+              aria-describedby="booking-phone-error"
               onChange={(e) => setPhone(e.target.value)}
               placeholder={t.booking.guestPhonePlaceholder}
               className="w-full rounded-xl border border-slate-300 px-4 py-3"
             />
+            {phone && !contactFeedback.phoneValid ? (
+              <p id="booking-phone-error" className="mt-1 text-sm text-red-700">
+                {t.auth.invalidPhone}
+              </p>
+            ) : null}
           </div>
           {showEmailField ? (
             <div>
-              <label className="mb-1 block text-sm text-slate-600">{t.booking.guestEmail}</label>
+              <label className="mb-1 block text-sm text-slate-600">
+                {t.booking.guestEmail}
+              </label>
               <input
                 type="email"
                 inputMode="email"
                 dir="ltr"
                 autoComplete="email"
                 value={email}
+                aria-invalid={!!email && !contactFeedback.emailValid}
+                aria-describedby="booking-email-error"
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.booking.guestEmailPlaceholder}
                 className="w-full rounded-xl border border-slate-300 px-4 py-3"
               />
+              {email && !contactFeedback.emailValid ? (
+                <p id="booking-email-error" className="mt-1 text-sm text-red-700">
+                  {t.auth.invalidEmail}
+                </p>
+              ) : null}
             </div>
           ) : null}
           <button
             type="button"
-            disabled={busy || !name.trim() || !phone.trim() || (showEmailField && !email.trim())}
+            disabled={busy || !contactFeedback.valid || !selectedSlot}
             onClick={submitBooking}
             className="w-full rounded-xl bg-brand-600 py-3.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-40"
           >
@@ -752,7 +878,9 @@ export default function BookingStepper({
           {step > 0 ? (
             <button
               type="button"
-              onClick={() => setStep((s) => (s === 2 && singleStaff ? 0 : ((s - 1) as Step)))}
+              onClick={() =>
+                setStep((s) => (s === 2 && singleStaff ? 0 : ((s - 1) as Step)))
+              }
               className="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               {t.common.back}

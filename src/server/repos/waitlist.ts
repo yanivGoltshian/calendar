@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db';
+import { randomUUID } from 'node:crypto';
+import { deliverEmailOnce } from '@/server/billing/emailDelivery';
 import { sendGuardedSms } from '@/server/billing/costGuard';
-import { sendReminderEmail } from '@/server/providers/email';
+import { emailConfigured, sendReminderEmail } from '@/server/providers/email';
 import { normalizePhone } from '@/lib/crypto';
 import { BRAND } from '@/config/brand';
 import {
@@ -9,6 +11,7 @@ import {
 } from '@/server/repos/waitlistNotify';
 import { renderMessage } from '@/server/messages/render';
 import type { WaitlistStatus } from '@prisma/client';
+import { canSendPaidClientSms, getBusinessAccess } from '@/server/subscription';
 
 /**
  * מודול רשימת המתנה (WaitlistEntry).
@@ -97,76 +100,110 @@ export async function addWaitlistEntry(
   return { ok: true, id: created.id };
 }
 
-/**
- * יידוע ממתין שהתפנה תור: שולח SMS דרך ה-stub ומעדכן סטטוס ל-NOTIFIED עם notifiedAt.
- * פועל על רשומה בסטטוס WAITING בלבד.
- */
+/** Claim before dispatch; delivery completion cannot overwrite a terminal state. */
 export async function notifyWaitlistEntry(
   businessId: string,
   id: string,
-  opts?: { isExclusive?: boolean },
-): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'not_waiting' }> {
+  opts?: {
+    isExclusive?: boolean;
+    sendEmail?: typeof sendReminderEmail;
+    sendSms?: typeof sendGuardedSms;
+    emailConfigured?: boolean;
+  },
+): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'not_waiting' | 'no_channel' | 'delivery_failed' | 'delivery_in_progress' | 'delivery_unknown' | 'business_inactive' }> {
   const entry = await prisma.waitlistEntry.findFirst({
     where: { id, businessId },
-    include: { business: { select: { name: true } } },
+    include: { business: true, client: { include: { user: true } } },
   });
   if (!entry) return { ok: false, reason: 'not_found' };
   if (entry.status !== 'WAITING') return { ok: false, reason: 'not_waiting' };
-
-  // ערוץ היידוע ללקוח נבחר לפי החבילה: מסרון בתשלום לאקסקלוסיב (דרך שער העלות), ובחבילות
-  // ללא מסרון בתשלום — מייל "התפנה תור!" אם קיים אימייל ברשומה. בפרודקשן ספק ה-SMS במצב
-  // console ולכן המייל הוא הערוץ שמגיע ללקוח בפועל. השליחה best-effort ולעולם אינה חוסמת
-  // את מעבר הסטטוס ל-NOTIFIED.
+  if (entry.business.accountStatus !== 'ACTIVE' || !getBusinessAccess(entry.business).active) {
+    return { ok: false, reason: 'business_inactive' };
+  }
   const channel = resolveWaitlistNotifyChannel({
-    isExclusive: opts?.isExclusive,
+    isExclusive: canSendPaidClientSms(entry.business) && !!entry.client?.identityVerifiedAt && !!entry.client.user?.phoneVerifiedAt &&
+      normalizePhone(entry.client.user.phone ?? '') === normalizePhone(entry.phone),
     email: entry.email,
   });
-
-  // משתני התבנית לנתיב הדריסה (משמשים רק כשקיימת דריסת-בעלים).
+  if (channel === 'none' || entry.business.plan === 'basic' ||
+      (channel === 'email' && !(opts?.emailConfigured ?? emailConfigured))) {
+    await prisma.waitlistEntry.updateMany({
+      where: { id, businessId, status: 'WAITING', notifyClaimToken: null },
+      data: { notifyError: 'no_channel' },
+    });
+    return { ok: false, reason: 'no_channel' };
+  }
+  const claimToken = randomUUID();
+  const claimed = await prisma.waitlistEntry.updateMany({
+    where: { id, businessId, status: 'WAITING', notifyClaimToken: null },
+    data: { notifyClaimToken: claimToken, notifyClaimedAt: new Date(), notifyError: null },
+  });
+  if (!claimed.count) {
+    return { ok: false, reason: entry.notifyClaimedAt && entry.notifyClaimedAt.getTime() < Date.now() - 300000 ? 'delivery_unknown' : 'delivery_in_progress' };
+  }
   const vars = {
     clientName: entry.name,
     businessName: entry.business?.name ?? '',
     brand: BRAND.name,
   };
-
-  if (channel === 'sms') {
-    const fallback = `${BRAND.name}: התפנה תור! ${entry.name}, נשמח לשמור לך מועד. השיבו להודעה זו לתיאום.`;
-    const { text: message } = await renderMessage(
-      businessId,
-      'waitlist_freed',
-      'sms',
-      vars,
-      { text: fallback },
-    );
-    await sendGuardedSms({
-      businessId,
-      to: entry.phone,
-      body: message,
-      clientId: entry.clientId,
-      channel: 'sms',
+  let delivered = false;
+  let uncertain = false;
+  let dispatchStarted = false;
+  try {
+    const stillWaiting = await prisma.waitlistEntry.findFirst({
+      where: { id, businessId, status: 'WAITING', notifyClaimToken: claimToken },
     });
-  } else if (channel === 'email' && entry.email) {
-    // בליעה מכוונת: כשל SMTP אינו מפיל את היידוע ואינו חוסם את סימון NOTIFIED.
-    try {
+    if (!stillWaiting) return { ok: false, reason: 'not_waiting' };
+    const liveBusiness = await prisma.business.findUnique({ where: { id: businessId } });
+    if (!liveBusiness || liveBusiness.accountStatus !== 'ACTIVE' || !getBusinessAccess(liveBusiness).active) {
+      return { ok: false, reason: 'business_inactive' };
+    }
+    if (channel === 'sms') {
+      const fallback = `${BRAND.name}: התפנה תור! ${entry.name}, נשמח לשמור לך מועד. השיבו להודעה זו לתיאום.`;
+      const { text: message } = await renderMessage(businessId, 'waitlist_freed', 'sms', vars, { text: fallback });
+      dispatchStarted = true;
+      const result = await (opts?.sendSms ?? sendGuardedSms)({
+        businessId, to: entry.phone, body: message, clientId: entry.clientId,
+        channel: 'sms', idempotencyKey: `waitlist:${entry.id}`,
+      });
+      delivered = result.status === 'sent';
+      uncertain = (result.status === 'failed' && result.error === 'delivery_outcome_unknown') ||
+        (result.status === 'blocked' && result.reason === 'delivery_outcome_unknown');
+    } else if (channel === 'email' && entry.email) {
       const fb = buildWaitlistNotifyEmail(entry.name);
-      const { subject, text, html } = await renderMessage(
-        businessId,
-        'waitlist_freed',
-        'email',
-        vars,
-        fb,
-      );
-      await sendReminderEmail(entry.email, subject ?? fb.subject, text, html ?? fb.html);
-    } catch {
-      // best-effort — מתעלמים משגיאת שליחה.
+      const { subject, text, html } = await renderMessage(businessId, 'waitlist_freed', 'email', vars, fb);
+      const transport = opts?.sendEmail;
+      dispatchStarted = true;
+      const result = await deliverEmailOnce({
+        businessId, clientId: entry.clientId, idempotencyKey: `waitlist:${entry.id}`,
+        to: entry.email, subject: subject ?? fb.subject, text, html: html ?? fb.html,
+      }, {
+        send: transport ? (to, subject, text, html) => transport(to, subject, text, html ?? '') : undefined,
+        configured: opts?.emailConfigured,
+      });
+      delivered = result.status === 'sent';
+      uncertain = result.status === 'unknown';
+    }
+    if (!delivered) return { ok: false, reason: uncertain ? 'delivery_unknown' : 'delivery_failed' };
+    const finalized = await prisma.waitlistEntry.updateMany({
+      where: { id: entry.id, businessId, status: 'WAITING', notifyClaimToken: claimToken },
+      data: { status: 'NOTIFIED', notifiedAt: new Date(), notifyClaimToken: null, notifyClaimedAt: null, notifyError: null },
+    });
+    return finalized.count ? { ok: true } : { ok: false, reason: 'not_waiting' };
+  } catch (error) {
+    // Accepted sends with failed persistence and network timeouts are ambiguous.
+    uncertain = delivered || (dispatchStarted && !['EAUTH', 'EENVELOPE', 'ECONNECTION', 'ECONNREFUSED', 'ENOTFOUND']
+      .includes((error as NodeJS.ErrnoException)?.code ?? ''));
+    return { ok: false, reason: uncertain ? 'delivery_unknown' : 'delivery_failed' };
+  } finally {
+    if (!delivered) {
+      await prisma.waitlistEntry.updateMany({
+        where: { id, businessId, status: 'WAITING', notifyClaimToken: claimToken },
+        data: uncertain ? { notifyError: 'delivery_outcome_unknown' }
+          : { notifyClaimToken: null, notifyClaimedAt: null, notifyError: 'delivery_failed' },
+      }).catch(() => undefined);
     }
   }
-
-  await prisma.waitlistEntry.update({
-    where: { id: entry.id },
-    data: { status: 'NOTIFIED', notifiedAt: new Date() },
-  });
-  return { ok: true };
 }
 
 /** קידום ידני (הוזמן): מסמן BOOKED עם promotedAt. פועל על WAITING או NOTIFIED. */
@@ -176,7 +213,7 @@ export async function promoteWaitlistEntry(
 ): Promise<boolean> {
   const result = await prisma.waitlistEntry.updateMany({
     where: { id, businessId, status: { in: ['WAITING', 'NOTIFIED'] } },
-    data: { status: 'BOOKED', promotedAt: new Date() },
+    data: { status: 'BOOKED', promotedAt: new Date(), notifyClaimToken: null, notifyClaimedAt: null },
   });
   return result.count > 0;
 }
@@ -188,7 +225,7 @@ export async function cancelWaitlistEntry(
 ): Promise<boolean> {
   const result = await prisma.waitlistEntry.updateMany({
     where: { id, businessId, status: { in: ['WAITING', 'NOTIFIED'] } },
-    data: { status: 'CANCELLED' },
+    data: { status: 'CANCELLED', notifyClaimToken: null, notifyClaimedAt: null },
   });
   return result.count > 0;
 }

@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getActiveBusiness } from '@/server/repos/business';
+import { prisma } from '@/lib/db';
 import {
   createStaffMember,
-  updateStaffMember,
   setStaffActive,
   deleteStaffMember,
   type StaffInput,
@@ -14,7 +14,7 @@ import { isValidIsraeliMobile, normalizePhone } from '@/lib/crypto';
 
 const saveSchema = z.object({
   id: z.string().trim().optional(),
-  phone: z.string().trim().min(1, 'phone'),
+  phone: z.string().trim(),
   name: z.string().trim().max(120).optional(),
   displayName: z.string().trim().min(1, 'name'),
   title: z.string().trim().max(120).optional(),
@@ -44,7 +44,7 @@ export async function saveStaffAction(
 
   const parsed = saveSchema.safeParse({
     id: rawId || undefined,
-    phone: formData.get('phone'),
+    phone: formData.get('phone') ?? '',
     name: formData.get('name') || undefined,
     displayName: formData.get('displayName'),
     title: formData.get('title') || undefined,
@@ -60,7 +60,8 @@ export async function saveStaffAction(
   }
 
   const data = parsed.data;
-  if (!isValidIsraeliMobile(normalizePhone(data.phone))) {
+  const normalizedPhone = data.phone ? normalizePhone(data.phone) : null;
+  if ((mode === 'add' && !normalizedPhone) || (normalizedPhone && !isValidIsraeliMobile(normalizedPhone))) {
     return { ok: false, mode, error: 'phone' };
   }
 
@@ -78,10 +79,29 @@ export async function saveStaffAction(
   };
 
   if (mode === 'edit' && data.id) {
-    const ok = await updateStaffMember(business.id, data.id, input);
-    if (!ok) return { ok: false, mode, error: 'generic' };
+    const member = await prisma.staffMember.findFirst({
+      where: { id: data.id, businessId: business.id },
+      select: { user: { select: { phone: true } } },
+    });
+    if (!member) return { ok: false, mode, error: 'generic' };
+    // A tenant may edit its staff profile, not reassign a global login identity.
+    if (member.user.phone !== normalizedPhone) {
+      return { ok: false, mode, error: 'phone' };
+    }
+    const updated = await prisma.staffMember.updateMany({
+      where: { id: data.id, businessId: business.id },
+      data: {
+        displayName: input.displayName,
+        title: input.title,
+        bio: input.bio,
+        permissionLevel: input.permissionLevel,
+        active: input.active,
+      },
+    });
+    if (!updated.count) return { ok: false, mode, error: 'generic' };
   } else {
-    const res = await createStaffMember(business.id, input);
+    // Names belong to this tenant's displayName, never to another user's global profile.
+    const res = await createStaffMember(business.id, { ...input, name: null });
     if (!res.ok) return { ok: false, mode, error: 'duplicate' };
   }
 

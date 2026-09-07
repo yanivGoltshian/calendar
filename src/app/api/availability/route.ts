@@ -1,32 +1,25 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getBusinessBySlug } from '@/server/repos/business';
-import { getServicesByIds } from '@/server/repos/services';
-import { getEffectiveStaffWorkingHours } from '@/server/repos/workingHours';
-import { getBlockingAppointments } from '@/server/repos/appointments';
 import { getGoogleBusyIntervals } from '@/server/google/importBusy';
-import { computeSlots } from '@/server/availability';
+import {
+  bookingPolicy,
+  BookingError,
+  expirePendingReservations,
+} from '@/server/booking/policy';
 import { canAcceptPublicBookings } from '@/server/subscription';
-import { localWallTimeToUtc, addDaysToDateString } from '@/lib/time';
 
 const schema = z.object({
-  slug: z.string(),
-  staffId: z.string(),
-  serviceIds: z.array(z.string()).min(1),
+  slug: z.string().min(1).max(100),
+  staffId: z.string().min(1).max(100),
+  serviceIds: z.array(z.string().min(1).max(100)).min(1).max(20),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
-
-// בדיקת "probe" קלה: מחזירה רק את מצב הזמינות (blocked) של העסק לפי slug, ללא
-// חישוב משבצות. משמשת את BookingStepper לבדיקת מצב מנוי/תוקף בצד הלקוח — כך
-// שה-HTML הסטטי (revalidate=false) לא מכיל מידע תלוי-זמן על תוקף המנוי.
 const probeSchema = z.object({
-  slug: z.string(),
+  slug: z.string().min(1).max(100),
   probe: z.literal(true),
 });
 
-/**
- * חישוב שעות פנויות: מקבל עסק, איש צוות, שירותים ותאריך — ומחזיר משבצות זמן.
- */
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -34,90 +27,55 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: 'invalid_json' }, { status: 400 });
   }
-
-  // בקשת probe: מחזירה רק את מצב הזמינות (blocked) לעסק, לפני האימות המלא של קלט
-  // חישוב המשבצות. כך הלקוח יכול לדעת אם העסק מקבל הזמנות בלי לחשוף זאת ב-HTML הסטטי.
   const probe = probeSchema.safeParse(body);
-  if (probe.success) {
-    const business = await getBusinessBySlug(probe.data.slug);
-    if (!business) {
-      return NextResponse.json({ ok: false, error: 'business_not_found' }, { status: 404 });
-    }
-    return NextResponse.json({
-      ok: true,
-      durationMin: 0,
-      slots: [],
-      blocked: !canAcceptPublicBookings(business),
-    });
-  }
-
   const parsed = schema.safeParse(body);
-  if (!parsed.success) {
+  if (!probe.success && !parsed.success) {
     return NextResponse.json({ ok: false, error: 'invalid_input' }, { status: 400 });
   }
-
-  const { slug, staffId, serviceIds, date } = parsed.data;
-
+  const slug = probe.success ? probe.data.slug : parsed.success ? parsed.data.slug : '';
   const business = await getBusinessBySlug(slug);
-  if (!business) {
+  if (!business)
     return NextResponse.json({ ok: false, error: 'business_not_found' }, { status: 404 });
+  const blocked =
+    business.accountStatus !== 'ACTIVE' || !canAcceptPublicBookings(business);
+  if (probe.success || blocked)
+    return NextResponse.json({ ok: true, durationMin: 0, slots: [], blocked });
+  if (!parsed.success)
+    return NextResponse.json({ ok: false, error: 'invalid_input' }, { status: 400 });
+  try {
+    await expirePendingReservations(business.id);
+    const { staffId, serviceIds, date } = parsed.data;
+    const policy = await bookingPolicy(business.id, staffId, serviceIds, date);
+    const googleBusy = await getGoogleBusyIntervals(
+      staffId,
+      policy.dayStart,
+      policy.dayEnd,
+    );
+    const slots = policy.slots.filter(
+      (slot) =>
+        !googleBusy.some(
+          (busy) =>
+            busy.startAt < new Date(slot.endAtUtc) &&
+            busy.endAt > new Date(slot.startAtUtc),
+        ),
+    );
+    return NextResponse.json({
+      ok: true,
+      durationMin: policy.durationMin,
+      blocked: false,
+      slots: slots.map(({ label, startAtUtc, endAtUtc }) => ({
+        label,
+        startAtUtc,
+        endAtUtc,
+      })),
+    });
+  } catch (error) {
+    if (error instanceof BookingError) {
+      return NextResponse.json(
+        { ok: false, error: error.code },
+        { status: error.httpStatus },
+      );
+    }
+    throw error;
   }
-
-  // אכיפת מנוי: עסק שפג תוקפו אינו מציג משבצות פנויות (הגנה בעומק לצד הגייט בעמוד
-  // ההזמנה). מחזירים רשימה ריקה עם דגל blocked כדי שה-UI יוכל להציג הודעת חוסם.
-  if (!canAcceptPublicBookings(business)) {
-    return NextResponse.json({ ok: true, durationMin: 0, slots: [], blocked: true });
-  }
-
-  // ודא שאיש הצוות שייך לעסק.
-  const staff = business.staff.find((s) => s.id === staffId);
-  if (!staff) {
-    return NextResponse.json({ ok: false, error: 'staff_not_found' }, { status: 404 });
-  }
-
-  const services = await getServicesByIds(business.id, serviceIds);
-  if (services.length === 0) {
-    return NextResponse.json({ ok: false, error: 'no_services' }, { status: 400 });
-  }
-  const durationMin = services.reduce((sum, s) => sum + s.durationMin, 0);
-
-  // שעות אפקטיביות: שעות איש הצוות, ובהיעדרן — נפילה לשעות העסק (ברירת מחדל).
-  const workingHours = await getEffectiveStaffWorkingHours(business.id, staffId);
-
-  // טווח UTC ליום המבוקש (מחצות עד חצות מקומי) לשליפת תורים קיימים.
-  const [y, m, d] = date.split('-').map(Number);
-  const dayStartUtc = localWallTimeToUtc(y, m, d, 0, business.timezone);
-  const nextDate = addDaysToDateString(date, 1);
-  const [ny, nm, nd] = nextDate.split('-').map(Number);
-  const dayEndUtc = localWallTimeToUtc(ny, nm, nd, 0, business.timezone);
-
-  const busy = await getBlockingAppointments(staffId, dayStartUtc, dayEndUtc);
-
-  // שילוב עומס מיומן Google של הבעלים (best-effort, fail-open). כשהסנכרון כבוי
-  // ב-env הפונקציה חוזרת מיד עם [] וללא גישת DB. מרווחי Google נספחים לתורים
-  // הקיימים ומטופלים זהה בחישוב המשבצות (שניהם נקראים לפי startAt/endAt בלבד).
-  const googleBusy = await getGoogleBusyIntervals(staffId, dayStartUtc, dayEndUtc);
-  const busyAll = googleBusy.length > 0 ? [...busy, ...googleBusy] : busy;
-
-  const slots = computeSlots({
-    dateStr: date,
-    workingHours: workingHours.map((w) => ({
-      weekday: w.weekday,
-      startMinute: w.startMinute,
-      endMinute: w.endMinute,
-      breaks: (w.breaks as [number, number][]) ?? [],
-    })),
-    busy: busyAll,
-    durationMin,
-    slotGranularityMin: business.settings?.slotGranularityMinutes ?? 15,
-    timeZone: business.timezone,
-    minLeadTimeMinutes: business.settings?.minLeadTimeMinutes ?? 0,
-  });
-
-  return NextResponse.json({
-    ok: true,
-    durationMin,
-    blocked: false,
-    slots: slots.map((s) => ({ label: s.label, startAtUtc: s.startAtUtc, endAtUtc: s.endAtUtc })),
-  });
 }

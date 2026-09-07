@@ -9,6 +9,7 @@ import { t } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { Button } from './Button';
 import { Container } from './Container';
+import { DirectoryLink } from './DirectoryLink';
 
 type NavLink = { href: string; label: string };
 
@@ -102,6 +103,7 @@ export function Navbar({
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">
+          <DirectoryLink />
           {sectionLinks.map((link) => (
             <a
               key={link.href}
@@ -180,6 +182,7 @@ export function Navbar({
             className="overflow-hidden border-t border-sand-200/70 bg-sand-50/95 backdrop-blur-lg lg:hidden dark:border-sand-800/70 dark:bg-sand-950/95"
           >
             <Container className="flex flex-col gap-1 py-4">
+              <DirectoryLink />
               {sectionLinks.map((link) => (
                 <a
                   key={link.href}

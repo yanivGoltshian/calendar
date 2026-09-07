@@ -156,7 +156,7 @@ flowchart TD
 2. הריצו את סכימת Prisma מול המסד החדש:
    ```bash
    DATABASE_URL="postgresql://torchickadmin:<סיסמה>@torchick-pg-prod.postgres.database.azure.com:5432/torchick?sslmode=require" \
-     npx prisma migrate deploy
+     npm run prisma:deploy -- --allow-nonlocal
    ```
 3. העבירו נתונים קיימים (אם יש) עם `pg_dump` מהמסד הישן ו-`pg_restore` או `psql` אל החדש.
 4. עדכנו את הסוד `DATABASE_URL` ב-repository/environment secrets לכתובת החדשה.
@@ -223,7 +223,18 @@ az containerapp secret set \
 
 ### תזכורות מתוזמנות (`reminders.yml`)
 
-ה-workflow ‏`.github/workflows/reminders.yml` רץ כל 15 דקות (וניתן להריצו ידנית) ומפעיל‏ `POST /api/cron/reminders` בפרודקשן עם הכותרת `x-cron-secret`. ה-endpoint מוצא תורים פעילים בחלון ~24 שעות קדימה (±15 דק׳, תואם לתדירות ה-cron), שולח תזכורת דרך שכבת ההודעות ומסמן `reminderSentAt` באופן אידמפוטנטי (בטוח לריצה חוזרת). הדרישות: הסודות `APP_PUBLIC_URL` ו-`CRON_SECRET` ב-repository secrets, וערך `CRON_SECRET` זהה על ה-Container App. אם `SMS_PROVIDER=console` בפרודקשן, התזכורות מחושבות ומסומנות אך לא נשלחות בפועל (מודפסות ללוג).
+המשימה המתוזמנת מופעלת כל חמש עשרה דקות. היא משתמשת במדיניות התזכורות הנוכחית של העסק, מיישבת כוונות שטרם נשלחו ותובעת כל תור אטומית לפני מסירה. רק תוצאת ספק ממשית מסומנת כהצלחה; ספק פיתוח או ספק חסר אינם נחשבים משלוח. כשל הכנה ניתן לניסיון חוזר, ותוצאה לא ידועה לאחר תחילת מסירה דורשת בירור תפעולי. מדריך השחרור מתאר את הנעילות, המכסות וההתאוששות.
+
+```text
+.github/workflows/reminders.yml
+POST /api/cron/reminders
+x-cron-secret
+APP_PUBLIC_URL
+CRON_SECRET
+docs/audit-fixes-he.md
+```
+
+סוד האימות חייב להיות זהה בתהליך המתוזמן ובסביבת האפליקציה. שינוי או הפעלה בייצור דורשים אישור נפרד.
 
 ### משתני סביבה לא-סודיים
 
@@ -302,8 +313,10 @@ az deployment group create \
 ### שלב 6: הרצת מיגרציות מסד הנתונים
 
 ```bash
-DATABASE_URL="<המחרוזת שלכם>" npx prisma migrate deploy
+DATABASE_URL="<AUTHORIZED_DATABASE_URL>" npm run prisma:deploy -- --allow-nonlocal
 ```
+
+הפקודה מותרת רק לאחר אישור, גיבוי ותרגול שדרוג. יש לפעול לפי [הליך ההגירות והשחזור](./audit-fixes-he.md), כולל בדיקת חפיפות קיימות ושמירת חתימות ההגירות המקוריות.
 
 ### שלב 7: אימות
 

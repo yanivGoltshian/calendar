@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 import type { AppointmentStatus } from '@prisma/client';
 import { auth, signOut } from '@/auth';
 import {
@@ -15,13 +16,14 @@ import {
 import { getServicesByIds } from '@/server/repos/services';
 import {
   createAppointment,
-  hasConflict,
+  getAppointmentById,
   updateAppointmentStatus,
 } from '@/server/repos/appointments';
-import { findOrCreateClient } from '@/server/repos/clients';
-import { createReminder } from '@/server/repos/reminders';
+import { BookingError } from '@/server/booking/policy';
+import { bookingDigest } from '@/server/booking/quotas';
+import { exportOnCancel, exportOnCreate } from '@/server/google/appointmentSync';
 import { localWallTimeToUtc } from '@/lib/time';
-import { normalizePhone } from '@/lib/crypto';
+import { normalizePhone, isValidIsraeliMobile } from '@/lib/crypto';
 
 const STATUS_VALUES = [
   'PENDING',
@@ -41,7 +43,30 @@ export async function setAppointmentStatusAction(
   if (!(STATUS_VALUES as readonly string[]).includes(status)) {
     return { ok: false };
   }
-  await updateAppointmentStatus(appointmentId, status as AppointmentStatus);
+  const business = await getActiveBusiness();
+  if (!business) return { ok: false };
+  const appt = await getAppointmentById(appointmentId);
+  if (appt?.businessId !== business.id) return { ok: false };
+  let updated;
+  try {
+    updated = await updateAppointmentStatus(appointmentId, status as AppointmentStatus, {
+      businessId: business.id,
+      expectedStatus: appt.status,
+    });
+  } catch (error) {
+    if (error instanceof BookingError) return { ok: false };
+    throw error;
+  }
+  if (!updated) return { ok: false };
+  try {
+    if (status === 'CANCELLED') await exportOnCancel(appointmentId);
+    if (status === 'CONFIRMED') await exportOnCreate(appointmentId);
+  } catch (error) {
+    console.error('calendar_sync_deferred', {
+      appointmentId,
+      error: error instanceof Error ? error.name : 'unknown',
+    });
+  }
   revalidatePath('/admin');
   return { ok: true };
 }
@@ -53,6 +78,7 @@ const createSchema = z.object({
   clientName: z.string().trim().min(1),
   clientPhone: z.string().trim().min(1),
   serviceId: z.string().min(1),
+  idempotencyKey: z.string().uuid().optional(),
 });
 
 export type CreateApptState = { ok: boolean; error?: string };
@@ -69,6 +95,7 @@ export async function createManualAppointmentAction(
     clientName: formData.get('clientName'),
     clientPhone: formData.get('clientPhone'),
     serviceId: formData.get('serviceId'),
+    idempotencyKey: formData.get('idempotencyKey') || undefined,
   });
   if (!parsed.success) {
     return { ok: false, error: 'bad_request' };
@@ -88,35 +115,44 @@ export async function createManualAppointmentAction(
   const totalPrice = services.reduce((s, svc) => s + svc.priceAgorot, 0);
   const endAt = new Date(startAt.getTime() + totalDuration * 60_000);
 
-  if (await hasConflict(data.staffId, startAt, endAt)) {
-    return { ok: false, error: 'slot_taken' };
+  const phone = normalizePhone(data.clientPhone);
+  if (!isValidIsraeliMobile(phone)) return { ok: false, error: 'invalid_phone' };
+  const requestHash = bookingDigest(JSON.stringify({ ...data, clientPhone: phone }));
+  let appointment;
+  try {
+    appointment = await createAppointment({
+      businessId: business.id,
+      clientIdentity: { phone, name: data.clientName },
+      idempotency: {
+        scope: `owner:${business.id}`,
+        key: data.idempotencyKey ?? randomUUID(),
+        requestHash,
+      },
+      staffId: data.staffId,
+      startAt,
+      endAt,
+      services: services.map((s) => ({
+        id: s.id,
+        name: s.name,
+        durationMin: s.durationMin,
+        priceAgorot: s.priceAgorot,
+      })),
+      totalPriceAgorot: totalPrice,
+    });
+  } catch (error) {
+    if (error instanceof BookingError) return { ok: false, error: error.code };
+    throw error;
   }
-
-  const client = await findOrCreateClient({
-    businessId: business.id,
-    phone: normalizePhone(data.clientPhone),
-    name: data.clientName,
-  });
-
-  const appointment = await createAppointment({
-    businessId: business.id,
-    clientId: client.id,
-    staffId: data.staffId,
-    startAt,
-    endAt,
-    services: services.map((s) => ({
-      id: s.id,
-      name: s.name,
-      durationMin: s.durationMin,
-      priceAgorot: s.priceAgorot,
-    })),
-    totalPriceAgorot: totalPrice,
-  });
-
-  const sendAt = new Date(
-    Math.max(startAt.getTime() - 24 * 60 * 60 * 1000, Date.now() + 60_000),
-  );
-  await createReminder(appointment.id, sendAt);
+  if (!appointment.replayed && appointment.status === 'CONFIRMED') {
+    try {
+      await exportOnCreate(appointment.id);
+    } catch (error) {
+      console.error('calendar_sync_deferred', {
+        appointmentId: appointment.id,
+        error: error instanceof Error ? error.name : 'unknown',
+      });
+    }
+  }
 
   revalidatePath('/admin');
   return { ok: true };

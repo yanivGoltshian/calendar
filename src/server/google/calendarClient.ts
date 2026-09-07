@@ -5,7 +5,7 @@
  * יצירת/מחיקת אירוע, שליפת אימייל). ניהול ההצפנה וההתמדה נעשה בשכבת ה-repo.
  *
  * כל קריאה עטופה ב-AbortController עם timeout, כדי שתקלה/איטיות אצל Google לא
- * תתקע את הבקשה שלנו (בעיקר בנתיב הזמינות החם — שם נכשלים "פתוח").
+ * תתקע את הבקשה שלנו. כשל בייבוא עומס מוצג כתקלה זמנית.
  */
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -126,7 +126,7 @@ export async function getUserEmail(accessToken: string): Promise<string | null> 
 
 /**
  * שולף חלונות עמוסים (busy) מהיומן בטווח נתון. timeoutMs קצר בשימוש בנתיב החם.
- * מחזיר מערך אינטרוולים; זורק אם Google מחזיר שגיאה (הקורא אחראי ל-fail-open).
+ * מחזיר מערך אינטרוולים; זורק אם התשובה חסרה, פגומה או כוללת שגיאת יומן.
  */
 export async function getFreeBusy(params: {
   accessToken: string;
@@ -152,17 +152,21 @@ export async function getFreeBusy(params: {
     });
     if (!res.ok) throw new Error(`freebusy_failed_${res.status}:${await safeText(res)}`);
     const json = (await res.json()) as {
-      calendars?: Record<string, { busy?: Array<{ start: string; end: string }> }>;
+      calendars?: Record<string, { busy?: Array<{ start: string; end: string }>; errors?: unknown[] }>;
     };
     const cal = json.calendars?.[calendarId];
-    const busy = cal?.busy ?? [];
-    return busy
-      .map((b) => ({ startAt: new Date(b.start), endAt: new Date(b.end) }))
-      .filter((b) => !Number.isNaN(b.startAt.getTime()) && !Number.isNaN(b.endAt.getTime()));
+    if (!cal || cal.errors?.length || !Array.isArray(cal.busy))
+      throw new Error('freebusy_invalid_response');
+    const intervals = cal.busy.map((b) => ({ startAt: new Date(b.start), endAt: new Date(b.end) }));
+    if (intervals.some((b) => !Number.isFinite(b.startAt.getTime()) ||
+      !Number.isFinite(b.endAt.getTime()) || b.endAt <= b.startAt))
+      throw new Error('freebusy_invalid_interval');
+    return intervals;
   });
 }
 
 export type GoogleEventInput = {
+  id?: string;
   summary: string;
   description?: string;
   location?: string;
@@ -188,6 +192,7 @@ export async function insertEvent(params: {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
+        id: event.id,
         summary: event.summary,
         description: event.description,
         location: event.location,
@@ -196,6 +201,9 @@ export async function insertEvent(params: {
       }),
       signal,
     });
+    // Google accepts caller-selected base32hex IDs. A retry after lost response
+    // gets 409 instead of creating a second appointment event.
+    if (res.status === 409 && event.id) return event.id;
     if (!res.ok) throw new Error(`event_insert_failed_${res.status}:${await safeText(res)}`);
     const json = (await res.json()) as { id?: string };
     if (!json.id) throw new Error('event_insert_no_id');

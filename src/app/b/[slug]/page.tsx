@@ -37,16 +37,16 @@ import { visualLevelForPublicPage } from '@/server/onboardingProgress';
 import ShareBusiness from '@/components/publicLanding/ShareBusiness';
 import BackButton from '@/components/publicLanding/BackButton';
 import AnnouncementBar from '@/components/publicLanding/AnnouncementBar';
+import MediaImage from '@/components/publicLanding/MediaImage';
+import { publicMediaContent } from '@/server/media/publicContent';
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
 
-// סטטי מלא: השלד נשמר במטמון ללא תוקף זמן (revalidate=false) ומתרענן אך ורק על פי
-// דרישה דרך revalidatePath בפעולות הניהול. אין כאן מידע תלוי-זמן: מצב הזמינות/מנוי
-// נבדק בצד הלקוח דרך ה-API של הזמינות, והדגשת "היום" מתבצעת בדפדפן. כל מידע אישי
-// (חשבון הלקוח, תורים עתידיים) נטען בצד הלקוח, כך שה-HTML הנשמר זהה לכל המבקרים וללא PII.
-export const revalidate = false;
+// Retain shared cached HTML; requests after 300 seconds trigger background refresh
+// of indexing eligibility. Dates and personal data remain client-hydrated.
+export const revalidate = 300;
 export const dynamicParams = true;
 
 // פרה-רנדר של סלאגים ידועים מה-DB לטובת סורקים; כשאין DB בזמן build נופלים לרשימה
@@ -62,13 +62,13 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const business = await getBusinessBySlug(slug);
+  const business = publicMediaContent(await getBusinessBySlug(slug), slug);
   return buildBusinessPageMetadata(business);
 }
 
 export default async function BusinessPublicPage({ params }: Props) {
   const { slug } = await params;
-  const business = await getBusinessBySlug(slug);
+  const business = publicMediaContent(await getBusinessBySlug(slug), slug);
   if (!business) notFound();
 
   // קישור התחברות (לא תלוי משתמש) לכותרת הפרימיום — מוצג לאורחים שאינם מזוהים.
@@ -202,7 +202,7 @@ export default async function BusinessPublicPage({ params }: Props) {
     <div className="mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/25 bg-white/95 shadow-lg sm:h-20 sm:w-20">
       {business.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={business.logoUrl} alt={business.name} className="h-full w-full object-contain p-1.5" />
+        <MediaImage src={business.logoUrl} alt={business.name} sizes="80px" className="h-full w-full object-contain p-1.5" />
       ) : (
         <span className="text-3xl font-bold text-[color:var(--biz-strong)] sm:text-4xl">{business.name.charAt(0)}</span>
       )}
@@ -260,7 +260,7 @@ export default async function BusinessPublicPage({ params }: Props) {
             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--biz-soft)] ring-2 ring-[color:var(--biz-border)]">
               {m.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.avatarUrl} alt={m.displayName} className="h-full w-full object-cover" />
+                <MediaImage src={m.avatarUrl} alt={m.displayName} sizes="64px" className="h-full w-full object-cover" />
               ) : (
                 <span className="text-xl font-bold text-[color:var(--biz-strong)]">{m.displayName.charAt(0)}</span>
               )}
@@ -315,7 +315,7 @@ export default async function BusinessPublicPage({ params }: Props) {
     >
       <JsonLd data={jsonLd} />
       {/* הדגשת "היום" בטבלת השעות מתבצעת בצד הלקוח (ה-HTML הסטטי חף מתלות ביום/שעה). */}
-      <TodayHoursHighlight />
+      <TodayHoursHighlight timeZone={business.timezone} />
 
       {/* ניווט חזרה — כפתור זכוכית צף בפינה הימנית־עליונה מעל ההירו (RTL) */}
       <div className="absolute right-4 top-3 z-50 sm:right-6 sm:top-5">
@@ -325,6 +325,7 @@ export default async function BusinessPublicPage({ params }: Props) {
       {isClinicPremium ? (
         /* כותרת פרימיום של הקליניקה — סרגל כהה, ניווט קרם, פס מבצע והירו המפוצל */
         <PremiumClinicHeader
+          timeZone={business.timezone}
           name={business.name}
           logoUrl={business.logoUrl}
           phone={business.phone}
@@ -380,7 +381,7 @@ export default async function BusinessPublicPage({ params }: Props) {
           >
             {business.coverImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <MediaImage priority sizes="100vw"
                 src={business.coverImageUrl}
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover opacity-20"
@@ -420,6 +421,7 @@ export default async function BusinessPublicPage({ params }: Props) {
 
         {isLanding ? (
           <LandingSections
+            timeZone={business.timezone}
             content={landing}
             type={business.type}
             services={services}

@@ -9,12 +9,11 @@ import { decideNewBusinessView } from '../ownerRouting';
 import { switchIdentityForAnotherBusiness } from './switch-identity-actions';
 import { CreateBusinessForm } from './CreateBusinessForm';
 import { OwnerSignIn } from '../login/OwnerSignIn';
+import { buildMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = {
-  title: `${t.business.start.title} · תור צ׳יק`,
-};
+export const metadata = buildMetadata({ title: t.business.start.title, path: '/business/new', noIndex: true });
 
 /**
  * פתיחת עסק חדש (אפיק D1) כמשפך חמים בדומה ל-calmark:

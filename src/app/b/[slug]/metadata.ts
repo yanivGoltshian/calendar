@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo';
+import { isPubliclyListed, type PublicListable } from '@/lib/directory';
 
 /**
  * קלט טהור לבניית מטא-דאטה של עמוד עסק — תת-קבוצה של שדות העסק
  * (שם, slug, תיאור) כדי שהפונקציה תהיה בדיקה-ביחידה ללא תלות ב-Prisma/DB.
  */
-export type BusinessPageMetadataInput = {
+export type BusinessPageMetadataInput = PublicListable & {
   name: string;
   slug: string;
   description?: string | null;
@@ -34,5 +35,6 @@ export function buildBusinessPageMetadata(
       `קביעת תור אונליין אצל ${business.name}. בחירת שירות, בחירת מועד ואישור מיידי.`,
     path: `/b/${business.slug}`,
     image: null,
+    noIndex: !isPubliclyListed(business),
   });
 }

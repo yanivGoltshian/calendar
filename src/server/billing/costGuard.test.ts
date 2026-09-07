@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import type { PrismaClient } from '@prisma/client';
+import { resolveMessagingProvider } from '../providers/messaging';
 
 import {
   resolveCostGuardConfig,
@@ -146,20 +148,25 @@ function makeDeps(
   const sent: string[] = [];
   const logs: Logged[] = [];
   const alerts = { count: 0 };
+  const db = {
+    $executeRaw: async () => 1,
+    business: { findUnique: async () => ({ plan: 'exclusive', paidUntil: new Date(Date.now() + 86400000), accountStatus: 'ACTIVE' }) },
+    client: { findFirst: async () => ({ id: 'client', identityVerifiedAt: new Date(), user: { phone: '+972500000000', phoneVerifiedAt: new Date() } }) },
+    messageLog: {
+      findUnique: async () => null,
+      aggregate: async () => ({ _sum: { costAgorot: used } }),
+      count: async () => 0,
+      create: async ({ data }: { data: Logged }) => { logs.push({ ...data }); return { id: 'reserved' }; },
+      update: async ({ data }: { data: Partial<Logged> }) => { Object.assign(logs[0], data); return { id: 'reserved' }; },
+    },
+    $transaction: async (fn: (tx: unknown) => unknown) => fn(db),
+  } as unknown as PrismaClient;
   const deps: GuardedSmsDeps = {
     config: CONFIG,
     now: new Date('2026-06-15T00:00:00.000Z'),
-    getUsage: async () => used,
+    prismaClient: db,
     sendSms: async (to) => {
       sent.push(to);
-    },
-    logMessage: async (input) => {
-      logs.push({
-        status: input.status,
-        costAgorot: input.costAgorot,
-        countsToCap: input.countsToCap,
-        error: input.error,
-      });
     },
     onAlert: async () => {
       alerts.count += 1;
@@ -186,7 +193,7 @@ test('sendGuardedSms: מתחת לתקרה — שולח ומתעד SENT עם על
 test('sendGuardedSms: חציית סף ההתראה — שולח ומפעיל התראה אחת', async () => {
   const { deps, sent, alerts } = makeDeps(3995);
   const res = await sendGuardedSms(
-    { businessId: 'b', to: '+972500000001', body: 'hi' },
+    { businessId: 'b', to: '+972500000000', body: 'hi' },
     deps,
   );
   assert.equal(res.status, 'sent');
@@ -198,7 +205,7 @@ test('sendGuardedSms: חציית סף ההתראה — שולח ומפעיל ה�
 test('sendGuardedSms: בתקרה — חוסם, מתעד BLOCKED, ולא שולח', async () => {
   const { deps, sent, logs, alerts } = makeDeps(4500);
   const res = await sendGuardedSms(
-    { businessId: 'b', to: '+972500000002', body: 'hi' },
+    { businessId: 'b', to: '+972500000000', body: 'hi' },
     deps,
   );
   assert.equal(res.status, 'blocked');
@@ -211,37 +218,37 @@ test('sendGuardedSms: בתקרה — חוסם, מתעד BLOCKED, ולא שולח
   assert.equal(alerts.count, 0);
 });
 
-test('sendGuardedSms: אימות בעלים (countsToCap=false) — לא נחסם גם מעל התקרה', async () => {
+test('sendGuardedSms refuses a caller-controlled budget exemption', async () => {
   const { deps, sent, logs, alerts } = makeDeps(9999);
   const res = await sendGuardedSms(
     {
       businessId: 'b',
-      to: '+972500000003',
+      to: '+972500000000',
       body: 'owner code',
       countsToCap: false,
     },
     deps,
   );
-  assert.equal(res.status, 'sent');
-  assert.equal(sent.length, 1);
+  assert.equal(res.status, 'blocked');
+  assert.equal(sent.length, 0);
   assert.equal(logs.length, 1);
-  assert.equal(logs[0].status, 'SENT');
-  assert.equal(logs[0].countsToCap, false);
+  assert.equal(logs[0].status, 'BLOCKED');
+  assert.equal(logs[0].countsToCap, true);
   assert.equal(alerts.count, 0);
 });
 
-test('sendGuardedSms: כשל שליחה — מתעד FAILED בעלות אפס ומחזיר failed', async () => {
+test('production console provider never finalizes a reservation as SENT', async () => {
   const { deps, logs } = makeDeps(1000, {
-    sendSms: async () => {
-      throw new Error('gateway down');
+    sendSms: async (to, body) => {
+      await resolveMessagingProvider({ NODE_ENV: 'production', MESSAGING_PROVIDER: 'console' }).sendSms(to, body);
     },
   });
   const res = await sendGuardedSms(
-    { businessId: 'b', to: '+972500000004', body: 'hi' },
+    { businessId: 'b', to: '+972500000000', body: 'hi' },
     deps,
   );
   assert.equal(res.status, 'failed');
-  assert.equal((res as { error: string }).error, 'gateway down');
+  assert.equal((res as { error: string }).error, 'provider_not_configured');
   assert.equal(logs.length, 1);
   assert.equal(logs[0].status, 'FAILED');
   assert.equal(logs[0].costAgorot, 0);
@@ -251,9 +258,23 @@ test('sendGuardedSms: איפוס בתחילת חודש — צבירה של חו�
   // הצבירה נמדדת בחלון החודש הנוכחי בלבד; getUsage מדמה חודש חדש (0).
   const { deps, sent } = makeDeps(0);
   const res = await sendGuardedSms(
-    { businessId: 'b', to: '+972500000005', body: 'hi' },
+    { businessId: 'b', to: '+972500000000', body: 'hi' },
     deps,
   );
   assert.equal(res.status, 'sent');
   assert.equal(sent.length, 1);
+});
+
+test('projected spend cannot cross the cap', () => {
+  assert.equal(evaluateGuard(4495, 10, CONFIG).blocked, true);
+});
+
+test('storage failure before reservation never dispatches', async () => {
+  const { deps, sent } = makeDeps(0, {
+    prismaClient: { $transaction: async () => { throw new Error('database offline'); } } as unknown as PrismaClient,
+  });
+  assert.deepEqual(await sendGuardedSms({ businessId: 'b', to: '+972500000000', body: 'hi' }, deps), {
+    status: 'failed', error: 'reservation_failed',
+  });
+  assert.equal(sent.length, 0);
 });

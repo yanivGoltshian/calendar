@@ -7,8 +7,9 @@ import { DEMO_BUSINESS_SLUG } from '@/config/brand';
 
 // חוזה ברמת המקור: מוודא ששלושת העמודים הציבוריים אינם קוראים מידע אישי בשרת
 // (אין דליפת PII לשלד הנשמר במטמון) ושהגדרת ה-route segment תואמת ליעד —
-// דף הבית סטטי מלא (force-static) ועמודי העסק סטטיים מלאים (revalidate=false,
-// dynamicParams=true, רענון על-פי דרישה בלבד). קורא את קובצי המקור כטקסט מכיוון
+// דף הבית סטטי מלא (force-static), פרופיל העסק נשמר במטמון עם ISR של 300 שניות,
+// ושלד ההזמנה סטטי ללא תפוגה (revalidate=false). dynamicParams מאפשר סלאגים חדשים.
+// קורא את קובצי המקור כטקסט מכיוון
 // שייבוא מודול-העמוד חסום בבדיקות עקב שרשרת server-only.
 
 const APP_DIR = dirname(fileURLToPath(import.meta.url));
@@ -111,16 +112,12 @@ test('Navbar ו-Footer מגדרים קישור /demo על demoSlug (נוכח כ�
   );
 });
 
-// --- עמוד פרופיל העסק: סטטי מלא, ללא תורים אישיים בשרת ---
+// --- עמוד פרופיל העסק: ISR משותף, ללא תורים אישיים בשרת ---
 
-test('עמוד /b/[slug] סטטי מלא: revalidate=false, dynamicParams, generateStaticParams (ולא force-dynamic ולא ISR מבוסס-זמן)', () => {
+test('business profiles retain shared five-minute ISR, static generation and dynamic paths', () => {
   assert.ok(
-    /export\s+const\s+revalidate\s*=\s*false/.test(profile),
-    'ציפינו ל-revalidate = false (מטמון עד רענון על-פי דרישה)',
-  );
-  assert.ok(
-    !/export\s+const\s+revalidate\s*=\s*\d/.test(profile),
-    'עמוד הפרופיל לא אמור להגדיר revalidate מספרי (ISR מבוסס-זמן)',
+    /export\s+const\s+revalidate\s*=\s*300\s*;/.test(profile),
+    'Shared cached pages must refresh eligibility after subscription expiry',
   );
   assert.ok(
     /export\s+const\s+dynamicParams\s*=\s*true/.test(profile),

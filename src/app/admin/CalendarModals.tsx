@@ -88,6 +88,8 @@ export function CreateAppointmentModal({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const [idempotencyKey, setIdempotencyKey] = useState('');
+  useEffect(() => setIdempotencyKey(crypto.randomUUID()), []);
   const [state, formAction, pending] = useActionState(
     createManualAppointmentAction,
     initialState,
@@ -113,6 +115,7 @@ export function CreateAppointmentModal({
       <form action={formAction} className="space-y-3">
         <input type="hidden" name="staffId" value={staffId} />
         <input type="hidden" name="date" value={date} />
+        <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
         <div>
           <label className="mb-1 block text-sm font-medium text-[#4a4038]">
@@ -168,7 +171,7 @@ export function CreateAppointmentModal({
 
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || !idempotencyKey}
           className="w-full rounded-lg bg-brand-600 py-2.5 font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
         >
           {pending ? c.creating : t.admin.form.submit}
@@ -181,12 +184,36 @@ export function CreateAppointmentModal({
 type StatusTarget = { status: string; label: string; tone: string };
 
 const STATUS_TARGETS: readonly StatusTarget[] = [
-  { status: 'CONFIRMED', label: c.markConfirmed, tone: 'text-brand-700 ring-brand-200 hover:bg-brand-50' },
-  { status: 'ARRIVED', label: c.markArrived, tone: 'text-emerald-700 ring-emerald-200 hover:bg-emerald-50' },
-  { status: 'DONE', label: c.markDone, tone: 'text-[#4a4038] ring-[#e7ddcd] hover:bg-[#f7f2ea]' },
-  { status: 'NO_SHOW', label: c.markNoShow, tone: 'text-amber-700 ring-amber-200 hover:bg-amber-50' },
-  { status: 'CANCELLED', label: c.markCancelled, tone: 'text-red-700 ring-red-200 hover:bg-red-50' },
-  { status: 'PENDING', label: c.reopen, tone: 'text-[#6e655f] ring-[#e7ddcd] hover:bg-[#f7f2ea]' },
+  {
+    status: 'CONFIRMED',
+    label: c.markConfirmed,
+    tone: 'text-brand-700 ring-brand-200 hover:bg-brand-50',
+  },
+  {
+    status: 'ARRIVED',
+    label: c.markArrived,
+    tone: 'text-emerald-700 ring-emerald-200 hover:bg-emerald-50',
+  },
+  {
+    status: 'DONE',
+    label: c.markDone,
+    tone: 'text-[#4a4038] ring-[#e7ddcd] hover:bg-[#f7f2ea]',
+  },
+  {
+    status: 'NO_SHOW',
+    label: c.markNoShow,
+    tone: 'text-amber-700 ring-amber-200 hover:bg-amber-50',
+  },
+  {
+    status: 'CANCELLED',
+    label: c.markCancelled,
+    tone: 'text-red-700 ring-red-200 hover:bg-red-50',
+  },
+  {
+    status: 'PENDING',
+    label: c.reopen,
+    tone: 'text-[#6e655f] ring-[#e7ddcd] hover:bg-[#f7f2ea]',
+  },
 ];
 
 const STATUS_BADGE: Record<string, string> = {
@@ -270,16 +297,12 @@ export function AppointmentDetailModal({
         {appt.serviceNames ? (
           <div className="flex justify-between gap-4">
             <dt className="text-[#8f8478]">{t.admin.form.service}</dt>
-            <dd className="text-left font-medium text-[#1b1715]">
-              {appt.serviceNames}
-            </dd>
+            <dd className="text-left font-medium text-[#1b1715]">{appt.serviceNames}</dd>
           </div>
         ) : null}
         <div className="flex justify-between">
           <dt className="text-[#8f8478]">{c.priceLabel}</dt>
-          <dd className="font-medium text-[#1b1715]">
-            {formatAgorot(appt.priceAgorot)}
-          </dd>
+          <dd className="font-medium text-[#1b1715]">{formatAgorot(appt.priceAgorot)}</dd>
         </div>
         <div className="flex items-center justify-between">
           <dt className="text-[#8f8478]">{t.admin.status}</dt>

@@ -3,6 +3,11 @@ const nextConfig = {
   reactStrictMode: true,
   // פלט standalone לבנייה רזה לקונטיינר (Docker). ראו docs/deployment-cost.md.
   output: 'standalone',
+  images: {
+    remotePatterns: [],
+    formats: ['image/avif', 'image/webp'],
+    dangerouslyAllowSVG: false,
+  },
   // הלוגו ותמונת הכריכה נשמרים כ-data URL מוטמע בטופס. בעמוד ההגדרות שתי
   // התמונות נשמרות יחד בשמירה אחת ('שמירת הכול'), ולכן גוף הבקשה של
   // ה-Server Action עלול להגיע לכמה מגה-בייט ולהידחות בשקט לפני השמירה.
@@ -23,6 +28,14 @@ const nextConfig = {
     // הפיכה למעשה. includeSubDomains נשאר כי איננו מחזיקים תת-תת-דומיינים.
     // ראו docs/ssl-https-runbook.md.
     if (process.env.NODE_ENV === 'production') {
+      rules.push({
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Content-Security-Policy', value: "object-src 'none'; base-uri 'self'; frame-ancestors 'self'" },
+        ],
+      });
       rules.push({
         source: '/:path*',
         headers: [

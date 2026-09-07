@@ -1,7 +1,10 @@
-import type { MessageStatus } from '@prisma/client';
+import { createHash } from 'node:crypto';
+import type { PrismaClient } from '@prisma/client';
 import { prisma } from '@/lib/db';
-import { sendSms } from '@/server/providers/messaging';
+import { sendSms, sendWhatsApp, MessagingConfigError } from '@/server/providers/messaging';
 import { sendEmail } from '@/server/providers/email';
+import { normalizePhone } from '@/lib/crypto';
+import { canSendPaidClientSms } from '@/server/subscription';
 
 /**
  * שער עלות חודשי לכל עסק עבור מסרונים בתשלום בפנייה ללקוח קצה
@@ -42,7 +45,7 @@ type CostGuardEnv = {
 
 /** קורא מספר שלם לא-שלילי ממשתנה סביבה, עם נפילה לברירת מחדל בקלט לא תקין. */
 function readNonNegativeInt(raw: string | undefined, fallback: number): number {
-  if (raw == null) return fallback;
+  if (raw == null || !/^\d+$/.test(raw.trim())) return fallback;
   const parsed = Number.parseInt(raw.trim(), 10);
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
   return parsed;
@@ -121,7 +124,7 @@ export function evaluateGuard(
   config: CostGuardConfig,
 ): GuardDecision {
   const projectedAgorot = usedAgorot + unitCostAgorot;
-  const blocked = usedAgorot >= config.capAgorot;
+  const blocked = usedAgorot >= config.capAgorot || projectedAgorot > config.capAgorot;
   const crossesAlert =
     usedAgorot < config.alertAgorot && projectedAgorot >= config.alertAgorot;
   return {
@@ -170,67 +173,29 @@ export type GuardedSmsRequest = {
   to: string;
   body: string;
   clientId?: string | null;
+  appointmentId?: string;
+  idempotencyKey?: string;
   campaignId?: string | null;
   /** ערוץ לתיעוד ביומן; ברירת מחדל sms. */
   channel?: string;
-  /**
-   * האם השליחה נספרת אל מול התקרה. ברירת מחדל true (פנייה בתשלום ללקוח).
-   * אימות בעל העסק מעביר false — נשלח תמיד ונצבר בדלי נפרד.
-   */
+  /** Compatibility input only: false is rejected; every paid client send consumes budget. */
   countsToCap?: boolean;
   /** דריסת מחיר להודעה; ברירת מחדל מהתצורה. */
   unitCostAgorot?: number;
 };
 
 export type GuardedSmsResult =
-  | { status: 'sent'; costAgorot: number; crossedAlert: boolean }
-  | { status: 'blocked'; usedAgorot: number; capAgorot: number }
+  | { status: 'sent'; costAgorot: number; crossedAlert: boolean; duplicate?: boolean }
+  | { status: 'blocked'; usedAgorot: number; capAgorot: number; reason?: string }
   | { status: 'failed'; error: string };
-
-type LogInput = {
-  businessId: string;
-  clientId?: string | null;
-  campaignId?: string | null;
-  channel: string;
-  phone: string;
-  body: string;
-  status: MessageStatus;
-  costAgorot: number;
-  countsToCap: boolean;
-  error?: string | null;
-};
 
 export type GuardedSmsDeps = {
   now?: Date;
   config?: CostGuardConfig;
-  /** צבירה חודשית נוכחית לעסק (אגורות). */
-  getUsage?: (businessId: string, now: Date) => Promise<number>;
-  /** שליחת המסרון בפועל. */
+  prismaClient?: PrismaClient;
   sendSms?: (to: string, body: string) => Promise<void>;
-  /** כתיבת רשומת יומן. */
-  logMessage?: (input: LogInput) => Promise<void>;
-  /** התראה חד-פעמית לבעל העסק בחציית סף ההתראה (מיטבית, לא חוסמת). */
   onAlert?: (businessId: string, status: CostGuardStatus) => Promise<void>;
 };
-
-/** כתיבת רשומת MessageLog בפועל. */
-async function defaultLogMessage(input: LogInput): Promise<void> {
-  await prisma.messageLog.create({
-    data: {
-      businessId: input.businessId,
-      clientId: input.clientId ?? null,
-      campaignId: input.campaignId ?? null,
-      channel: input.channel,
-      phone: input.phone,
-      address: input.phone,
-      body: input.body,
-      status: input.status,
-      costAgorot: input.costAgorot,
-      countsToCap: input.countsToCap,
-      error: input.error ?? null,
-    },
-  });
-}
 
 /** התראת עלות מיטבית לבעל העסק במייל — לעולם אינה זורקת ואינה חוסמת שליחה. */
 async function defaultOnAlert(
@@ -268,89 +233,138 @@ export async function sendGuardedSms(
 ): Promise<GuardedSmsResult> {
   const now = deps.now ?? new Date();
   const config = deps.config ?? resolveCostGuardConfig();
-  const countsToCap = req.countsToCap ?? true;
-  const unitCostAgorot = req.unitCostAgorot ?? config.unitCostAgorot;
+  const db = deps.prismaClient ?? prisma;
+  const unitCostAgorot = Math.max(1, config.unitCostAgorot, req.unitCostAgorot ?? 0);
   const channel = req.channel ?? 'sms';
-
-  const getUsage =
-    deps.getUsage ?? ((id, at) => getMonthlyPaidUsageAgorot(id, { now: at }));
-  const doSend = deps.sendSms ?? ((to, body) => sendSms(to, body));
-  const log = deps.logMessage ?? defaultLogMessage;
+  const phone = normalizePhone(req.to);
+  const doSend = deps.sendSms ?? (channel === 'whatsapp' ? sendWhatsApp : sendSms);
   const onAlert = deps.onAlert ?? defaultOnAlert;
-
-  let decision: GuardDecision | null = null;
-
-  // בדיקת תקרה — רק לשליחות הנספרות (פנייה בתשלום ללקוח).
-  if (countsToCap) {
-    const used = await getUsage(req.businessId, now);
-    decision = evaluateGuard(used, unitCostAgorot, config);
-    if (decision.blocked) {
-      await log({
-        businessId: req.businessId,
-        clientId: req.clientId,
-        campaignId: req.campaignId,
-        channel,
-        phone: req.to,
-        body: req.body,
-        status: 'BLOCKED',
-        costAgorot: 0,
-        countsToCap: true,
-        error: 'cost_cap_exceeded',
-      });
-      return {
-        status: 'blocked',
-        usedAgorot: decision.usedAgorot,
-        capAgorot: decision.capAgorot,
-      };
-    }
-  }
-
-  // שליחה בפועל.
-  try {
-    await doSend(req.to, req.body);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    await log({
-      businessId: req.businessId,
-      clientId: req.clientId,
-      campaignId: req.campaignId,
-      channel,
-      phone: req.to,
-      body: req.body,
-      status: 'FAILED',
-      costAgorot: 0,
-      countsToCap,
-      error: message,
-    });
-    return { status: 'failed', error: message };
-  }
-
-  // תיעוד הצלחה עם העלות.
-  await log({
+  const key = createHash('sha256')
+    .update(JSON.stringify([req.businessId, channel, phone, req.idempotencyKey ?? req.body]))
+    .digest('hex');
+  const logData = {
     businessId: req.businessId,
-    clientId: req.clientId,
-    campaignId: req.campaignId,
     channel,
-    phone: req.to,
+    phone,
+    address: phone,
     body: req.body,
-    status: 'SENT',
-    costAgorot: unitCostAgorot,
-    countsToCap,
-    error: null,
-  });
-
-  const crossedAlert = countsToCap && decision != null && decision.crossesAlert;
-  if (crossedAlert) {
-    const usedAfter = (decision as GuardDecision).projectedAgorot;
-    await onAlert(req.businessId, {
-      usedAgorot: usedAfter,
-      capAgorot: config.capAgorot,
-      alertAgorot: config.alertAgorot,
-      remainingAgorot: Math.max(0, config.capAgorot - usedAfter),
-      atAlert: true,
-      blocked: usedAfter >= config.capAgorot,
-    });
+    countsToCap: true,
+  };
+  let reservation: { id: string; decision: GuardDecision };
+  try {
+    const reserved = await db.$transaction(async (tx) => {
+      // The global transaction lock serializes *reservations*, never network I/O.
+      // It protects every tenant and recipient quota across all worker processes.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(704193821)`;
+      const existing = await tx.messageLog.findUnique({ where: { idempotencyKey: key } });
+      const business = await tx.business.findUnique({ where: { id: req.businessId } });
+      if (!business) return { denied: 'business_not_found', used: 0 } as const;
+      const usage = await tx.messageLog.aggregate({
+        where: { businessId: req.businessId, countsToCap: true, createdAt: { gte: monthStartUtc(now) } },
+        _sum: { costAgorot: true },
+      });
+      const used = usage._sum.costAgorot ?? 0;
+      const deny = async (reason: string) => {
+        await tx.messageLog.create({
+          data: { ...logData, status: 'BLOCKED', costAgorot: 0, error: reason },
+        });
+        return { denied: reason, used } as const;
+      };
+      if (business.accountStatus !== 'ACTIVE' || !canSendPaidClientSms(business)) return deny('entitlement_denied');
+      if (req.countsToCap === false) return deny('budget_bypass_denied');
+      if (!Number.isSafeInteger(unitCostAgorot)) return deny('invalid_cost');
+      if (existing?.status === 'SENT') return { duplicate: true } as const;
+      if (existing && existing.status !== 'FAILED') return deny('delivery_outcome_unknown');
+      const appointment = req.appointmentId
+        ? await tx.appointment.findFirst({
+            where: { id: req.appointmentId, businessId: req.businessId, status: 'CONFIRMED' },
+          })
+        : null;
+      if (req.appointmentId && !appointment) return deny('appointment_not_active');
+      const client = await tx.client.findFirst({
+        where: { id: appointment?.clientId ?? req.clientId ?? '', businessId: req.businessId, blocked: false },
+        include: { user: true },
+      });
+      if (!client?.identityVerifiedAt || !client.user?.phone || !client.user.phoneVerifiedAt ||
+          normalizePhone(client.user.phone) !== phone) return deny('recipient_unverified');
+      if (req.campaignId && !await tx.campaign.findFirst({
+        where: { id: req.campaignId, businessId: req.businessId, status: 'SENDING' },
+      })) return deny('campaign_not_active');
+      const decision = evaluateGuard(used, unitCostAgorot, config);
+      if (decision.blocked) return deny('cost_cap_exceeded');
+      const recent = { createdAt: { gte: new Date(now.getTime() - 3600000) }, countsToCap: true, status: { not: 'BLOCKED' as const } };
+      const [recipientCount, businessCount, globalCount, globalUsage] = await Promise.all([
+        tx.messageLog.count({ where: { ...recent, phone } }),
+        tx.messageLog.count({ where: { ...recent, businessId: req.businessId } }),
+        tx.messageLog.count({ where: recent }),
+        tx.messageLog.aggregate({ where: { countsToCap: true, createdAt: { gte: monthStartUtc(now) } }, _sum: { costAgorot: true } }),
+      ]);
+      if (recipientCount >= readNonNegativeInt(process.env.PAID_RECIPIENT_HOURLY_LIMIT, 6)) return deny('recipient_quota');
+      if (businessCount >= readNonNegativeInt(process.env.PAID_BUSINESS_HOURLY_LIMIT, 200)) return deny('business_quota');
+      if (globalCount >= readNonNegativeInt(process.env.PAID_GLOBAL_HOURLY_LIMIT, 2000)) return deny('global_quota');
+      if ((globalUsage._sum.costAgorot ?? 0) + unitCostAgorot > readNonNegativeInt(process.env.PAID_GLOBAL_MONTHLY_CAP_AGOROT, 450000)) return deny('global_cost_cap');
+      const data = {
+        ...logData, clientId: client.id, campaignId: req.campaignId ?? null,
+        status: 'RESERVED' as const, costAgorot: unitCostAgorot,
+        reservedAt: now, createdAt: now, error: null,
+      };
+      const row = existing
+        ? await tx.messageLog.update({ where: { id: existing.id }, data })
+        : await tx.messageLog.create({ data: { ...data, idempotencyKey: key } });
+      return { id: row.id, decision };
+    }, { maxWait: 10000, timeout: 15000 });
+    if ('duplicate' in reserved) return { status: 'sent', costAgorot: 0, crossedAlert: false, duplicate: true };
+    if ('denied' in reserved) return { status: 'blocked', reason: reserved.denied, usedAgorot: reserved.used, capAgorot: config.capAgorot };
+    reservation = reserved;
+  } catch {
+    return { status: 'failed', error: 'reservation_failed' };
   }
 
+  try {
+    // Account deletion or cancellation after reservation must still prevent dispatch.
+    const active = await db.business.findUnique({ where: { id: req.businessId } });
+    const appointmentActive = !req.appointmentId || await db.appointment.findFirst({
+      where: { id: req.appointmentId, businessId: req.businessId, status: 'CONFIRMED' },
+    });
+    const campaignActive = !req.campaignId || await db.campaign.findFirst({
+      where: { id: req.campaignId, businessId: req.businessId, status: 'SENDING' },
+    });
+    if (!active || active.accountStatus !== 'ACTIVE' || !canSendPaidClientSms(active) || !appointmentActive || !campaignActive) {
+      await db.messageLog.update({ where: { id: reservation.id }, data: { status: 'FAILED', costAgorot: 0, error: 'lifecycle_changed' } });
+      return { status: 'blocked', reason: 'lifecycle_changed', usedAgorot: reservation.decision.usedAgorot, capAgorot: config.capAgorot };
+    }
+  } catch {
+    return { status: 'failed', error: 'pre_dispatch_check_failed' };
+  }
+  try {
+    await doSend(phone, req.body);
+  } catch (err) {
+    const definitelyNotSent = err instanceof MessagingConfigError;
+    await db.messageLog.update({
+      where: { id: reservation.id },
+      data: {
+        status: definitelyNotSent ? 'FAILED' : 'UNKNOWN',
+        costAgorot: definitelyNotSent ? 0 : unitCostAgorot,
+        error: definitelyNotSent ? 'provider_not_configured' : 'delivery_outcome_unknown',
+      },
+    }).catch(() => undefined);
+    return { status: 'failed', error: definitelyNotSent ? 'provider_not_configured' : 'delivery_outcome_unknown' };
+  }
+  // A successful provider call with failed persistence is NOT a retryable failure.
+  // The reservation continues to consume budget and blocks a duplicate dispatch.
+  try {
+    await db.messageLog.update({ where: { id: reservation.id }, data: { status: 'SENT', error: null } });
+  } catch {
+    return { status: 'failed', error: 'delivery_outcome_unknown' };
+  }
+  const crossedAlert = reservation.decision.crossesAlert;
+  if (crossedAlert) {
+    const usedAfter = reservation.decision.projectedAgorot;
+    await onAlert(req.businessId, {
+      usedAgorot: usedAfter, capAgorot: config.capAgorot, alertAgorot: config.alertAgorot,
+      remainingAgorot: Math.max(0, config.capAgorot - usedAfter), atAlert: true,
+      blocked: usedAfter >= config.capAgorot,
+    }).catch(() => undefined);
+  }
   return { status: 'sent', costAgorot: unitCostAgorot, crossedAlert };
 }

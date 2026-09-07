@@ -12,7 +12,6 @@ import {
 import { setWaitlistEnabled } from '@/server/repos/settings';
 import { parseWaitlistEnabled } from './parse';
 import { isValidIsraeliMobile } from '@/lib/crypto';
-import { canSendPaidClientSms } from '@/server/subscription';
 
 const addSchema = z.object({
   name: z.string().trim().min(1, 'name').max(120),
@@ -104,15 +103,14 @@ async function withBusiness(
   revalidatePath('/admin/waitlist');
 }
 
-/** יידוע ממתין: מסרון בתשלום לאקסקלוסיב דרך שער העלות, וסימון NOTIFIED. */
+/** NOTIFIED is set only after accepted delivery; denials remain retryable. */
 export async function notifyAction(formData: FormData): Promise<void> {
   const id = String(formData.get('id') ?? '').trim();
   if (!id) return;
   const business = await getActiveBusiness();
   if (!business) return;
-  await notifyWaitlistEntry(business.id, id, {
-    isExclusive: canSendPaidClientSms(business),
-  });
+  const result = await notifyWaitlistEntry(business.id, id);
+  if (!result.ok) console.warn('[waitlist] notification not completed', { reason: result.reason });
   revalidatePath('/admin/waitlist');
 }
 

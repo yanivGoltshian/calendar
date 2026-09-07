@@ -1,8 +1,9 @@
 import { BRAND } from '@/config/brand';
-import { sendEmail } from '@/server/providers/email';
-import { sendWhatsApp } from '@/server/providers/messaging';
+import { sendGuardedSms } from '@/server/billing/costGuard';
 import { formatDateString, formatLongDate, formatTime } from '@/lib/time';
-import { renderMessage } from '@/server/messages/render';
+import { escapeHtml, renderMessage } from '@/server/messages/render';
+import { safeMessageLink } from '@/server/messages/safeLink';
+import { deliverEmailOnce } from '@/server/billing/emailDelivery';
 
 /**
  * אישור הזמנה מיידי ללקוח כאשר התור נקבע ואושר על המקום (CONFIRMED ללא אישור עסק).
@@ -63,6 +64,7 @@ export function buildConfirmationEmail(payload: BookingConfirmationPayload): {
   html: string;
 } {
   const when = buildWhen(payload);
+  const manageUrl = safeMessageLink(payload.manageUrl);
   const serviceNames = payload.services.map((s) => s.name).join(', ');
   const subject = `${BRAND.name} · אישור הזמנה · ${payload.businessName}`;
 
@@ -73,7 +75,7 @@ export function buildConfirmationEmail(payload: BookingConfirmationPayload): {
     '',
     ...(serviceNames ? [`שירות/ים: ${serviceNames}`] : []),
     `מועד: ${when}`,
-    ...(payload.manageUrl ? ['', `לצפייה בפרטי התור, לשינוי מועד או לביטול: ${payload.manageUrl}`] : []),
+    ...(manageUrl ? ['', `לצפייה בפרטי התור או לביטול: ${manageUrl}`, 'לשינוי המועד יש לבטל את התור ולהזמין תור חדש, בכפוף לזמינות ולמדיניות הביטול.'] : []),
     '',
     `נשמח לעמוד לרשותך לכל שאלה,`,
     `צוות ${payload.businessName}`,
@@ -83,21 +85,21 @@ export function buildConfirmationEmail(payload: BookingConfirmationPayload): {
   const text = lines.join('\n');
 
   const row = (label: string, value: string) =>
-    `<tr><td style="padding:4px 12px 4px 0;font-weight:bold;white-space:nowrap">${label}</td><td style="padding:4px 0">${value}</td></tr>`;
+    `<tr><td style="padding:4px 12px 4px 0;font-weight:bold;white-space:nowrap">${escapeHtml(label)}</td><td style="padding:4px 0">${escapeHtml(value)}</td></tr>`;
   const html =
     `<!doctype html><html lang="he" dir="rtl"><body style="font-family:Arial,Helvetica,sans-serif;text-align:right;direction:rtl;color:#0B1526">` +
     `<h2 style="color:#0A182D">אישור הזמנה</h2>` +
-    `<p>שלום ${payload.clientName}, שמחים לאשר שהתור שלך ב${payload.businessName} נקבע בהצלחה. אנחנו כבר מצפים לראותך.</p>` +
+    `<p>שלום ${escapeHtml(payload.clientName)}, שמחים לאשר שהתור שלך ב${escapeHtml(payload.businessName)} נקבע בהצלחה. אנחנו כבר מצפים לראותך.</p>` +
     `<table style="border-collapse:collapse;font-size:15px">` +
     (serviceNames ? row('שירות/ים', serviceNames) : '') +
     row('מועד', when) +
     `</table>` +
-    (payload.manageUrl
-      ? `<p style="margin-top:16px"><a href="${payload.manageUrl}" style="color:#82643C">לצפייה בפרטי התור, לשינוי מועד או לביטול</a></p>`
+    (manageUrl
+      ? `<p style="margin-top:16px"><a href="${escapeHtml(manageUrl)}" style="color:#82643C">לצפייה בפרטי התור או לביטול</a><br>לשינוי המועד יש לבטל את התור ולהזמין תור חדש, בכפוף לזמינות ולמדיניות הביטול.</p>`
       : '') +
-    `<p style="margin-top:16px">נשמח לעמוד לרשותך לכל שאלה,<br>צוות ${payload.businessName}` +
-    (payload.businessPhone ? `<br>טלפון: ${payload.businessPhone}` : '') +
-    (payload.businessAddress ? `<br>כתובת: ${payload.businessAddress}` : '') +
+    `<p style="margin-top:16px">נשמח לעמוד לרשותך לכל שאלה,<br>צוות ${escapeHtml(payload.businessName)}` +
+    (payload.businessPhone ? `<br>טלפון: ${escapeHtml(payload.businessPhone)}` : '') +
+    (payload.businessAddress ? `<br>כתובת: ${escapeHtml(payload.businessAddress)}` : '') +
     `</p>` +
     `</body></html>`;
 
@@ -115,6 +117,7 @@ export function buildConfirmationMessage(payload: BookingConfirmationPayload): s
  */
 export async function notifyClientOfBooking(
   payload: BookingConfirmationPayload,
+  deps: { deliverEmail?: typeof deliverEmailOnce; sendGuardedSms?: typeof sendGuardedSms } = {},
 ): Promise<BookingConfirmationResult> {
   const errors: string[] = [];
   let emailed = false;
@@ -132,7 +135,7 @@ export async function notifyClientOfBooking(
     services: payload.services.map((s) => s.name).join(', '),
     date: formatLongDate(dateStr, payload.timezone),
     time: formatTime(payload.startAt, payload.timezone),
-    manageUrl: payload.manageUrl ?? '',
+    manageUrl: safeMessageLink(payload.manageUrl) ?? '',
     businessPhone: payload.businessPhone ?? '',
     businessAddress: payload.businessAddress ?? '',
     brand: BRAND.name,
@@ -141,6 +144,7 @@ export async function notifyClientOfBooking(
   // ── ערוץ 1: מייל אישור (פרימיום/אקסקלוסיב, כשיש כתובת) ────────────────────
   if (payload.canEmail && email) {
     try {
+      if (!payload.businessId) throw new Error('missing_business');
       const fb = buildConfirmationEmail(payload);
       const { subject, text, html } = await renderMessage(
         payload.businessId,
@@ -149,8 +153,13 @@ export async function notifyClientOfBooking(
         vars,
         fb,
       );
-      await sendEmail(email, subject ?? fb.subject, text, html);
-      emailed = true;
+      const result = await (deps.deliverEmail ?? deliverEmailOnce)({
+        businessId: payload.businessId, appointmentId: payload.appointmentId,
+        idempotencyKey: `booking-confirmation:${payload.appointmentId}`,
+        to: email, subject: subject ?? fb.subject, text, html,
+      });
+      emailed = result.status === 'sent';
+      if (result.status !== 'sent') errors.push(`email: ${result.reason}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`email: ${msg}`);
@@ -169,9 +178,21 @@ export async function notifyClientOfBooking(
         vars,
         { text: buildConfirmationMessage(payload) },
       );
-      await sendWhatsApp(phone, text);
-      messaged = true;
-      messageChannel = 'whatsapp';
+      if (!payload.businessId) throw new Error('missing_business');
+      const delivered = await (deps.sendGuardedSms ?? sendGuardedSms)({
+        businessId: payload.businessId,
+        appointmentId: payload.appointmentId,
+        idempotencyKey: `booking-confirmation:${payload.appointmentId}`,
+        to: phone,
+        body: text,
+        channel: 'whatsapp',
+      });
+      if (delivered.status === 'sent') {
+        messaged = true;
+        messageChannel = 'whatsapp';
+      } else {
+        errors.push(`whatsapp: ${delivered.status === 'blocked' ? delivered.reason : delivered.error}`);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`whatsapp: ${msg}`);

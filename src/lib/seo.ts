@@ -59,7 +59,7 @@ export function buildMetadata(options: BuildMetadataOptions = {}): Metadata {
     image,
   } = options;
 
-  const canonical = absoluteUrl(path);
+  const canonical = absoluteUrl(path.split(/[?#]/, 1)[0] || '/');
   const resolvedTitle = title ?? BRAND.name;
 
   // undefined => כרטיס הפלטפורמה (JPEG); string => דריסה; null => השמטת תמונות.
@@ -72,7 +72,8 @@ export function buildMetadata(options: BuildMetadataOptions = {}): Metadata {
         : [{ url: cardImage, alt: resolvedTitle }];
 
   return {
-    title,
+    // Root layout appends the platform name; don't append it twice.
+    title: title?.endsWith(` · ${BRAND.name}`) ? title.slice(0, -(` · ${BRAND.name}`.length)) : title,
     description,
     alternates: { canonical },
     robots: noIndex

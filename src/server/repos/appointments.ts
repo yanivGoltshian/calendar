@@ -1,8 +1,23 @@
 import { prisma } from '@/lib/db';
-import type { AppointmentStatus, ConfirmationStatus } from '@prisma/client';
+import type { AppointmentStatus, ConfirmationStatus, Prisma } from '@prisma/client';
+import {
+  assertBookable,
+  BookingError,
+  expirePendingReservations,
+} from '@/server/booking/policy';
+import { bookingTransaction } from '@/server/booking/transaction';
+import { reserveBookingQuota } from '@/server/booking/quotas';
+import { findOrCreateClient } from '@/server/repos/clients';
+import { schedulesReminders } from '@/server/tier';
+import { captureGoogleBusy, assertGoogleBusySnapshot } from '@/server/google/importBusy';
 
 // סטטוסים שתופסים משבצת זמן ולכן חוסמים זמינות.
-const BLOCKING_STATUSES: AppointmentStatus[] = ['PENDING', 'CONFIRMED', 'DONE'];
+const BLOCKING_STATUSES: AppointmentStatus[] = [
+  'PENDING',
+  'CONFIRMED',
+  'ARRIVED',
+  'DONE',
+];
 
 /** תורים חוסמים של איש צוות בטווח זמן (UTC), לצורך חישוב זמינות. */
 export function getBlockingAppointments(staffId: string, fromUtc: Date, toUtc: Date) {
@@ -18,7 +33,11 @@ export function getBlockingAppointments(staffId: string, fromUtc: Date, toUtc: D
 }
 
 /** תורים של איש צוות ליום מסוים (טווח UTC), עם לקוח ושירותים — לתצוגת יומן. */
-export function getAppointmentsForStaffRange(staffId: string, fromUtc: Date, toUtc: Date) {
+export function getAppointmentsForStaffRange(
+  staffId: string,
+  fromUtc: Date,
+  toUtc: Date,
+) {
   return prisma.appointment.findMany({
     where: {
       staffId,
@@ -120,7 +139,11 @@ export async function sumRevenueAgorotInRange(
 
 export type CreateAppointmentInput = {
   businessId: string;
-  clientId: string;
+  clientId?: string;
+  clientIdentity?: { name: string; phone?: string; email?: string; userId?: string };
+  idempotency?: { scope: string; key: string; requestHash: string };
+  source?: string;
+  publicBooking?: boolean;
   staffId: string;
   startAt: Date;
   endAt: Date;
@@ -131,30 +154,109 @@ export type CreateAppointmentInput = {
   status?: AppointmentStatus;
 };
 
-/** יצירת תור עם שירותים (snapshot) ותזכורת ברירת מחדל. */
-export function createAppointment(input: CreateAppointmentInput) {
-  const status: AppointmentStatus = input.status ?? 'PENDING';
-  return prisma.appointment.create({
-    data: {
-      businessId: input.businessId,
-      clientId: input.clientId,
-      staffId: input.staffId,
-      startAt: input.startAt,
-      endAt: input.endAt,
-      status,
-      confirmedAt: status === 'CONFIRMED' ? new Date() : undefined,
-      totalPriceAgorot: input.totalPriceAgorot,
-      notes: input.notes,
-      services: {
-        create: input.services.map((s) => ({
-          serviceId: s.id,
-          nameSnapshot: s.name,
-          durationMinSnapshot: s.durationMin,
-          priceAgorotSnapshot: s.priceAgorot,
-        })),
-      },
-    },
+async function bookingReplay(input: CreateAppointmentInput, db: Prisma.TransactionClient = prisma) {
+  if (!input.idempotency) return null;
+  const existing = await db.appointment.findUnique({
+    where: { bookingScope_bookingKey: { bookingScope: input.idempotency.scope, bookingKey: input.idempotency.key } },
     include: { services: true, client: true, staff: true },
+  });
+  if (!existing) return null;
+  if (existing.bookingRequestHash !== input.idempotency.requestHash)
+    throw new BookingError('idempotency_mismatch', 409);
+  return { ...existing, replayed: true };
+}
+
+/** יצירת תור עם שירותים (snapshot) ותזכורת ברירת מחדל. */
+export async function createAppointment(input: CreateAppointmentInput) {
+  const replay = await bookingReplay(input);
+  if (replay) return replay;
+  if (!Number.isFinite(input.startAt.getTime())) throw new BookingError('invalid_time');
+  const calendar = await captureGoogleBusy(input.businessId, input.staffId,
+    input.startAt, new Date(input.startAt.getTime() + 86_400_000));
+  return bookingTransaction(async (db) => {
+    const now = new Date();
+    const replay = await bookingReplay(input, db);
+    if (replay) return replay;
+    await expirePendingReservations(input.businessId, db, now);
+    const policy = await assertBookable(
+      {
+        businessId: input.businessId,
+        staffId: input.staffId,
+        serviceIds: input.services.map((service) => service.id),
+        startAt: input.startAt,
+      },
+      db,
+      now,
+    );
+    await assertGoogleBusySnapshot(calendar, db, input.startAt, policy.endAt);
+    const client = input.clientIdentity
+      ? await findOrCreateClient(
+          { businessId: input.businessId, ...input.clientIdentity },
+          db,
+        )
+      : input.clientId
+        ? await db.client.findFirst({
+            where: { id: input.clientId, businessId: input.businessId },
+          })
+        : null;
+    if (!client || client.blocked) throw new BookingError('invalid_client', 403);
+    if (input.publicBooking) {
+      await reserveBookingQuota(
+        db,
+        { businessId: input.businessId, ...input.clientIdentity, source: input.source },
+        now,
+      );
+    }
+    const status =
+      input.status ??
+      (policy.business.settings?.bookingRequiresApproval ? 'PENDING' : 'CONFIRMED');
+    if (status !== 'PENDING' && status !== 'CONFIRMED')
+      throw new BookingError('invalid_status');
+    const reminderEnabled =
+      schedulesReminders(policy.business.plan) &&
+      (policy.business.settings?.remindersEnabled ?? true);
+    const sendAt = new Date(
+      Math.max(
+        input.startAt.getTime() -
+          (policy.business.settings?.reminderLeadHours ?? 24) * 3_600_000,
+        now.getTime() + 60_000,
+      ),
+    );
+    const appointment = await db.appointment.create({
+      data: {
+        businessId: input.businessId,
+        clientId: client.id,
+        staffId: input.staffId,
+        startAt: input.startAt,
+        endAt: policy.endAt,
+        status,
+        confirmedAt: status === 'CONFIRMED' ? new Date() : undefined,
+        googleSyncPending: status === 'CONFIRMED',
+        totalPriceAgorot: policy.services.reduce(
+          (sum, service) => sum + service.priceAgorot,
+          0,
+        ),
+        notes: input.notes,
+        bookingScope: input.idempotency?.scope,
+        bookingKey: input.idempotency?.key,
+        bookingRequestHash: input.idempotency?.requestHash,
+        pendingExpiresAt:
+          input.publicBooking && status === 'PENDING'
+            ? new Date(Math.min(now.getTime() + 86_400_000, input.startAt.getTime()))
+            : null,
+        reminders: reminderEnabled ? { create: { sendAt, channel: 'AUTO' } } : undefined,
+        services: {
+          create: policy.services.map((s) => ({
+            serviceId: s.id,
+            nameSnapshot: s.name,
+            durationMinSnapshot: s.durationMin,
+            priceAgorotSnapshot: s.priceAgorot,
+          })),
+        },
+      },
+      include: { services: true, client: true, staff: true },
+    });
+    return { ...appointment, replayed: false };
   });
 }
 
@@ -166,23 +268,96 @@ export type CancellationActor = 'CLIENT' | 'OWNER';
  * בביטול מסומן גם מי יזם אותו (cancelledBy) — ברירת המחדל 'OWNER' (פעולת ניהול),
  * ונתיב הלקוח מעביר במפורש 'CLIENT'. משמש להתראת בעל העסק על ביטולי לקוח בלבד.
  */
-export function updateAppointmentStatus(
+export async function updateAppointmentStatus(
   id: string,
   status: AppointmentStatus,
-  opts?: { cancelledBy?: CancellationActor },
-) {
-  const data: {
-    status: AppointmentStatus;
-    confirmedAt?: Date;
-    cancelledAt?: Date;
+  opts: {
     cancelledBy?: CancellationActor;
-  } = { status };
-  if (status === 'CONFIRMED') data.confirmedAt = new Date();
-  if (status === 'CANCELLED') {
-    data.cancelledAt = new Date();
-    data.cancelledBy = opts?.cancelledBy ?? 'OWNER';
-  }
-  return prisma.appointment.update({ where: { id }, data });
+    businessId: string;
+    clientUserId?: string;
+    expectedStatus?: AppointmentStatus;
+  },
+) {
+  const where = {
+    id,
+    businessId: opts.businessId,
+    ...(opts.clientUserId
+      ? { client: { userId: opts.clientUserId, identityVerifiedAt: { not: null } } }
+      : {}),
+  };
+  const reservation = status === 'CONFIRMED'
+    ? await prisma.appointment.findFirst({ where, select: { staffId: true, startAt: true, endAt: true, status: true } })
+    : null;
+  const calendar = reservation?.status === 'PENDING'
+    ? await captureGoogleBusy(opts.businessId, reservation.staffId, reservation.startAt,
+        new Date(reservation.startAt.getTime() + 86_400_000))
+    : null;
+  return bookingTransaction(async (db) => {
+    const existing = await db.appointment.findFirst({
+      where,
+      include: { services: true, business: { include: { settings: true } } },
+    });
+    if (!existing) throw new BookingError('forbidden', 403);
+    if (opts.expectedStatus && existing.status !== opts.expectedStatus) return null;
+    const allowed: Record<AppointmentStatus, AppointmentStatus[]> = {
+      PENDING: ['CONFIRMED', 'CANCELLED'],
+      CONFIRMED: ['ARRIVED', 'CANCELLED', 'NO_SHOW', 'DONE'],
+      ARRIVED: ['DONE', 'NO_SHOW'],
+      CANCELLED: [],
+      DONE: [],
+      NO_SHOW: [],
+    };
+    if (!allowed[existing.status].includes(status)) return null;
+    const now = new Date();
+    if (opts.cancelledBy === 'CLIENT') {
+      if (!opts.clientUserId || !['PENDING', 'CONFIRMED'].includes(existing.status))
+        return null;
+      const cutoff =
+        existing.startAt.getTime() -
+        (existing.business.settings?.cancellationWindowHours ?? 0) * 3_600_000;
+      if (now.getTime() >= cutoff) throw new BookingError('window_passed');
+    }
+    if (status === 'CONFIRMED') {
+      if (existing.pendingExpiresAt && existing.pendingExpiresAt <= now) return null;
+      const policy = await assertBookable(
+        {
+          businessId: existing.businessId,
+          staffId: existing.staffId,
+          serviceIds: existing.services.map((service) => service.serviceId),
+          startAt: existing.startAt,
+        },
+        db,
+        now,
+        id,
+      );
+      if (policy.endAt.getTime() !== existing.endAt.getTime()) {
+        throw new BookingError('booking_changed', 409);
+      }
+      if (!calendar) throw new BookingError('calendar_snapshot_stale', 503);
+      await assertGoogleBusySnapshot(calendar, db, existing.startAt, existing.endAt);
+    }
+    const data: {
+      status: AppointmentStatus;
+      confirmedAt?: Date;
+      cancelledAt?: Date;
+      cancelledBy?: CancellationActor;
+      googleSyncPending?: boolean;
+    } = { status };
+    if (status === 'CONFIRMED') data.confirmedAt = now;
+    if (status === 'CONFIRMED' || status === 'CANCELLED') data.googleSyncPending = true;
+    if (status === 'CANCELLED') {
+      data.cancelledAt = now;
+      data.cancelledBy = opts?.cancelledBy ?? 'OWNER';
+    }
+    const updated = await db.appointment.update({ where: { id }, data });
+    if (status === 'CANCELLED') {
+      await db.reminder.updateMany({
+        where: { appointmentId: id, status: { in: ['SCHEDULED', 'FAILED'] } },
+        data: { status: 'CANCELLED' },
+      });
+    }
+    return updated;
+  });
 }
 
 /**
@@ -258,7 +433,9 @@ export function getAppointmentForOwner(id: string) {
       id: true,
       status: true,
       startAt: true,
-      client: { select: { userId: true, phone: true, name: true } },
+      client: {
+        select: { userId: true, identityVerifiedAt: true, phone: true, name: true },
+      },
       services: { select: { nameSnapshot: true } },
       business: {
         select: {
@@ -300,7 +477,12 @@ export function getBusinessAppointments(
       businessId,
       ...(statuses && statuses.length > 0 ? { status: { in: statuses } } : {}),
       ...(fromUtc || toUtc
-        ? { startAt: { ...(fromUtc ? { gte: fromUtc } : {}), ...(toUtc ? { lt: toUtc } : {}) } }
+        ? {
+            startAt: {
+              ...(fromUtc ? { gte: fromUtc } : {}),
+              ...(toUtc ? { lt: toUtc } : {}),
+            },
+          }
         : {}),
     },
     orderBy: { startAt: order },
@@ -395,7 +577,10 @@ export function getAppointmentByConfirmToken(token: string) {
  * סימון שנשלחה תזכורת, באופן אטומי ואידמפוטנטי: מעדכן רק אם reminderSentAt עדיין ריק.
  * מחזיר את מספר השורות שעודכנו (0 אם כבר סומן במקביל), למניעת שליחה כפולה.
  */
-export async function markReminderSent(id: string, sentAt: Date = new Date()): Promise<number> {
+export async function markReminderSent(
+  id: string,
+  sentAt: Date = new Date(),
+): Promise<number> {
   const result = await prisma.appointment.updateMany({
     where: { id, reminderSentAt: null },
     data: { reminderSentAt: sentAt },

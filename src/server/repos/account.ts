@@ -1,12 +1,10 @@
 import { prisma } from '@/lib/db';
-import type { Prisma } from '@prisma/client';
 
 /**
  * שליפות עבור אזור החשבון של הלקוח (/account).
  *
- * זהות הלקוח נקבעת לפי מזהה המשתמש (userId), הטלפון (phone) או המייל (email) —
- * כולם מזהים גלובליים ייחודיים. כך תורים שנקבעו לפני שהמשתמש התחבר (לפי טלפון
- * או מייל בלבד) עדיין משויכים אליו.
+ * Appointment authority is an explicitly verified user link. Contact fields,
+ * including contacts stored before this migration, never grant appointment access.
  */
 
 export type UserIdentity = {
@@ -17,15 +15,11 @@ export type UserIdentity = {
 
 /** שליפת תורי הלקוח, מחולקים לעתידיים והיסטוריים, עם שירותים, צוות ועסק. */
 export async function getAppointmentsForUser(identity: UserIdentity) {
-  const clientOr: Prisma.ClientWhereInput[] = [{ userId: identity.userId }];
-  if (identity.phone) clientOr.push({ phone: identity.phone });
-  if (identity.email) clientOr.push({ email: identity.email });
+  if (!identity.userId) return { upcoming: [], past: [] };
 
   const appointments = await prisma.appointment.findMany({
     where: {
-      client: {
-        OR: clientOr,
-      },
+      client: { userId: identity.userId, identityVerifiedAt: { not: null } },
     },
     include: {
       services: true,
@@ -57,16 +51,14 @@ export async function getAppointmentsForUser(identity: UserIdentity) {
 
 /**
  * תורים עתידיים של הלקוח בעסק מסוים בלבד (למקטע "שלום .." בעמוד העסק הציבורי).
- * מזוהה לפי userId / phone / email — כך גם תורים שנקבעו לפני ההתחברות משויכים.
+ * Only verified userId links are accepted; guest contacts are not identity.
  * מוחזרים רק תורים שטרם התחילו ושאינם מבוטלים, ממוינים מהקרוב לרחוק.
  */
 export async function getUpcomingAppointmentsForUserAtBusiness(
   identity: UserIdentity,
   businessId: string,
 ) {
-  const clientOr: Prisma.ClientWhereInput[] = [{ userId: identity.userId }];
-  if (identity.phone) clientOr.push({ phone: identity.phone });
-  if (identity.email) clientOr.push({ email: identity.email });
+  if (!identity.userId) return [];
 
   const now = new Date();
   const appointments = await prisma.appointment.findMany({
@@ -74,7 +66,7 @@ export async function getUpcomingAppointmentsForUserAtBusiness(
       businessId,
       startAt: { gte: now },
       status: { in: ['PENDING', 'CONFIRMED'] },
-      client: { OR: clientOr },
+      client: { userId: identity.userId, identityVerifiedAt: { not: null } },
     },
     include: {
       services: { select: { nameSnapshot: true, durationMinSnapshot: true } },

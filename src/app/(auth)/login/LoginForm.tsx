@@ -306,7 +306,6 @@ export default function LoginForm({ googleEnabled = false }: { googleEnabled?: b
           </form>
         )}
 
-        <p className="text-center text-xs text-slate-500">{t.auth.devHint}</p>
         {/* מיכל reCAPTCHA בלתי-נראה עבור אימות טלפון דרך Firebase */}
         <div id="recaptcha-container" />
       </CardBody>

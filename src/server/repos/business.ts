@@ -1,14 +1,15 @@
-import type { BusinessType } from '@prisma/client';
+import { Prisma, type BusinessType } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { auth } from '@/auth';
-import { normalizePhone } from '@/lib/crypto';
+import { normalizeEmail, normalizePhone } from '@/lib/crypto';
 import { addBusinessDays } from '@/lib/businessDays';
-import { defaultBusinessHours, setBusinessHours } from './workingHours';
-import { ensureOwnerStaffMember } from './staff';
-import { seedServicesForBusiness } from './services';
-import { decideTrialForRegistration } from './trialLedger';
+import { defaultBusinessHours } from './workingHours';
+import { resolveOwnerDisplayName } from './staff';
+import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
+import { computeTrialHashes, resolveTrialDecision } from './trialLedger';
 import { shapeBusinessMetrics, type BusinessMetrics } from '@/app/superadmin/logic';
 import { getImpersonatedBusinessId } from '@/server/impersonation';
+import { getBusinessAccess } from '@/server/subscription';
 
 /**
  * שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל.
@@ -154,39 +155,35 @@ export async function getBusinessBranding(slug: string) {
 }
 
 /**
- * העסק הפעיל לפי הבעלים המאומת (NextAuth).
- * אם קיים session עם מייל -> מחזיר את העסק האחרון שבבעלות אותו מייל (ownerEmail).
- * אחרת -> נופל ל-getFirstBusiness (תאימות לאורחים וללינקים עמוקים, כמו עמוד demo).
- * זהו תפר ה-scoping של אזור הניהול: הבעלות נגזרת מהמייל המאומת (מונע IDOR).
- *
- * תפר ההתחזות: אם מנהל-על "נכנס כבעל העסק" (עוגייה חתומה תקפה), getImpersonatedBusinessId
- * מחזיר את מזהה העסק המתוחזה — ורק אז כל עץ הניהול (תורים, לקוחות, יומן, הגדרות, קופה)
- * פועל מול אותו עסק. השער עצמו מוודא שוב בצד השרת שהסשן הוא מנהל-על, ולכן העוגייה
- * לבדה לעולם אינה מקנה גישה.
+ * Authorization boundary for tenant operations. Demo/public lookups never grant authority.
+ * Only authenticated ownership or verified, explicit platform-admin impersonation selects
+ * a tenant. Inactive access is reserved for recovery/billing, never ordinary mutations.
  */
-export async function getActiveBusiness() {
-  const impersonatedId = await getImpersonatedBusinessId();
-  if (impersonatedId) {
-    const impersonated = await getBusinessById(impersonatedId);
-    if (impersonated) return impersonated;
-  }
+export async function getActiveBusiness(options: { allowInactive?: boolean } = {}) {
   const session = await auth();
   const email = session?.user?.email;
-  if (email) {
-    const owned = await prisma.business.findFirst({
-      where: { ownerEmail: email },
-      include: { settings: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (owned) return owned;
+  if (!email) return null;
+
+  const impersonatedId = await getImpersonatedBusinessId();
+  const business = impersonatedId
+    ? await getBusinessById(impersonatedId)
+    : await prisma.business.findFirst({
+        where: { ownerEmail: { equals: email.trim(), mode: 'insensitive' } },
+        include: { settings: true },
+        orderBy: { createdAt: 'desc' },
+      });
+  if (!business) return null;
+  if (!options.allowInactive &&
+      (business.accountStatus !== 'ACTIVE' || !getBusinessAccess(business).active)) {
+    return null;
   }
-  return getFirstBusiness();
+  return business;
 }
 
 /** כל העסקים שבבעלות מייל נתון, מהחדש לישן. */
 export async function getBusinessesOwnedByEmail(email: string) {
   return prisma.business.findMany({
-    where: { ownerEmail: email },
+    where: { ownerEmail: { equals: email.trim(), mode: 'insensitive' } },
     orderBy: { createdAt: 'desc' },
   });
 }
@@ -251,22 +248,29 @@ function slugifyName(name: string): string {
 }
 
 /** מייצר slug ייחודי; מוסיף סיפוקס מספרי בהתנגשות (לא דורס עסקים קיימים). */
-async function generateUniqueSlug(name: string): Promise<string> {
+async function generateUniqueSlug(name: string, db: Prisma.TransactionClient): Promise<string> {
   const base = slugifyName(name);
   let candidate = base;
   let n = 1;
   // בדיקת ייחודיות מול העמודה הייחודית slug.
-  while (await prisma.business.findUnique({ where: { slug: candidate }, select: { id: true } })) {
+  while (await db.business.findUnique({ where: { slug: candidate }, select: { id: true } })) {
     n += 1;
     candidate = `${base}-${n}`;
   }
   return candidate;
 }
 
-/**
- * יצירת עסק חדש בבעלות מייל מאומת (אפיק D1).
- * מייצר slug ייחודי, אזור זמן ברירת מחדל, ורשומת הגדרות ריקה נלווית.
- */
+// Includes inactive and deletion-pending accounts until they are purged.
+export const MAX_BUSINESSES_PER_OWNER = 3;
+
+export class BusinessCreationLimitError extends Error {
+  readonly code = 'business_limit';
+  constructor() {
+    super(`An owner may have at most ${MAX_BUSINESSES_PER_OWNER} businesses.`);
+  }
+}
+
+/** Create a fully bookable trial tenant, or roll back every seed and ledger write. */
 export async function createBusiness(input: {
   name: string;
   type?: BusinessType | null;
@@ -278,93 +282,86 @@ export async function createBusiness(input: {
   priorCalendar?: string | null;
   referralSource?: string | null;
 }) {
-  // רשת ביטחון לשחזור (אפיק ההרשמה): אם קיים עסק שממתין למחיקה בבעלות אותו מייל,
-  // מספר הטלפון תואם ומועד המחיקה טרם עבר — משחזרים את העסק הקיים במקום ליצור כפול.
-  // התפר העיקרי לשחזור הוא מסך השחזור באזור הניהול, וזו רשת הביטחון המשלימה.
-  const restorable = await findRestorableBusinessForOwner(input.ownerEmail, input.phone ?? null);
-  if (restorable) {
-    return restoreBusiness(restorable.id);
-  }
+  const ownerEmail = normalizeEmail(input.ownerEmail);
+  if (!ownerEmail) throw new Error('An authenticated owner email is required.');
+  const hashes = computeTrialHashes(ownerEmail, input.phone ?? null, input.ownerGoogleSub);
+  const fingerprintOr = [
+    { emailHash: hashes.emailHash },
+    ...(hashes.phoneHash ? [{ phoneHash: hashes.phoneHash }] : []),
+    ...(hashes.googleSubHash ? [{ googleSubHash: hashes.googleSubHash }] : []),
+  ];
+  const lockKeys = [
+    `business-owner:${hashes.emailHash}`, `business-slug:${slugifyName(input.name)}`,
+    ...Object.values(hashes).filter((hash): hash is string => Boolean(hash)).map((hash) => `trial:${hash}`),
+  ].sort();
 
-  const slug = await generateUniqueSlug(input.name);
-  // החלטת ניסיון חינם מול דג׳ר טביעות-האצבע (anti-abuse): הרשמה ראשונה מקבלת 30 יום;
-  // הרשמה חוזרת (אחרי מחיקת חשבון) מקבלת את מועד הסיום המקורי ללא הארכה — ואם עבר,
-  // העסק נוצר כבר-פג (subscriptionStatus=expired) וייחסם מיד על-ידי אכיפת המנוי.
-  const trialDecision = await decideTrialForRegistration(
-    input.ownerEmail,
-    input.phone ?? null,
-    new Date(),
-    input.ownerGoogleSub ?? null,
-  );
-  const trialEndsAt = trialDecision.trialEndsAt;
-  const business = await prisma.business.create({
-    data: {
-      name: input.name,
-      type: input.type ?? undefined,
-      phone: input.phone ?? null,
-      address: input.address ?? null,
-      slug,
-      timezone: process.env.BUSINESS_TIMEZONE || 'Asia/Jerusalem',
-      ownerEmail: input.ownerEmail,
-      plan: 'basic',
-      subscriptionStatus: trialDecision.subscriptionStatus,
-      trialEndsAt,
-      settings: { create: {} },
-    },
-    include: { settings: true },
-  });
-
-  // זריעת שעות ברירת מחדל לעסק (scope BUSINESS): ראשון–חמישי 09:00–17:00, שישי/שבת סגורים.
-  // בלי זריעה זו לעסק חדש אין אף רשומת WorkingHours, ולכן מנוע הזמינות מחזיר אפס משבצות
-  // בכל יום — ולינק ההזמנה נשבר בשקט עד שהבעלים מגדיר שעות ידנית ב-/admin/working-hours.
-  // עמיד לתקלות: כשל בזריעה לא ישבור את יצירת העסק, אך בתנאים רגילים הרשומות נכתבות.
-  try {
-    await setBusinessHours(business.id, defaultBusinessHours());
-  } catch {
-    // זריעת שעות ברירת המחדל נכשלה; יצירת העסק ממשיכה והבעלים יגדיר שעות ידנית.
-  }
-
-  // זריעת איש צוות דיפולטי לבעלים: מיד אחרי יצירת העסק אין אף StaffMember, ולכן היומן
-  // ב-/admin מוצג ריק עם ההודעה "לא הוגדרו אנשי צוות" והבעלים תקוע בלי דרך לפעול מהמסך.
-  // זורעים איש צוות אחד על שם הבעלים (מזוהה במייל, לא בטלפון) כדי שהיומן יעבוד מיד.
-  // עמיד לתקלות: כשל בזריעה לא ישבור את יצירת העסק, בדיוק כמו זריעת השעות למעלה.
-  try {
-    await ensureOwnerStaffMember(business.id, {
-      ownerEmail: input.ownerEmail,
-      ownerName: input.ownerName,
-      businessName: input.name,
-    });
-  } catch {
-    // זריעת איש הצוות הדיפולטי נכשלה; יצירת העסק ממשיכה והבעלים יוסיף צוות ידנית ב-/admin/team.
-  }
-
-  // זריעת שירותי התחלה מתבנית סוג העסק: מיד אחרי היצירה אין אף Service, ולכן היומן ב-/admin
-  // מוצג ריק עם ההודעה "לא הוגדרו שירותים" והבעלים תקוע בלי דרך ליצור תורים. זורעים שירותים
-  // טיפוסיים לפי סוג העסק (או תבנית ברירת מחדל) כדי שהיומן יהיה שמיש מיד; הבעלים עורך/מוחק אחריהם.
-  // אידמפוטנטי (רץ רק כשאין שירותים) ועמיד לתקלות: כשל בזריעה לא ישבור את יצירת העסק.
-  try {
-    await seedServicesForBusiness(business.id, input.type ?? null);
-  } catch {
-    // זריעת שירותי ההתחלה נכשלה; יצירת העסק ממשיכה והבעלים יוסיף שירותים ידנית ב-/admin/services.
-  }
-
-  // שאלות השיווק (אפיק D2) נשמרות בצורה עמידה: אם המיגרציה האדיטיבית טרם הוחלה
-  // בסביבה, יצירת העסק לא תישבר; העדכון נכשל בשקט והשדות פשוט לא נכתבים עד שתרוץ.
-  if (input.priorCalendar || input.referralSource) {
+  for (let attempt = 0; ; attempt++) {
     try {
-      await prisma.business.update({
-        where: { id: business.id },
-        data: {
-          priorCalendar: input.priorCalendar ?? null,
-          referralSource: input.referralSource ?? null,
-        },
-      });
-    } catch {
-      // עמודות השיווק האדיטיביות עדיין לא קיימות בסביבה; מתעלמים בבטחה.
+      return await prisma.$transaction(async (tx) => {
+        for (const key of lockKeys) {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+        }
+        const restorable = await findRestorableBusinessForOwner(ownerEmail, input.phone ?? null, tx);
+        if (restorable) return restoreBusiness(restorable.id, tx);
+        const count = await tx.business.count({
+          where: { ownerEmail: { equals: ownerEmail, mode: 'insensitive' } },
+        });
+        if (count >= MAX_BUSINESSES_PER_OWNER) throw new BusinessCreationLimitError();
+
+        const now = new Date();
+        const existingTrial = await tx.trialLedger.findFirst({
+          where: { OR: fingerprintOr }, orderBy: { originalTrialEndsAt: 'asc' },
+        });
+        const decision = resolveTrialDecision(existingTrial?.originalTrialEndsAt ?? null, now);
+        if (existingTrial) {
+          await tx.trialLedger.update({
+            where: { id: existingTrial.id }, data: { registrationCount: { increment: 1 } },
+          });
+        } else {
+          await tx.trialLedger.create({
+            data: { ...hashes, originalTrialEndsAt: decision.trialEndsAt, firstTrialStartedAt: now },
+          });
+        }
+        const owner = await tx.user.upsert({
+          where: { email: ownerEmail }, update: {}, create: { email: ownerEmail, role: 'OWNER' },
+        });
+        const business = await tx.business.create({
+          data: {
+            name: input.name, type: input.type ?? undefined, phone: input.phone ?? null,
+            address: input.address ?? null, slug: await generateUniqueSlug(input.name, tx),
+            timezone: process.env.BUSINESS_TIMEZONE || 'Asia/Jerusalem', ownerEmail,
+            plan: 'basic', subscriptionStatus: decision.subscriptionStatus,
+            trialEndsAt: decision.trialEndsAt,
+            priorCalendar: input.priorCalendar ?? null, referralSource: input.referralSource ?? null,
+            settings: { create: {} },
+            workingHours: { create: defaultBusinessHours().map((row) => ({ ...row, scope: 'BUSINESS' })) },
+            staff: { create: {
+              userId: owner.id, permissionLevel: 'MANAGER', active: true,
+              displayName: resolveOwnerDisplayName({
+                ownerName: input.ownerName, ownerUserName: owner.name,
+                businessName: input.name, ownerEmail,
+              }),
+            } },
+            services: { create: getServiceTemplate(input.type).map((service, sortOrder) => ({
+              name: service.name, durationMin: service.durationMin,
+              priceAgorot: service.priceAgorot, sortOrder,
+            })) },
+          },
+          include: { settings: true, staff: true, services: true },
+        });
+        await tx.serviceStaff.createMany({
+          data: business.services.map((service) => ({ serviceId: service.id, staffId: business.staff[0].id })),
+        });
+        return business;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 20000 });
+    } catch (error) {
+      if (
+        attempt < 2 && error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === 'P2002' || error.code === 'P2034')
+      ) continue;
+      throw error;
     }
   }
-
-  return business;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -393,8 +390,8 @@ export async function requestBusinessDeletion(businessId: string) {
  * שחזור מנוי: מחזיר עסק שהיה PENDING_DELETION למצב ACTIVE ומנקה את מועדי המחיקה.
  * כל נתוני העסק נשמרים במלואם עד למחיקה הסופית, ולכן שחזור מחזיר הכול לקדמותו.
  */
-export async function restoreBusiness(businessId: string) {
-  return prisma.business.update({
+export async function restoreBusiness(businessId: string, db: Prisma.TransactionClient = prisma) {
+  return db.business.update({
     where: { id: businessId },
     data: {
       accountStatus: 'ACTIVE',
@@ -411,10 +408,12 @@ export async function restoreBusiness(businessId: string) {
  * תואם (מנורמל ל-E.164). אם לא נשמר טלפון (חשבון ישן), הזהות מבוססת-המייל המאומת
  * מספיקה לשחזור, שכן המייל כבר עבר אימות בהתחברות. מחזיר null כשאין התאמה.
  */
-export async function findRestorableBusinessForOwner(ownerEmail: string, phone: string | null) {
-  const pending = await prisma.business.findFirst({
+export async function findRestorableBusinessForOwner(
+  ownerEmail: string, phone: string | null, db: Prisma.TransactionClient = prisma,
+) {
+  const pending = await db.business.findFirst({
     where: {
-      ownerEmail,
+      ownerEmail: { equals: ownerEmail.trim(), mode: 'insensitive' },
       accountStatus: 'PENDING_DELETION',
       OR: [{ purgeScheduledFor: null }, { purgeScheduledFor: { gt: new Date() } }],
     },

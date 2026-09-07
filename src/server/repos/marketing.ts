@@ -5,8 +5,8 @@ import {
   resolveCampaignRecipients,
   type CampaignChannel,
 } from '@/server/campaigns/channels';
-import { deliverCampaignMessage } from '@/server/campaigns/delivery';
-import { canSendPaidClientSms } from '@/server/subscription';
+import { canSendPaidClientSms, getBusinessAccess } from '@/server/subscription';
+import { deliverEmailOnce } from '@/server/billing/emailDelivery';
 
 /**
  * מודול דיוור רב-ערוצי (marketing).
@@ -117,7 +117,7 @@ export function listMessageLog(businessId: string, take = 100) {
 
 export type SendCampaignResult =
   | { ok: true; recipientCount: number; sentCount: number; failedCount: number }
-  | { ok: false; reason: 'not_found' | 'already_sent' | 'no_recipients' };
+  | { ok: false; reason: 'not_found' | 'already_sent' | 'no_recipients' | 'business_inactive' };
 
 /** תלויות ניתנות להזרקה (לבדיקה). ברירת המחדל היא שער העלות האמיתי. */
 export type SendCampaignDeps = {
@@ -147,8 +147,15 @@ export async function sendCampaign(
   // דרגת החבילה קובעת אילו ערוצים מותרים: SMS בתשלום רק באקסקלוסיב, וואטסאפ מסונן תמיד.
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { plan: true, subscriptionStatus: true, trialEndsAt: true, paidUntil: true },
+    select: { plan: true, subscriptionStatus: true, trialEndsAt: true, paidUntil: true, accountStatus: true },
   });
+  if (!business || business.accountStatus !== 'ACTIVE' || business.plan === 'basic' || !getBusinessAccess(business).active) {
+    await prisma.messageLog.create({ data: {
+      businessId, campaignId: id, channel: 'campaign', body: campaign.body,
+      status: 'BLOCKED', countsToCap: false, error: 'business_inactive',
+    } });
+    return { ok: false, reason: 'business_inactive' };
+  }
   const isExclusive = business != null && canSendPaidClientSms(business);
 
   const segment = normalizeSegment(campaign.segment);
@@ -183,35 +190,27 @@ export async function sendCampaign(
         clientId: message.clientId,
         campaignId: campaign.id,
         channel: 'sms',
+        idempotencyKey: `campaign:${campaign.id}:${message.clientId}:sms`,
       });
       if (result.status === 'sent') {
         sentCount += 1;
       } else {
         failedCount += 1;
         // בתקרה — לחסום את שאר המסרונים בקמפיין (התקרה החודשית נשמרת בכל מקרה).
-        if (result.status === 'blocked') smsBlocked = true;
+        if (result.status === 'blocked' && ['cost_cap_exceeded', 'global_cost_cap', 'business_quota', 'global_quota'].includes(result.reason ?? '')) smsBlocked = true;
       }
       continue;
     }
 
     // מייל (הערוץ היחיד שאינו בתשלום אחרי הסינון) — נשלח דרך שכבת המסירה ונרשם כאן.
     try {
-      await deliverCampaignMessage(message.channel, message.address, campaign.body, {
-        subject: campaign.name,
+      const result = await deliverEmailOnce({
+        businessId, campaignId: campaign.id, clientId: message.clientId,
+        idempotencyKey: `campaign:${campaign.id}:${message.clientId}:email`,
+        to: message.address, text: campaign.body, subject: campaign.name,
       });
-      sentCount += 1;
-      await prisma.messageLog.create({
-        data: {
-          businessId,
-          campaignId: campaign.id,
-          clientId: message.clientId,
-          channel: message.channel,
-          address: message.address,
-          phone: null,
-          body: campaign.body,
-          status: 'SENT',
-        },
-      });
+      if (result.status === 'sent') sentCount += 1;
+      else failedCount += 1;
     } catch (err) {
       failedCount += 1;
       await prisma.messageLog.create({

@@ -14,6 +14,7 @@ import {
 import { notifyOwnerOfCancellation } from '@/server/notifications/ownerCancellation';
 import { exportOnCancel } from '@/server/google/appointmentSync';
 import { absoluteUrl } from '@/lib/seo';
+import { BookingError } from '@/server/booking/policy';
 
 /** התנתקות: ניקוי עוגיית ה-session והפניה למסך ההתחברות. */
 export async function logout() {
@@ -25,7 +26,7 @@ export type CancelState = { ok: boolean; error?: string };
 
 /**
  * ביטול תור בידי הלקוח (חתימת useActionState).
- * מאמת בעלות (userId או טלפון), סטטוס הניתן לביטול, ואת חלון הביטול של העסק.
+ * מאמת שיוך זהות מאומת, סטטוס הניתן לביטול, ואת חלון הביטול של העסק.
  */
 export async function cancelAppointmentAction(
   _prev: CancelState,
@@ -40,9 +41,8 @@ export async function cancelAppointmentAction(
   const appt = await getAppointmentForOwner(id);
   if (!appt) return { ok: false, error: 'not_found' };
 
-  // אימות בעלות: התור חייב להשתייך למשתמש המחובר (לפי userId או טלפון).
-  const owned =
-    appt.client.userId === session.userId || appt.client.phone === session.phone;
+  const owned = !!session.userId && appt.client.userId === session.userId &&
+    appt.client.identityVerifiedAt !== null;
   if (!owned) return { ok: false, error: 'forbidden' };
 
   // ניתן לבטל רק תור ממתין או מאושר שטרם התחיל.
@@ -57,10 +57,19 @@ export async function cancelAppointmentAction(
     return { ok: false, error: 'window_passed' };
   }
 
-  await updateAppointmentStatus(id, 'CANCELLED', { cancelledBy: 'CLIENT' });
+  try {
+    const updated = await updateAppointmentStatus(id, 'CANCELLED', {
+      cancelledBy: 'CLIENT', businessId: appt.business.id,
+      clientUserId: session.userId, expectedStatus: appt.status,
+    });
+    if (!updated) return { ok: false, error: 'not_cancellable' };
+  } catch (error) {
+    if (error instanceof BookingError) return { ok: false, error: error.code };
+    throw error;
+  }
 
   // מחיקת האירוע המיוצא מיומן הבעלים (fire-and-forget, מדלג אם אין).
-  void exportOnCancel(id).catch(() => {});
+  void exportOnCancel(id).catch(() => console.error('google_sync_failed', { appointmentId: id }));
 
   // התראת בעל העסק על ביטול שיזם הלקוח (best-effort, לעולם לא חוסמת את הביטול).
   // מכובד מתג notifyOnCancellation (ברירת מחדל דלוק). היעד הוא מייל העסק עצמו

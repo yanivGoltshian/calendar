@@ -4,8 +4,10 @@ import {
   getAppointmentsDueForReminder,
   markReminderSent,
 } from '@/server/repos/appointments';
-import { sendReminder } from '@/server/reminders/send';
+import { sendReminder, prepareReminder, ReminderPreparationError } from '@/server/reminders/send';
 import { canSendPaidClientSms } from '@/server/subscription';
+import { claimReminder, beginReminderDispatch, completeReminder, releaseReminder } from '@/server/reminders/reminderClaims';
+import { reconcilePendingCalendars } from '@/server/google/appointmentSync';
 
 /**
  * הלוגיקה של נקודת הקצה המתוזמנת לשליחת תזכורות, מופרדת מ-route.ts כדי לאפשר
@@ -42,15 +44,26 @@ const TRANSIENT_DB_CODES = new Set(['P2024', 'P1001', 'P1008', 'P1017']);
  * ברירת המחדל (defaultReminderDeps) מחווטת למימושים האמיתיים.
  */
 export type ReminderDeps = {
-  getAppointmentsDueForReminder: typeof getAppointmentsDueForReminder;
+  getAppointmentsDueForReminder: (...args: Parameters<typeof getAppointmentsDueForReminder>) => Promise<Awaited<ReturnType<typeof getAppointmentsDueForReminder>>>;
   markReminderSent: typeof markReminderSent;
   sendReminder: typeof sendReminder;
+  prepareReminder?: typeof prepareReminder;
+  claimReminder?: typeof claimReminder;
+  beginReminderDispatch?: typeof beginReminderDispatch;
+  completeReminder?: typeof completeReminder;
+  releaseReminder?: typeof releaseReminder;
+  reconcilePendingCalendars?: typeof reconcilePendingCalendars;
 };
 
 export const defaultReminderDeps: ReminderDeps = {
   getAppointmentsDueForReminder,
   markReminderSent,
   sendReminder,
+  claimReminder,
+  beginReminderDispatch,
+  completeReminder,
+  releaseReminder,
+  reconcilePendingCalendars,
 };
 
 function extractSecret(req: Request): string | null {
@@ -155,7 +168,6 @@ export async function handleReminderCron(
   if (provided !== expected) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
   }
-
   const now = Date.now();
   // חלון שליפה רחב וחסום: מגבול תחתון של now − סבילות (גרייס לסטיית שעון) ועד
   // now + זמן ההקדמה המרבי + סבילות. הבשלות המדויקת נקבעת פר-תור בלולאה לפי
@@ -173,6 +185,8 @@ export async function handleReminderCron(
   let failed = 0;
   let skipped = 0;
   let alreadyMarked = 0;
+  let claimedElsewhere = 0;
+  let uncertain = 0;
   // תורים שנשלפו אך טרם בשלים לפי זמן ההקדמה של העסק (או שכבר החלו) — דולגו בלי
   // לסמן reminderSentAt, וייתפסו בריצה מאוחרת יותר. נספרים בנפרד לצורכי תצפית.
   let notYetDue = 0;
@@ -186,7 +200,7 @@ export async function handleReminderCron(
       // startAt − leadHours, ושולחים רק כאשר dueAt ≤ now + סבילות והתור עדיין עתידי
       // (startAt > now). תור שטרם בשל או שכבר החל — מדלגים בלי לסמן reminderSentAt,
       // כך שריצה מאוחרת יותר תתפוס אותו בזמנו. האידמפוטנטיות נשמרת דרך
-      // reminderSentAt: null + markReminderSent, בדיוק כמו לתורים בשלים.
+      // durable pre-dispatch claims protect overlapping workers.
       const startAtMs = appt.startAt.getTime();
       const leadHours = appt.business.settings?.reminderLeadHours ?? DEFAULT_LEAD_HOURS;
       const dueAt = startAtMs - leadHours * HOUR_MS;
@@ -197,12 +211,16 @@ export async function handleReminderCron(
 
       // נספר רק תורים בשלים בפועל — כדי שדיווח found ישקף שליחות אמת ולא שליפה גולמית.
       found += 1;
-
+      const token = await (deps.claimReminder ?? claimReminder)(appt.id, new Date(now));
+      if (!token) {
+        claimedElsewhere += 1;
+        continue;
+      }
       // הערוץ והיעד נגזרים בשכבת השליחה (resolveReminderChannel) לפי העדפת העסק,
       // זהות הלקוח, והרשאת המסרון לפי החבילה. המסרון בתשלום ללקוח דלוק רק באקסקלוסיב
       // פעיל — canSendPaidClientSms מחשב זאת, וזורם כ-isExclusive לשכבת השליחה.
       const isExclusive = canSendPaidClientSms(appt.business);
-      const result = await deps.sendReminder({
+      const input = {
         id: appt.id,
         startAt: appt.startAt,
         confirmToken: appt.confirmToken,
@@ -219,42 +237,70 @@ export async function handleReminderCron(
           phone: appt.client.phone,
           email: appt.client.email,
         },
-      });
+      };
+      let dispatch;
+      try {
+        const prepare = deps.prepareReminder ?? (deps.sendReminder === sendReminder ? prepareReminder : undefined);
+        dispatch = prepare ? await prepare(input) : () => deps.sendReminder(input);
+        if (!await (deps.beginReminderDispatch ?? beginReminderDispatch)(appt.id, token)) {
+          await (deps.releaseReminder ?? releaseReminder)(appt.id, token, 'lifecycle_changed');
+          skipped += 1;
+          continue;
+        }
+      } catch {
+        failed += 1;
+        await (deps.releaseReminder ?? releaseReminder)(appt.id, token, 'preparation_failed');
+        continue;
+      }
+      let result;
+      try {
+        result = await dispatch();
+      } catch (error) {
+        const unknown = !(error instanceof ReminderPreparationError);
+        if (unknown) uncertain += 1;
+        else failed += 1;
+        await (deps.releaseReminder ?? releaseReminder)(appt.id, token,
+          unknown ? 'delivery_outcome_unknown' : 'preparation_failed', unknown);
+        continue;
+      }
 
       // כשל שליחה חולף — לא מסמנים, כדי שהריצה הבאה תנסה שוב.
       if (result.status === 'failed') {
-        failed += 1;
+        if (result.deliveredChannels?.length) sent += 1;
+        const unknown = result.error === 'delivery_outcome_unknown';
+        if (unknown) uncertain += 1;
+        else failed += 1;
+        await (deps.releaseReminder ?? releaseReminder)(appt.id, token, result.error, unknown);
         console.error(
           `[cron/reminders] send failed appt=${appt.id} channel=${result.channel} error=${result.error}`,
         );
         continue;
       }
-
-      // status === 'sent' או 'skipped': בשני המקרים מסמנים באופן אטומי ואידמפוטנטי.
-      // 'skipped' מכסה יעד חסר, ערוץ ידני ללא כתובת, או ספק לא כשיר — מחושב ומסומן
-      // אך לא נשלח בפועל (no-op-אבל-מסומן), כדי שהריצה לא תיתקע ולא תחזור על עצמה.
-      const marked = await deps.markReminderSent(appt.id, new Date());
-      if (marked === 0) {
-        // שורה כבר סומנה במקביל — לא נספור פעמיים.
-        alreadyMarked += 1;
+      if (result.status === 'skipped') {
+        skipped += 1;
+        await (deps.releaseReminder ?? releaseReminder)(appt.id, token, result.reason);
         continue;
       }
-
-      if (result.status === 'sent') {
-        sent += 1;
-      } else {
-        // 'skipped': מסומן בלי שליחה בפועל — יעד חסר, ערוץ ידני ללא כתובת, או ספק
-        // לא כשיר (console בפרודקשן / מייל לא מוגדר). הריצה נשארת אידמפוטנטית.
-        skipped += 1;
-        console.warn(
-          `[cron/reminders] skipped — marked without sending appt=${appt.id} reason=${result.reason}`,
-        );
+      // Count provider-accepted sends even if their DB finalization fails.
+      if (!result.duplicate) sent += 1;
+      try {
+        const marked = await (deps.completeReminder ?? completeReminder)(appt.id, token, new Date());
+        if (!marked) uncertain += 1;
+      } catch {
+        uncertain += 1;
+        await (deps.releaseReminder ?? releaseReminder)(appt.id, token, 'delivery_outcome_unknown', true).catch(() => undefined);
       }
     }
 
-    const counts = { found, sent, failed, skipped, alreadyMarked, notYetDue };
-    // כאשר הספק אינו כשיר (console בפרודקשן / מייל לא מוגדר) או שאין ליעד כתובת,
-    // ההודעות מחושבות ומסומנות (skipped) אך אינן נשלחות בפועל. ה-endpoint אינו קורס.
+    // Calendar retries are bounded and run after reminders, so an unhealthy
+    // external calendar cannot prevent due notifications from being attempted.
+    if (deps.reconcilePendingCalendars) {
+      await deps.reconcilePendingCalendars(5).catch(() => {
+        console.error('[cron/reminders] calendar reconciliation deferred');
+      });
+    }
+    const counts = { found, sent, failed, skipped, alreadyMarked, notYetDue, claimedElsewhere, uncertain };
+    // Missing channels remain unsent; provider-accepted partial sends count once.
     console.log(
       `[cron/reminders] provider=${provider} window=${windowStart.toISOString()}..${windowEnd.toISOString()} ` +
         `found=${counts.found} sent=${counts.sent} failed=${counts.failed} ` +
@@ -262,7 +308,8 @@ export async function handleReminderCron(
     );
 
     return NextResponse.json({
-      ok: true,
+      ok: uncertain === 0,
+      ...(uncertain ? { degraded: true, code: 'delivery_outcome_unknown' } : {}),
       provider,
       window,
       counts,
@@ -282,7 +329,7 @@ export async function handleReminderCron(
       message: safeDegradedMessage(code),
       provider,
       window,
-      counts: { found, sent, failed, skipped, alreadyMarked, notYetDue },
+      counts: { found, sent, failed, skipped, alreadyMarked, notYetDue, claimedElsewhere, uncertain },
     });
   }
 }
