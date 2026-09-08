@@ -17,7 +17,7 @@ import { localBusinessJsonLd } from '@/lib/seo';
 import { MAX_RENDERED_IMAGE_BYTES, MAX_SOURCE_IMAGE_BYTES } from '@/lib/media';
 import { publicMediaContent, findLegacyImage, legacyImageHash } from './publicContent';
 import { optimizeImage } from './image';
-import { isPublicAddress, permittedRemoteImage, readSafeImage, fetchPinnedImage } from './safeFetch';
+import { isPublicAddress, permittedRemoteImage, readSafeImage, fetchPinnedImage, ownedPublicAssetPath } from './safeFetch';
 import { assertMediaQuota, boundedFormData, mediaQuota, validVideoSignature } from './uploadPolicy';
 import { cachedImage } from './cache';
 import { createUploadHandler } from './uploadHandler';
@@ -126,6 +126,45 @@ test('image origins and private addresses fail closed before connecting', async 
     request: (() => { contacted = true; throw new Error('must not connect'); }) as unknown as typeof request,
   }));
   assert.equal(contacted, false);
+});
+
+test('first-party absolute images resolve only to exact configured origins and safe public paths', () => {
+  const env = { NEXT_PUBLIC_APP_URL: 'https://app.example', AUTH_URL: 'https://canonical.example' };
+  const file = '/brand/business/demo-barbershop.png';
+  assert.equal(ownedPublicAssetPath(`https://app.example${file}`, env), file);
+  assert.equal(ownedPublicAssetPath(`https://canonical.example${file}`, env), file);
+  for (const source of [
+    `http://app.example${file}`, `https://app.example.evil${file}`,
+    `https://app.example:444${file}`, `https://user@app.example${file}`,
+    `https://user:pass@app.example${file}`, `https://app.example${file}#fragment`,
+    `https://127.0.0.1${file}`, `https://169.254.169.254${file}`,
+    `https://another.azurecontainerapps.io${file}`,
+  ]) assert.equal(ownedPublicAssetPath(source, env), null, source);
+  for (const pathname of [
+    '/api/book', '/package.json', '/brand/../../package.json',
+    '/brand/../icons/icon-192.png', '/brand/%2e%2e/icons/icon-192.png',
+    '/brand/%252e%252e/file.png', '/brand\\..\\icons\\icon-192.png',
+    '/brand//../../package.json', `${file}?redirect=https://evil.example/image`,
+  ]) assert.throws(() => ownedPublicAssetPath(`https://app.example${pathname}`, env), /image_path/, pathname);
+  assert.equal(ownedPublicAssetPath(`https://app.example${file}`, {}), null);
+});
+
+test('actual bundled barber PNG and its persisted absolute form decode identically without HTTP', async () => {
+  const previous = process.env.NEXT_PUBLIC_APP_URL;
+  process.env.NEXT_PUBLIC_APP_URL = 'https://bundled-assets.example.invalid';
+  try {
+    const file = '/brand/business/demo-barbershop.png';
+    const relative = await readSafeImage(file);
+    const absolute = await readSafeImage(`${process.env.NEXT_PUBLIC_APP_URL}${file}`);
+    assert.ok(relative.equals(absolute));
+    const rendered = await optimizeImage(absolute, 320);
+    const metadata = await sharp(rendered).metadata();
+    assert.equal(metadata.format, 'webp');
+    assert.deepEqual([metadata.width, metadata.height], [320, 320]);
+  } finally {
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = previous;
+  }
 });
 
 function fakeRequest(statusCode: number, body: Buffer, length?: string) {

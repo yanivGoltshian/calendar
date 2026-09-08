@@ -17,7 +17,6 @@ import {
   sectionIconKey,
   landingDefaults,
   normalizeLandingContent,
-  normalizePublicPageStyle,
 } from '@/lib/publicPageStyle';
 import { CLINIC_IDENTITY } from '@/data/clinicDemo';
 import {
@@ -34,6 +33,7 @@ import ReturningCustomerLoader from '@/components/publicLanding/ReturningCustome
 import TodayHoursHighlight from '@/components/publicLanding/TodayHoursHighlight';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
 import { visualLevelForPublicPage } from '@/server/onboardingProgress';
+import { publicPagePresentation } from '@/server/publicPagePresentation';
 import ShareBusiness from '@/components/publicLanding/ShareBusiness';
 import BackButton from '@/components/publicLanding/BackButton';
 import AnnouncementBar from '@/components/publicLanding/AnnouncementBar';
@@ -100,8 +100,6 @@ export default async function BusinessPublicPage({ params }: Props) {
   // מצב העמוד (באג 3): הזמנת תורים ממוקדת מול עמוד נחיתה עשיר, נשלט מהניהול.
   // הוסרה עקיפת ?style= (תצוגה מקדימה לאורח) כדי לאפשר שלד ISR ללא קריאת searchParams
   // בשרת. מצב העמוד נגזר כעת אך ורק מ-business.publicPageStyle (הגדרת הבעלים).
-  const pageStyle = normalizePublicPageStyle(business.publicPageStyle);
-  const styleIsLanding = pageStyle === 'LANDING';
   const iconKey = sectionIconKey(business.type);
 
   const landing = normalizeLandingContent(business.landingContent);
@@ -115,9 +113,9 @@ export default async function BusinessPublicPage({ params }: Props) {
     brandColor: business.brandColor,
     hasLandingContent: landing != null,
   });
-  const visualLevel = onboarding.visualLevel;
-  // פריסת נחיתה: כשהסגנון LANDING, או כשהאונבורדינג הגיע לרמה 2+ (נחיתה עשירה קיימת).
-  const isLanding = styleIsLanding || visualLevel >= 2;
+  const { isLanding, isClinicPremium, clinicThemeVars } = publicPagePresentation(
+    business.publicPageStyle, landing, onboarding.visualLevel,
+  );
   const defaults = landingDefaults(business.type);
   const heroHeadline = landing?.heroHeadline ?? defaults.heroHeadline;
   const heroSubtext = landing?.heroSubtext ?? defaults.heroSubtext;
@@ -128,29 +126,12 @@ export default async function BusinessPublicPage({ params }: Props) {
   // הכתובת הקנונית לשיתוף — https://<host>/b/<slug>. ה-OG card מנוהל בקובץ נפרד.
   const shareUrl = absoluteUrl(`/b/${business.slug}`);
 
-  // עמוד פרימיום של קליניקה — מזוהה לפי נוכחות launchOffer או hotDeals בתוכן הנחיתה.
-  // רק אז מוחלת הפלטה החמה (זהב/קרם) והכותרת הייעודית, בלי לפגוע בשאר העסקים.
-  // מראה הקליניקה הפרימיום: כשקיים מבצע/דילים בתוכן הנחיתה, או כשהאונבורדינג הושלם
-  // במלואו (רמה 3) — כך גם עסק סטנדרט שהשלים הכול מקבל את המראה המלא.
-  const isClinicPremium =
-    (isLanding && Boolean(landing?.launchOffer || landing?.hotDeals)) ||
-    (visualLevel >= 3 && landing != null);
   const clinicLabels = t.premiumLanding.clinic;
   // תת-הכותרת הממותגת של הקליניקה ("טיפולי יופי ואסתטיקה...") שייכת רק לעסק הדמו
   // (skin-beauty). לכל שאר עסקי הפרימיום מזינים null כדי שהיא לא תדלוף כברירת מחדל (באג 3).
   const clinicHeroTagline =
     business.slug === CLINIC_IDENTITY.slug ? clinicLabels.heroTagline : null;
-  // משתני הפלטה החמה מוזרקים רק בעמוד הקליניקה; שאר העסקים נשארים עם ‎--biz-*‎ בלבד.
-  const clinicThemeVars = {
-    '--c-gold': '#c6a86a',
-    '--c-gold-strong': '#a6863f',
-    '--c-gold-text': '#8c6748',
-    '--c-cream': '#faf6ef',
-    '--c-ink': '#1b1715',
-    '--c-brand': '#b0855f',
-    '--biz-strong': '#8c6748',
-  } as unknown as CSSProperties;
-  const rootStyle = isClinicPremium
+  const rootStyle = isClinicPremium || landing?.theme
     ? ({ ...themeVars, ...clinicThemeVars } as CSSProperties)
     : themeVars;
 

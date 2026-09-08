@@ -1,0 +1,33 @@
+{
+  "baseCommit": "2f5020d244465acebdd43f96091e292920de1eed",
+  "gate": {
+    "node": "v22.23.2",
+    "database": "isolated",
+    "fullReleaseGate": true,
+    "completedAt": "2026-09-08T10:04:23.824Z"
+  },
+  "npm": "10.9.8",
+  "sourceSha256": {
+    "src/server/publicPagePresentation.ts": "420c25fb8ede7a6aa65fdf0a5a93c43be9a722bdeaa6232d610bbbf29b27e4b0",
+    "src/server/publicPagePresentation.test.ts": "777c9b262fe4412f1a77c4fbde5c81deb7a897453113d9e15bb97c3940dd6760",
+    "src/app/b/[slug]/page.tsx": "c88bddf6927a8e740284f0ee679b559d69f5f8461cebdfac35577c833c331a0a",
+    "src/components/publicLanding/PremiumClinicHeader.tsx": "eff6500d7a7d7a9bba7d5bd133a4e07dcc0acfbe0316ab22c06665b6cc07d603",
+    "src/server/media/safeFetch.ts": "b5c0fc623bd3f423bd01eedde2aeae45d9336d04fcd94f97cef14ad0b6ad6dce",
+    "src/server/media/hardening.test.ts": "a28de219b5b11038ba8184692e4797b64b89d2f4f4aca5b4340a68ae27569420",
+    "e2e/barber-branding.spec.ts": "26ce9a4ee7b8b3abe41b43f7059eb66f421043afd11a3c923127dc436695146f",
+    "e2e/requiredReporter.ts": "92c387eec670a41c2b0c0d4c44553d0ebad3272f78fc09eebad270a45c86bbbf",
+    "scripts/test-release.mjs": "fbb1dfe43af234143a6b67b7e0566307d40f0544fab70c4eba100318bc22ec5f"
+  },
+  "visualSha256": {
+    "before/explicit-booking-390.png": "75e9a905054dd7da2fbf71da105fbecdcdc0a994ae961c0b19a338486174d70f",
+    "before/persisted-barber-1366.png": "6888254089e722f63b761bc68ecb1f838eb56aee863aec1cd2f125b114353b4e",
+    "before/persisted-barber-390.png": "afa85514b2bdcb4fe822d7507cb7083960931780d26dc434639df072ed3efa17",
+    "after/clinic-repository-hero-390.png": "57e8759034f59a2beb88ce19437ec5ff450f94034b968280e26a0408e97dc043",
+    "after/explicit-booking-390.png": "0f9e6bdcf54405181051e58e47ba187fccbedd74f68a1b4418cd0eef5a1862a4",
+    "after/persisted-barber-1366-presentation.json": "1334d112fa47f4a5f7ca816ca8a4a522b9ff83fde96480e40c341fdc402d9bb1",
+    "after/persisted-barber-1366.png": "c5a65c7d902b02ec9ea6561e39fe629d2a413ddc3d75db780450dd5d076ad83f",
+    "after/persisted-barber-390-presentation.json": "1334d112fa47f4a5f7ca816ca8a4a522b9ff83fde96480e40c341fdc402d9bb1",
+    "after/persisted-barber-390.png": "600720ead6dfef6f88b53a764f0c2891ce6978676cf84ce5220cc0f251c54e4a",
+    "after/rich-blue-390.png": "0afd3231d9e8c1c665c303f92800098b2fa1d02849610e4fc930f9af2b7fc42b"
+  }
+}

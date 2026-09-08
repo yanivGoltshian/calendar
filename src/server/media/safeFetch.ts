@@ -43,14 +43,35 @@ export function permittedRemoteImage(value: string, origins = allowedImageOrigin
   } catch { return null; }
 }
 
+export function ownedPublicAssetPath(source: string, env: Readonly<Record<string, string | undefined>> = process.env): string | null {
+  let localPath = source;
+  if (!source.startsWith('/')) {
+    const origins: string[] = [];
+    for (const value of [env.APP_CANONICAL_URL, env.AUTH_URL, env.NEXTAUTH_URL, env.NEXT_PUBLIC_APP_URL]) {
+      if (!value || !URL.canParse(value)) continue;
+      const url = new URL(value);
+      if (permittedRemoteImage(value, [url.origin])) origins.push(url.origin);
+    }
+    const url = permittedRemoteImage(source, origins);
+    if (!url) return null;
+    const rawPath = /^https:\/\/[^/?#]+(\/[^?#]*)/.exec(source)?.[1];
+    // Reject URL normalization (dot segments, backslashes) before reading a file.
+    if (url.search || rawPath !== url.pathname) throw new Error('image_path');
+    localPath = url.pathname;
+  }
+  if (!/^\/(?:brand|icons|images)\/[A-Za-z0-9/_\-.]+$/.test(localPath) ||
+      localPath.split('/').includes('..')) throw new Error('image_path');
+  return localPath;
+}
+
 export async function readSafeImage(source: string): Promise<Buffer> {
   if (source.length > 2048) throw new Error('image_url');
-  if (source.startsWith('/')) {
-    // Only owned public assets, never an HTTP fetch to arbitrary application routes.
-    if (!/^\/(?:brand|icons|images)\/[A-Za-z0-9/_\-.]+$/.test(source) || source.split('/').includes('..')) throw new Error('image_path');
+  const localPath = ownedPublicAssetPath(source);
+  if (localPath) {
+    // Absolute first-party asset URLs resolve locally, never through app routes or DNS.
     const root = await realpath(path.join(process.cwd(), 'public'));
-    const file = await realpath(path.join(root, source));
-    if (!file.startsWith(path.join(root, source.split('/')[1]) + path.sep)) throw new Error('image_path');
+    const file = await realpath(path.join(root, localPath));
+    if (!file.startsWith(path.join(root, localPath.split('/')[1]) + path.sep)) throw new Error('image_path');
     if ((await stat(file)).size > MAX_SOURCE_IMAGE_BYTES) throw new Error('image_size');
     return readFile(file);
   }

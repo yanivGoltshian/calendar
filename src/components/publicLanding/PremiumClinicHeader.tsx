@@ -570,7 +570,10 @@ export default function PremiumClinicHeader({
               <Link
                 href={bookHref}
                 className="group inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-base font-bold text-white shadow-elevated transition hover:-translate-y-0.5"
-                style={{ backgroundImage: 'linear-gradient(to left, #c08f86, #a06c63)' }}
+                style={{
+                  backgroundImage: 'linear-gradient(to left, var(--c-hero-cta,#c08f86), var(--c-hero-cta-strong,#a06c63))',
+                  color: 'var(--c-hero-cta-ink,#ffffff)',
+                }}
               >
                 {heroCtaLabel}
                 <ArrowLeftIcon className="h-4 w-4 transition group-hover:-translate-x-1" />
