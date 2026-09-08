@@ -1,0 +1,14 @@
+{
+  "style": "--biz:#3b82c4;--biz-strong:#2c63a0;--biz-dark:#26537d;--biz-light:#5a96cd;--biz-ink:#ffffff;--biz-ink-strong:#275681;--biz-soft:rgba(59, 130, 196, 0.1);--biz-softer:rgba(59, 130, 196, 0.05);--biz-border:rgba(59, 130, 196, 0.22);--c-gold:#8fb9df;--c-gold-strong:#5590c9;--c-gold-text:#2c5f96;--c-cream:#f2f7fc;--c-ink:#12202f;--c-brand:#3b82c4;--c-hero-cta:#3b82c4;--c-hero-cta-strong:#2c63a0;--c-hero-cta-ink:#ffffff",
+  "richHeader": false,
+  "images": [
+    {
+      "src": "http://127.0.0.1:3168/api/public/image?src=https%3A%2F%2Fbundled-assets.example.invalid%2Fbrand%2Fbusiness%2Fdemo-barbershop.png&w=320",
+      "loaded": true
+    },
+    {
+      "src": "https://bundled-assets.example.invalid/brand/business/demo-barbershop.png",
+      "loaded": true
+    }
+  ]
+}

@@ -62,10 +62,12 @@ const env = {
   AUTH_TRUST_HOST: 'true',
   NEXT_PUBLIC_APP_URL: `http://127.0.0.1:${appPort}`,
   AUTH_URL: `http://127.0.0.1:${appPort}`,
+  // A nonresolving app-origin alias proves bundled assets are read locally, without HTTP.
+  NEXTAUTH_URL: 'https://bundled-assets.example.invalid',
   E2E_BASE_URL: `http://127.0.0.1:${appPort}`,
   E2E_BUSINESS_SLUG: 'skin-beauty',
   E2E_ALLOW_BOOKING: '1',
-  E2E_EXPECT_MINIMUM: browserSelection ? '1' : '29',
+  E2E_EXPECT_MINIMUM: browserSelection ? '1' : '37',
   E2E_TARGETED: browserSelection ? '1' : '0',
   TEST_RUNTIME_DIR: runtime,
   ...(process.env.PLAYWRIGHT_BROWSERS_PATH
