@@ -79,3 +79,72 @@ test('SMS: גוף זהה לברירת המחדל ⇐ מחיקה', () => {
     { action: 'delete' },
   );
 });
+
+/**
+ * מודעות-הקשר: העורך מציג ברירת-מחדל שמשתני-העסק בה כבר מולאו. בעל עסק שלוחץ
+ * שמירה בלי לגעת שולח גוף מלא-פרטים, וההשוואה חייבת לזהות אותו כברירת-המחדל
+ * ולמחוק — אחרת נוצרת דריסה מיותרת שמקבעת ערכים ומורידה מייל לנוסח פשוט.
+ */
+
+import { fillBusinessTokens, type BusinessTemplateContext } from './businessTokens';
+
+const bizCtx: BusinessTemplateContext = {
+  businessName: 'מספרת הדר',
+  businessPhone: '03-1234567',
+  businessAddress: 'הרצל 10, תל אביב',
+};
+
+test('ctx — מייל: גוף+נושא מלאי-פרטים ללא עריכה ⇐ מחיקה', () => {
+  assert.deepEqual(
+    resolveTemplateSave(
+      {
+        key: 'booking_confirmation',
+        channel: 'email',
+        subject: fillBusinessTokens(emailDef.subject!, bizCtx),
+        body: fillBusinessTokens(emailDef.body, bizCtx),
+      },
+      bizCtx,
+    ),
+    { action: 'delete' },
+  );
+});
+
+test('ctx — SMS: גוף מלא-פרטים ללא עריכה ⇐ מחיקה', () => {
+  assert.deepEqual(
+    resolveTemplateSave(
+      {
+        key: 'booking_confirmation',
+        channel: 'sms',
+        subject: null,
+        body: fillBusinessTokens(smsDef.body, bizCtx),
+      },
+      bizCtx,
+    ),
+    { action: 'delete' },
+  );
+});
+
+test('ctx — מייל: גוף מלא-פרטים שנערך ⇐ שמירת דריסה', () => {
+  const editedBody = fillBusinessTokens(emailDef.body, bizCtx) + '\nנ.ב. חניה בחצר.';
+  assert.deepEqual(
+    resolveTemplateSave(
+      {
+        key: 'booking_confirmation',
+        channel: 'email',
+        subject: fillBusinessTokens(emailDef.subject!, bizCtx),
+        body: editedBody,
+      },
+      bizCtx,
+    ),
+    { action: 'upsert', subject: fillBusinessTokens(emailDef.subject!, bizCtx), body: editedBody },
+  );
+});
+
+test('ctx — בלי הקשר, גוף מלא-פרטים אינו זהה לברירת-המחדל הגולמית ⇐ שמירה', () => {
+  // בלי ctx ההשוואה מול הגולמי (עם סוגריים), ולכן גוף שמולא נחשב עריכה.
+  const filled = fillBusinessTokens(smsDef.body, bizCtx);
+  assert.deepEqual(
+    resolveTemplateSave({ key: 'booking_confirmation', channel: 'sms', subject: null, body: filled }),
+    { action: 'upsert', subject: null, body: filled },
+  );
+});
