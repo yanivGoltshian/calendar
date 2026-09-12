@@ -236,6 +236,11 @@ model Business {
   // An additional owner login explicitly assigned by a platform admin, never a public contact.
   ownerPhoneIdentity String? @unique
   provisionedBy      String?
+  // נתוני ייבוא שנאספו בעת הכנת העסק בידי סופר-אדמין. נשמרים לבדיקת האדם,
+  // לא מפרסמים את העסק ולא מחליפים את מקור האמת של שדות העסק עצמם.
+  businessImportSourceUrl String?
+  businessImportDraft     Json?
+  businessImportedAt      DateTime?
 
   // ── מנוי, ניסיון חינם ותשלום ידני (אפוס חיוב) — כל השדות אדיטיביים ──────────
   // החבילה הנוכחית של העסק (בסיס כברירת מחדל).

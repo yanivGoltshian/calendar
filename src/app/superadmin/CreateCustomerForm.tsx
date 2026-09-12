@@ -22,15 +22,31 @@ export default function CreateCustomerForm() {
           className="mt-4 max-w-xl space-y-4 rounded-2xl border border-[#16233A] bg-[#0F1B30] p-5">
           <p className="text-sm text-[#9AA7BD]">{text.description}</p>
           <label className="block text-sm">{text.name}
-            <input name="name" required maxLength={120} className={inputClass} />
+            <input name="name" maxLength={120} className={inputClass} />
           </label>
           <div className="text-sm">
             <label htmlFor="new-customer-type">{text.type}</label>
-            <select id="new-customer-type" name="type" required defaultValue="" className={inputClass}>
+            <select id="new-customer-type" name="type" defaultValue="" className={inputClass}>
               <option value="" disabled>{text.chooseType}</option>
               {Object.values(BusinessType).map((type) => <option key={type} value={type}>{t.admin.settings.types[type]}</option>)}
             </select>
           </div>
+          <label className="block text-sm">
+            כתובת ציבורית לייבוא
+            <input
+              name="importUrl"
+              type="url"
+              dir="ltr"
+              maxLength={4096}
+              placeholder="https://..."
+              autoComplete="off"
+              className={inputClass}
+            />
+            <span className="mt-1 block text-xs text-[#9AA7BD]">
+              אתר העסק, Calmark, Instagram או Facebook. כאשר הכתובת מלאה, שם וסוג העסק
+              אופציונליים.
+            </span>
+          </label>
           <label className="block text-sm">{text.phone}
             <input name="phone" type="tel" dir="ltr" maxLength={30} autoComplete="off" className={inputClass} />
           </label>

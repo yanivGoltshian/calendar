@@ -286,6 +286,12 @@ try {
           NODE_ENV: development ? 'development' : 'production',
           PORT: String(appPort),
           HOSTNAME: '127.0.0.1',
+          NODE_OPTIONS: [
+            process.env.NODE_OPTIONS,
+            `--import=${resolve('e2e/business-import-fetch-hook.mjs')}`,
+          ]
+            .filter(Boolean)
+            .join(' '),
         },
         detached: true,
         stdio: ['ignore', log, log],

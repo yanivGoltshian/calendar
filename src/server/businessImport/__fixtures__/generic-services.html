@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="he">
+  <head>
+    <title>שירותים</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "OfferCatalog",
+        "name": "טיפולים",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "price": "250",
+            "priceCurrency": "ILS",
+            "url": "/services/facial",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "טיפול פנים",
+              "description": "טיפול פנים מותאם אישית.",
+              "duration": "PT45M",
+              "image": "/images/facial.jpg"
+            }
+          },
+          {
+            "@type": "Product",
+            "name": "אבחון עור",
+            "description": "אבחון מקצועי.",
+            "offers": {
+              "@type": "Offer",
+              "price": "120.50",
+              "priceCurrency": "ILS"
+            }
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <article class="service-card">
+      <h2>טיפול פנים</h2>
+      <p>טיפול פנים מותאם אישית.</p>
+      <span class="price">250 ₪</span>
+      <span>45 דקות</span>
+      <img src="/images/facial.jpg" width="800" height="600" alt="טיפול פנים" />
+      <a href="/services/facial">מידע נוסף</a>
+    </article>
+  </body>
+</html>

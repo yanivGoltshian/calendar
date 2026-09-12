@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="he">
+  <head>
+    <title>גלריה</title>
+  </head>
+  <body>
+    <img src="/images/room.jpg" width="1200" height="800" alt="חדר טיפולים" />
+    <picture>
+      <source srcset="/images/team-small.jpg 480w, /images/team-large.jpg 1200w" />
+      <img src="/images/team-small.jpg" width="480" height="320" alt="הצוות" />
+    </picture>
+    <video controls poster="/images/video-poster.jpg">
+      <source src="/videos/tour.mp4" type="video/mp4" />
+    </video>
+    <script type="application/json">
+      { "manifest": "/manifest.webmanifest", "heroVideoUrl": "/videos/embedded.webm" }
+    </script>
+    <a href="https://youtube.com/watch?v=fixture">סיור וידאו</a>
+  </body>
+</html>

@@ -5,7 +5,13 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
 import { getPlatformAdminEmail } from '@/server/platformAdmin';
 import { isSlugConfirmed, parseEditBusinessInput } from './logic';
-import { createBusiness, BusinessCreationLimitError, BusinessIdentityConflictError } from '@/server/repos/business';
+import { BusinessImportError } from '@/server/businessImport';
+import {
+  provisionBusinessForAdmin,
+  BusinessCreationLimitError,
+  BusinessIdentityConflictError,
+  BusinessImportConflictError,
+} from '@/server/businessImport/provision';
 import { setImpersonationCookie } from '@/server/impersonation';
 import { parseProvisionInput } from './provisionInput';
 import { t } from '@/i18n';
@@ -30,24 +36,51 @@ export async function provisionBusinessAction(
   const adminEmail = await getPlatformAdminEmail();
   if (!adminEmail) notFound();
   const parsed = parseProvisionInput(formData);
-  if (!parsed.ok) return { error: t.billing.superadmin.create.invalid };
-  const { phoneIdentity, ...input } = parsed.value;
+  if (!parsed.ok) {
+    return {
+      error:
+        'יש להזין טלפון או אימייל תקינים. במסלול ידני נדרשים גם שם וסוג עסק, וכתובת ייבוא חייבת להיות כתובת HTTP או HTTPS תקינה.',
+    };
+  }
   let business;
   try {
-    business = await createBusiness({
-      ...input, provisioning: { adminEmail, phoneIdentity },
-    });
+    ({ business } = await provisionBusinessForAdmin(
+      { ...parsed.value, ownerName: null },
+      adminEmail,
+    ));
   } catch (error) {
-    if (error instanceof BusinessIdentityConflictError || error instanceof BusinessCreationLimitError) {
+    if (
+      error instanceof BusinessIdentityConflictError ||
+      error instanceof BusinessCreationLimitError
+    ) {
       console.warn('[superadmin:provision] identity conflict', { adminEmail });
       return { error: t.billing.superadmin.create.conflict };
     }
+    if (error instanceof BusinessImportConflictError) {
+      return { error: 'העסק כבר יובא ממקור אחר. יש לפתוח אותו מרשימת העסקים.' };
+    }
+    if (error instanceof BusinessImportError) {
+      console.warn('[superadmin:provision] import failed', {
+        adminEmail,
+        code: error.code,
+        diagnostics: error.diagnostics,
+      });
+      return {
+        error: 'לא הצלחנו לשאוב את מקור העסק. לא נוצר עסק חדש, ואפשר לבדוק את הכתובת ולנסות שוב.',
+      };
+    }
+    if (error instanceof Error && error.message === 'BUSINESS_IMPORT_NAME_REQUIRED') {
+      return { error: 'לא נמצא שם עסק במקור. יש להזין שם ידני ולנסות שוב.' };
+    }
     throw error;
   }
-  console.info('[superadmin:provision] business ready', { adminEmail, businessId: business.id });
+  console.info('[superadmin:provision] business ready', {
+    adminEmail,
+    businessId: business.id,
+  });
   revalidatePath('/superadmin');
   await setImpersonationCookie(business.id);
-  redirect('/admin/onboarding');
+  redirect(parsed.value.importUrl ? '/admin/import-review' : '/admin/onboarding');
 }
 
 function readBusinessId(formData: FormData): string {
