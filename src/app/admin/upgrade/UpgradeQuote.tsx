@@ -3,6 +3,7 @@ import { t } from '@/i18n';
 import { getActiveBusiness } from '@/server/repos/business';
 import { getBusinessAccess } from '@/server/subscription';
 import { bookingUrl } from '@/lib/booking-link';
+import { isBusinessOwnerIdentity } from '@/lib/businessOwnerIdentity';
 import QuoteRequestForm, { type QuoteFormDefaults } from './QuoteRequestForm';
 
 /**
@@ -36,7 +37,7 @@ export default async function UpgradeQuote({
   const session = await auth();
   const business = await getActiveBusiness();
 
-  if (!business || !session?.user?.email || business.ownerEmail !== session.user.email) {
+  if (!business || !session?.user?.email || !isBusinessOwnerIdentity(session.user.email, business)) {
     // מחוץ להקשר בעלים תקין לא מציגים טופס. במסך ה-paywall יש ממילא בלוק קשר.
     return null;
   }

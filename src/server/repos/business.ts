@@ -10,6 +10,7 @@ import { computeTrialHashes, resolveTrialDecision } from './trialLedger';
 import { shapeBusinessMetrics, type BusinessMetrics } from '@/app/superadmin/logic';
 import { getImpersonatedBusinessId } from '@/server/impersonation';
 import { getBusinessAccess } from '@/server/subscription';
+import { businessOwnerWhere } from '@/lib/businessOwnerIdentity';
 
 /**
  * שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל.
@@ -168,7 +169,7 @@ export async function getActiveBusiness(options: { allowInactive?: boolean } = {
   const business = impersonatedId
     ? await getBusinessById(impersonatedId)
     : await prisma.business.findFirst({
-        where: { ownerEmail: { equals: email.trim(), mode: 'insensitive' } },
+        where: businessOwnerWhere(email),
         include: { settings: true },
         orderBy: { createdAt: 'desc' },
       });
@@ -183,7 +184,7 @@ export async function getActiveBusiness(options: { allowInactive?: boolean } = {
 /** כל העסקים שבבעלות מייל נתון, מהחדש לישן. */
 export async function getBusinessesOwnedByEmail(email: string) {
   return prisma.business.findMany({
-    where: { ownerEmail: { equals: email.trim(), mode: 'insensitive' } },
+    where: businessOwnerWhere(email),
     orderBy: { createdAt: 'desc' },
   });
 }
@@ -270,6 +271,12 @@ export class BusinessCreationLimitError extends Error {
   }
 }
 
+export class BusinessIdentityConflictError extends Error {
+  constructor() {
+    super('An existing business already uses one of these owner identities.');
+  }
+}
+
 /** Create a fully bookable trial tenant, or roll back every seed and ledger write. */
 export async function createBusiness(input: {
   name: string;
@@ -281,17 +288,22 @@ export async function createBusiness(input: {
   ownerGoogleSub?: string | null;
   priorCalendar?: string | null;
   referralSource?: string | null;
+  provisioning?: { adminEmail: string; phoneIdentity: string | null };
 }) {
   const ownerEmail = normalizeEmail(input.ownerEmail);
   if (!ownerEmail) throw new Error('An authenticated owner email is required.');
   const hashes = computeTrialHashes(ownerEmail, input.phone ?? null, input.ownerGoogleSub);
+  const ownerIdentities = [...new Set([ownerEmail, input.provisioning?.phoneIdentity].filter(
+    (identity): identity is string => Boolean(identity),
+  ))];
   const fingerprintOr = [
     { emailHash: hashes.emailHash },
     ...(hashes.phoneHash ? [{ phoneHash: hashes.phoneHash }] : []),
     ...(hashes.googleSubHash ? [{ googleSubHash: hashes.googleSubHash }] : []),
   ];
   const lockKeys = [
-    `business-owner:${hashes.emailHash}`, `business-slug:${slugifyName(input.name)}`,
+    ...ownerIdentities.map((identity) => `business-owner:${computeTrialHashes(identity, null).emailHash}`),
+    `business-slug:${slugifyName(input.name)}`,
     ...Object.values(hashes).filter((hash): hash is string => Boolean(hash)).map((hash) => `trial:${hash}`),
   ].sort();
 
@@ -301,6 +313,20 @@ export async function createBusiness(input: {
         for (const key of lockKeys) {
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
         }
+        const existingOwners = await tx.business.findMany({
+          where: { OR: ownerIdentities.map(businessOwnerWhere) },
+          include: { settings: true, staff: true, services: true },
+        });
+        if (input.provisioning && existingOwners.length > 0) {
+          const existing = existingOwners[0];
+          if (existingOwners.length === 1 && existing.provisionedBy &&
+              normalizeEmail(existing.ownerEmail ?? '') === ownerEmail &&
+              existing.ownerPhoneIdentity === input.provisioning.phoneIdentity) return existing;
+          throw new BusinessIdentityConflictError();
+        }
+        // A stale self-registration form must not duplicate a pre-created account.
+        const provisioned = existingOwners.find((business) => business.provisionedBy);
+        if (provisioned) return provisioned;
         const restorable = await findRestorableBusinessForOwner(ownerEmail, input.phone ?? null, tx);
         if (restorable) return restoreBusiness(restorable.id, tx);
         const count = await tx.business.count({
@@ -330,6 +356,8 @@ export async function createBusiness(input: {
             name: input.name, type: input.type ?? undefined, phone: input.phone ?? null,
             address: input.address ?? null, slug: await generateUniqueSlug(input.name, tx),
             timezone: process.env.BUSINESS_TIMEZONE || 'Asia/Jerusalem', ownerEmail,
+            ownerPhoneIdentity: input.provisioning?.phoneIdentity,
+            provisionedBy: input.provisioning?.adminEmail,
             plan: 'basic', subscriptionStatus: decision.subscriptionStatus,
             trialEndsAt: decision.trialEndsAt,
             priorCalendar: input.priorCalendar ?? null, referralSource: input.referralSource ?? null,

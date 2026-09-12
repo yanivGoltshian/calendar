@@ -42,6 +42,7 @@ export default async function BusinessAdminEntryPage({ params }: Props) {
   const route = decideBusinessAdminRoute({
     email,
     ownerEmail: business.ownerEmail,
+    ownerPhoneIdentity: business.ownerPhoneIdentity,
     isPlatformAdmin: isPlatformAdminEmail(email),
   });
 

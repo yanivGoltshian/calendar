@@ -14,6 +14,7 @@ import {
 } from './actions';
 import PublicSiteLink from './PublicSiteLink';
 import { DeleteBusinessForm } from './DeleteBusinessForm';
+import CreateCustomerForm from './CreateCustomerForm';
 import {
   metricsFor,
   formatShekelFromAgorot,
@@ -175,6 +176,7 @@ export default async function SuperadminPage() {
       }}
     >
       <div className="mx-auto max-w-7xl">
+        <CreateCustomerForm />
         <header
           className="mb-8 overflow-hidden rounded-3xl border p-6 sm:p-8"
           style={{
