@@ -1,7 +1,7 @@
 /* ── מקור האמת היחיד לניווט אזור הניהול ──
    כל משטח ניווט (ניווט תחתון, גיליון "עוד") נגזר מהמודל הזה בלבד, כדי שלא
    ייווצר שוב פיצול שבו נתיבים שהוסרו זולגים חזרה. הטסטים נועלים את הרשימה
-   הזו: בדיוק 14 פריטי ניווט (4 בניווט התחתון ו-10 בגיליון "עוד"), ואף אחד
+   הזו: בדיוק 15 פריטי ניווט (4 בניווט התחתון ו-11 בגיליון "עוד"), ואף אחד
    מהנתיבים שהוסרו לא מופיע. */
 
 export type AdminNavAction = 'link' | 'bell' | 'install' | 'logout';
@@ -19,11 +19,12 @@ export const ADMIN_BOTTOM_NAV: AdminNavItem[] = [
   { id: 'home', label: 'יומן', href: '/admin', action: 'link' },
   { id: 'appointments', label: 'הזמנות', href: '/admin/appointments', action: 'link' },
   { id: 'clients', label: 'לקוחות', href: '/admin/clients', action: 'link' },
-  { id: 'services', label: 'שירותים', href: '/admin/services', action: 'link' },
+  { id: 'marketing', label: 'הודעות ללקוחות', href: '/admin/marketing', action: 'link' },
 ];
 
-/** שורות גיליון "עוד" (10 פריטים) — הטקסט verbatim מהמוקאפ המאושר. */
+/** שורות גיליון "עוד" (11 פריטים). */
 export const ADMIN_MORE_ROWS: AdminNavItem[] = [
+  { id: 'services', label: 'שירותים', sub: 'ניהול השירותים והמחירים', href: '/admin/services', action: 'link' },
   { id: 'team', label: 'צוות', sub: 'ניהול אנשי הצוות', href: '/admin/team', action: 'link' },
   {
     id: 'working-hours',
@@ -71,7 +72,7 @@ export const ADMIN_MORE_ROWS: AdminNavItem[] = [
   { id: 'logout', label: 'התנתקות', sub: 'יציאה מהחשבון', action: 'logout' },
 ];
 
-/** כל 14 פריטי הניווט המותרים באדמין (ניווט תחתון + גיליון "עוד"). */
+/** כל 15 פריטי הניווט המותרים באדמין (ניווט תחתון + גיליון "עוד"). */
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [...ADMIN_BOTTOM_NAV, ...ADMIN_MORE_ROWS];
 
 /** הנתיבים היחידים המותרים בכל משטח ניווט (נגזר מהמודל, לשימוש בטסטים). */
@@ -84,7 +85,6 @@ export const ADMIN_REMOVED_PATHS: string[] = [
   '/admin/pos',
   '/admin/inventory',
   '/admin/documents',
-  '/admin/marketing',
   '/admin/punch-cards',
   '/admin/onboarding',
 ];

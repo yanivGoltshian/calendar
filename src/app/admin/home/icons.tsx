@@ -104,6 +104,15 @@ export function ClientsIcon(props: IcProps) {
   );
 }
 
+export function MessagesIcon(props: IcProps) {
+  return (
+    <Ic {...props}>
+      <path d="M4 5.5h16v11H9l-5 3v-14z" />
+      <path d="M8 9h8M8 12.5h5" />
+    </Ic>
+  );
+}
+
 export function ServicesIcon(props: IcProps) {
   return (
     <Ic {...props}>

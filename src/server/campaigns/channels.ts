@@ -66,6 +66,31 @@ export function allowedCampaignChannels(
   });
 }
 
+export type CampaignChannelSelection =
+  | { ok: true; channels: CampaignChannel[] }
+  | { ok: false; error: 'channel' | 'sms_not_allowed' | 'whatsapp_not_allowed' };
+
+/**
+ * אימות בחירת ערוצים בזמן יצירת קמפיין. הסינון נשען על allowedCampaignChannels,
+ * אך מחזיר שגיאה במקום להשמיט ערוץ אסור מקלט ידני.
+ */
+export function validateCampaignChannelSelection(
+  raw: readonly string[] | null | undefined,
+  opts: { isExclusive: boolean },
+): CampaignChannelSelection {
+  const requested = normalizeChannels(raw);
+  if (requested.length === 0) return { ok: false, error: 'channel' };
+  if (requested.includes('whatsapp')) {
+    return { ok: false, error: 'whatsapp_not_allowed' };
+  }
+
+  const channels = allowedCampaignChannels(requested, opts);
+  if (channels.length !== requested.length) {
+    return { ok: false, error: 'sms_not_allowed' };
+  }
+  return { ok: true, channels };
+}
+
 /** רשומת לקוח מינימלית לפתרון קהל היעד. */
 export interface AudienceClient {
   id: string;

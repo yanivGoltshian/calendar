@@ -9,7 +9,8 @@ import {
   normalizeSegment,
   CAMPAIGN_SEGMENTS,
 } from '@/server/repos/marketing';
-import { normalizeChannels } from '@/server/campaigns/channels';
+import { validateCampaignChannelSelection } from '@/server/campaigns/channels';
+import { canSendPaidClientSms } from '@/server/subscription';
 import { localWallTimeToUtc } from '@/lib/time';
 
 const createSchema = z.object({
@@ -64,14 +65,6 @@ export async function createCampaignAction(
     return { ok: false, error };
   }
 
-  // ערוצי שליחה: לפחות ערוץ אחד תקין (email/sms/whatsapp; 'all' מתרחב לכולם).
-  const channels = normalizeChannels(
-    formData.getAll('channels').map((v) => String(v)),
-  );
-  if (channels.length === 0) {
-    return { ok: false, error: 'channel' };
-  }
-
   // מועד שליחה: 'now' => טיוטה לשליחה ידנית; 'later' => תזמון למועד עתידי תקין.
   const mode = String(formData.get('scheduleMode') ?? 'now');
   let scheduledAt: Date | null = null;
@@ -85,13 +78,25 @@ export async function createCampaignAction(
   const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'generic' };
 
+  const channelSelection = validateCampaignChannelSelection(
+    formData.getAll('channels').map((value) => String(value)),
+    { isExclusive: canSendPaidClientSms(business) },
+  );
+  if (!channelSelection.ok) {
+    return { ok: false, error: channelSelection.error };
+  }
+
   // הגנה נוספת: ודא שהסגמנט מוכר.
   if (!CAMPAIGN_SEGMENTS.includes(parsed.data.segment)) {
     return { ok: false, error: 'generic' };
   }
 
   try {
-    await createCampaign(business.id, { ...parsed.data, channels, scheduledAt });
+    await createCampaign(business.id, {
+      ...parsed.data,
+      channels: channelSelection.channels,
+      scheduledAt,
+    });
   } catch {
     return { ok: false, error: 'generic' };
   }
