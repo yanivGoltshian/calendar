@@ -49,8 +49,8 @@ export default async function HomePage() {
   }
   const demoSlug = business?.slug ?? DEMO_BUSINESS_SLUG;
   const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
-  // כפתורי ההדגמה בדף הבית מפנים לבוחר /demo (סטנדרט מול פרימיום) במקום לעמוד יחיד.
-  // ה-gate על demoHref נשמר: הבוחר מוצג רק כשקיים עסק הדגמה.
+  // כפתור ההדגמה הראשי מציג מיד את עמוד הפרימיום; יתר הקישורים נשארים בבוחר /demo.
+  const heroDemoHref = '/b/skin-beauty';
   const chooserHref = '/demo';
 
   // שלד אורח בלבד: אין קריאת עוגיות בשרת. שני הווריאנטים (אורח ובעלים) מחושבים
@@ -143,7 +143,7 @@ export default async function HomePage() {
                     className="w-full sm:w-auto"
                   />
                   {demoHref && (
-                    <Button href={chooserHref} variant="ghost" size="lg" className="w-full sm:w-auto">
+                    <Button href={heroDemoHref} variant="ghost" size="lg" className="w-full sm:w-auto">
                       {m.hero.secondaryCta}
                     </Button>
                   )}
