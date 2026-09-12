@@ -1,19 +1,13 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { BRAND, DEMO_BUSINESS_PATH } from '@/config/brand';
+import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { LEGAL_LINKS } from '@/content/legal/links';
 import { Container } from './Container';
 import { DirectoryLink } from './DirectoryLink';
 
 /** Footer — כותרת תחתונה עם קישורי שער, קרדיט ופרטי מותג. */
-export function Footer({
-  absoluteLinks = false,
-  showDemo = false,
-}: {
-  absoluteLinks?: boolean;
-  showDemo?: boolean;
-}) {
+export function Footer({ demoSlug, absoluteLinks = false }: { demoSlug?: string; absoluteLinks?: boolean }) {
   const year = new Date().getFullYear();
   const f = t.marketing.footer;
 
@@ -61,10 +55,10 @@ export function Footer({
                   {f.links.migrate}
                 </Link>
               </li>
-              {showDemo && (
+              {demoSlug && (
                 <li>
                   <Link
-                    href={DEMO_BUSINESS_PATH}
+                    href="/demo"
                     className="transition-colors hover:text-brand-700 dark:hover:text-brand-200"
                   >
                     {f.links.demo}

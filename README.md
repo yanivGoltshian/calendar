@@ -44,8 +44,8 @@ npm run dev
 
 לאחר מכן פתחו את הכתובות הבאות:
 
-- עמוד העסק הציבורי לדוגמה: <http://localhost:3000/b/skin-beauty>
-- זרימת ההזמנה לדוגמה: <http://localhost:3000/b/skin-beauty/book>
+- עמוד העסק הציבורי: <http://localhost:3000/b/demo-barbershop>
+- זרימת ההזמנה: <http://localhost:3000/b/demo-barbershop/book>
 - היומן הניהולי: <http://localhost:3000/admin>
 
 ### קוד ה-OTP בפיתוח

@@ -1,10 +1,12 @@
 import Link from 'next/link';
+import { getFirstBusiness } from '@/server/repos/business';
 import { buildMetadata } from '@/lib/seo';
 import { t } from '@/i18n';
 import { Navbar, Footer, Container } from '@/components/ui';
 import { MigrateSection } from '@/components/landing/MigrateSection';
 
-export const dynamic = 'force-static';
+// קריאת העסק להדגמה היא קריאת DB, לכן הדף דינמי ואינו ניגש למסד בזמן build.
+export const dynamic = 'force-dynamic';
 
 const p = t.marketing.migrate.page;
 
@@ -19,10 +21,14 @@ export const metadata = buildMetadata({
  * הועבר מדף הבית כדי לשמור עליו ממוקד וקליל. התוכן זהה (רכיב MigrateSection),
  * עם ניווט מלא (Navbar/Footer) שבו עוגני דף הבית מוחלטים.
  */
-export default function MigratePage() {
+export default async function MigratePage() {
+  const business = await getFirstBusiness();
+  const demoSlug = business?.slug;
+  const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
+
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
-      <Navbar showDemo absoluteLinks />
+      <Navbar demoSlug={demoSlug} absoluteLinks />
 
       <main className="flex-1">
         <Container className="pt-8">
@@ -35,10 +41,10 @@ export default function MigratePage() {
           </Link>
         </Container>
 
-        <MigrateSection />
+        <MigrateSection demoHref={demoHref} />
       </main>
 
-      <Footer showDemo absoluteLinks />
+      <Footer demoSlug={demoSlug} absoluteLinks />
     </div>
   );
 }

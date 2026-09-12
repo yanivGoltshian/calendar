@@ -32,11 +32,6 @@ test('one directory gate requires approval, completed onboarding, active lifecyc
   const valid = { slug: 'real-business', listed: true, accountStatus: 'ACTIVE', plan: 'premium',
     paidUntil: new Date('2026-10-01'), settings: { onboardingCompleted: true } };
   assert.equal(isPubliclyListed(valid, now), true);
-  assert.equal(
-    isPubliclyListed({ ...valid, slug: 'skin-beauty' }, now),
-    true,
-    'יעד ההדגמה השיווקי הוא עסק אמיתי ואינו מוחרג מהספרייה',
-  );
   for (const override of [{ listed: false }, { listed: undefined }, { accountStatus: 'PENDING_DELETION' },
     { paidUntil: new Date('2026-09-01') }, { settings: null }, { slug: 'esek-2' }]) {
     assert.equal(isPubliclyListed({ ...valid, ...override }, now), false);

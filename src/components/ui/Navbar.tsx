@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { BRAND, DEMO_BUSINESS_PATH } from '@/config/brand';
+import { BRAND } from '@/config/brand';
 import { t } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { Button } from './Button';
@@ -24,13 +24,13 @@ const sectionLinks: NavLink[] = [
 
 /** Navbar — כותרת עליונה דביקה, אלגנטית, עם CTA וקישורי שער לניהול ולעמוד לדוגמה. */
 export function Navbar({
+  demoSlug,
   absoluteLinks = false,
-  showDemo = false,
   showAccount = false,
   selfResolveAccount = false,
 }: {
+  demoSlug?: string;
   absoluteLinks?: boolean;
-  showDemo?: boolean;
   // מוצג רק ללקוח מחובר (עוגיית client_session קיימת): קישור לאזור האישי.
   showAccount?: boolean;
   // כשמופעל (בשלד ISR שאינו מכיל מידע אישי), הרכיב שולף את מצב ההתחברות של הלקוח
@@ -193,9 +193,9 @@ export function Navbar({
                   {link.label}
                 </a>
               ))}
-              {showDemo && (
+              {demoSlug && (
                 <a
-                  href={DEMO_BUSINESS_PATH}
+                  href="/demo"
                   onClick={() => setOpen(false)}
                   className="rounded-xl px-4 py-3 text-base font-medium text-sand-700 transition-colors hover:bg-sand-100 dark:text-sand-200 dark:hover:bg-sand-800"
                 >

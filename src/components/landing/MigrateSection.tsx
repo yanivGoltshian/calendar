@@ -1,7 +1,6 @@
 import Image from 'next/image';
 import { Section, Container, Badge, Button, Card } from '@/components/ui';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion';
-import { DEMO_BUSINESS_PATH } from '@/config/brand';
 import { t } from '@/i18n';
 
 const m = t.marketing.migrate;
@@ -12,7 +11,7 @@ const mascots = t.marketing.mascots;
  * ארבעה שלבים מבוססי-יכולות אמת, כאשר אדם — בעל עסק — מלווה את המעבר.
  * הרכיב מוצג בעמוד ייעודי (/migrate) כדי לשמור על דף הבית ממוקד וקליל.
  */
-export function MigrateSection() {
+export function MigrateSection({ demoHref }: { demoHref?: string }) {
   const steps = Object.values(m.steps);
 
   return (
@@ -65,9 +64,11 @@ export function MigrateSection() {
             <Button href="/admin" size="lg" className="w-full sm:w-auto">
               {m.cta}
             </Button>
-            <Button href={DEMO_BUSINESS_PATH} variant="secondary" size="lg" className="w-full sm:w-auto">
-              {m.secondaryCta}
-            </Button>
+            {demoHref && (
+              <Button href={demoHref} variant="secondary" size="lg" className="w-full sm:w-auto">
+                {m.secondaryCta}
+              </Button>
+            )}
           </div>
           <p className="mt-5 text-sm text-sand-500">{m.microcopy}</p>
         </Reveal>

@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import { getFirstBusiness } from '@/server/repos/business';
 import { buildMetadata } from '@/lib/seo';
-import { DEMO_BUSINESS_PATH } from '@/config/brand';
 import { t } from '@/i18n';
 import { Navbar, Footer, Container, Section, Badge, Card, Button } from '@/components/ui';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion';
 
-export const dynamic = 'force-static';
+// קריאת העסק להדגמה היא קריאת DB, לכן הדף דינמי ואינו ניגש למסד בזמן build.
+export const dynamic = 'force-dynamic';
 
 const r = t.marketing.roadmap;
 const honest = t.marketing.migrate.honest;
@@ -21,10 +22,14 @@ export const metadata = buildMetadata({
  * בלוק השקיפות (migrate.honest) הועבר לכאן מדף הבית כדי שהעמוד הראשי יתמקד בערך —
  * זימון תורים — ולא ברשימת מה שעדיין בפיתוח. התוכן נשמר במלואו.
  */
-export default function RoadmapPage() {
+export default async function RoadmapPage() {
+  const business = await getFirstBusiness();
+  const demoSlug = business?.slug;
+  const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
+
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
-      <Navbar showDemo absoluteLinks />
+      <Navbar demoSlug={demoSlug} absoluteLinks />
 
       <main className="flex-1">
         <Container className="pt-8">
@@ -72,15 +77,17 @@ export default function RoadmapPage() {
               <Button href="/business/new" size="lg" className="w-full sm:w-auto">
                 {t.marketing.nav.cta}
               </Button>
-              <Button href={DEMO_BUSINESS_PATH} variant="secondary" size="lg" className="w-full sm:w-auto">
-                {t.marketing.migrate.secondaryCta}
-              </Button>
+              {demoHref && (
+                <Button href={demoHref} variant="secondary" size="lg" className="w-full sm:w-auto">
+                  {t.marketing.migrate.secondaryCta}
+                </Button>
+              )}
             </Reveal>
           </Container>
         </Section>
       </main>
 
-      <Footer showDemo absoluteLinks />
+      <Footer demoSlug={demoSlug} absoluteLinks />
     </div>
   );
 }

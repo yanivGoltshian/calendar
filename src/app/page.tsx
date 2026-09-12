@@ -1,5 +1,6 @@
+import { getFirstBusiness } from '@/server/repos/business';
 import { buildMetadata, SITE_URL } from '@/lib/seo';
-import { BRAND, DEMO_BUSINESS_PATH } from '@/config/brand';
+import { BRAND, DEMO_BUSINESS_SLUG } from '@/config/brand';
 import { t } from '@/i18n';
 import { Navbar, Footer, Container, Section, Button, Card, Badge } from '@/components/ui';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion';
@@ -22,7 +23,9 @@ const m = t.marketing;
 // ומוגש עם כותרת ניתנת-למטמון (לא no-store). אינו קורא עוגיות ולכן אינו מכיל
 // מידע אישי. זיהוי "בעלים חוזר" (החלפת CTA) והצגת קישור החשבון עברו להידרציה
 // בצד הלקוח (ראו OwnerAwareCta ו-Navbar selfResolveAccount) כדי לשמור על UX זהה.
-// קישורי ההדגמה נגזרים מקונפיג סטטי ואינם תלויים במסד הנתונים.
+// ה-gate של קישור ההדגמה תמיד נוכח ב-HTML הסטטי: בזמן build (ללא DB) הוא נשען על
+// fallback יציב מהקונפיג (DEMO_BUSINESS_SLUG), ומתרענן על-פי דרישה דרך
+// revalidatePath('/') לסלאג העסק הראשון האמיתי בעת יצירה או עריכה של עסק.
 export const dynamic = 'force-static';
 
 export const metadata = buildMetadata({
@@ -32,7 +35,24 @@ export const metadata = buildMetadata({
 
 const trustStats = Object.values(m.trust.stats);
 
-export default function HomePage() {
+export default async function HomePage() {
+  // getFirstBusiness קורא ל-Prisma. בזמן build ללא Postgres מקומי הקריאה עלולה
+  // להיכשל (prisma:error Validation Error) — עוטפים ב-try/catch כדי שהרינדור
+  // הסטטי תמיד יצליח. כדי שקישור ההדגמה לא יישמט מה-HTML הנאפה כשאין DB, ה-gate
+  // נשען על fallback יציב מהקונפיג (DEMO_BUSINESS_SLUG). בזמן build עם DB או ברענון
+  // על-פי דרישה (revalidatePath('/')) מוחלף בסלאג העסק הראשון האמיתי.
+  let business: Awaited<ReturnType<typeof getFirstBusiness>> = null;
+  try {
+    business = await getFirstBusiness();
+  } catch {
+    business = null;
+  }
+  const demoSlug = business?.slug ?? DEMO_BUSINESS_SLUG;
+  const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
+  // כפתור ההדגמה הראשי מציג מיד את עמוד הפרימיום; יתר הקישורים נשארים בבוחר /demo.
+  const heroDemoHref = '/b/skin-beauty';
+  const chooserHref = '/demo';
+
   // שלד אורח בלבד: אין קריאת עוגיות בשרת. שני הווריאנטים (אורח ובעלים) מחושבים
   // בזמן build מתוך ownerRouting (מקור אמת יחיד, ללא מידע אישי) ומועברים אל
   // OwnerAwareCta, שמרנדר את וריאנט האורח ומחליף לווריאנט הבעלים לאחר העלייה.
@@ -57,7 +77,7 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
-      <Navbar showDemo selfResolveAccount />
+      <Navbar demoSlug={demoSlug} selfResolveAccount />
 
       <main className="flex-1">
         {/* HERO */}
@@ -122,9 +142,11 @@ export default function HomePage() {
                     size="lg"
                     className="w-full sm:w-auto"
                   />
-                  <Button href={DEMO_BUSINESS_PATH} variant="ghost" size="lg" className="w-full sm:w-auto">
-                    {m.hero.secondaryCta}
-                  </Button>
+                  {demoHref && (
+                    <Button href={heroDemoHref} variant="ghost" size="lg" className="w-full sm:w-auto">
+                      {m.hero.secondaryCta}
+                    </Button>
+                  )}
                 </div>
               </div>
               <div>
@@ -448,13 +470,15 @@ export default function HomePage() {
                       size="lg"
                       className="w-full sm:w-auto"
                     />
-                    <Button
-                      href={DEMO_BUSINESS_PATH}
-                      size="lg"
-                      className="w-full bg-white/10 text-white ring-1 ring-inset ring-white/40 hover:bg-white/20 sm:w-auto"
-                    >
-                      {m.finalCta.secondaryCta}
-                    </Button>
+                    {demoHref && (
+                      <Button
+                        href={chooserHref}
+                        size="lg"
+                        className="w-full bg-white/10 text-white ring-1 ring-inset ring-white/40 hover:bg-white/20 sm:w-auto"
+                      >
+                        {m.finalCta.secondaryCta}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -477,7 +501,7 @@ export default function HomePage() {
         <ShareTorchick shareUrl={SITE_URL} />
       </main>
 
-      <Footer showDemo />
+      <Footer demoSlug={demoSlug} />
     </div>
   );
 }
