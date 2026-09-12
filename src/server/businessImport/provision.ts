@@ -1,24 +1,19 @@
+import { randomUUID } from 'node:crypto';
 import { Prisma, type BusinessType } from '@prisma/client';
 import {
   BusinessCreationLimitError,
   BusinessIdentityConflictError,
   createBusiness,
+  type CreatedBusiness,
 } from '@/server/repos/business';
 import {
-  createService,
-  deleteService,
-  listServices,
-  setServiceStaff,
-  type ServiceInput,
-} from '@/server/repos/services';
-import { listStaff } from '@/server/repos/staff';
-import { updateBusinessProfile } from '@/server/repos/settings';
-import { setBusinessHours } from '@/server/repos/workingHours';
-import {
-  completeBusinessImport,
+  applyClaimedBusinessImport,
+  claimBusinessImport,
+  findExistingBusinessImports,
   getBusinessImportState,
+  markBusinessImportFailed,
 } from '@/server/repos/businessImport';
-import { importBusinessFromUrl } from './index';
+import { importBusinessFromUrl, parsePublicHttpUrl } from './index';
 import { importBusinessMedia, type ImportedOwnedMedia } from './media';
 import { mapBusinessImportDraft, type MappedBusinessImport } from './mapDraft';
 import type { BusinessImportDraft, BusinessImportWarning } from './types';
@@ -43,31 +38,20 @@ export interface BusinessImportReviewSnapshot {
   };
 }
 
-type CreatedBusiness = Awaited<ReturnType<typeof createBusiness>>;
-type CreateServiceWithStaff = (
-  businessId: string,
-  data: ServiceInput,
-  staffIds?: string[],
-) => ReturnType<typeof createService>;
-
 export interface ProvisionBusinessDependencies {
   importer?: typeof importBusinessFromUrl;
   create?: typeof createBusiness;
+  claimImport?: typeof claimBusinessImport;
+  findExistingImports?: typeof findExistingBusinessImports;
+  applyImport?: typeof applyClaimedBusinessImport;
   getImportState?: typeof getBusinessImportState;
-  completeImport?: typeof completeBusinessImport;
-  updateProfile?: typeof updateBusinessProfile;
-  setHours?: typeof setBusinessHours;
-  listExistingServices?: typeof listServices;
-  removeService?: typeof deleteService;
-  createImportedService?: CreateServiceWithStaff;
-  assignServiceStaff?: typeof setServiceStaff;
-  listActiveStaff?: typeof listStaff;
+  markImportFailed?: typeof markBusinessImportFailed;
   importMedia?: typeof importBusinessMedia;
 }
 
 export class BusinessImportConflictError extends Error {
   constructor() {
-    super('The provisioned business was already imported from a different source.');
+    super('The provisioned business cannot be modified by this import.');
   }
 }
 
@@ -88,74 +72,42 @@ export function readBusinessImportReview(
   return parseStoredSnapshot(value);
 }
 
-async function replaceImportedServices(
+async function waitForImportCompletion(
   businessId: string,
-  mapped: MappedBusinessImport,
-  dependencies: ProvisionBusinessDependencies,
-): Promise<void> {
-  const listExisting = dependencies.listExistingServices ?? listServices;
-  const remove = dependencies.removeService ?? deleteService;
-  const create =
-    dependencies.createImportedService ?? (createService as CreateServiceWithStaff);
-  const assign = dependencies.assignServiceStaff ?? setServiceStaff;
-  const activeStaff = await (dependencies.listActiveStaff ?? listStaff)(businessId);
-  const staffIds = activeStaff.map(({ id }) => id);
-  if (staffIds.length === 0) throw new Error('BUSINESS_IMPORT_ACTIVE_STAFF_REQUIRED');
-
-  for (const service of await listExisting(businessId)) {
-    const result = await remove(businessId, service.id);
-    if (!result.ok)
-      throw new Error(`BUSINESS_IMPORT_SERVICE_${result.reason.toUpperCase()}`);
-  }
-  for (const service of mapped.services) {
-    const created = await create(businessId, service, staffIds);
-    if (!(await assign(businessId, created.id, staffIds))) {
-      throw new Error('BUSINESS_IMPORT_SERVICE_ASSIGNMENT_FAILED');
-    }
-  }
-}
-
-async function applyImportedDraft(
-  business: CreatedBusiness,
-  draft: BusinessImportDraft,
-  mapped: MappedBusinessImport,
-  dependencies: ProvisionBusinessDependencies,
+  sourceUrl: string,
+  getState: typeof getBusinessImportState,
 ): Promise<BusinessImportReviewSnapshot> {
-  const getState = dependencies.getImportState ?? getBusinessImportState;
-  const current = await getState(business.id);
-  if (current?.businessImportedAt) {
-    if (current.businessImportSourceUrl !== draft.sourceUrl) {
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const state = await getState(businessId);
+    if (!state || state.businessImportSourceUrl !== sourceUrl) {
       throw new BusinessImportConflictError();
     }
-    const stored = parseStoredSnapshot(current.businessImportDraft);
-    if (stored) return stored;
+    if (state.businessImportedAt) {
+      const snapshot = parseStoredSnapshot(state.businessImportDraft);
+      if (snapshot) return snapshot;
+      throw new BusinessImportConflictError();
+    }
+    const marker = state.businessImportDraft;
+    if (
+      marker &&
+      typeof marker === 'object' &&
+      !Array.isArray(marker) &&
+      (marker as Record<string, unknown>).status === 'failed'
+    ) {
+      throw new BusinessImportConflictError();
+    }
   }
+  throw new BusinessImportConflictError();
+}
 
-  const media: ImportedOwnedMedia = await (
-    dependencies.importMedia ?? importBusinessMedia
-  )(business.id, business.ownerEmail, mapped.media);
-  const galleryImageUrls = media.galleryImageUrls;
-  await (dependencies.updateProfile ?? updateBusinessProfile)(business.id, {
-    name: mapped.name,
-    type: mapped.type,
-    phone: mapped.phone,
-    address: mapped.address,
-    description: mapped.description,
-    instagramUrl: mapped.instagramUrl,
-    logoUrl: media.logoUrl,
-    coverImageUrl: media.coverImageUrl,
-    brandColor: business.brandColor,
-    timezone: business.timezone,
-    landingContent: mapped.landingContent
-      ? { ...mapped.landingContent, galleryImageUrls }
-      : galleryImageUrls.length > 0
-        ? { galleryImageUrls }
-        : null,
-  });
-  await (dependencies.setHours ?? setBusinessHours)(business.id, mapped.hours);
-  await replaceImportedServices(business.id, mapped, dependencies);
-
-  const snapshot: BusinessImportReviewSnapshot = {
+function buildSnapshot(
+  draft: BusinessImportDraft,
+  mapped: MappedBusinessImport,
+  media: ImportedOwnedMedia,
+): BusinessImportReviewSnapshot {
+  return {
     version: 1,
     draft,
     warnings: [...mapped.warnings, ...media.warnings],
@@ -168,12 +120,6 @@ async function applyImportedDraft(
         media.galleryImageUrls.length,
     },
   };
-  await (dependencies.completeImport ?? completeBusinessImport)(
-    business.id,
-    draft.sourceUrl,
-    snapshot as unknown as Prisma.InputJsonValue,
-  );
-  return snapshot;
 }
 
 export async function provisionBusinessForAdmin(
@@ -184,33 +130,146 @@ export async function provisionBusinessForAdmin(
   business: CreatedBusiness;
   importReview: BusinessImportReviewSnapshot | null;
 }> {
-  let draft: BusinessImportDraft | null = null;
-  let mapped: MappedBusinessImport | null = null;
-  if (request.importUrl) {
-    draft = await (dependencies.importer ?? importBusinessFromUrl)(request.importUrl);
-    mapped = mapBusinessImportDraft(draft, {
-      name: request.name,
+  const create = dependencies.create ?? createBusiness;
+  if (!request.importUrl) {
+    const business = await create({
+      name: request.name ?? '',
       type: request.type,
+      phone: null,
+      address: null,
+      ownerEmail: request.ownerEmail,
+      ownerName: request.ownerName,
+      provisioning: {
+        adminEmail,
+        phoneIdentity: request.phoneIdentity,
+      },
     });
+    return { business, importReview: null };
   }
 
-  const business = await (dependencies.create ?? createBusiness)({
-    name: mapped?.name ?? request.name ?? '',
-    type: mapped?.type ?? request.type,
-    phone: mapped?.phone ?? null,
-    address: mapped?.address ?? null,
+  const requestedSourceUrl = parsePublicHttpUrl(request.importUrl).href;
+  const existing = await (
+    dependencies.findExistingImports ?? findExistingBusinessImports
+  )(request.ownerEmail, request.phoneIdentity);
+  if (existing.length > 0) {
+    if (
+      existing.length !== 1 ||
+      existing[0].businessImportSourceUrl !== requestedSourceUrl
+    ) {
+      throw new BusinessImportConflictError();
+    }
+    const business = existing[0];
+    if (business.businessImportedAt) {
+      const snapshot = parseStoredSnapshot(business.businessImportDraft);
+      if (!snapshot) throw new BusinessImportConflictError();
+      return { business, importReview: snapshot };
+    }
+    const marker = business.businessImportDraft;
+    if (
+      marker &&
+      typeof marker === 'object' &&
+      !Array.isArray(marker) &&
+      (marker as Record<string, unknown>).status === 'importing'
+    ) {
+      const snapshot = await waitForImportCompletion(
+        business.id,
+        requestedSourceUrl,
+        dependencies.getImportState ?? getBusinessImportState,
+      );
+      return { business, importReview: snapshot };
+    }
+    throw new BusinessImportConflictError();
+  }
+
+  const draft = await (dependencies.importer ?? importBusinessFromUrl)(request.importUrl);
+  const mapped = mapBusinessImportDraft(draft, {
+    name: request.name,
+    type: request.type,
+  });
+  const business = await create({
+    name: mapped.name,
+    type: mapped.type,
+    phone: mapped.phone,
+    address: mapped.address,
     ownerEmail: request.ownerEmail,
     ownerName: request.ownerName,
     provisioning: {
       adminEmail,
       phoneIdentity: request.phoneIdentity,
+      mustCreate: true,
     },
   });
-  const importReview =
-    draft && mapped
-      ? await applyImportedDraft(business, draft, mapped, dependencies)
-      : null;
-  return { business, importReview };
+
+  const claimToken = randomUUID();
+  const claim = await (dependencies.claimImport ?? claimBusinessImport)({
+    businessId: business.id,
+    sourceUrl: requestedSourceUrl,
+    claimToken,
+    expectedUpdatedAt: business.updatedAt,
+    childBaseline: business.importChildBaseline,
+  });
+  if (claim.status === 'completed') {
+    const snapshot = parseStoredSnapshot(claim.draft);
+    if (!snapshot) throw new BusinessImportConflictError();
+    return { business, importReview: snapshot };
+  }
+  if (claim.status === 'pending') {
+    const snapshot = await waitForImportCompletion(
+      business.id,
+      requestedSourceUrl,
+      dependencies.getImportState ?? getBusinessImportState,
+    );
+    return { business, importReview: snapshot };
+  }
+  if (claim.status !== 'claimed') throw new BusinessImportConflictError();
+
+  try {
+    const media = await (dependencies.importMedia ?? importBusinessMedia)(
+      business.id,
+      business.ownerEmail,
+      mapped.media,
+    );
+    const galleryImageUrls = media.galleryImageUrls;
+    const snapshot = buildSnapshot(draft, mapped, media);
+    const applied = await (dependencies.applyImport ?? applyClaimedBusinessImport)({
+      businessId: business.id,
+      sourceUrl: requestedSourceUrl,
+      claimToken,
+      claimedUpdatedAt: claim.claimedUpdatedAt,
+      childBaseline: business.importChildBaseline,
+      profile: {
+        name: mapped.name,
+        type: mapped.type,
+        phone: mapped.phone,
+        address: mapped.address,
+        description: mapped.description,
+        instagramUrl: mapped.instagramUrl,
+        logoUrl: media.logoUrl,
+        coverImageUrl: media.coverImageUrl,
+        brandColor: business.brandColor,
+        timezone: business.timezone,
+        landingContent: mapped.landingContent
+          ? { ...mapped.landingContent, galleryImageUrls }
+          : galleryImageUrls.length > 0
+            ? { galleryImageUrls }
+            : null,
+      },
+      hours: mapped.hours,
+      services: mapped.services,
+      snapshot: snapshot as unknown as Prisma.InputJsonValue,
+    });
+    if (applied.status !== 'completed') throw new BusinessImportConflictError();
+    const stored = parseStoredSnapshot(applied.draft);
+    if (!stored) throw new BusinessImportConflictError();
+    return { business, importReview: stored };
+  } catch (error) {
+    await (dependencies.markImportFailed ?? markBusinessImportFailed)({
+      businessId: business.id,
+      sourceUrl: requestedSourceUrl,
+      claimToken,
+    });
+    throw error;
+  }
 }
 
 export { BusinessCreationLimitError, BusinessIdentityConflictError };

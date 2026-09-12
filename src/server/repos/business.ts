@@ -11,6 +11,10 @@ import { shapeBusinessMetrics, type BusinessMetrics } from '@/app/superadmin/log
 import { getImpersonatedBusinessId } from '@/server/impersonation';
 import { getBusinessAccess } from '@/server/subscription';
 import { businessOwnerWhere } from '@/lib/businessOwnerIdentity';
+import {
+  readBusinessImportChildBaseline,
+  type BusinessImportChildBaseline,
+} from '@/server/businessImport/baseline';
 
 /**
  * שליפת עסק לפי slug, כולל הגדרות, שירותים גלויים וצוות פעיל.
@@ -277,8 +281,7 @@ export class BusinessIdentityConflictError extends Error {
   }
 }
 
-/** Create a fully bookable trial tenant, or roll back every seed and ledger write. */
-export async function createBusiness(input: {
+export interface CreateBusinessInput {
   name: string;
   type?: BusinessType | null;
   phone?: string | null;
@@ -288,8 +291,33 @@ export async function createBusiness(input: {
   ownerGoogleSub?: string | null;
   priorCalendar?: string | null;
   referralSource?: string | null;
-  provisioning?: { adminEmail: string; phoneIdentity: string | null };
-}) {
+  provisioning?: {
+    adminEmail: string;
+    phoneIdentity: string | null;
+    mustCreate?: boolean;
+  };
+}
+
+export type CreatedBusiness = Prisma.BusinessGetPayload<{
+  include: { settings: true };
+}>;
+
+export type NewlyCreatedBusiness = CreatedBusiness & {
+  importChildBaseline: BusinessImportChildBaseline;
+};
+
+/** Create a fully bookable trial tenant, or roll back every seed and ledger write. */
+export function createBusiness(
+  input: CreateBusinessInput & {
+    provisioning: NonNullable<CreateBusinessInput['provisioning']> & {
+      mustCreate: true;
+    };
+  },
+): Promise<NewlyCreatedBusiness>;
+export function createBusiness(input: CreateBusinessInput): Promise<CreatedBusiness>;
+export async function createBusiness(
+  input: CreateBusinessInput,
+): Promise<CreatedBusiness | NewlyCreatedBusiness> {
   const ownerEmail = normalizeEmail(input.ownerEmail);
   if (!ownerEmail) throw new Error('An authenticated owner email is required.');
   const hashes = computeTrialHashes(ownerEmail, input.phone ?? null, input.ownerGoogleSub);
@@ -318,6 +346,9 @@ export async function createBusiness(input: {
           include: { settings: true, staff: true, services: true },
         });
         if (input.provisioning && existingOwners.length > 0) {
+          if (input.provisioning.mustCreate) {
+            throw new BusinessIdentityConflictError();
+          }
           const existing = existingOwners[0];
           if (existingOwners.length === 1 && existing.provisionedBy &&
               normalizeEmail(existing.ownerEmail ?? '') === ownerEmail &&
@@ -380,6 +411,12 @@ export async function createBusiness(input: {
         await tx.serviceStaff.createMany({
           data: business.services.map((service) => ({ serviceId: service.id, staffId: business.staff[0].id })),
         });
+        if (input.provisioning?.mustCreate) {
+          return {
+            ...business,
+            importChildBaseline: await readBusinessImportChildBaseline(tx, business.id),
+          };
+        }
         return business;
       }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 20000 });
     } catch (error) {
