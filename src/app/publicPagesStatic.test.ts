@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { DEMO_BUSINESS_SLUG } from '@/config/brand';
+import { DEMO_BUSINESS_PATH, DEMO_BUSINESS_SLUG } from '@/config/brand';
 
 // חוזה ברמת המקור: מוודא ששלושת העמודים הציבוריים אינם קוראים מידע אישי בשרת
 // (אין דליפת PII לשלד הנשמר במטמון) ושהגדרת ה-route segment תואמת ליעד —
@@ -24,6 +24,10 @@ const book = read('b', '[slug]', 'book', 'page.tsx');
 const rootLayout = read('layout.tsx');
 const navbar = read('..', 'components', 'ui', 'Navbar.tsx');
 const footer = read('..', 'components', 'ui', 'Footer.tsx');
+const migrate = read('migrate', 'page.tsx');
+const migrateSection = read('..', 'components', 'landing', 'MigrateSection.tsx');
+const roadmap = read('roadmap', 'page.tsx');
+const demo = read('demo', 'route.ts');
 
 // --- שלד השורש: אסור שיכפה דינמיות על כל האפליקציה ---
 
@@ -58,58 +62,59 @@ test('דף הבית אינו קורא סשן/בעלים בשרת (זיהוי ע�
   assert.ok(home.includes('OwnerAwareCta'), 'ציפינו לרכיב הלקוח OwnerAwareCta שמחליף את ה-CTA');
 });
 
-// --- gate קישור ההדגמה: fallback build-safe (החזרת הרגרסיה #דמו-שנעלם) ---
-// בזמן build אין DATABASE_URL, getFirstBusiness() נכשל → business=null. בלי fallback
-// יציב demoSlug מתאפס וכל שלוש הזיקות (hero ghost, Navbar, Footer) נושרות מה-HTML
-// הסטטי הנאפה. ה-fallback מבטיח שה-gate נשאר truthy וקישורי /demo תמיד נוכחים.
+// --- מסלול ההדגמה השיווקי: פרימיום קנוני, סטטי וללא DB ---
 
-// משכפל את לוגיקת ה-gate של דף הבית: const demoSlug = business?.slug ?? DEMO_BUSINESS_SLUG.
-function resolveDemoSlug(business: { slug?: string } | null): string | undefined {
-  return business?.slug ?? DEMO_BUSINESS_SLUG;
-}
-
-test('gate ההדגמה נופל ל-fallback היציב כשאין DB (getFirstBusiness → null)', () => {
-  const demoSlug = resolveDemoSlug(null);
-  assert.equal(demoSlug, DEMO_BUSINESS_SLUG, 'ללא DB ה-gate חייב להיפתר לסלאג ה-fallback');
-  assert.ok(demoSlug, 'ה-gate חייב להישאר truthy כדי שקישורי /demo ייאפו לסטטי גם בלי DB');
-  assert.ok(
-    typeof DEMO_BUSINESS_SLUG === 'string' && DEMO_BUSINESS_SLUG.length > 0,
-    'ה-fallback חייב להיות סלאג לא-ריק',
-  );
+test('עסק ההדגמה הקנוני הוא סקין ביוטי והנתיב נגזר ממנו', () => {
+  assert.equal(DEMO_BUSINESS_SLUG, 'skin-beauty');
+  assert.equal(DEMO_BUSINESS_PATH, '/b/skin-beauty');
 });
 
-test('gate ההדגמה מעדיף את סלאג העסק הראשון כשה-DB זמין (רענון על-פי דרישה)', () => {
+test('דף הבית סטטי ואינו תלוי בעסק הראשון או במסד עבור קישורי ההדגמה', () => {
+  assert.ok(home.includes("import { BRAND, DEMO_BUSINESS_PATH } from '@/config/brand'"));
+  assert.ok(!home.includes('getFirstBusiness'));
+  assert.ok(!home.includes('DATABASE_URL'));
+  assert.ok(!home.includes("'/demo'"));
   assert.equal(
-    resolveDemoSlug({ slug: 'skin-beauty' }),
-    'skin-beauty',
-    'כשקיים עסק אמיתי משתמשים בסלאג שלו ולא ב-fallback',
+    home.match(/href=\{DEMO_BUSINESS_PATH\}/g)?.length,
+    2,
+    'שתי קריאות הפעולה בדף הבית חייבות להשתמש בנתיב ההדגמה המשותף',
   );
 });
 
-test('דף הבית מחווט את ה-gate ל-fallback הקונפיג (מונע חזרת הרגרסיה)', () => {
+test('הניווט העליון, התפריט הנייד והכותרת התחתונה משתמשים בנתיב המשותף', () => {
   assert.ok(
-    home.includes("import { BRAND, DEMO_BUSINESS_SLUG } from '@/config/brand'"),
-    'ציפינו לייבוא DEMO_BUSINESS_SLUG מהקונפיג',
+    navbar.includes('{ href: DEMO_BUSINESS_PATH, label: t.marketing.nav.demo }'),
+    'רשימת הניווט המשותפת למחשב ולנייד חייבת לכלול את דמו הפרימיום',
   );
-  assert.ok(
-    /const\s+demoSlug\s*=\s*business\?\.slug\s*\?\?\s*DEMO_BUSINESS_SLUG/.test(home),
-    'ציפינו ל-demoSlug = business?.slug ?? DEMO_BUSINESS_SLUG כדי שהקישור לא יישמט בבנייה ללא DB',
-  );
-  assert.ok(
-    home.includes('demoSlug={demoSlug}') && home.includes("chooserHref = '/demo'"),
-    'ה-prop demoSlug מוזרם ל-Navbar/Footer וכפתור ה-hero מפנה לבוחר הסטטי /demo',
-  );
+  assert.ok(!navbar.includes("'/demo'") && !navbar.includes('"/demo"'));
+  assert.ok(footer.includes('href={DEMO_BUSINESS_PATH}'));
+  assert.ok(!footer.includes("'/demo'") && !footer.includes('"/demo"'));
 });
 
-test('Navbar ו-Footer מגדרים קישור /demo על demoSlug (נוכח כש-gate truthy)', () => {
-  assert.ok(
-    navbar.includes('demoSlug &&') && navbar.includes('href="/demo"'),
-    'ה-Navbar חייב לגדר את קישור /demo על demoSlug',
-  );
-  assert.ok(
-    footer.includes('demoSlug &&') && footer.includes('href="/demo"'),
-    'ה-Footer חייב לגדר את קישור /demo על demoSlug',
-  );
+test('כל נקודות הכניסה הציבוריות הנוספות משתמשות בנתיב המשותף וללא DB', () => {
+  assert.ok(migrate.includes("export const dynamic = 'force-static'"));
+  assert.ok(roadmap.includes("export const dynamic = 'force-static'"));
+  assert.ok(!migrate.includes('getFirstBusiness'));
+  assert.ok(!roadmap.includes('getFirstBusiness'));
+  assert.ok(migrateSection.includes('href={DEMO_BUSINESS_PATH}'));
+  assert.ok(roadmap.includes('href={DEMO_BUSINESS_PATH}'));
+});
+
+test('/demo מפנה קבוע וישיר לעמוד ההדגמה הקנוני בלי מסך ביניים', () => {
+  assert.ok(demo.includes("import { permanentRedirect } from 'next/navigation'"));
+  assert.ok(demo.includes('permanentRedirect(DEMO_BUSINESS_PATH)'));
+  assert.ok(!demo.includes('getExampleBusinesses'));
+  assert.ok(demo.includes('export function GET(): never'));
+});
+
+test('אין קישור שיווקי לתצוגה הבסיסית או לבוחר ההדגמות הישן', () => {
+  const marketingSources = [home, navbar, footer, migrate, migrateSection, roadmap, demo];
+  for (const source of marketingSources) {
+    assert.ok(!source.includes('/b/demo-barbershop'));
+    assert.ok(!source.includes('href="/demo"'));
+    assert.ok(!source.includes("href='/demo'"));
+    assert.ok(!source.includes('תצוגה בסיסית'));
+  }
 });
 
 // --- עמוד פרופיל העסק: ISR משותף, ללא תורים אישיים בשרת ---

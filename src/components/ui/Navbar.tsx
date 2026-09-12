@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { BRAND } from '@/config/brand';
+import { BRAND, DEMO_BUSINESS_PATH } from '@/config/brand';
 import { t } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { Button } from './Button';
@@ -14,6 +14,7 @@ import { DirectoryLink } from './DirectoryLink';
 type NavLink = { href: string; label: string };
 
 const sectionLinks: NavLink[] = [
+  { href: DEMO_BUSINESS_PATH, label: t.marketing.nav.demo },
   { href: '#features', label: t.marketing.nav.features },
   { href: '#audiences', label: t.marketing.nav.audiences },
   { href: '#how-it-works', label: t.marketing.nav.howItWorks },
@@ -24,12 +25,10 @@ const sectionLinks: NavLink[] = [
 
 /** Navbar — כותרת עליונה דביקה, אלגנטית, עם CTA וקישורי שער לניהול ולעמוד לדוגמה. */
 export function Navbar({
-  demoSlug,
   absoluteLinks = false,
   showAccount = false,
   selfResolveAccount = false,
 }: {
-  demoSlug?: string;
   absoluteLinks?: boolean;
   // מוצג רק ללקוח מחובר (עוגיית client_session קיימת): קישור לאזור האישי.
   showAccount?: boolean;
@@ -193,15 +192,6 @@ export function Navbar({
                   {link.label}
                 </a>
               ))}
-              {demoSlug && (
-                <a
-                  href="/demo"
-                  onClick={() => setOpen(false)}
-                  className="rounded-xl px-4 py-3 text-base font-medium text-sand-700 transition-colors hover:bg-sand-100 dark:text-sand-200 dark:hover:bg-sand-800"
-                >
-                  {t.marketing.nav.demo}
-                </a>
-              )}
               <div className="mt-3 flex flex-col gap-2 border-t border-sand-200/70 pt-4 dark:border-sand-800/70">
                 {accountVisible ? (
                   <Button href="/account" variant="ghost" size="md" onClick={() => setOpen(false)}>

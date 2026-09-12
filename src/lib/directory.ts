@@ -1,6 +1,8 @@
+import { DEMO_BUSINESS_SLUG } from '@/config/brand';
+
 // Adapted from PR135 (7abcd5c): one gate for directory, sitemap and metadata.
 export const DIRECTORY_MIN_LISTED = 3;
-export const DEMO_SLUGS = new Set(['demo-barbershop', 'esek', 'esek-2']);
+export const DEMO_SLUGS = new Set([DEMO_BUSINESS_SLUG, 'demo-barbershop', 'esek', 'esek-2']);
 
 export type PublicListable = {
   slug?: string;

@@ -21,11 +21,10 @@ export const BRAND = {
 export type Brand = typeof BRAND;
 
 /**
- * סלאג עסק ההדגמה הקנוני, שנזרע תמיד בפרודקשן (ראו prisma/seed.ts).
- *
- * משמש כ-fallback יציב ל-gate של קישור ההדגמה בדף הבית הסטטי: בזמן build אין
- * DATABASE_URL, ולכן getFirstBusiness() נכשל ומחזיר null — בלי ה-fallback הזה
- * ה-gate מתאפס וקישורי ההדגמה נושרים מה-HTML הסטטי הנאפה. הערך משמש אך ורק
- * כ-gate בוליאני (truthy) ולעולם לא לבניית ה-href, שמפנה תמיד לבוחר הסטטי /demo.
+ * סלאג עסק ההדגמה השיווקי הקנוני, קליניקת סקין ביוטי בפרימיום.
+ * העסק נזרע בפרודקשן ב-prisma/seed.ts וכל נקודות הכניסה הציבוריות נגזרות ממנו.
  */
-export const DEMO_BUSINESS_SLUG = 'demo-barbershop';
+export const DEMO_BUSINESS_SLUG = 'skin-beauty';
+
+/** כתובת עמוד ההדגמה השיווקי. אין לשכפל את הנתיב ברכיבים ציבוריים. */
+export const DEMO_BUSINESS_PATH = `/b/${DEMO_BUSINESS_SLUG}` as const;
