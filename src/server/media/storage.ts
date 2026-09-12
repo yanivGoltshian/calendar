@@ -46,6 +46,7 @@ export async function storeBusinessMedia(
   type: string,
   ext: string,
   container: MediaStorage = mediaContainer(),
+  authorizedImpersonationId: string | null = null,
 ) {
   const digest = createHash('sha256').update(input).digest('hex');
   const key = `media/${businessId}/${digest}.${ext}`;
@@ -59,7 +60,8 @@ export async function storeBusinessMedia(
       const business = await tx.business.findFirst({
         where: {
           id: businessId,
-          ...businessOwnerWhere(ownerEmail),
+          // The upload route obtains this ID only from the signed, admin-authorized cookie gate.
+          ...(authorizedImpersonationId === businessId ? {} : businessOwnerWhere(ownerEmail)),
         },
       });
       if (

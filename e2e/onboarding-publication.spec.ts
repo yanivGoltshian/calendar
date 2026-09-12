@@ -8,6 +8,7 @@ import { BRAND_PRESETS } from '../src/app/admin/onboarding/premium';
 import { normalizeLandingContent, landingDefaults } from '../src/lib/publicPageStyle';
 import { HERO_VIDEO } from './visualFixtures';
 import { t } from '../src/i18n';
+import { DEFAULT_BRAND, getTemplateDef } from '../src/server/messages/registry';
 
 test.afterAll(() => prisma.$disconnect());
 
@@ -121,6 +122,20 @@ for (const width of [390, 1366]) {
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(f.business.name);
       await expect(page.getByText(landingDefaults('BARBERSHOP').heroSubtext, { exact: true })).toHaveCount(0);
       await expect(page.locator('header a[href="#lp-location"]')).toHaveCount(0);
+      await page.goto('/admin/settings');
+      const message = page.getByTestId('message-template-booking_confirmation-email');
+      const preview = message.getByTestId('message-preview');
+      await expect(preview).toContainText(f.business.name);
+      await expect(preview).toContainText(DEFAULT_BRAND);
+      await expect(preview).not.toContainText('{{');
+      await message.locator('summary').click();
+      const subject = message.locator('input[name$=".subject"]');
+      await subject.fill('Preview {{businessName}}');
+      await expect(preview).toContainText(`Preview ${f.business.name}`);
+      await expect(subject).toHaveValue('Preview {{businessName}}');
+      await message.getByRole('button', { name: t.admin.settings.messageTemplates.reset, exact: true }).click();
+      await expect(subject).toHaveValue(getTemplateDef('booking_confirmation').channels.email!.subject!);
+      await expect(preview).toContainText(DEFAULT_BRAND);
     } finally {
       await cleanupFixture(f);
     }

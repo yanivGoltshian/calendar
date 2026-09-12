@@ -109,7 +109,7 @@ export default function SettingsForm({
           title={s.messageTemplates.title}
           description={s.messageTemplates.description}
         >
-          <MessageTemplatesFields overrides={templateOverrides} />
+          <MessageTemplatesFields overrides={templateOverrides} business={business} />
         </SettingsSection>
 
         {justSaved ? (

@@ -47,6 +47,9 @@ const { findOrCreateClient } = require('../src/server/repos/clients') as typeof 
 const { getAppointmentsForUser, getUpcomingAppointmentsForUserAtBusiness } = require('../src/server/repos/account') as typeof import('../src/server/repos/account');
 const { serializeSession } = require('../src/lib/session') as typeof import('../src/lib/session');
 const { signImpersonationValue } = require('../src/server/impersonationToken') as typeof import('../src/server/impersonationToken');
+const { getImpersonatedBusinessId } = require('../src/server/impersonation') as typeof import('../src/server/impersonation');
+const { uploadMedia } = require('../src/server/media/upload') as typeof import('../src/server/media/upload');
+const { storeBusinessMedia } = require('../src/server/media/storage') as typeof import('../src/server/media/storage');
 const { saveAllSettingsAction } = require('../src/app/admin/settings/actions') as typeof import('../src/app/admin/settings/actions');
 const { toggleServiceHiddenAction } = require('../src/app/admin/services/actions') as typeof import('../src/app/admin/services/actions');
 const { saveStaffAction } = require('../src/app/admin/team/actions') as typeof import('../src/app/admin/team/actions');
@@ -310,6 +313,58 @@ function pushRequest(token: string, endpoint = `https://fcm.googleapis.com/fcm/s
     body: JSON.stringify({ endpoint, keys: { auth: 'auth', p256dh: 'key' } }),
   });
 }
+
+test('onboarding uploads select the explicitly authorized business and charge only its storage', async () => {
+  const configured = process.env.MEDIA_STORAGE_CONNECTION;
+  delete process.env.MEDIA_STORAGE_CONNECTION;
+  const cookie = `${await ownerCookie(adminEmail)}; tc_imp=${signImpersonationValue(otherBusiness.id)}`;
+  await prisma.business.update({
+    where: { id: business.id }, data: { ownerEmail: adminEmail, trialEndsAt: new Date(0) },
+  });
+  try {
+    // Reaching the configuration guard proves the active target, rather than the expired first-owned business, was selected.
+    assert.equal((await inRequest(cookie, request => uploadMedia(request))).status, 503);
+    assert.equal((await inRequest(await ownerCookie(adminEmail), request => uploadMedia(request))).status, 403);
+    const uploaded: string[] = [];
+    const container = {
+      getBlockBlobClient: (key: string) => ({
+        url: `https://storage.example.invalid/${key}`,
+        exists: async () => false,
+        uploadData: async () => { uploaded.push(key); },
+      }),
+      async *listBlobsFlat() { yield* []; },
+    };
+    const input = Buffer.from('synthetic-media');
+    await assert.rejects(
+      storeBusinessMedia(otherBusiness.id, adminEmail, input, 'image/webp', 'webp', container),
+      { status: 403 },
+    );
+    await inRequest(cookie, async () => {
+      const authority = await getImpersonatedBusinessId();
+      await storeBusinessMedia(otherBusiness.id, adminEmail, input, 'image/webp', 'webp', container, authority);
+      await assert.rejects(
+        storeBusinessMedia(business.id, adminEmail, input, 'image/webp', 'webp', container, authority),
+        { status: 403 },
+      );
+    });
+    assert.equal(uploaded.length, 1);
+    assert.ok(uploaded[0].startsWith(`media/${otherBusiness.id}/`));
+    await inRequest(`${await ownerCookie(outsiderEmail)}; tc_imp=${signImpersonationValue(otherBusiness.id)}`, async () => {
+      const authority = await getImpersonatedBusinessId();
+      assert.equal(authority, null);
+      await assert.rejects(
+        storeBusinessMedia(otherBusiness.id, outsiderEmail, input, 'image/webp', 'webp', container, authority),
+        { status: 403 },
+      );
+    });
+  } finally {
+    await prisma.business.update({
+      where: { id: business.id }, data: { ownerEmail, trialEndsAt: business.trialEndsAt },
+    });
+    if (configured === undefined) delete process.env.MEDIA_STORAGE_CONNECTION;
+    else process.env.MEDIA_STORAGE_CONNECTION = configured;
+  }
+});
 
 test('push subscriptions require an owner and cannot be stolen across tenants', async () => {
   assert.equal((await inRequest('', () => subscribe(pushRequest(prefix)))).status, 401);

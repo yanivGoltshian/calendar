@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/db';
+import { substitute } from './substitute';
+export { substitute } from './substitute';
 import {
   DEFAULT_BRAND,
   type MessageChannel,
@@ -55,20 +57,6 @@ export function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-/**
- * מחליף מצייני-מיקום {{var}} מתוך מפת הערכים. רווחים סביב השם מותרים
- * ({{ var }}). מצייני-מיקום לא מוכרים מוחלפים במחרוזת ריקה.
- */
-export function substitute(
-  template: string,
-  vars: Record<string, string | null | undefined>,
-): string {
-  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_match, name: string) => {
-    const value = vars[name];
-    return value == null ? '' : String(value);
-  });
 }
 
 /**

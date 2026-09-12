@@ -1,11 +1,13 @@
 import { auth } from '@/auth';
-import { getBusinessesOwnedByEmail } from '@/server/repos/business';
+import { getActiveBusiness } from '@/server/repos/business';
+import { getImpersonatedBusinessId } from '@/server/impersonation';
 import { createUploadHandler } from './uploadHandler';
 import { storeBusinessMedia } from './storage';
 
 export const uploadMedia = createUploadHandler({
   email: async () => (await auth())?.user?.email ?? null,
-  business: async (email) => (await getBusinessesOwnedByEmail(email))[0] ?? null,
+  business: async () => getActiveBusiness(),
   configured: () => !!process.env.MEDIA_STORAGE_CONNECTION,
-  store: storeBusinessMedia,
+  store: async (id, email, data, type, ext) =>
+    storeBusinessMedia(id, email, data, type, ext, undefined, await getImpersonatedBusinessId()),
 });
