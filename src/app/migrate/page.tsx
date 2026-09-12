@@ -22,7 +22,7 @@ export const metadata = buildMetadata({
 export default function MigratePage() {
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
-      <Navbar absoluteLinks />
+      <Navbar showDemo absoluteLinks />
 
       <main className="flex-1">
         <Container className="pt-8">
@@ -38,7 +38,7 @@ export default function MigratePage() {
         <MigrateSection />
       </main>
 
-      <Footer absoluteLinks />
+      <Footer showDemo absoluteLinks />
     </div>
   );
 }

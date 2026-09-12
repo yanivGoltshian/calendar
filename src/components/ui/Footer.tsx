@@ -7,7 +7,13 @@ import { Container } from './Container';
 import { DirectoryLink } from './DirectoryLink';
 
 /** Footer — כותרת תחתונה עם קישורי שער, קרדיט ופרטי מותג. */
-export function Footer({ absoluteLinks = false }: { absoluteLinks?: boolean }) {
+export function Footer({
+  absoluteLinks = false,
+  showDemo = false,
+}: {
+  absoluteLinks?: boolean;
+  showDemo?: boolean;
+}) {
   const year = new Date().getFullYear();
   const f = t.marketing.footer;
 
@@ -55,14 +61,16 @@ export function Footer({ absoluteLinks = false }: { absoluteLinks?: boolean }) {
                   {f.links.migrate}
                 </Link>
               </li>
-              <li>
-                <Link
-                  href={DEMO_BUSINESS_PATH}
-                  className="transition-colors hover:text-brand-700 dark:hover:text-brand-200"
-                >
-                  {f.links.demo}
-                </Link>
-              </li>
+              {showDemo && (
+                <li>
+                  <Link
+                    href={DEMO_BUSINESS_PATH}
+                    className="transition-colors hover:text-brand-700 dark:hover:text-brand-200"
+                  >
+                    {f.links.demo}
+                  </Link>
+                </li>
+              )}
             </ul>
           </nav>
 

@@ -14,7 +14,6 @@ import { DirectoryLink } from './DirectoryLink';
 type NavLink = { href: string; label: string };
 
 const sectionLinks: NavLink[] = [
-  { href: DEMO_BUSINESS_PATH, label: t.marketing.nav.demo },
   { href: '#features', label: t.marketing.nav.features },
   { href: '#audiences', label: t.marketing.nav.audiences },
   { href: '#how-it-works', label: t.marketing.nav.howItWorks },
@@ -26,10 +25,12 @@ const sectionLinks: NavLink[] = [
 /** Navbar — כותרת עליונה דביקה, אלגנטית, עם CTA וקישורי שער לניהול ולעמוד לדוגמה. */
 export function Navbar({
   absoluteLinks = false,
+  showDemo = false,
   showAccount = false,
   selfResolveAccount = false,
 }: {
   absoluteLinks?: boolean;
+  showDemo?: boolean;
   // מוצג רק ללקוח מחובר (עוגיית client_session קיימת): קישור לאזור האישי.
   showAccount?: boolean;
   // כשמופעל (בשלד ISR שאינו מכיל מידע אישי), הרכיב שולף את מצב ההתחברות של הלקוח
@@ -192,6 +193,15 @@ export function Navbar({
                   {link.label}
                 </a>
               ))}
+              {showDemo && (
+                <a
+                  href={DEMO_BUSINESS_PATH}
+                  onClick={() => setOpen(false)}
+                  className="rounded-xl px-4 py-3 text-base font-medium text-sand-700 transition-colors hover:bg-sand-100 dark:text-sand-200 dark:hover:bg-sand-800"
+                >
+                  {t.marketing.nav.demo}
+                </a>
+              )}
               <div className="mt-3 flex flex-col gap-2 border-t border-sand-200/70 pt-4 dark:border-sand-800/70">
                 {accountVisible ? (
                   <Button href="/account" variant="ghost" size="md" onClick={() => setOpen(false)}>

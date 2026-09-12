@@ -81,12 +81,20 @@ test('דף הבית סטטי ואינו תלוי בעסק הראשון או במ
   );
 });
 
-test('הניווט העליון, התפריט הנייד והכותרת התחתונה משתמשים בנתיב המשותף', () => {
+test('הניווט במחשב אינו מוסיף קישור הדגמה חדש', () => {
   assert.ok(
-    navbar.includes('{ href: DEMO_BUSINESS_PATH, label: t.marketing.nav.demo }'),
-    'רשימת הניווט המשותפת למחשב ולנייד חייבת לכלול את דמו הפרימיום',
+    !navbar.includes('{ href: DEMO_BUSINESS_PATH, label: t.marketing.nav.demo }'),
+    'רשימת קישורי המקטעים שמוצגת במחשב חייבת לשמור על החשיפה הקודמת',
   );
+});
+
+test('קישור ההדגמה בתפריט הנייד ובכותרת התחתונה מגודר ב-showDemo', () => {
+  assert.ok(navbar.includes('showDemo = false'));
+  assert.ok(navbar.includes('showDemo && ('));
+  assert.ok(navbar.includes('href={DEMO_BUSINESS_PATH}'));
   assert.ok(!navbar.includes("'/demo'") && !navbar.includes('"/demo"'));
+  assert.ok(footer.includes('showDemo = false'));
+  assert.ok(footer.includes('showDemo && ('));
   assert.ok(footer.includes('href={DEMO_BUSINESS_PATH}'));
   assert.ok(!footer.includes("'/demo'") && !footer.includes('"/demo"'));
 });
@@ -96,6 +104,12 @@ test('כל נקודות הכניסה הציבוריות הנוספות משתמ�
   assert.ok(roadmap.includes("export const dynamic = 'force-static'"));
   assert.ok(!migrate.includes('getFirstBusiness'));
   assert.ok(!roadmap.includes('getFirstBusiness'));
+  assert.ok(home.includes('<Navbar showDemo selfResolveAccount />'));
+  assert.ok(home.includes('<Footer showDemo />'));
+  assert.ok(migrate.includes('<Navbar showDemo absoluteLinks />'));
+  assert.ok(migrate.includes('<Footer showDemo absoluteLinks />'));
+  assert.ok(roadmap.includes('<Navbar showDemo absoluteLinks />'));
+  assert.ok(roadmap.includes('<Footer showDemo absoluteLinks />'));
   assert.ok(migrateSection.includes('href={DEMO_BUSINESS_PATH}'));
   assert.ok(roadmap.includes('href={DEMO_BUSINESS_PATH}'));
 });

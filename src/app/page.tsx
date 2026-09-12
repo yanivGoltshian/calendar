@@ -57,7 +57,7 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-sand-50 text-sand-900 dark:bg-sand-950 dark:text-sand-50">
-      <Navbar selfResolveAccount />
+      <Navbar showDemo selfResolveAccount />
 
       <main className="flex-1">
         {/* HERO */}
@@ -477,7 +477,7 @@ export default function HomePage() {
         <ShareTorchick shareUrl={SITE_URL} />
       </main>
 
-      <Footer />
+      <Footer showDemo />
     </div>
   );
 }
