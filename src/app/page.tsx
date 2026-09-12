@@ -49,9 +49,7 @@ export default async function HomePage() {
   }
   const demoSlug = business?.slug ?? DEMO_BUSINESS_SLUG;
   const demoHref = demoSlug ? `/b/${demoSlug}` : undefined;
-  // כפתור ההדגמה הראשי מציג מיד את עמוד הפרימיום; יתר הקישורים נשארים בבוחר /demo.
-  const heroDemoHref = '/b/skin-beauty';
-  const chooserHref = '/demo';
+  const businessDemoHref = '/b/skin-beauty';
 
   // שלד אורח בלבד: אין קריאת עוגיות בשרת. שני הווריאנטים (אורח ובעלים) מחושבים
   // בזמן build מתוך ownerRouting (מקור אמת יחיד, ללא מידע אישי) ומועברים אל
@@ -143,7 +141,7 @@ export default async function HomePage() {
                     className="w-full sm:w-auto"
                   />
                   {demoHref && (
-                    <Button href={heroDemoHref} variant="ghost" size="lg" className="w-full sm:w-auto">
+                    <Button href={businessDemoHref} variant="ghost" size="lg" className="w-full sm:w-auto">
                       {m.hero.secondaryCta}
                     </Button>
                   )}
@@ -472,7 +470,7 @@ export default async function HomePage() {
                     />
                     {demoHref && (
                       <Button
-                        href={chooserHref}
+                        href={businessDemoHref}
                         size="lg"
                         className="w-full bg-white/10 text-white ring-1 ring-inset ring-white/40 hover:bg-white/20 sm:w-auto"
                       >

@@ -97,12 +97,18 @@ test('דף הבית מחווט את ה-gate ל-fallback הקונפיג (מונע
   );
   assert.ok(
     home.includes('demoSlug={demoSlug}') &&
-      home.includes("heroDemoHref = '/b/skin-beauty'") &&
-      home.includes('<Button href={heroDemoHref} variant="ghost"') &&
-      home.includes("chooserHref = '/demo'") &&
-      home.includes('href={chooserHref}'),
-    'כפתור ה-hero מפנה ישירות לדמו הפרימיום, ושאר קישורי ההדגמה נשארים בבוחר /demo',
+      home.includes("businessDemoHref = '/b/skin-beauty'"),
+    'Homepage demo calls to action share the direct clinic destination',
   );
+});
+
+test('both identically labelled homepage demo buttons open the clinic directly', () => {
+  const buttons = [...home.matchAll(/<Button\b[^>]*>[\s\S]*?<\/Button>/g)]
+    .map(([button]) => button)
+    .filter((button) => /\{m\.(?:hero|finalCta)\.secondaryCta\}/.test(button));
+  assert.equal(buttons.length, 2);
+  for (const button of buttons) assert.match(button, /href=\{businessDemoHref\}/);
+  assert.ok(!home.includes('chooserHref'));
 });
 
 test('Navbar ו-Footer מגדרים קישור /demo על demoSlug (נוכח כש-gate truthy)', () => {
