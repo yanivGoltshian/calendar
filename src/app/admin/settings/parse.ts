@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BusinessType, ReminderChannel } from '@prisma/client';
-import { MAX_HERO_IMAGES } from '@/lib/publicPageStyle';
+import { MAX_HERO_IMAGES, normalizeLandingTheme, type LandingTheme } from '@/lib/publicPageStyle';
+import type { LandingBrandingPatch } from '@/lib/branding';
 import {
   MESSAGE_KEYS,
   getTemplateDef,
@@ -89,7 +90,46 @@ export function parseLandingHeroImages(fd: FormData): string[] {
     const url = str(fd, `heroImage${i}`);
     if (url) images.push(url);
   }
+
   return images;
+}
+
+export function parseBrandingTheme(fd: FormData): ParseResult<LandingTheme | null | undefined> {
+  const raw = fd.get('landingTheme');
+  if (raw === null) return { ok: true, data: undefined };
+  if (typeof raw !== 'string' || raw.length > 2000) return { ok: false, error: 'bad_request' };
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return { ok: false, error: 'bad_request' };
+  }
+  if (value === null) return { ok: true, data: null };
+  const theme = normalizeLandingTheme(value);
+  return theme ? { ok: true, data: theme } : { ok: false, error: 'bad_request' };
+}
+
+export function parseLandingUpdates(
+  fd: FormData,
+): ParseResult<Pick<LandingBrandingPatch, 'announcement' | 'googleReviewsUrl'>> {
+  const data: Pick<LandingBrandingPatch, 'announcement' | 'googleReviewsUrl'> = {};
+  for (const key of ['announcement', 'googleReviewsUrl'] as const) {
+    const raw = fd.get(key);
+    if (raw === null) continue;
+    if (typeof raw !== 'string' || raw.length > (key === 'announcement' ? 200 : 2048)) {
+      return { ok: false, error: 'bad_request' };
+    }
+    data[key] = raw.trim() || null;
+  }
+  if (data.googleReviewsUrl) {
+    const result = z.string().url().safeParse(data.googleReviewsUrl);
+    if (!result.success) return { ok: false, error: 'bad_request' };
+    const url = new URL(result.data);
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) {
+      return { ok: false, error: 'bad_request' };
+    }
+  }
+  return { ok: true, data };
 }
 
 export const policySchema = z.object({

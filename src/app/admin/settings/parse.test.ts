@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseProfile,
+  parseBrandingTheme,
+  parseLandingUpdates,
   parsePolicy,
   parseReminders,
   parseOwnerNotifications,
@@ -10,6 +12,7 @@ import {
 } from './parse';
 import { resolveTemplateSave } from '@/server/messages/save';
 import { getChannelDefault } from '@/server/messages/registry';
+import { BRAND_PRESETS } from '../onboarding/premium';
 
 /** בונה FormData מאובייקט פשוט. */
 function form(entries: Record<string, string>): FormData {
@@ -17,6 +20,37 @@ function form(entries: Record<string, string>): FormData {
   for (const [k, v] of Object.entries(entries)) fd.set(k, v);
   return fd;
 }
+
+test('landing updates preserve absent fields, clear empty fields and reject unsafe or oversized input', () => {
+  assert.deepEqual(parseLandingUpdates(form({})), { ok: true, data: {} });
+  assert.deepEqual(parseLandingUpdates(form({ announcement: '  ', googleReviewsUrl: '' })),
+    { ok: true, data: { announcement: null, googleReviewsUrl: null } });
+  assert.deepEqual(parseLandingUpdates(form({ announcement: '  Holiday hours ', googleReviewsUrl: 'https://maps.app.goo.gl/example' })),
+    { ok: true, data: { announcement: 'Holiday hours', googleReviewsUrl: 'https://maps.app.goo.gl/example' } });
+  assert.equal(parseLandingUpdates(form({ announcement: 'a'.repeat(200) })).ok, true);
+  const invalidFields: Record<string, string>[] = [
+    { announcement: 'a'.repeat(201) },
+    { googleReviewsUrl: 'javascript:alert(1)' },
+    { googleReviewsUrl: 'https://user:password@example.invalid' },
+    { googleReviewsUrl: 'not a URL' },
+    { googleReviewsUrl: 'https://example.invalid/' + 'a'.repeat(2048) },
+  ];
+  for (const fields of invalidFields) assert.equal(parseLandingUpdates(form(fields)).ok, false);
+  const upload = form({});
+  upload.set('announcement', new Blob(['not text']));
+  assert.equal(parseLandingUpdates(upload).ok, false);
+});
+
+test('branding theme parsing distinguishes unchanged, reset, valid and invalid palettes', () => {
+  assert.deepEqual(parseBrandingTheme(form({})), { ok: true, data: undefined });
+  assert.deepEqual(parseBrandingTheme(form({ landingTheme: 'null' })), { ok: true, data: null });
+  const theme = BRAND_PRESETS[0].theme;
+  assert.deepEqual(parseBrandingTheme(form({ landingTheme: JSON.stringify(theme) })), { ok: true, data: theme });
+  for (const landingTheme of ['{', '{}', '[]', '"value"', 'x'.repeat(2001),
+    JSON.stringify({ ...theme, cream: 'url(https://example.invalid)' })]) {
+    assert.deepEqual(parseBrandingTheme(form({ landingTheme })), { ok: false, error: 'bad_request' });
+  }
+});
 
 test('parseProfile: ממפה שדות, ריק ⇐ null, וברירת מחדל אזור זמן', () => {
   const res = parseProfile(

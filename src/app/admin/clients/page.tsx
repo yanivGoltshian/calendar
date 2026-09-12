@@ -8,6 +8,8 @@ import { listClients, type ClientFilter } from '@/server/repos/clients';
 import { displayPhone } from '@/lib/crypto';
 import ClientForm from './ClientForm';
 import { MascotEmptyState } from '@/components/brand/MascotEmptyState';
+import InfoPopover from '@/components/ui/InfoPopover';
+import { ENGAGEMENT_SEGMENTS } from '@/lib/clientEngagement';
 
 export const metadata: Metadata = { title: t.admin.clients.title };
 
@@ -19,6 +21,7 @@ const FILTERS: { value: ClientFilter; label: string }[] = [
   { value: 'all', label: t.admin.clients.filterAll },
   { value: 'active', label: t.admin.clients.filterActive },
   { value: 'blocked', label: t.admin.clients.filterBlocked },
+  ...ENGAGEMENT_SEGMENTS.map(value => ({ value, label: t.admin.marketingModule.segments[value] })),
 ];
 
 export default async function AdminClientsPage({ searchParams }: Props) {
@@ -28,7 +31,7 @@ export default async function AdminClientsPage({ searchParams }: Props) {
 
   const q = sp.q?.trim() ?? '';
   const filter: ClientFilter =
-    sp.filter === 'active' || sp.filter === 'blocked' ? sp.filter : 'all';
+    FILTERS.find(item => item.value === sp.filter)?.value ?? 'all';
 
   const clients = await listClients(business.id, { q, filter });
   const isSearching = q.length > 0 || filter !== 'all';
@@ -74,9 +77,10 @@ export default async function AdminClientsPage({ searchParams }: Props) {
         {FILTERS.map((f) => {
           const active = f.value === filter;
           return (
-            <Link
-              key={f.value}
+            <span key={f.value} className="inline-flex items-center gap-1">
+            <a
               href={tabHref(f.value)}
+              aria-current={active ? 'page' : undefined}
               className={
                 active
                   ? 'rounded-full bg-brand-600 px-3 py-1.5 text-sm font-medium text-white'
@@ -84,7 +88,9 @@ export default async function AdminClientsPage({ searchParams }: Props) {
               }
             >
               {f.label}
-            </Link>
+            </a>
+            <InfoPopover label={f.label}>{t.admin.marketingModule.segmentInfo[f.value]}</InfoPopover>
+            </span>
           );
         })}
       </div>
@@ -110,6 +116,7 @@ export default async function AdminClientsPage({ searchParams }: Props) {
             <li key={c.id}>
               <Link
                 href={`/admin/clients/${c.id}`}
+                prefetch={false}
                 className="block rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm transition hover:border-brand-300 hover:shadow"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -121,6 +128,11 @@ export default async function AdminClientsPage({ searchParams }: Props) {
                           {t.admin.clients.blockedBadge}
                         </span>
                       ) : null}
+                      {c.engagementTags.map(tag => (
+                        <span key={tag} className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-800">
+                          {t.admin.marketingModule.segments[tag]}
+                        </span>
+                      ))}
                     </p>
                     <p className="mt-0.5 text-sm text-[#8f8478]" dir="ltr">
                       {displayPhone(c.phone)}

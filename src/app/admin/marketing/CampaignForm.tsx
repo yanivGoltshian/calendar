@@ -1,8 +1,12 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useAdminForm } from '@/components/useAdminForm';
+import Link from 'next/link';
+import InfoPopover from '@/components/ui/InfoPopover';
+import { CLIENT_SEGMENTS } from '@/lib/clientEngagement';
 import { t } from '@/i18n';
-import { createCampaignAction, type CreateCampaignState } from './actions';
+import type { CreateCampaignState } from './actions';
 import type { CampaignSegment } from '@/server/repos/marketing';
 import {
   ALL_CAMPAIGN_CHANNELS,
@@ -22,13 +26,13 @@ const initialState: CreateCampaignState = { ok: false };
 const inputClass =
   'w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
-const SEGMENTS: CampaignSegment[] = ['all', 'active', 'with_appointments'];
+const SEGMENTS = CLIENT_SEGMENTS;
 
 export default function CampaignForm({ counts, isExclusive }: Props) {
   const m = t.admin.marketingModule;
   // הערוצים הניתנים לבחירה לפי הדרגה: וואטסאפ מוסתר תמיד, מסרון רק באקסקלוסיב, מייל תמיד.
   const visibleChannels = allowedCampaignChannels(ALL_CAMPAIGN_CHANNELS, { isExclusive });
-  const [state, formAction, pending] = useActionState(createCampaignAction, initialState);
+  const { state, onSubmit, pending } = useAdminForm('campaigns', initialState);
   const [segment, setSegment] = useState<CampaignSegment>('all');
   const [channels, setChannels] = useState<Set<CampaignChannel>>(() => new Set(visibleChannels));
   const [scheduleMode, setScheduleMode] = useState<'now' | 'later'>('now');
@@ -54,6 +58,7 @@ export default function CampaignForm({ counts, isExclusive }: Props) {
   };
 
   const errorText =
+    state.error === 'unconfirmed' ? t.common.saveUnconfirmed :
     state.error === 'name'
       ? m.errorName
       : state.error === 'body'
@@ -76,7 +81,7 @@ export default function CampaignForm({ counts, isExclusive }: Props) {
     <section className="mt-8 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
       <h2 className="mb-4 text-lg font-bold text-[#1b1715]">{m.newCampaignTitle}</h2>
 
-      <form ref={formRef} action={formAction} className="space-y-4">
+      <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-[#4a4038]">{m.nameLabel}</label>
           <input
@@ -102,18 +107,18 @@ export default function CampaignForm({ counts, isExclusive }: Props) {
 
         <div>
           <label className="mb-1 block text-sm font-medium text-[#4a4038]">{m.segmentLabel}</label>
-          <select
-            name="segment"
-            value={segment}
-            onChange={(e) => setSegment(e.target.value as CampaignSegment)}
-            className={inputClass}
-          >
+          <div className="flex flex-wrap gap-3">
             {SEGMENTS.map((seg) => (
-              <option key={seg} value={seg}>
-                {m.segments[seg]}
-              </option>
+              <span key={seg} className="inline-flex items-center gap-1">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="radio" name="segment" value={seg} checked={segment === seg}
+                    onChange={() => setSegment(seg)} />
+                  {m.segments[seg]}
+                </label>
+                <InfoPopover label={m.segments[seg]}>{m.segmentInfo[seg]}</InfoPopover>
+              </span>
             ))}
-          </select>
+          </div>
           <p className="mt-1 text-sm text-[#8f8478]">
             {m.recipientsPreview}: <span className="font-semibold text-[#4a4038]">{counts[segment]}</span>
           </p>
@@ -135,6 +140,18 @@ export default function CampaignForm({ counts, isExclusive }: Props) {
                 {m.channels[channel]}
               </label>
             ))}
+            {!isExclusive ? (
+              <span className="inline-flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm text-[#8f8478]">
+                  <input type="checkbox" disabled checked={false} readOnly />
+                  {m.channels.sms}
+                </label>
+                <InfoPopover label={m.channels.sms}>
+                  <p>{m.smsUpgradeInfo}</p>
+                  <Link href="/admin/upgrade" prefetch={false} className="mt-3 inline-block font-semibold underline">{m.smsUpgradeCta}</Link>
+                </InfoPopover>
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-sm text-[#8f8478]">{m.channelsHint}</p>
         </fieldset>

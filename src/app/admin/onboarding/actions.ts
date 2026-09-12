@@ -9,7 +9,8 @@ import {
   markOnboardingStep,
   type BusinessProfileInput,
 } from '@/server/repos/settings';
-import { createService, setServiceHidden, listServices } from '@/server/repos/services';
+import { createService, deleteService, setServiceHidden, listServices } from '@/server/repos/services';
+import { parseOnboardingSteps } from '@/server/onboardingProgress';
 import { listStaff } from '@/server/repos/staff';
 import {
   setBusinessHours,
@@ -22,6 +23,8 @@ import {
   type HoursPresetKey,
 } from '@/server/onboarding/hoursPresets';
 import type { SaveState } from '../settings/parse';
+import { parseBrandingTheme } from '../settings/parse';
+import { isSafeBusinessMediaWrite } from '../settings/mediaValidation';
 import { ONBOARDING_CHECKLIST_DISMISS_COOKIE } from './checklistState';
 import { parsePremiumDraft } from './premium';
 import { computeSetupState } from './setup';
@@ -120,8 +123,20 @@ export async function saveServices(_prev: SaveState, fd: FormData): Promise<Save
 
   if (activeCount === 0 && pending.length === 0) return { ok: false, error: 'generic' };
 
+  const serviceIds = new Set((await listServices(business.id)).map(service => service.id));
+  if (toggles.some(toggle => !serviceIds.has(toggle.id))) return { ok: false, error: 'generic' };
+  const firstSelection = !business.settings?.onboardingCompleted &&
+    !parseOnboardingSteps(business.settings?.onboardingSteps).services;
   for (const tog of toggles) {
-    await setServiceHidden(business.id, tog.id, tog.hidden);
+    if (firstSelection && tog.hidden) {
+      const removed = await deleteService(business.id, tog.id);
+      if (!removed.ok) {
+        if (removed.reason === 'not_found') return { ok: false, error: 'generic' };
+        await setServiceHidden(business.id, tog.id, true);
+      }
+    } else {
+      await setServiceHidden(business.id, tog.id, tog.hidden);
+    }
   }
 
   for (const svc of pending) {
@@ -173,6 +188,8 @@ export async function saveBranding(_prev: SaveState, fd: FormData): Promise<Save
 
   const logoUrl = ((fd.get('logoUrl') as string | null) ?? '').trim();
   const brandColor = ((fd.get('brandColor') as string | null) ?? '').trim();
+  const theme = parseBrandingTheme(fd);
+  if (!theme.ok) return { ok: false, error: theme.error };
 
   const profile: BusinessProfileInput = {
     name: business.name,
@@ -187,7 +204,8 @@ export async function saveBranding(_prev: SaveState, fd: FormData): Promise<Save
     timezone: business.timezone,
   };
 
-  await updateBusinessProfile(business.id, profile);
+  if (!isSafeBusinessMediaWrite(profile, business)) return { ok: false, error: 'bad_request' };
+  await updateBusinessProfile(business.id, profile, { theme: theme.data });
   // סימון צעד המיתוג רק כשקיים מיתוג ממשי (לוגו וגם צבע מותג).
   if (profile.logoUrl && profile.brandColor) {
     await markOnboardingStep(business.id, 'branding');

@@ -7,6 +7,7 @@ import InstallApp from '@/components/pwa/InstallApp';
 import { ownerLogout } from '../actions';
 import NotificationsBell from '../NotificationsBell';
 import type { AdminNotification } from '../notifications';
+import MediaImage from '@/components/publicLanding/MediaImage';
 import {
   ADMIN_BOTTOM_NAV,
   ADMIN_MORE_ROWS,
@@ -36,6 +37,7 @@ import './home.css';
 
 type AdminChromeProps = {
   logoLetter: string;
+  logoUrl?: string | null;
   bizName: string;
   greeting: string;
   notifications: AdminNotification[];
@@ -105,6 +107,7 @@ function moreIcon(id: string) {
  */
 export default function AdminChrome({
   logoLetter,
+  logoUrl,
   bizName,
   greeting,
   notifications,
@@ -121,6 +124,11 @@ export default function AdminChrome({
     )?.label ?? bizName;
   const [moreOpen, setMoreOpen] = useState(false);
   const [bellOpenSignal, setBellOpenSignal] = useState(0);
+  const [failedLogo, setFailedLogo] = useState<string | null>(null);
+  const logo = logoUrl && failedLogo !== logoUrl ? (
+    <MediaImage src={logoUrl} alt={bizName} width={64} height={64} sizes="64px" priority
+      className="h-full w-full rounded-[inherit] object-contain" onError={() => setFailedLogo(logoUrl)} />
+  ) : logoLetter;
 
   // סגירת הגיליון ב-Escape ונעילת גלילת הרקע כשהוא פתוח.
   useEffect(() => {
@@ -159,7 +167,7 @@ export default function AdminChrome({
       {/* סרגל-צד קבוע לדסקטופ בלבד (מוסתר במובייל) — נגזר מאותו מודל ניווט */}
       <aside className="sidenav" aria-label="ניווט ראשי">
         <div className="brand">
-          <div className="logo">{logoLetter}</div>
+          <div className="logo">{logo}</div>
           <div className="who">
             <div className="n">{bizName}</div>
             <div className="r">{greeting}</div>
@@ -170,6 +178,7 @@ export default function AdminChrome({
             <Link
               key={item.id}
               href={item.href as string}
+              prefetch={false}
               className={`side-link${isAdminNavActive(item.href as string, pathname) ? ' on' : ''}`}
             >
               <span className="i">{bottomIcon(item.id)}</span>
@@ -189,6 +198,7 @@ export default function AdminChrome({
                 <Link
                   key={item.id}
                   href={item.href as string}
+                  prefetch={false}
                   className={`side-link${isAdminNavActive(item.href as string, pathname) ? ' on' : ''}`}
                 >
                   {inner}
@@ -237,7 +247,7 @@ export default function AdminChrome({
         <div className="topwrap">
           <div className="topbar">
             <div className="biz">
-              <div className="logo">{logoLetter}</div>
+              <div className="logo">{logo}</div>
               <div className="who">
                 <div className="n">{bizName}</div>
                 <div className="r">{greeting}</div>
@@ -275,6 +285,7 @@ export default function AdminChrome({
             <Link
               key={item.id}
               href={item.href as string}
+              prefetch={false}
               className={isAdminNavActive(item.href as string, pathname) ? 'on' : undefined}
             >
               <span className="i">{bottomIcon(item.id)}</span>
@@ -312,7 +323,7 @@ export default function AdminChrome({
           {ADMIN_MORE_ROWS.map((item) => {
             if (item.action === 'link') {
               return (
-                <Link key={item.id} className="more-row" href={item.href as string} onClick={closeSheet}>
+                <Link key={item.id} className="more-row" href={item.href as string} prefetch={false} onClick={closeSheet}>
                   {rowInner(item)}
                 </Link>
               );

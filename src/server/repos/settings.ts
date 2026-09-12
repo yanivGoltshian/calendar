@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import type { BusinessType, PublicPageStyle, ReminderChannel } from '@prisma/client';
 import type { LandingContent } from '@/lib/publicPageStyle';
+import { patchLandingBranding, type LandingBrandingPatch } from '@/lib/branding';
 import {
   parseOnboardingSteps,
   type OnboardingStepKey,
@@ -37,24 +38,36 @@ export type BusinessProfileInput = {
 };
 
 /** עדכון פרופיל העסק (טבלת Business). */
-export async function updateBusinessProfile(businessId: string, data: BusinessProfileInput) {
+export async function updateBusinessProfile(
+  businessId: string,
+  data: BusinessProfileInput,
+  brandingPatch?: LandingBrandingPatch,
+) {
   const { publicPageStyle, landingContent, ...rest } = data;
-  return prisma.business.update({
+  const update = (client: Pick<Prisma.TransactionClient, 'business'>, content = landingContent) => client.business.update({
     where: { id: businessId },
     data: {
       ...rest,
       // סגנון העמוד נכתב רק כשנשלח (מסך ההגדרות), כדי לא לדרוס בזמן ההקמה.
       ...(publicPageStyle !== undefined ? { publicPageStyle } : {}),
       // Json אופציונלי: ריק ⇐ DbNull במפורש, אחרת נשמר האובייקט המנורמל.
-      ...(landingContent !== undefined
+      ...(content !== undefined
         ? {
             landingContent:
-              landingContent === null
+              content === null
                 ? Prisma.DbNull
-                : (landingContent as unknown as Prisma.InputJsonValue),
+                : (content as unknown as Prisma.InputJsonValue),
           }
         : {}),
     },
+  });
+  if (!brandingPatch || Object.values(brandingPatch).every(value => value === undefined)) return update(prisma);
+  return prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "Business" WHERE id = ${businessId} FOR UPDATE`;
+    const current = await tx.business.findUniqueOrThrow({
+      where: { id: businessId }, select: { landingContent: true },
+    });
+    return update(tx, patchLandingBranding(current.landingContent, brandingPatch));
   });
 }
 

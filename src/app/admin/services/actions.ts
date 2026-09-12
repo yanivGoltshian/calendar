@@ -15,6 +15,7 @@ import {
 } from '@/server/repos/services';
 import { shouldSeedServiceTemplates } from '@/server/onboarding/serviceTemplates';
 import { shekelsToAgorot } from '@/lib/money';
+import { listStaff } from '@/server/repos/staff';
 
 const saveSchema = z.object({
   id: z.string().trim().optional(),
@@ -90,15 +91,21 @@ export async function saveServiceAction(
     hidden: data.hidden,
   };
 
-  const staffIds = formData.getAll('staffIds').map((v) => String(v));
+  const staffOptions = await listStaff(business.id);
+  const submittedStaffIds = formData.getAll('staffIds').map((v) => String(v));
+  const staffIds = mode === 'add' && submittedStaffIds.length === 0 && staffOptions.length === 1
+    ? [staffOptions[0].id] : submittedStaffIds;
+  if ((!data.hidden && staffIds.length === 0) ||
+    staffIds.some(id => !staffOptions.some(member => member.id === id))) {
+    return { ok: false, mode, error: 'staff' };
+  }
 
   if (mode === 'edit' && data.id) {
     const updated = await updateService(business.id, data.id, payload);
     if (!updated) return { ok: false, mode, error: 'not_found' };
     await setServiceStaff(business.id, data.id, staffIds);
   } else {
-    const created = await createService(business.id, payload);
-    await setServiceStaff(business.id, created.id, staffIds);
+    await createService(business.id, payload, staffIds);
   }
 
   revalidatePublic(business.slug);
@@ -111,7 +118,8 @@ export async function deleteServiceAction(formData: FormData) {
   if (!id) return;
   const business = await getActiveBusiness();
   if (!business) return;
-  await deleteService(business.id, id);
+  const result = await deleteService(business.id, id);
+  if (!result.ok) redirect(`/admin/services?error=${result.reason}`);
   revalidatePublic(business.slug);
 }
 

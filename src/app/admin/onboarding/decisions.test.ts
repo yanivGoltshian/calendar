@@ -13,13 +13,30 @@ test('skipping highlights persists explicit exclusion rather than fallback benef
   assert.equal(draft.benefits?.[0].title, 'Old');
 });
 
-test('continue accepts shown defaults and can re-enable a skipped section', () => {
+test('continue accepts initial defaults but preserves a skipped section until explicitly restored', () => {
+  const initial = decidePremiumStep({}, 'why', 'continue', 'BARBERSHOP');
+  assert.equal(initial.sections?.highlights, true);
+  assert.deepEqual(initial.benefits, landingDefaults('BARBERSHOP').benefits);
   const skipped = decidePremiumStep({}, 'why', 'skip', 'BARBERSHOP');
   const result = decidePremiumStep(skipped, 'why', 'continue', 'BARBERSHOP');
-  assert.equal(result.sections?.highlights, true);
-  assert.deepEqual(result.benefits, landingDefaults('BARBERSHOP').benefits);
+  assert.equal(result.sections?.highlights, false);
+  assert.equal(result.benefits, undefined);
   const edited = [{ title: 'Custom', text: 'Authored' }];
-  assert.deepEqual(decidePremiumStep({ benefits: edited }, 'why', 'continue').benefits, edited);
+  assert.deepEqual(decidePremiumStep({ benefits: edited, sections: { highlights: true } }, 'why', 'continue').benefits, edited);
+});
+
+test('empty benefit fields cannot republish fallback content through continue or direct publication', () => {
+  const draft: LandingContent = {
+    sections: { highlights: true },
+    benefits: [{ title: '', text: '' }, { title: '  ', text: '  ' }],
+  };
+  for (const result of [
+    decidePremiumStep(draft, 'why', 'continue', 'BARBERSHOP'),
+    publishPremiumDraft(draft),
+  ]) {
+    assert.equal(result.sections?.highlights, false);
+    assert.equal(result.benefits, undefined);
+  }
 });
 
 test('all optional groups can be skipped without downgrading an explicitly published premium page', () => {
@@ -43,6 +60,27 @@ test('all optional groups can be skipped without downgrading an explicitly publi
   }
   assert.equal(publicPagePresentation('LANDING', result, 0).isClinicPremium, true);
   assert.equal(publicPagePresentation('BOOKING', result, 3).isClinicPremium, false);
+});
+
+test('skipping social content preserves explicitly entered WhatsApp contact through publication', () => {
+  const draft: LandingContent = {
+    socialLinks: { whatsapp: '050-123-4567', instagram: 'https://instagram.com/example' },
+    googleReviewsUrl: 'https://example.com/reviews',
+  };
+  const result = parsePremiumDraft(JSON.stringify(publishPremiumDraft(decidePremiumStep(draft, 'social', 'skip'))))!;
+  assert.equal(result.sections?.socialCta, false);
+  assert.deepEqual(result.socialLinks, { whatsapp: '050-123-4567' });
+  assert.equal(result.googleReviewsUrl, undefined);
+  assert.equal(draft.socialLinks?.instagram, 'https://instagram.com/example');
+});
+
+test('continuing with WhatsApp alone does not publish a follow section', () => {
+  const result = publishPremiumDraft(decidePremiumStep({ socialLinks: { whatsapp: '0501234567' } }, 'social', 'continue'));
+  assert.equal(result.sections?.socialCta, false);
+  assert.equal(result.socialLinks?.whatsapp, '0501234567');
+  for (const kind of ['facebook', 'instagram', 'tiktok'] as const) {
+    assert.equal(publishPremiumDraft({ socialLinks: { [kind]: 'synthetic' } }).sections?.socialCta, true);
+  }
 });
 
 test('unconfirmed fallback benefits stay unpublished while authored benefits are preserved', () => {

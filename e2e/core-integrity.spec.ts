@@ -133,6 +133,9 @@ test('owner OTP, uploads, sequential onboarding, editor playback and publication
   expect(business.staff.length).toBeGreaterThan(0);
   expect(business.workingHours.length).toBeGreaterThan(0);
   expect(business.trialEndsAt!.getTime()).toBeGreaterThan(Date.now());
+  const omittedService = business.services[0];
+  await page.locator('li').filter({ has: page.locator(`input[name="svc:${omittedService.id}"]`) })
+    .getByRole('checkbox').uncheck();
   await page
     .locator('form')
     .filter({ has: page.locator('input[name^="svc:"]') })
@@ -140,6 +143,7 @@ test('owner OTP, uploads, sequential onboarding, editor playback and publication
     .last()
     .click();
   await expect(page.locator('input[name=preset]').first()).toBeAttached();
+  expect(await prisma.service.findUnique({ where: { id: omittedService.id } })).toBeNull();
   await page
     .getByRole('button', { name: t.admin.onboarding.hours.continueCta, exact: true })
     .click();
@@ -290,4 +294,9 @@ test('anonymous admin mutation APIs fail closed for valid shaped requests', asyn
     },
   });
   expect([401, 403]).toContain(upload.status());
+  for (const path of ['/api/admin/settings', '/api/admin/services', '/api/admin/campaigns']) {
+    const response = await request.post(path, { headers: { origin: BASE_URL }, multipart: { name: 'Synthetic' } });
+    expect(response.status()).toBe(403);
+    expect(response.headers()['cache-control']).toContain('no-store');
+  }
 });

@@ -19,6 +19,9 @@ export type BookingLabels = {
   nextMonth: string;
   loadingSlots: string;
   noSlots: string;
+  loadError: string;
+  configurationError: string;
+  retrySlots: string;
   summaryEmpty: string;
   cta: string;
   note: string;
@@ -28,6 +31,13 @@ export type BookingLabels = {
 
 type StaffMember = { id: string; displayName: string };
 type Slot = { label: string; startAtUtc: string; endAtUtc: string };
+
+function isSlot(value: unknown): value is Slot {
+  return typeof value === 'object' && value !== null &&
+    'label' in value && typeof value.label === 'string' &&
+    'startAtUtc' in value && typeof value.startAtUtc === 'string' &&
+    'endAtUtc' in value && typeof value.endAtUtc === 'string';
+}
 
 type Props = {
   timeZone?: string;
@@ -49,18 +59,22 @@ function ymd(y: number, m: number, d: number) {
 // ווידג'ט קביעת תור אינטראקטיבי: לוח חודש אמיתי + שעות פנויות אמיתיות מ-/api/availability.
 // הבחירה נישאת לאשף המאובטח דרך פרמטרים בקישור, תוך שמירה על העיצוב היוקרתי כפי שהוא.
 export default function LandingBooking({ slug, services, staff, bookHref, labels, timeZone = 'Asia/Jerusalem' }: Props) {
-  const serviceChips = services.slice(0, 5);
   const staffList = staff ?? [];
-  const staffChips: StaffMember[] = [{ id: '', displayName: labels.staffAny }, ...staffList.slice(0, 3)];
+  const staffChips: StaffMember[] = staffList.length > 1
+    ? [{ id: '', displayName: labels.staffAny }, ...staffList]
+    : staffList;
 
   const todayStr = useBusinessDate(timeZone);
 
-  const [serviceId, setServiceId] = useState(serviceChips[0]?.id ?? '');
+  const [serviceId, setServiceId] = useState(services[0]?.id ?? '');
   const [selectedStaffId, setSelectedStaffId] = useState(''); // '' = כל הצוות
+  const effectiveStaffId = staffList.length === 1 ? staffList[0].id : selectedStaffId;
   const [date, setDate] = useState('');
   const [view, setView] = useState({ y: 0, m: 0 });
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<'configuration' | 'load' | null>(null);
+  const [retry, setRetry] = useState(0);
   const [blocked, setBlocked] = useState(false);
   const [time, setTime] = useState('');
 
@@ -75,7 +89,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
   }, [todayStr, date]);
 
   // כשלא נבחר איש צוות ספציפי ("כל הצוות") — שולחים את איש הצוות הראשון כברירת מחדל לשאילתה.
-  const queryStaffId = selectedStaffId || staffList[0]?.id || '';
+  const queryStaffId = effectiveStaffId || staffList[0]?.id || '';
 
   // שליפת שעות פנויות אמיתיות בכל שינוי של טיפול / צוות / תאריך.
   useEffect(() => {
@@ -85,20 +99,38 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
     }
     let cancelled = false;
     setSlotsLoading(true);
+    setSlots([]);
+    setSlotsError(null);
+    setBlocked(false);
     setTime('');
     fetch('/api/availability', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ slug, staffId: queryStaffId, serviceIds: [serviceId], date }),
     })
-      .then((r) => r.json())
-      .then((d) => {
+      .then(async (response) => {
+        const data: unknown = await response.json();
         if (cancelled) return;
-        setBlocked(!!d?.blocked);
-        setSlots(d?.ok && !d?.blocked ? (d.slots as Slot[]) : []);
+        if (!data || typeof data !== 'object' || !('ok' in data)) {
+          throw new Error('invalid_availability_response');
+        }
+        if (!response.ok || data.ok !== true) {
+          const error = 'error' in data ? data.error : null;
+          setSlotsError(['staff_service_mismatch', 'invalid_staff', 'invalid_service'].includes(String(error))
+            ? 'configuration' : 'load');
+          return;
+        }
+        if ('blocked' in data && data.blocked === true) {
+          setBlocked(true);
+          return;
+        }
+        if (!('slots' in data) || !Array.isArray(data.slots) || !data.slots.every(isSlot)) {
+          throw new Error('invalid_availability_slots');
+        }
+        setSlots(data.slots);
       })
       .catch(() => {
-        if (!cancelled) setSlots([]);
+        if (!cancelled) setSlotsError('load');
       })
       .finally(() => {
         if (!cancelled) setSlotsLoading(false);
@@ -106,7 +138,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
     return () => {
       cancelled = true;
     };
-  }, [slug, serviceId, queryStaffId, date, todayStr]);
+  }, [slug, serviceId, queryStaffId, date, todayStr, retry]);
 
   // תאי לוח החודש בתצוגה, כולל ריפוד תחילת השבוע והשבתת ימים שחלפו.
   const cells = useMemo(() => {
@@ -130,9 +162,9 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
     });
   }
 
-  const treatmentName = serviceChips.find((s) => s.id === serviceId)?.name ?? '';
-  const whoName = selectedStaffId
-    ? staffList.find((s) => s.id === selectedStaffId)?.displayName ?? labels.staffAny
+  const treatmentName = services.find((s) => s.id === serviceId)?.name ?? '';
+  const whoName = effectiveStaffId
+    ? staffList.find((s) => s.id === effectiveStaffId)?.displayName ?? labels.staffAny
     : labels.staffAny;
 
   function formatDateLabel(ds: string) {
@@ -179,15 +211,16 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
           <>
         <div className="mt-[18px] grid grid-cols-1 gap-[18px] min-[821px]:grid-cols-[1.1fr_1fr_1fr]">
           {/* טיפול + צוות */}
-          <div>
+          <div className="min-w-0">
             <p className="mb-2 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.treatmentLabel}</p>
             <div className="flex flex-wrap gap-2">
-              {serviceChips.map((s) => (
+              {services.map((s) => (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => setServiceId(s.id)}
-                  className={`rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
+                  aria-pressed={serviceId === s.id}
+                  className={`max-w-full whitespace-normal rounded-full border px-3.5 py-2 text-start text-sm font-semibold [overflow-wrap:anywhere] transition ${
                     serviceId === s.id
                       ? 'border-transparent bg-[color:var(--c-brand,#b0855f)] text-white'
                       : 'border-[#e7ddcd] bg-[#fbf7f0] text-[#4a423c] hover:border-[color:var(--c-brand,#b0855f)]'
@@ -205,8 +238,9 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                   key={m.id || 'any'}
                   type="button"
                   onClick={() => setSelectedStaffId(m.id)}
-                  className={`rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
-                    selectedStaffId === m.id
+                  aria-pressed={effectiveStaffId === m.id}
+                  className={`max-w-full whitespace-normal rounded-full border px-3.5 py-2 text-start text-sm font-semibold [overflow-wrap:anywhere] transition ${
+                    effectiveStaffId === m.id
                       ? 'border-transparent bg-[color:var(--c-brand,#b0855f)] text-white'
                       : 'border-[#e7ddcd] bg-[#fbf7f0] text-[#4a423c] hover:border-[color:var(--c-brand,#b0855f)]'
                   }`}
@@ -280,6 +314,13 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
             <p className="mb-2 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.timeLabel}</p>
             {!dateReady || slotsLoading ? (
               <p className="py-3 text-sm text-[color:var(--c-ink,#1b1715)]/50">{labels.loadingSlots}</p>
+            ) : slotsError ? (
+              <div role="alert" className="py-3 text-sm text-[#4a423c]">
+                <p>{slotsError === 'configuration' ? labels.configurationError : labels.loadError}</p>
+                <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 underline">
+                  {labels.retrySlots}
+                </button>
+              </div>
             ) : slots.length === 0 ? (
               <p className="py-3 text-sm text-[color:var(--c-ink,#1b1715)]/50">{labels.noSlots}</p>
             ) : (
@@ -305,7 +346,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
         </div>
 
         <div className="mt-[18px] flex flex-wrap items-center justify-between gap-4 border-t border-dashed border-[#e7ddcd] pt-4">
-          <p className="text-[0.9rem] text-[color:var(--c-muted,#6e655f)]">{summary}</p>
+          <p className="min-w-0 max-w-full text-[0.9rem] text-[color:var(--c-muted,#6e655f)] [overflow-wrap:anywhere]">{summary}</p>
           <Link
             href={ctaHref}
             className="group inline-flex items-center gap-2 rounded-full bg-[#c08f86] px-8 py-3 text-base font-bold text-white shadow-elevated transition hover:-translate-y-0.5 hover:bg-[#a06c63]"

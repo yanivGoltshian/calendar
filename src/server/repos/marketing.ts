@@ -7,6 +7,8 @@ import {
 } from '@/server/campaigns/channels';
 import { canSendPaidClientSms, getBusinessAccess } from '@/server/subscription';
 import { deliverEmailOnce as defaultDeliverEmailOnce } from '@/server/billing/emailDelivery';
+import { CLIENT_SEGMENTS, isClientSegment, type ClientSegment } from '@/lib/clientEngagement';
+import { clientSegmentWhere } from '@/server/clientSegments';
 
 /**
  * מודול דיוור רב-ערוצי (marketing).
@@ -15,38 +17,26 @@ import { deliverEmailOnce as defaultDeliverEmailOnce } from '@/server/billing/em
  * וכל נמען נרשם ב-MessageLog. במצב פיתוח (ללא תצורת ספק חי) ההודעות נכתבות ליומן בלבד.
  */
 
-export type CampaignSegment = 'all' | 'active' | 'with_appointments';
+export type CampaignSegment = ClientSegment;
 
-export const CAMPAIGN_SEGMENTS: CampaignSegment[] = ['all', 'active', 'with_appointments'];
+export const CAMPAIGN_SEGMENTS = CLIENT_SEGMENTS;
 
 export function normalizeSegment(value: string | null | undefined): CampaignSegment {
-  return value === 'active' || value === 'with_appointments' ? value : 'all';
-}
-
-/** בניית תנאי הפילוח לשאילתת לקוחות. קריאה בלבד — אינה משנה לוגיקת לקוחות. */
-function segmentWhere(businessId: string, segment: CampaignSegment) {
-  const where: {
-    businessId: string;
-    blocked?: boolean;
-    appointments?: { some: Record<string, never> };
-  } = { businessId };
-  if (segment === 'active') where.blocked = false;
-  else if (segment === 'with_appointments') where.appointments = { some: {} };
-  return where;
+  return isClientSegment(value) ? value : 'all';
 }
 
 /** רשימת לקוחות (טלפון + מייל) התואמים לפילוח — לחישוב נמענים ולשליחה רב-ערוצית. */
-export function resolveSegmentClients(businessId: string, segment: CampaignSegment) {
+export async function resolveSegmentClients(businessId: string, segment: CampaignSegment) {
   return prisma.client.findMany({
-    where: segmentWhere(businessId, segment),
+    where: await clientSegmentWhere(businessId, segment),
     select: { id: true, name: true, phone: true, email: true },
     orderBy: { createdAt: 'asc' },
   });
 }
 
 /** ספירת נמענים לפילוח (תצוגה מקדימה בטופס). */
-export function countSegment(businessId: string, segment: CampaignSegment) {
-  return prisma.client.count({ where: segmentWhere(businessId, segment) });
+export async function countSegment(businessId: string, segment: CampaignSegment) {
+  return prisma.client.count({ where: await clientSegmentWhere(businessId, segment) });
 }
 
 /** רשימת הקמפיינים של העסק, עם ספירת הודעות בפועל. */

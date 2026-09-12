@@ -1,0 +1,9 @@
+import { saveAllSettingsAction } from '@/app/admin/settings/actions';
+import { createAdminFormPost } from '@/server/adminFormRoute';
+import { getActiveBusiness } from '@/server/repos/business';
+
+export const runtime = 'nodejs';
+export const POST = createAdminFormPost(
+  data => saveAllSettingsAction({ ok: false }, data),
+  async () => Boolean(await getActiveBusiness()),
+);

@@ -16,7 +16,7 @@ import { localWallTimeToUtc } from '@/lib/time';
 const createSchema = z.object({
   name: z.string().trim().min(1, 'name').max(120),
   body: z.string().trim().min(1, 'body').max(1000),
-  segment: z.enum(['all', 'active', 'with_appointments']),
+  segment: z.enum(CAMPAIGN_SEGMENTS),
 });
 
 export type CreateCampaignState = {

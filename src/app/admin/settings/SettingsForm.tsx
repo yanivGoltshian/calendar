@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useAdminForm } from '@/components/useAdminForm';
 import Link from 'next/link';
 import type { Business, BusinessSettings } from '@prisma/client';
 import { t } from '@/i18n';
@@ -15,7 +16,7 @@ import {
   MessageTemplatesFields,
   type TemplateOverrides,
 } from './MessageTemplatesFields';
-import { saveAllSettingsAction, type SaveState } from './actions';
+import type { SaveState } from './actions';
 
 const initialSaveState: SaveState = { ok: false };
 
@@ -40,10 +41,7 @@ export default function SettingsForm({
   vapidPublicKey: string | null;
 }) {
   const s = t.admin.settings;
-  const [state, formAction, pending] = useActionState(
-    saveAllSettingsAction,
-    initialSaveState,
-  );
+  const { state, onSubmit, pending } = useAdminForm('settings', initialSaveState);
   const [dirty, setDirty] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -73,6 +71,7 @@ export default function SettingsForm({
   }, [justSaved]);
 
   const errorText =
+    state.error === 'unconfirmed' ? t.common.saveUnconfirmed :
     state.error === 'name'
       ? s.profile.errorName
       : state.error === 'number'
@@ -85,7 +84,7 @@ export default function SettingsForm({
 
   return (
     <>
-      <form action={formAction} onInput={markDirty} onChange={markDirty} className="space-y-6 pb-28">
+      <form onSubmit={onSubmit} onInput={markDirty} onChange={markDirty} className="space-y-6 pb-28">
         <SettingsSection title={s.profile.title} description={s.profile.description}>
           <ProfileFields b={business} />
         </SettingsSection>
@@ -159,8 +158,8 @@ export default function SettingsForm({
 
         {/* רצועת שמירה נדבקת: מופיעה רק כשיש שינויים שלא נשמרו. */}
         <div
-          className={`fixed inset-x-0 bottom-0 z-40 border-t border-[#e7ddcd] bg-white/90 backdrop-blur transition-transform duration-300 ${
-            showBar ? 'translate-y-0' : 'translate-y-full'
+          className={`fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 border-t border-[#e7ddcd] bg-white/90 backdrop-blur transition-transform duration-300 lg:bottom-0 ${
+            showBar ? 'translate-y-0' : 'invisible translate-y-full pointer-events-none'
           }`}
         >
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">

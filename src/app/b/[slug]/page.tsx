@@ -29,6 +29,7 @@ import {
 } from '@/components/publicLanding/icons';
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
+import LandingTestimonials from '@/components/publicLanding/LandingTestimonials';
 import ReturningCustomerLoader from '@/components/publicLanding/ReturningCustomerLoader';
 import TodayHoursHighlight from '@/components/publicLanding/TodayHoursHighlight';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
@@ -398,7 +399,7 @@ export default async function BusinessPublicPage({ params }: Props) {
 
       <div className={`mx-auto px-5 ${isLanding ? 'max-w-[1120px]' : 'max-w-3xl'}`}>
         {/* שורת עדכון חי — נשלטת מעמוד ניהול העסק, לדוגמה הודעת חופשה. בפרימיום מוצגת ברצועת הכותרת */}
-        {isLanding && !isClinicPremium && landing?.announcement ? (
+        {!isClinicPremium && landing?.announcement ? (
           <AnnouncementBar text={landing.announcement} dismissAria={t.publicPage.landing.announcementDismiss} />
         ) : null}
 
@@ -435,6 +436,14 @@ export default async function BusinessPublicPage({ params }: Props) {
             {servicesSection}
             {staffSection}
             {hoursSection}
+            {landing?.googleReviewsUrl && landing.sections?.testimonials !== false ? (
+              <LandingTestimonials
+                title={t.publicPage.landing.googleReviewsLabel}
+                items={[]}
+                googleReviewsUrl={landing.googleReviewsUrl}
+                googleCta={t.publicPage.landing.googleReviewsCta}
+              />
+            ) : null}
           </>
         )}
 

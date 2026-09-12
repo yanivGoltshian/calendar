@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db';
 import { normalizePhone } from '@/lib/crypto';
 import type { Prisma } from '@prisma/client';
+import type { EngagementSegment } from '@/lib/clientEngagement';
+import { clientEngagementTags, clientSegmentWhere } from '@/server/clientSegments';
 
 /**
  * userId must come from a verified server session, never submitted booking fields.
@@ -63,18 +65,16 @@ export async function findOrCreateClient(params: {
   });
 }
 
-export type ClientFilter = 'all' | 'active' | 'blocked';
+export type ClientFilter = 'all' | 'active' | 'blocked' | EngagementSegment;
 
 /** רשימת לקוחות עם חיפוש חופשי (שם/טלפון) וסינון לפי מצב חסימה. */
-export function listClients(
+export async function listClients(
   businessId: string,
   opts: { q?: string; filter?: ClientFilter } = {},
 ) {
   const { q, filter = 'all' } = opts;
-  const where: Prisma.ClientWhereInput = { businessId };
-
-  if (filter === 'active') where.blocked = false;
-  else if (filter === 'blocked') where.blocked = true;
+  const now = new Date();
+  const where = await clientSegmentWhere(businessId, filter, now);
 
   const term = q?.trim();
   if (term) {
@@ -87,12 +87,14 @@ export function listClients(
     ];
   }
 
-  return prisma.client.findMany({
+  const clients = await prisma.client.findMany({
     where,
     orderBy: { createdAt: 'desc' },
     take: 200,
     include: { _count: { select: { appointments: true } } },
   });
+  const tags = await clientEngagementTags(businessId, clients.map(client => client.id), now);
+  return clients.map(client => ({ ...client, engagementTags: tags.get(client.id) ?? [] }));
 }
 
 /** לקוח בודד בתוך העסק (ללא היסטוריה). */

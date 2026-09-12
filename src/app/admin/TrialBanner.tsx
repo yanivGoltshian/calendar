@@ -17,6 +17,7 @@ export default function TrialBanner({ daysLeft }: { daysLeft: number }) {
       <span>{text}</span>
       <Link
         href="/admin/upgrade"
+        prefetch={false}
         className="font-bold text-[#82643C] underline-offset-2 hover:text-[#C59D5F] hover:underline"
       >
         {b.upgrade}

@@ -14,7 +14,7 @@ import { deleteServiceAction, toggleServiceHiddenAction, loadServiceTemplatesAct
 export const metadata: Metadata = { title: t.admin.services.title };
 
 type Props = {
-  searchParams: Promise<{ edit?: string; seeded?: string }>;
+  searchParams: Promise<{ edit?: string; seeded?: string; error?: string }>;
 };
 
 export default async function AdminServicesPage({ searchParams }: Props) {
@@ -52,6 +52,9 @@ export default async function AdminServicesPage({ searchParams }: Props) {
           {t.admin.services.title} · {business.name}
         </h1>
       </header>
+      {sp.error ? <p role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+        {sp.error === 'in_use' ? t.admin.services.errorInUse : t.admin.services.errorGeneric}
+      </p> : null}
 
       {seeded ? (
         <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">

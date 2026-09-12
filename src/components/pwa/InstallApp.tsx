@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { t } from '@/i18n';
 import { BRAND } from '@/config/brand';
 import { resolveBrandColor, readableText } from '@/lib/brandColor';
+import { canInviteInstall, readInstallInvitation } from '@/lib/pwa/installInvitations';
 import {
   detectInstallEnv,
   installGuideFor,
@@ -357,6 +359,50 @@ export default function InstallApp({
   const [env, setEnv] = useState<InstallEnv | null>(null);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [invitationOpen, setInvitationOpen] = useState(false);
+  const invitationKey = useRef<string | null>(null);
+  const invitationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manualInstallStarted = useRef(false);
+  const resolveInvitationKey = useCallback(() => {
+    if (variant !== 'business' && variant !== 'admin') return null;
+    const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.href;
+    const slug = variant === 'business'
+      ? decodeURIComponent(location.pathname.match(/^\/b\/([^/]+)/)?.[1] ?? '')
+      : manifest ? new URL(manifest).searchParams.get('slug') : null;
+    return slug ? `torchick:install-invite:v1:${variant}:${slug}` : null;
+  }, [variant]);
+  const dismissInvitation = useCallback((permanent: boolean) => {
+    setInvitationOpen(false);
+    if (!permanent) return;
+    try {
+      const key = invitationKey.current ?? resolveInvitationKey();
+      if (!key) return;
+      const state = readInstallInvitation(localStorage.getItem(key));
+      if (!state) { console.warn('install_invitation_invalid_state'); return; }
+      localStorage.setItem(key, JSON.stringify({ ...state, disabled: true }));
+    } catch { console.warn('install_invitation_storage_unavailable'); }
+  }, [resolveInvitationKey]);
+
+  useEffect(() => {
+    if (!mounted || installed || (variant !== 'business' && variant !== 'admin')) return;
+    const timer = setTimeout(() => {
+      if (manualInstallStarted.current) return;
+      if (document.activeElement?.matches('input, textarea, select, button:disabled')) return;
+      try {
+        const key = resolveInvitationKey();
+        if (!key) return;
+        const state = readInstallInvitation(localStorage.getItem(key));
+        if (!state) { console.warn('install_invitation_invalid_state'); return; }
+        const now = Date.now();
+        if (!canInviteInstall(state, now)) return;
+        localStorage.setItem(key, JSON.stringify({ ...state, shown: state.shown + 1, lastShownAt: now }));
+        invitationKey.current = key;
+        setInvitationOpen(true);
+      } catch { console.warn('install_invitation_storage_unavailable'); }
+    }, 8000);
+    invitationTimer.current = timer;
+    return () => clearTimeout(timer);
+  }, [mounted, installed, variant, resolveInvitationKey]);
 
   useEffect(() => {
     setMounted(true);
@@ -364,7 +410,10 @@ export default function InstallApp({
     const nav = window.navigator as Navigator & { standalone?: boolean };
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
-    if (standalone) setInstalled(true);
+    if (standalone) {
+      setInstalled(true);
+      dismissInvitation(true);
+    }
 
     setEnv(
       detectInstallEnv(nav.userAgent, {
@@ -381,15 +430,24 @@ export default function InstallApp({
       setInstalled(true);
       setDeferred(null);
       setSheetOpen(false);
+      dismissInvitation(true);
+    };
+    const onInstallStart = (event: Event) => {
+      if (!(event instanceof CustomEvent) || event.detail !== resolveInvitationKey()) return;
+      manualInstallStarted.current = true;
+      if (invitationTimer.current !== null) clearTimeout(invitationTimer.current);
+      setInvitationOpen(false);
     };
 
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
+    window.addEventListener('torchick:install-start', onInstallStart);
     return () => {
       window.removeEventListener('beforeinstallprompt', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
+      window.removeEventListener('torchick:install-start', onInstallStart);
     };
-  }, []);
+  }, [dismissInvitation, resolveInvitationKey]);
 
   const closeSheet = useCallback(() => setSheetOpen(false), []);
 
@@ -417,11 +475,18 @@ export default function InstallApp({
    * מיד את חלון ההתקנה של הדפדפן (התקנה בהקשה אחת). אחרת פותחים את חלון ההנחיה.
    */
   async function handlePrimary() {
+    manualInstallStarted.current = true;
+    if (invitationTimer.current !== null) clearTimeout(invitationTimer.current);
+    setInvitationOpen(false);
+    window.dispatchEvent(new CustomEvent('torchick:install-start', { detail: resolveInvitationKey() }));
     if (deferred) {
       await deferred.prompt();
       const choice = await deferred.userChoice;
       setDeferred(null);
-      if (choice.outcome === 'accepted') setInstalled(true);
+      if (choice.outcome === 'accepted') {
+        setInstalled(true);
+        dismissInvitation(true);
+      }
       return;
     }
     setSheetOpen(true);
@@ -429,6 +494,20 @@ export default function InstallApp({
 
   const sheet = sheetOpen ? (
     <InstallSheet content={content} accent={accent} onAccent={onAccent} onClose={closeSheet} />
+  ) : null;
+  const invitation = invitationOpen && !installed ? createPortal(
+    <aside dir="rtl" aria-label={t.install.invitationTitle} data-testid="install-invitation"
+      className="fixed inset-x-4 bottom-24 z-30 mx-auto max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-xl lg:bottom-4">
+      <h3 className="font-semibold text-slate-900">{t.install.invitationTitle}</h3>
+      <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button type="button" className="rounded-lg px-3 py-2 text-sm font-semibold"
+          style={{ background: accent, color: onAccent }}
+          onClick={() => { dismissInvitation(false); void handlePrimary(); }}>{t.install.button}</button>
+        <button type="button" className="text-sm underline" onClick={() => dismissInvitation(false)}>{t.install.later}</button>
+        <button type="button" className="text-xs text-slate-500 underline" onClick={() => dismissInvitation(true)}>{t.install.neverAgain}</button>
+      </div>
+    </aside>, document.body,
   ) : null;
 
   if (compact) {
@@ -445,6 +524,7 @@ export default function InstallApp({
             {triggerChildren}
           </button>
           {sheet}
+          {invitation}
         </>
       );
     }
@@ -472,6 +552,7 @@ export default function InstallApp({
           {label ?? t.install.button}
         </button>
         {sheet}
+        {invitation}
       </div>
     );
   }
@@ -540,6 +621,7 @@ export default function InstallApp({
       </div>
 
       {sheet}
+      {invitation}
     </div>
   );
 }

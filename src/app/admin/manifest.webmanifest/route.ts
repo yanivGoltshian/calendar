@@ -1,6 +1,7 @@
 import { BRAND } from '@/config/brand';
 import { getBusinessBranding } from '@/server/repos/business';
 import { resolveBrandColor, resolveBackgroundColor } from '@/lib/brandColor';
+import { businessIconUrl } from '@/server/businessIcons';
 
 /**
  * מניפסט PWA לאזור ניהול העסק (/admin) — מותאם-הקשר.
@@ -69,7 +70,6 @@ export async function GET(req: Request) {
     if (business) {
       // מיחזור route האייקון הקיים של העסק (שמפיק את הלוגו עם נפילה חיננית לאות
       // ראשונה) — אותו מקור אייקונים שבו משתמש מניפסט עמוד ההזמנות.
-      const base = `/b/${business.slug}`;
       const manifest = {
         id: '/admin',
         name: business.name,
@@ -85,19 +85,19 @@ export async function GET(req: Request) {
         orientation: 'portrait',
         icons: [
           {
-            src: `${base}/icon?size=192`,
+            src: businessIconUrl(business),
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: `${base}/icon?size=512`,
+            src: businessIconUrl(business, 512),
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: `${base}/icon?size=512&maskable=1`,
+            src: businessIconUrl(business, 512, true),
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

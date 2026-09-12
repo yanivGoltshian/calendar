@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { getBusinessBranding } from '@/server/repos/business';
 import { resolveBrandColor } from '@/lib/brandColor';
+import { businessIconUrl } from '@/server/businessIcons';
 
 /**
  * פריסת סגמנט העסק — מזריקה מטא-דאטה של PWA ממותג-עסק:
@@ -14,6 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const base = `/b/${slug}`;
   const business = await getBusinessBranding(slug);
+  const icon = business ? businessIconUrl(business) : `${base}/icon?size=192`;
 
   return {
     manifest: `${base}/manifest.webmanifest`,
@@ -23,8 +25,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       statusBarStyle: 'default',
     },
     icons: {
-      icon: `${base}/icon?size=192`,
-      apple: `${base}/icon?size=192`,
+      icon,
+      apple: icon,
     },
   };
 }

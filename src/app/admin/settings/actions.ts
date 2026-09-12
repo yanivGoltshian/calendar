@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getActiveBusiness } from '@/server/repos/business';
 import { canSendPaidClientSms } from '@/server/subscription';
 import { normalizeLandingContent, type LandingContent } from '@/lib/publicPageStyle';
+import type { LandingBrandingPatch } from '@/lib/branding';
 import {
   updateBusinessProfile,
   updateBookingPolicy,
@@ -16,6 +17,8 @@ import {
   parseReminders,
   parseOwnerNotifications,
   parseLandingHeroImages,
+  parseBrandingTheme,
+  parseLandingUpdates,
   parseMessageTemplates,
   type SaveState,
 } from './parse';
@@ -45,6 +48,11 @@ export async function saveAllSettingsAction(
 ): Promise<SaveState> {
   const profile = parseProfile(fd);
   if (!profile.ok) return { ok: false, error: profile.error };
+  const theme = parseBrandingTheme(fd);
+  if (!theme.ok) return { ok: false, error: theme.error };
+  const updates = parseLandingUpdates(fd);
+  if (!updates.ok) return { ok: false, error: updates.error };
+  const brandingPatch: LandingBrandingPatch = { theme: theme.data, ...updates.data };
 
   const policy = parsePolicy(fd);
   if (!policy.ok) return { ok: false, error: policy.error };
@@ -79,10 +87,11 @@ export async function saveAllSettingsAction(
           image === displayed[index] ? original : image;
       }),
     } as LandingContent;
+    brandingPatch.heroImages = profileData.landingContent.heroImages;
   }
   if (!isSafeBusinessMediaWrite(profileData, business)) return { ok: false, error: 'bad_request' };
 
-  await updateBusinessProfile(business.id, profileData);
+  await updateBusinessProfile(business.id, profileData, brandingPatch);
   await updateBookingPolicy(business.id, policy.data);
   await updateReminders(business.id, reminders.data);
   await updateOwnerNotifications(business.id, ownerNotifications.data);

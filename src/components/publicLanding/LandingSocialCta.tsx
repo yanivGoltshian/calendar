@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { socialHref } from '@/lib/socialLinks';
-import { ArrowLeftIcon, WhatsappIcon, InstagramIcon, FacebookIcon, TiktokIcon } from './icons';
+import { hasFollowLinks, socialHref } from '@/lib/socialLinks';
+import { ArrowLeftIcon, InstagramIcon, FacebookIcon, TiktokIcon } from './icons';
 
 type SocialLinks = { whatsapp?: string; instagram?: string; facebook?: string; tiktok?: string };
 
@@ -16,12 +16,15 @@ type Props = {
 
 // מקטע סיום — קריאה לפעולה לקביעת תור לצד כפתורי רשתות חברתיות.
 export default function LandingSocialCta({ ctaTitle, ctaText, ctaLabel, bookHref, socialTitle, socialLinks, labels }: Props) {
+  if (!hasFollowLinks(socialLinks)) return null;
   const socials = [
-    { kind: 'whatsapp' as const, label: labels.whatsapp, icon: WhatsappIcon },
     { kind: 'instagram' as const, label: labels.instagram, icon: InstagramIcon },
     { kind: 'facebook' as const, label: labels.facebook, icon: FacebookIcon },
     { kind: 'tiktok' as const, label: labels.tiktok, icon: TiktokIcon },
-  ].filter((s) => Boolean(socialLinks[s.kind]));
+  ].flatMap(social => {
+    const value = socialLinks[social.kind]?.trim();
+    return value ? [{ ...social, href: socialHref(social.kind, value) }] : [];
+  });
 
   return (
     <section className="mt-16 overflow-hidden rounded-[2.5rem] border border-[color:var(--biz-border)] bg-gradient-to-b from-[var(--biz-soft)] to-[var(--biz-softer)] px-6 py-12 text-center shadow-soft sm:mt-24 sm:px-10 sm:py-16">
@@ -39,10 +42,10 @@ export default function LandingSocialCta({ ctaTitle, ctaText, ctaLabel, bookHref
         <div className="mt-10">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{socialTitle}</p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            {socials.map(({ kind, label, icon: Icon }) => (
+            {socials.map(({ kind, label, icon: Icon, href }) => (
               <a
                 key={kind}
-                href={socialHref(kind, socialLinks[kind] as string)}
+                href={href}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}

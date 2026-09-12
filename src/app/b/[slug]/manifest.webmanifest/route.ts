@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getBusinessBranding } from '@/server/repos/business';
 import { resolveBrandColor, resolveBackgroundColor } from '@/lib/brandColor';
+import { businessIconUrl } from '@/server/businessIcons';
 
 /**
  * מניפסט PWA דינמי לכל עסק.
@@ -35,19 +36,19 @@ export async function GET(_req: Request, { params }: Props) {
     orientation: 'portrait',
     icons: [
       {
-        src: `${base}/icon?size=192`,
+        src: businessIconUrl(business),
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: `${base}/icon?size=512`,
+        src: businessIconUrl(business, 512),
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: `${base}/icon?size=512&maskable=1`,
+        src: businessIconUrl(business, 512, true),
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

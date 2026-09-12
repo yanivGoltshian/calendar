@@ -57,12 +57,15 @@ export default async function AdminMarketingPage() {
   // ערוץ המסרון בתשלום בקמפיינים שמור לאקסקלוסיב; בפרימיום ובבסיס הטופס מציג מייל בלבד.
   const isExclusive = canSendPaidClientSms(business);
 
-  const [campaigns, messageLog, allCount, activeCount, apptCount, costGuardStatus] = await Promise.all([
+  const [campaigns, messageLog, allCount, activeCount, apptCount, recentCount, returningCount, pastCount, costGuardStatus] = await Promise.all([
     listCampaigns(business.id),
     listMessageLog(business.id, 50),
     countSegment(business.id, 'all'),
     countSegment(business.id, 'active'),
     countSegment(business.id, 'with_appointments'),
+    countSegment(business.id, 'recent_bookers'),
+    countSegment(business.id, 'returning'),
+    countSegment(business.id, 'past_clients'),
     isExclusive ? getCostGuardStatus(business.id) : Promise.resolve(null),
   ]);
 
@@ -70,6 +73,9 @@ export default async function AdminMarketingPage() {
     all: allCount,
     active: activeCount,
     with_appointments: apptCount,
+    recent_bookers: recentCount,
+    returning: returningCount,
+    past_clients: pastCount,
   };
 
   return (

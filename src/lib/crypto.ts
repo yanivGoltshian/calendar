@@ -1,4 +1,6 @@
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
+import { normalizePhone } from './phone';
+export { normalizePhone } from './phone';
 
 /**
  * עזרי קריפטו ל-OTP וטלפונים.
@@ -23,18 +25,6 @@ export function verifyOtp(code: string, phone: string, storedHash: string): bool
   const stored = Buffer.from(storedHash, 'hex');
   if (candidate.length !== stored.length) return false;
   return timingSafeEqual(candidate, stored);
-}
-
-/**
- * נרמול מספר טלפון ישראלי לפורמט E.164 (‎+972...).
- * מקבל קלט כמו "050-1234567", "0501234567", "+972501234567".
- */
-export function normalizePhone(input: string): string {
-  const digits = input.replace(/[^\d+]/g, '');
-  if (digits.startsWith('+972')) return digits;
-  if (digits.startsWith('972')) return `+${digits}`;
-  if (digits.startsWith('0')) return `+972${digits.slice(1)}`;
-  return digits.startsWith('+') ? digits : `+972${digits}`;
 }
 
 /** בדיקת תקינות בסיסית של טלפון נייד ישראלי. */

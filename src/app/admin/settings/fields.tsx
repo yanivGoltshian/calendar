@@ -40,11 +40,13 @@ export type ProfileValues = Pick<
 
 export function ProfileFields({ b }: { b: ProfileValues }) {
   const s = t.admin.settings.profile;
+  const l = t.admin.settings.pageStyle;
+  const landing = normalizeLandingContent(b.landingContent);
   const isLanding = b.publicPageStyle === 'LANDING';
   // באג 13: בסגנון עמוד נחיתה, מקור האמת לתמונות הרקע הוא landingContent.heroImages
   // (אותו מקור שבאשף ההקמה ובעמוד הציבורי), ולכן חושפים כאן את אותן תמונות.
   const heroImages = isLanding
-    ? normalizeLandingContent(b.landingContent)?.heroImages ?? []
+    ? landing?.heroImages ?? []
     : [];
   const heroLabels = {
     choose: s.image.choose,
@@ -214,11 +216,42 @@ export function ProfileFields({ b }: { b: ProfileValues }) {
         <BrandColorField
           name="brandColor"
           defaultValue={b.brandColor ?? ''}
+          defaultTheme={landing?.theme}
           fallback={BRAND.themeColor}
           resetLabel={s.brandColorReset}
           emptyLabel={s.brandColorEmpty}
         />
         <p className={hintClass}>{s.brandColorHint}</p>
+      </div>
+
+      <div>
+        <label htmlFor="announcement" className={labelClass}>{l.announcementLabel}</label>
+        <input
+          id="announcement"
+          name="announcement"
+          maxLength={200}
+          defaultValue={landing?.announcement ?? ''}
+          placeholder={l.announcementPlaceholder}
+          aria-describedby="announcement-hint"
+          className={inputClass}
+        />
+        <p id="announcement-hint" className={hintClass}>{l.announcementHint}</p>
+      </div>
+
+      <div>
+        <label htmlFor="googleReviewsUrl" className={labelClass}>{l.googleReviewsLabel}</label>
+        <input
+          id="googleReviewsUrl"
+          name="googleReviewsUrl"
+          type="url"
+          dir="ltr"
+          maxLength={2048}
+          defaultValue={landing?.googleReviewsUrl ?? ''}
+          placeholder={l.googleReviewsPlaceholder}
+          aria-describedby="google-reviews-hint"
+          className={inputClass}
+        />
+        <p id="google-reviews-hint" className={hintClass}>{l.googleReviewsHint}</p>
       </div>
 
       <div>
@@ -382,6 +415,7 @@ export function RemindersFields({
               {c.channelLockedHint}{' '}
               <Link
                 href="/admin/upgrade"
+                prefetch={false}
                 className="font-medium text-[#82643C] underline-offset-2 hover:text-[#C59D5F] hover:underline"
               >
                 {c.channelLockedUpgradeLink}

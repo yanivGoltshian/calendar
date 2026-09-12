@@ -530,7 +530,7 @@ function normalizeHotDeals(value: unknown): LandingHotDeals | null {
 }
 
 /** מנרמל פלטת מותג; שומר רק אם כל שמונת התפקידים הם צבעי hex בני שש ספרות, אחרת משמיט. */
-function normalizeLandingTheme(value: unknown): LandingTheme | null {
+export function normalizeLandingTheme(value: unknown): LandingTheme | null {
   if (!value || typeof value !== 'object') return null;
   const source = value as Record<string, unknown>;
   const keys: (keyof LandingTheme)[] = ['brand', 'brandDark', 'gold', 'goldStrong', 'goldText', 'cream', 'ink', 'accent'];
@@ -624,7 +624,7 @@ function sectionHasContent(section: LandingSectionKey, content: LandingContent |
     case 'beforeAfter':
       return Boolean(content.beforeAfter?.length);
     case 'testimonials':
-      return Boolean(content.testimonials?.length);
+      return Boolean(content.testimonials?.length || content.googleReviewsUrl);
     case 'faq':
       return Boolean(content.faq?.length);
     case 'about':

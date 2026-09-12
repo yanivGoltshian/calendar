@@ -15,6 +15,8 @@ import Paywall from './Paywall';
 import DeletionPending from './DeletionPending';
 import TrialBanner from './TrialBanner';
 import ImpersonationBanner from './ImpersonationBanner';
+import { businessIconUrl } from '@/server/businessIcons';
+import { publicMediaContent } from '@/server/media/publicContent';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     applicationName: 'תור צ׳יק · ניהול',
     manifest,
+    ...(business ? { icons: { icon: businessIconUrl(business), apple: businessIconUrl(business) } } : {}),
     appleWebApp: {
       capable: true,
       title: business?.name ?? 'תור צ׳יק ניהול',
@@ -174,6 +177,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <AdminChrome
       logoLetter={logoLetter}
+      logoUrl={publicMediaContent({ logoUrl: business.logoUrl }, business.slug).logoUrl}
       bizName={business.name}
       greeting={greeting}
       notifications={notifications}

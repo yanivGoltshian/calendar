@@ -7,10 +7,10 @@ import { t } from '@/i18n';
 import { Button } from '@/components/ui';
 import GoLiveCelebration from './GoLiveCelebration';
 import { ImageUploadField, type ImageUploadLabels } from '../settings/ImageUploadField';
+import { BrandPalettePicker } from '../settings/BrandPalettePicker';
 import { saveServices, saveHours, saveBranding, savePremiumLanding } from './actions';
 import {
   buildDefaultSectionToggles,
-  BRAND_PRESETS,
   resolveInitialPremiumPhase,
   seedPremiumDraft,
   decidePremiumStep,
@@ -89,13 +89,6 @@ type Props = {
 };
 
 const initialSaveState: SaveState = { ok: false };
-
-/** ששת גווני המותג המוצעים (תואם למוקאפ המאושר). */
-/** גווני מותג ראשיים אצורים (פיקס) — קובעים brandColor בלבד; שאר גווני --biz-* נגזרים אוטומטית. */
-const PRIMARY_SWATCHES = [
-  '#1c1512', '#12b886', '#7c3aed', '#e11d48', '#f59e0b', '#0ea5e9',
-  '#b0855f', '#d98ca3', '#3f9d8a', '#3b82c4', '#9b3b57', '#2fa9a2',
-];
 
 function errorText(state: SaveState): string | null {
   if (!state.error) return null;
@@ -905,6 +898,7 @@ export default function OnboardingWizard({
       setPremiumDraft((prev) => ({
         ...prev,
         socialLinks: { ...(prev.socialLinks ?? {}), [key]: v },
+        ...(key !== 'whatsapp' && v.trim() ? { sections: { ...prev.sections, socialCta: true } } : {}),
       }));
 
     // ── מסך «רגע ההשקה»: חגיגת עליית העמוד לאוויר (variant-1) ──
@@ -938,7 +932,7 @@ export default function OnboardingWizard({
     const socialVideos = premiumDraft.socialVideoUrls ?? [];
     const sections = { ...buildDefaultSectionToggles(businessType), ...publishPremiumDraft(premiumDraft).sections };
     const def = landingDefaults(businessType);
-    const benefits = premiumDraft.benefits?.length ? premiumDraft.benefits : def.benefits;
+    const benefits = premiumDraft.sections?.highlights === false ? [] : premiumDraft.benefits ?? def.benefits;
 
     // פלטת צבעים לתצוגה נאמנה לעמוד החי, עם נפילה עדינה לברירת מחדל.
     const th = premiumDraft.theme;
@@ -1014,9 +1008,12 @@ export default function OnboardingWizard({
     // יתרונות, עד שלושה, מתממשים מברירת המחדל בעריכה ראשונה.
     const setBenefit = (i: number, patch: Partial<LandingBenefit>) =>
       setPremiumDraft((prev) => {
-        const base = prev.benefits?.length ? prev.benefits : def.benefits;
-        const next = base.slice(0, MAX_BENEFITS).map((b, idx) => (idx === i ? { ...b, ...patch } : b));
-        return { ...prev, benefits: next };
+        const base = prev.sections?.highlights === false ? [] : prev.benefits ?? def.benefits;
+        const next = Array.from({ length: MAX_BENEFITS }, (_, idx) => ({
+          ...(base[idx] ?? { title: '', text: '' }),
+          ...(idx === i ? patch : {}),
+        }));
+        return { ...prev, benefits: next, sections: { ...prev.sections, highlights: true } };
       });
     // מגדירי מדיה: כותבים כתובת שהוחזרה מההעלאה לשדה הנכון, עם שמירה על התקרות.
     const setHeroImage = (i: number, url: string) =>
@@ -1353,7 +1350,7 @@ export default function OnboardingWizard({
                           <use href="#i-google" />
                         </svg>
                       </span>
-                      <label className="pw-label">{wz.social.googleLabel}</label>
+                      <label htmlFor="premium-google-reviews" className="pw-label">{wz.social.googleLabel}</label>
                       <span className="pw-badge">
                         <svg className="pw-badge-star" aria-hidden>
                           <use href="#i-star" />
@@ -1373,6 +1370,9 @@ export default function OnboardingWizard({
                     {googleHelpOpen ? <div className="pw-help">{wz.social.googleHelp}</div> : null}
                     <div className="pw-inp">
                       <input
+                        id="premium-google-reviews"
+                        type="url"
+                        maxLength={2048}
                         className="pw-ltr"
                         dir="ltr"
                         value={premiumDraft.googleReviewsUrl ?? ''}
@@ -1644,6 +1644,14 @@ export default function OnboardingWizard({
                   <span className="pw-eyebrow">{wz.why.eyebrow}</span>
                   <h2 className="pw-h2">{wz.why.title}</h2>
                   <p className="pw-lede">{wz.why.lede}</p>
+                  {premiumDraft.sections?.highlights === false ? (
+                    <div className="pw-hint" role="status">
+                      <p>{wz.why.skippedHint}</p>
+                      <button type="button" className="pw-ghost" onClick={() => setPremiumDraft(prev => ({
+                        ...prev, benefits: def.benefits, sections: { ...prev.sections, highlights: true },
+                      }))}>{wz.why.restoreDefaults}</button>
+                    </div>
+                  ) : null}
                   {Array.from({ length: MAX_BENEFITS }).map((_, i) => {
                     const b = benefits[i] ?? { title: '', text: '' };
                     return (
@@ -1844,13 +1852,6 @@ export default function OnboardingWizard({
                           <>
                             <div className="pv-eyebrow">{wz.win.pvSocialEyebrow}</div>
                             <div className="pv-social">
-                              {social.whatsapp ? (
-                                <span className="pv-si">
-                                  <svg>
-                                    <use href="#i-whatsapp" />
-                                  </svg>
-                                </span>
-                              ) : null}
                               {social.instagram ? (
                                 <span className="pv-si">
                                   <svg>
@@ -2255,84 +2256,11 @@ export default function OnboardingWizard({
             </div>
 
             <div className="space-y-4">
-              {/* גלריית פלטות מותג אצורות: כרטיס קובע brandColor + theme לעמוד הפרימיום */}
-              <div>
-                <span className="mb-1.5 block text-sm font-medium text-[#4a4038]">
-                  {o.premium.palette.presetsTitle}
-                </span>
-                <p className="mb-2 text-xs text-[#b3a690]">{o.premium.palette.presetsHint}</p>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                  {BRAND_PRESETS.map((preset) => {
-                    const on =
-                      (premiumDraft.theme?.brand ?? '').toLowerCase() ===
-                      preset.theme.brand.toLowerCase();
-                    const dots = [
-                      preset.theme.brand,
-                      preset.theme.brandDark,
-                      preset.theme.gold,
-                      preset.theme.accent,
-                      preset.theme.cream,
-                    ];
-                    return (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => {
-                          setColor(preset.theme.brand);
-                          setPremiumDraft((prev) => ({ ...prev, theme: preset.theme }));
-                        }}
-                        className={
-                          'flex flex-col gap-2 rounded-2xl border p-3 text-right transition ' +
-                          (on
-                            ? 'border-[#1b1715] ring-2 ring-[#1b1715] ring-offset-1'
-                            : 'border-[#e7ddcd] hover:border-[#b3a690]')
-                        }
-                      >
-                        <span className="flex gap-1" aria-hidden="true">
-                          {dots.map((c, di) => (
-                            <span
-                              key={di}
-                              className="h-5 w-5 rounded-full ring-1 ring-black/5"
-                              style={{ backgroundColor: c }}
-                            />
-                          ))}
-                        </span>
-                        <span className="text-xs font-medium text-[#4a4038]">{preset.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* מסלול "צבע ראשי": גוונים קבועים אצורים; שאר --biz-* נגזרים אוטומטית */}
-              <div>
-                <span className="mb-1.5 block text-sm font-medium text-[#4a4038]">
-                  {o.premium.palette.primaryTitle}
-                </span>
-                <p className="mb-2 text-xs text-[#b3a690]">{o.premium.palette.primaryHint}</p>
-                <div className="flex flex-wrap gap-2.5">
-                  {PRIMARY_SWATCHES.map((swatch) => {
-                    const on = color.toLowerCase() === swatch.toLowerCase();
-                    return (
-                      <button
-                        key={swatch}
-                        type="button"
-                        aria-label={swatch}
-                        aria-pressed={on}
-                        onClick={() => setColor(swatch)}
-                        style={{ backgroundColor: swatch }}
-                        className={
-                          'h-10 w-10 rounded-full ring-offset-2 transition ' +
-                          (on
-                            ? 'ring-2 ring-[#1b1715]'
-                            : 'ring-1 ring-[#e7ddcd] hover:ring-[#b3a690]')
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              </div>
+              <BrandPalettePicker color={color} theme={premiumDraft.theme}
+                onChange={(nextColor, theme) => {
+                  setColor(nextColor);
+                  setPremiumDraft(prev => ({ ...prev, theme }));
+                }} />
               <input type="hidden" name="brandColor" value={color} />
             </div>
 

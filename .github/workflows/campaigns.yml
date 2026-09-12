@@ -62,3 +62,11 @@ jobs:
             echo "Campaigns endpoint returned non-200 (${CODE})" >&2
             exit 1
           fi
+          node - "${BODY_FILE}" <<'NODE'
+          const fs = require('node:fs');
+          const result = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (result.ok !== true || result.degraded === true || result.counts?.messagesFailed > 0) {
+            console.error('Campaign scheduler reported a degraded run or failed deliveries');
+            process.exit(1);
+          }
+          NODE

@@ -1,9 +1,10 @@
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { useAdminForm } from '@/components/useAdminForm';
 import Link from 'next/link';
 import { t } from '@/i18n';
-import { saveServiceAction, type SaveServiceState } from './actions';
+import type { SaveServiceState } from './actions';
 
 export type ServiceFormValues = {
   id: string;
@@ -33,10 +34,7 @@ const inputClass =
 
 export default function ServiceForm({ initial, staffOptions = [], selectedStaffIds = [] }: Props) {
   const isEdit = Boolean(initial);
-  const [state, formAction, pending] = useActionState(
-    saveServiceAction,
-    isEdit ? editState : emptyState,
-  );
+  const { state, onSubmit, pending } = useAdminForm('services', isEdit ? editState : emptyState);
   const formRef = useRef<HTMLFormElement>(null);
 
   // איפוס הטופס לאחר הוספה מוצלחת בלבד.
@@ -47,15 +45,18 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
   }, [state]);
 
   const errorText =
+    state.error === 'unconfirmed' ? t.common.saveUnconfirmed :
     state.error === 'name'
       ? t.admin.services.errorName
       : state.error === 'duration'
         ? t.admin.services.errorDuration
         : state.error === 'price'
           ? t.admin.services.errorPrice
-          : state.error
-            ? t.admin.services.errorGeneric
-            : null;
+          : state.error === 'staff'
+            ? t.admin.services.errorStaff
+            : state.error
+              ? t.admin.services.errorGeneric
+              : null;
 
   const successText = state.ok
     ? state.mode === 'edit'
@@ -79,7 +80,7 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
         ) : null}
       </div>
 
-      <form ref={formRef} action={formAction} className="space-y-4">
+      <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
         {isEdit ? <input type="hidden" name="id" value={initial!.id} /> : null}
 
         <div>
@@ -190,7 +191,7 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
                       type="checkbox"
                       name="staffIds"
                       value={s.id}
-                      defaultChecked={selectedStaffIds.includes(s.id)}
+                      defaultChecked={selectedStaffIds.includes(s.id) || (!isEdit && staffOptions.length === 1)}
                       className="h-4 w-4 rounded border-[#d6c8b4] text-brand-600 focus:ring-brand-500"
                     />
                     {s.displayName}

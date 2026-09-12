@@ -107,15 +107,24 @@ export type ServiceInput = {
 };
 
 /** יצירת שירות חדש עם מיקום מיון בסוף הרשימה. */
-export async function createService(businessId: string, data: ServiceInput) {
+export async function createService(businessId: string, data: ServiceInput, staffIds?: string[]) {
   const last = await prisma.service.findFirst({
     where: { businessId },
     orderBy: { sortOrder: 'desc' },
     select: { sortOrder: true },
   });
   const sortOrder = (last?.sortOrder ?? -1) + 1;
+  const staff = await prisma.staffMember.findMany({
+    where: { businessId, active: true, ...(staffIds === undefined ? {} : { id: { in: staffIds } }) },
+    select: { id: true },
+    ...(staffIds === undefined ? { take: 2 } : {}),
+  });
+  if (staffIds !== undefined && new Set(staffIds).size !== staff.length) {
+    throw new Error('invalid_service_staff');
+  }
+  const assigned = staffIds !== undefined || staff.length === 1 ? staff : [];
   return prisma.service.create({
-    data: { businessId, sortOrder, ...data },
+    data: { businessId, sortOrder, ...data, staffLinks: { create: assigned.map(member => ({ staffId: member.id })) } },
   });
 }
 
@@ -134,16 +143,26 @@ export async function seedServicesForBusiness(
   const template = getServiceTemplate(type);
   if (template.length === 0) return 0;
 
-  const result = await prisma.service.createMany({
-    data: template.map((svc, index) => ({
-      businessId,
-      name: svc.name,
-      durationMin: svc.durationMin,
-      priceAgorot: svc.priceAgorot,
-      sortOrder: index,
-    })),
+  return prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "Business" WHERE id = ${businessId} FOR UPDATE`;
+    if (await tx.service.count({ where: { businessId } })) return 0;
+    const staff = await tx.staffMember.findMany({
+      where: { businessId, active: true }, select: { id: true }, take: 2,
+    });
+    const created = await tx.service.createManyAndReturn({
+      data: template.map((svc, index) => ({
+        businessId, name: svc.name, durationMin: svc.durationMin,
+        priceAgorot: svc.priceAgorot, sortOrder: index,
+      })),
+      select: { id: true },
+    });
+    if (staff.length === 1) {
+      await tx.serviceStaff.createMany({
+        data: created.map(service => ({ serviceId: service.id, staffId: staff[0].id })),
+      });
+    }
+    return created.length;
   });
-  return result.count;
 }
 
 /** עדכון שירות קיים (מסונן לפי העסק כדי למנוע גישה חוצה עסקים). */
@@ -159,21 +178,28 @@ export async function updateService(
   return result.count > 0;
 }
 
-/** מחיקת שירות. מסרבת כאשר השירות משויך לתורים קיימים (onDelete: Restrict). */
+type DeleteServiceResult = { ok: true } | { ok: false; reason: 'not_found' | 'in_use' };
+
+/** Removes only unused services, preserving appointment, waitlist, package and sales references. */
 export async function deleteService(
   businessId: string,
   id: string,
-): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'in_use' }> {
-  const service = await prisma.service.findFirst({
-    where: { id, businessId },
-    include: { _count: { select: { appointmentServices: true } } },
+): Promise<DeleteServiceResult> {
+  return prisma.$transaction(async (tx): Promise<DeleteServiceResult> => {
+    await tx.$queryRaw`SELECT id FROM "Business" WHERE id = ${businessId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM "Service" WHERE id = ${id} AND "businessId" = ${businessId} FOR UPDATE`;
+    const service = await tx.service.findFirst({
+      where: { id, businessId },
+      include: { _count: { select: { appointmentServices: true, waitlistEntries: true, punchCards: true } } },
+    });
+    if (!service) return { ok: false, reason: 'not_found' };
+    if (Object.values(service._count).some(count => count > 0) ||
+      await tx.saleItem.count({ where: { serviceId: id } }) > 0) {
+      return { ok: false, reason: 'in_use' };
+    }
+    await tx.service.delete({ where: { id } });
+    return { ok: true };
   });
-  if (!service) return { ok: false, reason: 'not_found' };
-  if (service._count.appointmentServices > 0) {
-    return { ok: false, reason: 'in_use' };
-  }
-  await prisma.service.delete({ where: { id } });
-  return { ok: true };
 }
 
 /** מתג הצגה/הסתרה מהעמוד הציבורי. */

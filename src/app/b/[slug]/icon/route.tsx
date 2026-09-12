@@ -85,6 +85,7 @@ export async function GET(req: Request, { params }: Props) {
     {
       width: size,
       height: size,
+      headers: { 'Cache-Control': 'public, max-age=300, must-revalidate' },
       ...(fonts.length ? { fonts } : {}),
     },
   );

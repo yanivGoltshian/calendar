@@ -6,11 +6,13 @@ import { PassThrough } from 'node:stream';
 import { EventEmitter } from 'node:events';
 import type { request } from 'node:https';
 import React from 'react';
+import { t } from '@/i18n';
 import { renderToStaticMarkup } from 'react-dom/server';
 import sharp from 'sharp';
 import { JsonLd } from '@/components/JsonLd';
 import MediaImage from '@/components/publicLanding/MediaImage';
 import LandingGallery from '@/components/publicLanding/LandingGallery';
+import LandingSocialCta from '@/components/publicLanding/LandingSocialCta';
 import LandingBooking, { type BookingLabels } from '@/components/publicLanding/LandingBooking';
 import { scriptSafeJson } from '@/lib/jsonLd';
 import { localBusinessJsonLd } from '@/lib/seo';
@@ -70,7 +72,8 @@ test('real calendar SSR stays date-neutral until business timezone hydration', (
     title: 'booking', pill: 'choose', treatmentLabel: 'service', staffLabel: 'staff', staffAny: 'any',
     dateLabel: 'date', timeLabel: 'time', weekdays: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
     months: Array.from({ length: 12 }, (_, i) => `month${i + 1}`), prevMonth: 'previous', nextMonth: 'next',
-    loadingSlots: 'loading-date', noSlots: 'none', summaryEmpty: 'choose', cta: 'book', note: '',
+    loadingSlots: 'loading-date', noSlots: 'none', loadError: 'load-error', configurationError: 'configuration-error',
+    retrySlots: 'retry', summaryEmpty: 'choose', cta: 'book', note: '',
     unavailableTitle: 'unavailable', unavailableBody: '',
   };
   const html = renderToStaticMarkup(React.createElement(LandingBooking, {
@@ -81,6 +84,47 @@ test('real calendar SSR stays date-neutral until business timezone hydration', (
   assert.ok(!html.includes('date='));
   assert.ok(!html.includes('month1 0'));
   assert.ok(!/\d{4}-\d{2}-\d{2}/.test(html));
+});
+
+test('public booking retains every service and staff option and auto-selects a sole staff member', () => {
+  const services = Array.from({ length: 6 }, (_, index) => ({
+    id: `service${index}`, name: index === 5 ? `long-service-${'x'.repeat(160)}` : `service${index}`,
+  }));
+  const labels = t.premiumLanding.clinic.booking;
+  for (const count of [0, 1, 4]) {
+    const staff = Array.from({ length: count }, (_, index) => ({ id: `staff${index}`, displayName: `staff${index}` }));
+    const html = renderToStaticMarkup(React.createElement(LandingBooking, {
+      slug: 'fixture', services, staff, bookHref: '/b/fixture/book', labels,
+    }));
+    for (const service of services) assert.ok(html.includes(`>${service.name}</button>`));
+    for (const member of staff) assert.ok(html.includes(`>${member.displayName}</button>`));
+    assert.equal(html.includes(`>${labels.staffAny}</button>`), count > 1);
+    if (count === 1) {
+      assert.match(html, /<button\b[^>]*aria-pressed="true"[^>]*>staff0<\/button>/);
+      assert.ok(html.includes('staffId=staff0'));
+    }
+  }
+});
+
+test('follow section requires Facebook, Instagram or TikTok and never presents WhatsApp as following', () => {
+  const labels = t.publicPage.landing;
+  const props = {
+    ctaTitle: 'follow-section', ctaText: '', ctaLabel: 'book', bookHref: '/b/fixture/book',
+    socialTitle: 'follow', labels: {
+      whatsapp: labels.whatsapp, instagram: labels.instagram, facebook: labels.facebook, tiktok: labels.tiktok,
+    },
+  };
+  for (const socialLinks of [{}, { whatsapp: '0501234567' }, { whatsapp: '0501234567', instagram: '  ' }]) {
+    assert.equal(renderToStaticMarkup(React.createElement(LandingSocialCta, { ...props, socialLinks })), '');
+  }
+  for (const kind of ['facebook', 'instagram', 'tiktok'] as const) {
+    const html = renderToStaticMarkup(React.createElement(LandingSocialCta, {
+      ...props, socialLinks: { [kind]: 'synthetic', whatsapp: '0501234567' },
+    }));
+    assert.ok(html.includes('follow-section'));
+    assert.ok(html.includes(`${kind}.com`));
+    assert.ok(!html.includes('wa.me'));
+  }
 });
 
 test('oversized legacy landing JSON never corrupts required business relations', () => {

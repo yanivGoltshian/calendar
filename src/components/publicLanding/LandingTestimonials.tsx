@@ -24,27 +24,22 @@ function GoogleGlyph({ className }: { className?: string }) {
   );
 }
 
-// מקטע המלצות — ציטוטים של לקוחות מרוצים. עם קישור גוגל מוצג כביקורות גוגל.
+// A Google link does not verify the provenance or rating of owner-authored testimonials.
 export default function LandingTestimonials({ title, items, eyebrow, googleReviewsUrl, googleLabel, googleCta }: Props) {
-  if (items.length === 0) return null;
+  if (items.length === 0 && !googleReviewsUrl) return null;
   const isGoogle = Boolean(googleReviewsUrl);
   return (
     <section className="mt-16 sm:mt-24">
-      <SectionHeading eyebrow={eyebrow} title={title} />
+      <SectionHeading eyebrow={eyebrow} title={items.length ? title : googleLabel ?? title} />
       {isGoogle ? (
         <div className="mx-auto mt-6 flex w-fit items-center gap-3 rounded-full border border-[color:var(--biz-border)] bg-white px-5 py-2.5 shadow-soft">
           <GoogleGlyph className="h-5 w-5" />
           {googleLabel ? (
             <span className="text-sm font-semibold text-[color:var(--biz-ink-strong)]">{googleLabel}</span>
           ) : null}
-          <span className="flex gap-0.5" style={{ color: '#f5b301' }} aria-hidden>
-            {[0, 1, 2, 3, 4].map((n) => (
-              <StarIcon key={n} className="h-4 w-4" />
-            ))}
-          </span>
         </div>
       ) : null}
-      <div className="mt-10 grid gap-5 min-[821px]:grid-cols-3">
+      {items.length > 0 ? <div className="mt-10 grid gap-5 min-[821px]:grid-cols-3">
         {items.map((tm, i) => (
           <figure
             key={i}
@@ -67,20 +62,12 @@ export default function LandingTestimonials({ title, items, eyebrow, googleRevie
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[0.95rem] font-extrabold text-[color:var(--biz-ink-strong)]">{tm.name}</span>
-                  {isGoogle ? (
-                    <span className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
-                      <svg aria-hidden viewBox="0 0 8 8" className="h-2 w-2 shrink-0">
-                        <circle cx="4" cy="4" r="4" fill="#34A853" />
-                      </svg>
-                      ביקורת מגוגל
-                    </span>
-                  ) : null}
                 </span>
               </figcaption>
             ) : null}
           </figure>
         ))}
-      </div>
+      </div> : null}
       {isGoogle && googleCta ? (
         <div className="mt-9 text-center">
           <a

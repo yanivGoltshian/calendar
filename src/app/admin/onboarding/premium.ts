@@ -285,7 +285,9 @@ export function decidePremiumStep(
     case 'social':
       next.sections.socialCta = accepted;
       if (!accepted) {
-        delete next.socialLinks;
+        // Direct contact is independent of the optional social-content section.
+        if (next.socialLinks?.whatsapp?.trim()) next.socialLinks = { whatsapp: next.socialLinks.whatsapp };
+        else delete next.socialLinks;
         delete next.googleReviewsUrl;
         delete next.instagramPostUrls;
         delete next.socialVideoUrls;
@@ -314,29 +316,37 @@ export function decidePremiumStep(
         delete next.heroSubtext;
       }
       break;
-    case 'why':
-      next.sections.highlights = accepted;
-      if (accepted) {
-        next.benefits = next.benefits?.length ? next.benefits : landingDefaults(businessType).benefits;
+    case 'why': {
+      const benefits = normalizeLandingContent({
+        benefits: next.benefits ?? landingDefaults(businessType).benefits,
+      })?.benefits;
+      next.sections.highlights = accepted && draft.sections?.highlights !== false && Boolean(benefits?.length);
+      if (next.sections.highlights) {
+        next.benefits = benefits;
       } else {
         delete next.benefits;
       }
       break;
+    }
   }
   return next;
 }
 
 export function publishPremiumDraft(draft: LandingContent): LandingContent {
-  return {
+  const benefits = normalizeLandingContent({ benefits: draft.benefits })?.benefits;
+  const next: LandingContent = {
     ...draft,
     presentation: 'premium',
     sections: {
       hero: Boolean(draft.heroHeadline || draft.heroSubtext || draft.heroImages?.length || draft.heroVideoUrl),
-      highlights: Boolean(draft.benefits?.length),
-      socialCta: Boolean(draft.socialLinks),
       ...draft.sections,
+      highlights: draft.sections?.highlights !== false && Boolean(benefits?.length),
+      socialCta: draft.sections?.socialCta !== false && hasFollowLinks(draft.socialLinks),
     },
   };
+  if (next.sections?.highlights) next.benefits = benefits;
+  else delete next.benefits;
+  return next;
 }
 
 /**
@@ -420,3 +430,4 @@ export function premiumPipStatus(index: number, current: number): 'done' | 'cur'
   if (index === cur) return 'cur';
   return 'todo';
 }
+import { hasFollowLinks } from '@/lib/socialLinks';
