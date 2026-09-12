@@ -14,28 +14,36 @@ import {
 
 /**
  * טסטי נעילה לניווט האדמין המאוחד (באגים 1/2/3/4/5/7).
- * נועלים את ה-whitelist בן 14 הפריטים כמקור אמת יחיד, ואוסרים על זליגה
+ * נועלים את ה-whitelist בן 15 הפריטים כמקור אמת יחיד, ואוסרים על זליגה
  * חוזרת של נתיבים שהוסרו לכל משטח ניווט. אלה טסטים טהורים (ללא DOM).
  */
 
 const adminDir = dirname(fileURLToPath(import.meta.url));
 
-// ── נעילה 1: בדיוק 14 פריטי ניווט, ואף אחד מהנתיבים שהוסרו לא מופיע ──
-test('nav: בדיוק 14 פריטי ניווט מותרים (4 תחתון + 10 עוד)', () => {
+// ── נעילה 1: בדיוק 15 פריטי ניווט, ואף אחד מהנתיבים שהוסרו לא מופיע ──
+test('nav: בדיוק 15 פריטי ניווט מותרים (4 תחתון + 11 עוד)', () => {
   assert.equal(ADMIN_BOTTOM_NAV.length, 4);
-  assert.equal(ADMIN_MORE_ROWS.length, 10);
-  assert.equal(ADMIN_NAV_ITEMS.length, 14);
+  assert.equal(ADMIN_MORE_ROWS.length, 11);
+  assert.equal(ADMIN_NAV_ITEMS.length, 15);
+});
+
+test('nav: הודעות ללקוחות מופיע אחרי לקוחות ושירותים ראשון בגיליון עוד', () => {
+  assert.deepEqual(ADMIN_BOTTOM_NAV.map((item) => item.id), ['home', 'appointments', 'clients', 'marketing']);
+  assert.equal(ADMIN_BOTTOM_NAV[3]?.label, 'הודעות ללקוחות');
+  assert.equal(ADMIN_BOTTOM_NAV[3]?.href, '/admin/marketing');
+  assert.equal(ADMIN_MORE_ROWS[0]?.id, 'services');
 });
 
 test('nav: כל פריט קישור מצביע על נתיב whitelist, אין נתיבים כפולים', () => {
   const paths = ADMIN_WHITELIST_PATHS;
-  // 11 נתיבי קישור מובחנים (3 הנותרים הם bell/install/logout ללא נתיב)
-  assert.equal(paths.length, 11);
+  // 12 נתיבי קישור מובחנים (3 הנותרים הם bell/install/logout ללא נתיב)
+  assert.equal(paths.length, 12);
   assert.equal(new Set(paths).size, paths.length, 'אין נתיבים כפולים');
   const expected = [
     '/admin',
     '/admin/appointments',
     '/admin/clients',
+    '/admin/marketing',
     '/admin/services',
     '/admin/team',
     '/admin/working-hours',
@@ -53,7 +61,6 @@ test('nav: אף נתיב שהוסר לא מופיע בשום משטח ניווט
     '/admin/pos',
     '/admin/inventory',
     '/admin/documents',
-    '/admin/marketing',
     '/admin/punch-cards',
     '/admin/onboarding',
   ];
@@ -101,7 +108,7 @@ test('nav: isAdminNavActive מבחין נכון בין הבית לנתיב מק�
 });
 
 // ── smoke (באג 5): כל עמוד whitelist קיים ומרנדר תוכן אמיתי, לא גוף ריק ──
-test('pages: כל 11 עמודי ה-whitelist קיימים, עם export default ותוכן ממשי', () => {
+test('pages: כל 12 עמודי ה-whitelist קיימים, עם export default ותוכן ממשי', () => {
   for (const path of ADMIN_WHITELIST_PATHS) {
     const rel = path === '/admin' ? '' : path.replace('/admin/', '');
     const file = rel ? join(adminDir, rel, 'page.tsx') : join(adminDir, 'page.tsx');

@@ -60,11 +60,15 @@ export default function CampaignForm({ counts, isExclusive }: Props) {
         ? m.errorBody
         : state.error === 'channel'
           ? m.errorChannel
-          : state.error === 'schedule'
-            ? m.errorSchedule
-            : state.error
-              ? m.errorGeneric
-              : null;
+          : state.error === 'sms_not_allowed'
+            ? m.errorSmsNotAllowed
+            : state.error === 'whatsapp_not_allowed'
+              ? m.errorWhatsappNotAllowed
+              : state.error === 'schedule'
+                ? m.errorSchedule
+                : state.error
+                  ? m.errorGeneric
+                  : null;
 
   const successText = state.ok ? (state.scheduled ? m.successScheduled : m.successCreated) : null;
 

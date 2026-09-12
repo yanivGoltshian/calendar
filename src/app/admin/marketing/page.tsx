@@ -11,12 +11,14 @@ import {
 } from '@/server/repos/marketing';
 import { parseCampaignChannels } from '@/server/campaigns/channels';
 import { canSendPaidClientSms } from '@/server/subscription';
+import { getCostGuardStatus } from '@/server/billing/costGuard';
 import { getCampaignDeliveryStatus } from '@/server/campaigns/delivery';
 import { displayPhone } from '@/lib/crypto';
 import { formatDateString, formatTime } from '@/lib/time';
 import type { CampaignStatus, MessageStatus } from '@prisma/client';
 import CampaignForm from './CampaignForm';
 import { sendCampaignAction } from './actions';
+import CostGuardPanel from '../settings/CostGuardPanel';
 
 export const metadata: Metadata = { title: t.admin.marketingModule.title };
 
@@ -55,12 +57,13 @@ export default async function AdminMarketingPage() {
   // ערוץ המסרון בתשלום בקמפיינים שמור לאקסקלוסיב; בפרימיום ובבסיס הטופס מציג מייל בלבד.
   const isExclusive = canSendPaidClientSms(business);
 
-  const [campaigns, messageLog, allCount, activeCount, apptCount] = await Promise.all([
+  const [campaigns, messageLog, allCount, activeCount, apptCount, costGuardStatus] = await Promise.all([
     listCampaigns(business.id),
     listMessageLog(business.id, 50),
     countSegment(business.id, 'all'),
     countSegment(business.id, 'active'),
     countSegment(business.id, 'with_appointments'),
+    isExclusive ? getCostGuardStatus(business.id) : Promise.resolve(null),
   ]);
 
   const counts: Record<CampaignSegment, number> = {
@@ -88,6 +91,12 @@ export default async function AdminMarketingPage() {
           {m.devNote}
         </p>
       )}
+
+      {costGuardStatus ? (
+        <div className="mb-8">
+          <CostGuardPanel status={costGuardStatus} />
+        </div>
+      ) : null}
 
       <h2 className="mb-3 text-lg font-bold text-[#1b1715]">{m.listTitle}</h2>
 

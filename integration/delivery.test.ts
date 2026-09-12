@@ -163,6 +163,23 @@ test('inactive and pending-deletion businesses cannot send campaign email or pai
   }
 });
 
+test('active basic businesses can send campaign email', async () => {
+  await reset();
+  await prisma.business.update({ where: { id: business.id }, data: {
+    plan: 'basic', subscriptionStatus: 'trialing', trialEndsAt: later(), paidUntil: null,
+  } });
+  const campaign = await prisma.campaign.create({ data: {
+    businessId: business.id, name: 'Basic email campaign', body: 'Test',
+    segment: 'all', channels: ['email'],
+  } });
+  let sends = 0;
+  const result = await sendCampaign(business.id, campaign.id, {
+    deliverEmailOnce: async () => { sends += 1; return { status: 'sent' }; },
+  });
+  assert.deepEqual(result, { ok: true, recipientCount: 1, sentCount: 1, failedCount: 0 });
+  assert.equal(sends, 1);
+});
+
 test('paid provider uncertainty and post-send DB failure retain reservations and never resend', async () => {
   for (const failure of ['provider', 'storage']) {
     await reset();

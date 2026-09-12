@@ -19,6 +19,7 @@ import {
   CalendarNavIcon,
   OrdersIcon,
   ClientsIcon,
+  MessagesIcon,
   ServicesIcon,
   MoreIcon,
   TeamIcon,
@@ -60,8 +61,8 @@ function bottomIcon(id: string) {
       return <OrdersIcon className="ic" />;
     case 'clients':
       return <ClientsIcon className="ic" />;
-    case 'services':
-      return <ServicesIcon className="ic" />;
+    case 'marketing':
+      return <MessagesIcon className="ic" />;
     default:
       return <MoreIcon className="ic" />;
   }
@@ -70,6 +71,8 @@ function bottomIcon(id: string) {
 /** אייקון לשורת גיליון "עוד" לפי מזהה הפריט. */
 function moreIcon(id: string) {
   switch (id) {
+    case 'services':
+      return <ServicesIcon className="ic" />;
     case 'team':
       return <TeamIcon className="ic" />;
     case 'working-hours':
@@ -153,7 +156,7 @@ export default function AdminChrome({
 
   return (
     <div className="tcah admin-shell" dir="rtl">
-      {/* סרגל-צד קבוע לדסקטופ בלבד (מוסתר במובייל) — נגזר מאותם 13 יעדים */}
+      {/* סרגל-צד קבוע לדסקטופ בלבד (מוסתר במובייל) — נגזר מאותו מודל ניווט */}
       <aside className="sidenav" aria-label="ניווט ראשי">
         <div className="brand">
           <div className="logo">{logoLetter}</div>
@@ -287,7 +290,7 @@ export default function AdminChrome({
         </div>
       </nav>
 
-      {/* גיליון "עוד" — 13 פריטי ה-whitelist בלבד */}
+      {/* גיליון "עוד" — כל היעדים המשניים ממודל הניווט */}
       <div
         className={`sheet-scrim${moreOpen ? ' open' : ''}`}
         onClick={(e) => {

@@ -8,6 +8,7 @@ import {
   normalizeChannels,
   parseCampaignChannels,
   resolveCampaignRecipients,
+  validateCampaignChannelSelection,
   type AudienceClient,
 } from './channels';
 
@@ -139,4 +140,25 @@ test('allowedCampaignChannels — נפילה לאחור של קמפיין ישן
 test('allowedCampaignChannels — וואטסאפ מסונן גם באקסקלוסיב וגם בלעדיו', () => {
   assert.deepEqual(allowedCampaignChannels(['whatsapp'], { isExclusive: true }), []);
   assert.deepEqual(allowedCampaignChannels(['whatsapp'], { isExclusive: false }), []);
+});
+
+test('validateCampaignChannelSelection מאפשר מייל לכל חבילה פעילה', () => {
+  assert.deepEqual(validateCampaignChannelSelection(['email'], { isExclusive: false }), {
+    ok: true,
+    channels: ['email'],
+  });
+});
+
+test('validateCampaignChannelSelection חוסם מסרון ללא אקסקלוסיב', () => {
+  assert.deepEqual(
+    validateCampaignChannelSelection(['email', 'sms'], { isExclusive: false }),
+    { ok: false, error: 'sms_not_allowed' },
+  );
+});
+
+test('validateCampaignChannelSelection חוסם וואטסאפ גם באקסקלוסיב', () => {
+  assert.deepEqual(
+    validateCampaignChannelSelection(['whatsapp'], { isExclusive: true }),
+    { ok: false, error: 'whatsapp_not_allowed' },
+  );
 });

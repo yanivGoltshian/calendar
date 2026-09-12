@@ -6,7 +6,7 @@ import {
   type CampaignChannel,
 } from '@/server/campaigns/channels';
 import { canSendPaidClientSms, getBusinessAccess } from '@/server/subscription';
-import { deliverEmailOnce } from '@/server/billing/emailDelivery';
+import { deliverEmailOnce as defaultDeliverEmailOnce } from '@/server/billing/emailDelivery';
 
 /**
  * מודול דיוור רב-ערוצי (marketing).
@@ -122,6 +122,7 @@ export type SendCampaignResult =
 /** תלויות ניתנות להזרקה (לבדיקה). ברירת המחדל היא שער העלות האמיתי. */
 export type SendCampaignDeps = {
   sendGuardedSms?: typeof defaultSendGuardedSms;
+  deliverEmailOnce?: typeof defaultDeliverEmailOnce;
 };
 
 /**
@@ -138,6 +139,7 @@ export async function sendCampaign(
   deps: SendCampaignDeps = {},
 ): Promise<SendCampaignResult> {
   const sendGuardedSms = deps.sendGuardedSms ?? defaultSendGuardedSms;
+  const deliverEmailOnce = deps.deliverEmailOnce ?? defaultDeliverEmailOnce;
   const campaign = await prisma.campaign.findFirst({ where: { id, businessId } });
   if (!campaign) return { ok: false, reason: 'not_found' };
   if (campaign.status !== 'DRAFT' && campaign.status !== 'SCHEDULED') {
@@ -149,7 +151,7 @@ export async function sendCampaign(
     where: { id: businessId },
     select: { plan: true, subscriptionStatus: true, trialEndsAt: true, paidUntil: true, accountStatus: true },
   });
-  if (!business || business.accountStatus !== 'ACTIVE' || business.plan === 'basic' || !getBusinessAccess(business).active) {
+  if (!business || business.accountStatus !== 'ACTIVE' || !getBusinessAccess(business).active) {
     await prisma.messageLog.create({ data: {
       businessId, campaignId: id, channel: 'campaign', body: campaign.body,
       status: 'BLOCKED', countsToCap: false, error: 'business_inactive',
