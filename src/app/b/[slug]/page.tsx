@@ -117,9 +117,9 @@ export default async function BusinessPublicPage({ params }: Props) {
     business.publicPageStyle, landing, onboarding.visualLevel,
   );
   const defaults = landingDefaults(business.type);
-  const heroHeadline = landing?.heroHeadline ?? defaults.heroHeadline;
-  const heroSubtext = landing?.heroSubtext ?? defaults.heroSubtext;
-  const heroEyebrow = landing?.heroEyebrow ?? t.publicPage.landing.eyebrow;
+  const heroHeadline = landing?.sections?.hero === false ? business.name : landing?.heroHeadline ?? defaults.heroHeadline;
+  const heroSubtext = landing?.sections?.hero === false ? '' : landing?.heroSubtext ?? defaults.heroSubtext;
+  const heroEyebrow = landing?.sections?.hero === false ? '' : landing?.heroEyebrow ?? t.publicPage.landing.eyebrow;
   const heroCtaLabel = landing?.ctaLabel || t.publicPage.bookCta;
 
   const bookHref = `/b/${business.slug}/book`;
@@ -315,12 +315,14 @@ export default async function BusinessPublicPage({ params }: Props) {
             startMinute: wh.startMinute,
             endMinute: wh.endMinute,
           }))}
-          instagramUrl={landing?.socialLinks?.instagram ?? business.instagramUrl ?? null}
-          facebookUrl={landing?.socialLinks?.facebook ?? null}
+          instagramUrl={landing?.sections?.socialCta === false ? null : landing?.socialLinks?.instagram ?? business.instagramUrl ?? null}
+          facebookUrl={landing?.sections?.socialCta === false ? null : landing?.socialLinks?.facebook ?? null}
           bookHref={bookHref}
           heroImages={landing?.heroImages ?? []}
           heroVideoUrl={landing?.heroVideoUrl ?? null}
           heroPosterUrl={landing?.heroPosterUrl ?? null}
+          showOffers={Boolean(landing?.hotDeals)}
+          showLocation={landing?.sections?.location !== false}
           heroEyebrow={heroEyebrow}
           heroHeadline={heroHeadline}
           heroSubtext={heroSubtext}
@@ -402,6 +404,7 @@ export default async function BusinessPublicPage({ params }: Props) {
 
         {isLanding ? (
           <LandingSections
+            premium={isClinicPremium}
             timeZone={business.timezone}
             content={landing}
             type={business.type}

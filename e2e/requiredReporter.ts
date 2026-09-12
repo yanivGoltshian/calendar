@@ -17,8 +17,8 @@ export default class RequiredReporter implements Reporter {
     if (result.status === 'skipped') this.skipped++;
   }
   async onEnd(result: FullResult) {
-    const minimum = Number(process.env.E2E_EXPECT_MINIMUM ?? 40);
-    const floor = process.env.E2E_TARGETED === '1' ? 1 : 40;
+    const minimum = Number(process.env.E2E_EXPECT_MINIMUM ?? 42);
+    const floor = process.env.E2E_TARGETED === '1' ? 1 : 42;
     if (
       !Number.isInteger(minimum) ||
       minimum < floor ||

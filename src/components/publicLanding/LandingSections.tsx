@@ -26,6 +26,7 @@ import WhatsAppFab from './WhatsAppFab';
 type WorkingHour = { weekday: number; startMinute: number; endMinute: number };
 
 type Props = {
+  premium?: boolean;
   timeZone?: string;
   content: LandingContent | null;
   type: string | null;
@@ -44,6 +45,7 @@ type Props = {
 // מנצח המקטעים של עמוד הנחיתה — מרנדר את המקטעים (מלבד ההירו) בסדר שנפתר
 // מ-resolveLandingSections, תוך כיבוד מתגי הבעלים ושמירה על מקטעים תלויי-נתונים.
 export default function LandingSections({
+  premium,
   timeZone = 'Asia/Jerusalem',
   content,
   type,
@@ -64,9 +66,8 @@ export default function LandingSections({
 
   const benefits = content?.benefits?.length ? content.benefits : defaults.benefits;
   const whatsapp = content?.socialLinks?.whatsapp?.trim();
-  // עמוד פרימיום של קליניקה מזוהה לפי נוכחות launchOffer או hotDeals; רק אז
-  // מוזרקים מקטע הקובייה האינליין ומצב המפה הפרימיום למקטע המיקום.
-  const isClinicPremium = Boolean(content?.launchOffer || content?.hotDeals);
+  // בחירת הפריסה משותפת לכותרת ולמקטעים; זיהוי לפי הצעות נשמר לקוראים ותיקים.
+  const isClinicPremium = premium ?? Boolean(content?.launchOffer || content?.hotDeals);
   const clinic = t.premiumLanding.clinic;
 
   return (

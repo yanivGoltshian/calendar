@@ -13,6 +13,8 @@ import {
   BRAND_PRESETS,
   resolveInitialPremiumPhase,
   seedPremiumDraft,
+  decidePremiumStep,
+  publishPremiumDraft,
   nextPremiumStep,
   prevPremiumStep,
   premiumPipStatus,
@@ -249,11 +251,13 @@ function MediaSlot(props: {
   accept: string;
   labels: { upload: string; replace: string; uploading: string; error: string };
   onUploaded: (url: string) => void;
+  onUploadingChange: (uploading: boolean) => void;
+  onUseAsLogo?: () => void;
   frameClassName: string;
   tone?: 'light' | 'dark';
   children: React.ReactNode;
 }) {
-  const { url, accept, labels, onUploaded, frameClassName, tone = 'dark', children } = props;
+  const { url, accept, labels, onUploaded, onUploadingChange, onUseAsLogo, frameClassName, tone = 'dark', children } = props;
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -262,6 +266,7 @@ function MediaSlot(props: {
     if (!file) return;
     setError(null);
     setUploading(true);
+    onUploadingChange(true);
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -276,6 +281,7 @@ function MediaSlot(props: {
       setError(labels.error);
     } finally {
       setUploading(false);
+      onUploadingChange(false);
     }
   };
 
@@ -289,16 +295,31 @@ function MediaSlot(props: {
     <div>
       <div className={frameClassName}>
         {children}
-        <div className="absolute inset-x-0 bottom-0 flex justify-center p-2">
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            className={`rounded-full px-3 py-1 text-[11px] font-semibold shadow-sm backdrop-blur transition disabled:opacity-60 ${btnTone}`}
-          >
+        <button
+          type="button"
+          aria-label={label}
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="absolute inset-0 z-10 flex cursor-pointer items-end justify-center p-2 disabled:cursor-wait"
+        >
+          <span className={`rounded-full px-3 py-1 text-[11px] font-semibold shadow-sm backdrop-blur ${btnTone}`}>
             {label}
-          </button>
-        </div>
+          </span>
+        </button>
+        {url ? (
+          <div className="absolute inset-x-0 top-0 z-20 flex justify-between gap-1 p-2">
+            <button type="button" disabled={uploading} onClick={() => onUploaded('')}
+              className={`rounded-full px-2 py-1 text-xs font-semibold ${btnTone}`}>
+              {t.admin.settings.profile.image.remove}
+            </button>
+            {onUseAsLogo ? (
+              <button type="button" disabled={uploading} onClick={onUseAsLogo}
+                className={`rounded-full px-2 py-1 text-xs font-semibold ${btnTone}`}>
+                {t.admin.onboarding.premium.editor.useAsLogo}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <input
           ref={inputRef}
           type="file"
@@ -631,6 +652,9 @@ export default function OnboardingWizard({
   // טיוטת התוכן היא מקור האמת היחיד; נשלחת כשדה JSON יחיד בכל שמירה.
   // נזרעת מהתוכן הקיים כבר בטעינה, כך שהעורך עובד עצמאית גם בכניסה ישירה.
   const [premiumDraft, setPremiumDraft] = useState<LandingContent>(() => seedPremiumDraft(premiumInitial));
+  const [logo, setLogo] = useState(logoUrl);
+  const [imageUploads, setImageUploads] = useState(0);
+  const mediaUploadingChange = (uploading: boolean) => setImageUploads(count => count + (uploading ? 1 : -1));
   // יעד המעבר אחרי שמירה מוצלחת, נקבע ב-onClick לפני שליחת הטופס.
   const nextTargetRef = useRef<PremiumPhase>('editor');
 
@@ -715,7 +739,10 @@ export default function OnboardingWizard({
   const [brandingState, brandingFormAction, brandingPending] = useActionState(
     async (previous: SaveState, formData: FormData) => {
       const result = await saveBranding(previous, formData);
-      if (result.ok) setPremiumPhase('editor');
+      if (result.ok) {
+        setLogo(String(formData.get('logoUrl') ?? ''));
+        setPremiumPhase('editor');
+      }
       return result;
     },
     initialSaveState,
@@ -909,7 +936,7 @@ export default function OnboardingWizard({
     const social: LandingSocialLinks = premiumDraft.socialLinks ?? {};
     const instagramPosts = premiumDraft.instagramPostUrls ?? [];
     const socialVideos = premiumDraft.socialVideoUrls ?? [];
-    const sections = premiumDraft.sections ?? buildDefaultSectionToggles(businessType);
+    const sections = { ...buildDefaultSectionToggles(businessType), ...publishPremiumDraft(premiumDraft).sections };
     const def = landingDefaults(businessType);
     const benefits = premiumDraft.benefits?.length ? premiumDraft.benefits : def.benefits;
 
@@ -997,14 +1024,14 @@ export default function OnboardingWizard({
         const next = [...(prev.heroImages ?? [])];
         while (next.length <= i) next.push('');
         next[i] = url;
-        return { ...prev, heroImages: next.slice(0, MAX_HERO_IMAGES) };
+        return { ...prev, heroImages: next.filter(Boolean).slice(0, MAX_HERO_IMAGES) };
       });
     const setGalleryImage = (i: number, url: string) =>
       setPremiumDraft((prev) => {
         const next = [...(prev.galleryImageUrls ?? [])];
         while (next.length <= i) next.push('');
         next[i] = url;
-        return { ...prev, galleryImageUrls: next.slice(0, MAX_GALLERY_IMAGES) };
+        return { ...prev, galleryImageUrls: next.filter(Boolean).slice(0, MAX_GALLERY_IMAGES) };
       });
     const setHotDealImage = (i: number, url: string) => {
       // זיהוי המעבר 0→1: כשמעלים את התמונה הראשונה מציגים פעם אחת נודג׳ שמצביע
@@ -1019,7 +1046,7 @@ export default function OnboardingWizard({
         const next = [...(cur.images ?? [])];
         while (next.length <= i) next.push('');
         next[i] = url;
-        return { ...prev, hotDeals: { ...cur, images: next.slice(0, MAX_HOT_DEALS_IMAGES) } };
+        return { ...prev, hotDeals: { ...cur, images: next.filter(Boolean).slice(0, MAX_HOT_DEALS_IMAGES) } };
       });
     };
     // תוויות אחידות לכל משבצות התמונה בעורך.
@@ -1034,8 +1061,14 @@ export default function OnboardingWizard({
     const wz = ed.wizard;
 
     // ── ניווט האשף (פורט המוקאפ): המשך/דלג/חזרה + קפיצה לשלב מהפיפ/מסך הסיום ──
-    const wizNext = () => setPremiumStep((s) => nextPremiumStep(s));
-    const wizSkip = () => setPremiumStep((s) => nextPremiumStep(s));
+    const decideStep = (decision: 'continue' | 'skip') => {
+      const name = premiumStepName(premiumStep);
+      if (name) setPremiumDraft(draft => decidePremiumStep(draft, name, decision, businessType));
+      if (decision === 'skip' && name === 'about') setHeroBg('color');
+      setPremiumStep(s => nextPremiumStep(s));
+    };
+    const wizNext = () => decideStep('continue');
+    const wizSkip = () => decideStep('skip');
     const wizBack = () => {
       if (premiumStep === 1) {
         // מהשלב הראשון של עורך הפרימיום: עסק חדש (הריצה הראשונה) חוזר לצעד המיתוג
@@ -1114,7 +1147,17 @@ export default function OnboardingWizard({
               type="button"
               className="pw-del"
               aria-label={wz.win.deleteLabel}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (id.startsWith('win-gal-')) {
+                  setGalleryImage(Number(id.slice('win-gal-'.length)), '');
+                } else if (id === 'win-map') {
+                  setSection('location', false);
+                } else {
+                  setPremiumDraft(draft => decidePremiumStep(draft, target, 'skip', businessType));
+                  if (target === 'about') setHeroBg('color');
+                }
+              }}
             >
               <svg aria-hidden="true">
                 <use href="#i-trash" />
@@ -1187,13 +1230,15 @@ export default function OnboardingWizard({
     );
 
     // משבצת מדיה בסגנון האשף (מסגרת אחידה + כפתור העלאה צף מ-MediaSlot).
-    const mediaTile = (url: string | undefined, onUploaded: (u: string) => void, key: number) => (
+    const mediaTile = (url: string | undefined, onUploaded: (u: string) => void, key: number, onUseAsLogo?: () => void) => (
       <MediaSlot
         key={key}
         url={url}
         accept={IMAGE_ACCEPT}
         labels={mediaImageLabels}
         onUploaded={onUploaded}
+        onUploadingChange={mediaUploadingChange}
+        onUseAsLogo={onUseAsLogo}
         frameClassName="pw-tile"
       >
         {url ? (
@@ -1211,6 +1256,7 @@ export default function OnboardingWizard({
 
     const galleryCount = Math.min((galleryImages.filter(Boolean).length || 0) + 1, MAX_GALLERY_IMAGES);
     const hotDealsCount = Math.min((hotDealsImages.filter(Boolean).length || 0) + 1, MAX_HOT_DEALS_IMAGES);
+    const busy = premiumPending || uploadingVideo || imageUploads > 0;
 
     return (
       <div dir="rtl" className="pw-root">
@@ -1264,6 +1310,7 @@ export default function OnboardingWizard({
                       className={`pw-pip pw-pip-${status}`}
                       aria-current={status === 'cur' ? 'step' : undefined}
                       onClick={() => setPremiumStep(n)}
+                      disabled={busy}
                     />
                   );
                 })}
@@ -1282,7 +1329,8 @@ export default function OnboardingWizard({
                   <div className="pw-block-label">{wz.gallery.blockLabel}</div>
                   <div className="pw-grid">
                     {Array.from({ length: galleryCount }).map((_, i) =>
-                      mediaTile(galleryImages[i], (url) => setGalleryImage(i, url), i),
+                      mediaTile(galleryImages[i], (url) => setGalleryImage(i, url), i,
+                        galleryImages[i] ? () => setLogo(galleryImages[i]) : undefined),
                     )}
                   </div>
                   <p className="pw-hint">{ed.imageLimits}</p>
@@ -1444,6 +1492,11 @@ export default function OnboardingWizard({
                   <h2 className="pw-h2">{wz.about.title}</h2>
                   <p className="pw-lede">{wz.about.lede}</p>
 
+                  <div className="pw-block-label">{o.branding.logoLabel}</div>
+                  <div className="pw-grid" data-testid="premium-logo">
+                    {mediaTile(logo, setLogo, 0)}
+                  </div>
+
                   <div className="pw-block-label">{wz.about.bgLabel}</div>
                   <div className="pw-choice">
                     {[
@@ -1455,7 +1508,12 @@ export default function OnboardingWizard({
                         key={ch.key}
                         type="button"
                         className={`pw-ci${heroBg === ch.key ? ' pw-ci-active' : ''}`}
-                        onClick={() => setHeroBg(ch.key)}
+                        onClick={() => {
+                          setHeroBg(ch.key);
+                          if (ch.key === 'color') patchDraft({ heroImages: [], heroVideoUrl: undefined, heroPosterUrl: undefined });
+                          else if (ch.key === 'image') patchDraft({ heroVideoUrl: undefined, heroPosterUrl: undefined });
+                        }}
+                        disabled={busy}
                       >
                         <svg className="pw-ci-ic" aria-hidden>
                           <use href={`#${ch.icon}`} />
@@ -1499,9 +1557,13 @@ export default function OnboardingWizard({
                           </button>
                           {videoUploadError ? <div className="pw-err">{videoUploadError}</div> : null}
                           {premiumDraft.heroVideoUrl ? (
-                            <div className="pw-hint pw-ltr" dir="ltr">
-                              {premiumDraft.heroVideoUrl}
-                            </div>
+                            <>
+                              <div className="pw-hint pw-ltr" dir="ltr">{premiumDraft.heroVideoUrl}</div>
+                              <button type="button" className="pw-ghost" disabled={busy}
+                                onClick={() => patchDraft({ heroVideoUrl: undefined, heroPosterUrl: undefined })}>
+                                {ed.removeVideo}
+                              </button>
+                            </>
                           ) : null}
                         </div>
                       ) : null}
@@ -1655,15 +1717,15 @@ export default function OnboardingWizard({
                               <img src={heroImages[0]} alt="" className="pv-hero-img" />
                             ) : null}
                             <div className="pv-logo" style={{ color: c.brandDark }}>
-                              {logoUrl ? (
+                              {logo ? (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={logoUrl} alt={businessName} className="pv-logo-img" />
+                                <img src={logo} alt={businessName} className="pv-logo-img" />
                               ) : (
                                 initial
                               )}
                             </div>
                             <h3>{premiumDraft.heroHeadline?.trim() ? premiumDraft.heroHeadline : businessName}</h3>
-                            <p>{premiumDraft.heroSubtext?.trim() ? premiumDraft.heroSubtext : def.heroSubtext}</p>
+                            <p>{sections.hero === false ? '' : premiumDraft.heroSubtext?.trim() ? premiumDraft.heroSubtext : def.heroSubtext}</p>
                             <span className="pv-cta" style={{ background: c.gold, color: c.ink }}>
                               {wz.win.pvCta}
                             </span>
@@ -1673,7 +1735,7 @@ export default function OnboardingWizard({
                       </div>
 
                       {/* למה לבחור בנו */}
-                      <div className="pv-sec">
+                      {sections.highlights !== false ? <div className="pv-sec">
                         {winEditBlock(
                           'win-why',
                           'why',
@@ -1693,10 +1755,10 @@ export default function OnboardingWizard({
                             </div>
                           </>,
                         )}
-                      </div>
+                      </div> : null}
 
                       {/* גלריה */}
-                      {galleryImages.filter(Boolean).length > 0 ? (
+                      {sections.gallery !== false && galleryImages.filter(Boolean).length > 0 ? (
                         <div className="pv-sec">
                           <div className="pv-eyebrow">{wz.win.pvGalleryEyebrow}</div>
                           <div className="pv-title">{wz.win.pvGalleryTitle}</div>
@@ -1718,7 +1780,7 @@ export default function OnboardingWizard({
                       ) : null}
 
                       {/* מבצעים · קוביה מוקטנת */}
-                      <div className="pv-sec">
+                      {hotDealsImages.some(Boolean) ? <div className="pv-sec">
                         {winEditBlock(
                           'win-deals',
                           'deals',
@@ -1746,10 +1808,10 @@ export default function OnboardingWizard({
                             </div>
                           </>,
                         )}
-                      </div>
+                      </div> : null}
 
                       {/* מיקום */}
-                      {businessAddress?.trim() || social.whatsapp ? (
+                      {sections.location !== false && (address.trim() || social.whatsapp) ? (
                         <div className="pv-sec">
                           {winEditBlock(
                             'win-map',
@@ -1764,8 +1826,8 @@ export default function OnboardingWizard({
                                     <use href="#i-pin" />
                                   </svg>
                                 </div>
-                                {businessAddress?.trim() ? (
-                                  <div className="pv-addr">{businessAddress}</div>
+                                {address.trim() ? (
+                                  <div className="pv-addr">{address}</div>
                                 ) : null}
                               </div>
                             </>,
@@ -1774,7 +1836,7 @@ export default function OnboardingWizard({
                       ) : null}
 
                       {/* רשתות */}
-                      <div className="pv-sec">
+                      {sections.socialCta !== false && Object.values(social).some(Boolean) ? <div className="pv-sec">
                         {winEditBlock(
                           'win-social',
                           'social',
@@ -1813,7 +1875,7 @@ export default function OnboardingWizard({
                             </div>
                           </>,
                         )}
-                      </div>
+                      </div> : null}
                     </div>
                   </div>
                 </section>
@@ -1821,7 +1883,8 @@ export default function OnboardingWizard({
             </div>
 
             {/* שדה JSON יחיד שנושא את כל הטיוטה לפעולת השרת */}
-            <input type="hidden" name="premiumDraft" value={JSON.stringify(premiumDraft)} />
+            <input type="hidden" name="premiumDraft" value={JSON.stringify(publishPremiumDraft(premiumDraft))} />
+            <input type="hidden" name="logoUrl" value={logo} />
             {/* כתובת העסק נשמרת לפרופיל (business.address), נפרד מטיוטת ה-landing (באג 5) */}
             <input type="hidden" name="address" value={address} />
             {err && <p className="pw-err pw-err-form">{err}</p>}
@@ -1836,7 +1899,7 @@ export default function OnboardingWizard({
                     onClick={() => {
                       nextTargetRef.current = 'summary';
                     }}
-                    disabled={premiumPending}
+                    disabled={busy}
                   >
                     {premiumPending ? p.nav.saving : wz.win.publish}
                   </button>
@@ -1844,7 +1907,7 @@ export default function OnboardingWizard({
                     type="button"
                     className="pw-ghost"
                     onClick={() => setPremiumStep(PREMIUM_WIZARD_TOTAL as PremiumWizardStep)}
-                    disabled={premiumPending}
+                    disabled={busy}
                   >
                     {'\u2039 '}
                     {wz.win.backToEdit}
@@ -1852,14 +1915,14 @@ export default function OnboardingWizard({
                 </>
               ) : (
                 <>
-                  <button type="button" className="pw-foot-back" onClick={wizBack}>
+                  <button type="button" className="pw-foot-back" onClick={wizBack} disabled={busy}>
                     {'\u2039 '}
                     {wz.back}
                   </button>
-                  <button type="button" className="pw-skip" onClick={wizSkip}>
+                  <button type="button" className="pw-skip" onClick={wizSkip} disabled={busy}>
                     {wz.skip}
                   </button>
-                  <button type="button" className="pw-next" onClick={wizNext}>
+                  <button type="button" className="pw-next" onClick={wizNext} disabled={busy}>
                     {wz.next}
                   </button>
                 </>

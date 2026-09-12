@@ -9,6 +9,7 @@
 
 import {
   normalizeLandingContent,
+  landingDefaults,
   landingSectionEnabledByDefault,
   TOGGLEABLE_LANDING_SECTIONS,
   type LandingContent,
@@ -266,6 +267,76 @@ export function resolveInitialPremiumPhase(initialPremiumPhase?: 'editor'): Prem
  */
 export function seedPremiumDraft(initial: LandingContent | null | undefined): LandingContent {
   return initial ?? {};
+}
+
+export function decidePremiumStep(
+  draft: LandingContent,
+  step: PremiumWizardStepName,
+  decision: 'continue' | 'skip',
+  businessType?: string | null,
+): LandingContent {
+  const next = { ...draft, sections: { ...draft.sections } };
+  const accepted = decision === 'continue';
+  switch (step) {
+    case 'gallery':
+      next.sections.gallery = accepted;
+      if (!accepted) delete next.galleryImageUrls;
+      break;
+    case 'social':
+      next.sections.socialCta = accepted;
+      if (!accepted) {
+        delete next.socialLinks;
+        delete next.googleReviewsUrl;
+        delete next.instagramPostUrls;
+        delete next.socialVideoUrls;
+        delete next.facebookFeedUrl;
+      }
+      break;
+    case 'deals':
+      if (!accepted) {
+        delete next.hotDeals;
+        delete next.launchOffer;
+      }
+      break;
+    case 'about':
+      next.sections.hero = accepted;
+      next.sections.location = accepted;
+      if (accepted) {
+        const defaults = landingDefaults(businessType);
+        next.heroHeadline = next.heroHeadline?.trim() || defaults.heroHeadline;
+        next.heroSubtext = next.heroSubtext?.trim() || defaults.heroSubtext;
+      } else {
+        delete next.heroImages;
+        delete next.heroVideoUrl;
+        delete next.heroPosterUrl;
+        delete next.heroEyebrow;
+        delete next.heroHeadline;
+        delete next.heroSubtext;
+      }
+      break;
+    case 'why':
+      next.sections.highlights = accepted;
+      if (accepted) {
+        next.benefits = next.benefits?.length ? next.benefits : landingDefaults(businessType).benefits;
+      } else {
+        delete next.benefits;
+      }
+      break;
+  }
+  return next;
+}
+
+export function publishPremiumDraft(draft: LandingContent): LandingContent {
+  return {
+    ...draft,
+    presentation: 'premium',
+    sections: {
+      hero: Boolean(draft.heroHeadline || draft.heroSubtext || draft.heroImages?.length || draft.heroVideoUrl),
+      highlights: Boolean(draft.benefits?.length),
+      socialCta: Boolean(draft.socialLinks),
+      ...draft.sections,
+    },
+  };
 }
 
 /**

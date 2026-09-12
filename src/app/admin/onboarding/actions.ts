@@ -215,6 +215,8 @@ export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promis
   // כתובת שמורה. מחרוזת ריקה נשמרת כפי שהיא (המשתמש ניקה את השדה במכוון). (באג 5)
   const addressRaw = fd.get('address');
   const nextAddress = typeof addressRaw === 'string' ? addressRaw.trim() : null;
+  const logoRaw = fd.get('logoUrl');
+  const nextLogo = typeof logoRaw === 'string' ? logoRaw.trim() || null : business.logoUrl;
 
   const profile: BusinessProfileInput = {
     name: business.name,
@@ -223,7 +225,7 @@ export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promis
     address: nextAddress ?? business.address,
     description: business.description,
     instagramUrl: business.instagramUrl,
-    logoUrl: business.logoUrl,
+    logoUrl: nextLogo,
     coverImageUrl: business.coverImageUrl,
     brandColor: business.brandColor,
     timezone: business.timezone,
@@ -252,7 +254,7 @@ export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promis
     staffDone: staff.length > 0,
     workingHoursDone: hours.length > 0,
     brandingDone: Boolean(
-      business.logoUrl || business.brandColor || business.coverImageUrl,
+      nextLogo || business.brandColor || business.coverImageUrl,
     ),
     premiumDone: landingContent !== null,
   });

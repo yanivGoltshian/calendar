@@ -1522,6 +1522,8 @@ const he = {
           galleryPlaceholder: 'תמונה לגלריה',
           uploadLabel: 'הוספת תמונה',
           replaceLabel: 'ערוך',
+          useAsLogo: 'הגדרה כלוגו',
+          removeVideo: 'הסרת וידאו',
           addImage: 'הוסף תמונה',
           uploading: 'מעלה קובץ',
           uploadError: 'אירעה תקלה בהעלאה. אפשר לנסות שוב.',

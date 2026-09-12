@@ -68,7 +68,7 @@ const env = {
   E2E_BASE_URL: `http://127.0.0.1:${appPort}`,
   E2E_BUSINESS_SLUG: 'skin-beauty',
   E2E_ALLOW_BOOKING: '1',
-  E2E_EXPECT_MINIMUM: browserSelection ? '1' : '40',
+  E2E_EXPECT_MINIMUM: browserSelection ? '1' : '42',
   E2E_TARGETED: browserSelection ? '1' : '0',
   TEST_RUNTIME_DIR: runtime,
   ...(process.env.PLAYWRIGHT_BROWSERS_PATH

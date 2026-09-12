@@ -9,9 +9,11 @@ export function publicPagePresentation(
 ) {
   // Branding and section preferences alone do not constitute a rich landing page.
   const hasDetails = content != null &&
-    Object.keys(content).some((key) => key !== 'theme' && key !== 'sections');
+    Object.keys(content).some((key) => key !== 'theme' && key !== 'sections' && key !== 'presentation');
   const isLanding = normalizePublicPageStyle(pageStyle) === 'LANDING';
   const isClinicPremium = isLanding && (
+    content?.presentation === 'premium' ||
+    Boolean(content?.heroVideoUrl || content?.heroImages?.length) ||
     Boolean(content?.launchOffer || content?.hotDeals) ||
     (visualLevel === 3 && hasDetails)
   );

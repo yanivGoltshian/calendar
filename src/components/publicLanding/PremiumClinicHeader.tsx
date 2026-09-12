@@ -66,6 +66,8 @@ type Props = {
   heroImages: string[]; // עד שתי תמונות (ראשית + פנים הקליניקה)
   heroVideoUrl?: string | null; // וידאו הירו אופציונלי — מוצג בצד ההירו במקום התמונה הראשית
   heroPosterUrl?: string | null; // פוסטר לווידאו ההירו
+  showOffers?: boolean;
+  showLocation?: boolean;
   heroEyebrow?: string;
   heroHeadline: string;
   heroSubtext: string;
@@ -99,6 +101,8 @@ export default function PremiumClinicHeader({
   heroImages,
   heroVideoUrl,
   heroPosterUrl,
+  showOffers = true,
+  showLocation = true,
   heroEyebrow,
   heroHeadline,
   heroSubtext,
@@ -238,18 +242,18 @@ export default function PremiumClinicHeader({
             >
               {labels.navServices}
             </a>
-            <a
+            {showOffers ? <a
               href="#lp-offers"
               className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-strong)] sm:inline-block"
             >
               {labels.navOffers}
-            </a>
-            <a
+            </a> : null}
+            {showLocation ? <a
               href="#lp-location"
               className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-strong)] sm:inline-block"
             >
               {labels.navLocation}
-            </a>
+            </a> : null}
             <Link
               href={bookHref}
               className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] px-3 py-1.5 text-[11px] font-bold text-[color:var(--c-ink,#1b1715)] shadow-soft transition hover:-translate-y-0.5 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
@@ -392,20 +396,20 @@ export default function PremiumClinicHeader({
                 >
                   {labels.navServices}
                 </a>
-                <a
+                {showOffers ? <a
                   href="#lp-offers"
                   onClick={() => setMenuOpen(false)}
                   className="rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/85 transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
                 >
                   {labels.navOffers}
-                </a>
-                <a
+                </a> : null}
+                {showLocation ? <a
                   href="#lp-location"
                   onClick={() => setMenuOpen(false)}
                   className="rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/85 transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
                 >
                   {labels.navLocation}
-                </a>
+                </a> : null}
               </nav>
 
               <div className="mt-3 rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white/60 p-3">

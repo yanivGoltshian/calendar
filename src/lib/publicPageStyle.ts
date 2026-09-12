@@ -155,6 +155,7 @@ export type LandingTheme = {
 
 /** תוכן עמוד הנחיתה הנשמר בשדה Business.landingContent (Json). כל השדות אופציונליים. */
 export interface LandingContent {
+  presentation?: 'premium';
   theme?: LandingTheme; // פלטת מותג מתואמת שנבחרה באונבורדינג
   heroEyebrow?: string;
   heroHeadline?: string;
@@ -459,6 +460,7 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   const heroPosterUrl = /^(https?:\/\/|\/)/i.test(heroPosterRaw) ? heroPosterRaw : '';
 
   const content: LandingContent = {};
+  if (source.presentation === 'premium') content.presentation = 'premium';
   if (heroEyebrow) content.heroEyebrow = heroEyebrow;
   if (heroHeadline) content.heroHeadline = heroHeadline;
   if (heroSubtext) content.heroSubtext = heroSubtext;
