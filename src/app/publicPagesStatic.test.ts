@@ -96,8 +96,12 @@ test('דף הבית מחווט את ה-gate ל-fallback הקונפיג (מונע
     'ציפינו ל-demoSlug = business?.slug ?? DEMO_BUSINESS_SLUG כדי שהקישור לא יישמט בבנייה ללא DB',
   );
   assert.ok(
-    home.includes('demoSlug={demoSlug}') && home.includes("chooserHref = '/demo'"),
-    'ה-prop demoSlug מוזרם ל-Navbar/Footer וכפתור ה-hero מפנה לבוחר הסטטי /demo',
+    home.includes('demoSlug={demoSlug}') &&
+      home.includes("heroDemoHref = '/b/skin-beauty'") &&
+      home.includes('<Button href={heroDemoHref} variant="ghost"') &&
+      home.includes("chooserHref = '/demo'") &&
+      home.includes('href={chooserHref}'),
+    'כפתור ה-hero מפנה ישירות לדמו הפרימיום, ושאר קישורי ההדגמה נשארים בבוחר /demo',
   );
 });
 
