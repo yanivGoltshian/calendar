@@ -5,7 +5,7 @@
   "description": "פלטפורמת קביעת תורים וניהול עסק לעסקי שירות בישראל (MVP)",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build && node scripts/assert-no-public-sourcemaps.mjs",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",

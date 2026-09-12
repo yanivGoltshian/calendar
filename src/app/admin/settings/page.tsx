@@ -12,6 +12,7 @@ import SettingsForm from './SettingsForm';
 import CostGuardPanel from './CostGuardPanel';
 import DeleteAccountSection from './DeleteAccountSection';
 import CalendarSyncSection from './CalendarSyncSection';
+import { settingsClientView } from './settingsView';
 
 export const metadata: Metadata = { title: t.admin.settings.title };
 
@@ -27,6 +28,7 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
   const settings = await getOrCreateSettings(business.id);
   const templateOverrides = await listMessageTemplateOverrides(business.id);
   const isExclusive = canSendPaidClientSms(business);
+  const clientView = settingsClientView(business, settings);
   const costGuardStatus = isExclusive
     ? await getCostGuardStatus(business.id)
     : null;
@@ -52,8 +54,8 @@ export default async function AdminSettingsPage({ searchParams }: Props) {
       )}
 
       <SettingsForm
-        business={business}
-        settings={settings}
+        business={clientView.business}
+        settings={clientView.settings}
         templateOverrides={templateOverrides}
         onboardingCompleted={settings.onboardingCompleted}
         isExclusive={isExclusive}

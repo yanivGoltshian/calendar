@@ -3,12 +3,32 @@
  * אסטרטגיה: network-first עבור ניווטים, עם נפילה למטמון (cache) בעת כשל רשת.
  * דחיפת התראות (push) תמומש מאחורי ממשק בהמשך.
  */
-const CACHE = 'torchick-shell-v4';
+const CACHE = 'torchick-shell-v5';
 const SHELL = ['/icons/icon-192.png', '/icons/icon-512.png'];
+const PRIVATE_PATHS = ['/admin', '/superadmin', '/account'];
+
+function isPrivateNavigation(request) {
+  const { pathname } = new URL(request.url);
+  return PRIVATE_PATHS.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isCacheableNavigation(request, response) {
+  if (!response.ok || isPrivateNavigation(request)) return false;
+  const cacheControl = response.headers.get('cache-control') || '';
+  return !/(?:^|,)\s*(?:private|no-store)(?:\s*(?:,|$)|=)/i.test(cacheControl);
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()),
+    (async () => {
+      try {
+        const cache = await caches.open(CACHE);
+        await cache.addAll(SHELL);
+      } catch {
+        console.warn('shell_precache_failed');
+      }
+      await self.skipWaiting();
+    })(),
   );
 });
 
@@ -27,23 +47,33 @@ self.addEventListener('fetch', (event) => {
 
   // ניווטים: network-first עם נפילה למטמון.
   if (request.mode === 'navigate') {
+    if (isPrivateNavigation(request)) {
+      event.respondWith(fetch(request));
+      return;
+    }
     event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
+      (async () => {
+        try {
+          const res = await fetch(request);
+          if (isCacheableNavigation(request, res)) {
+            try {
+              const cache = await caches.open(CACHE);
+              await cache.put(request, res.clone());
+            } catch {
+              console.warn('navigation_cache_write_failed');
+            }
+          }
           return res;
-        })
-        .catch(() =>
-          caches.match(request).then(
-            (r) =>
-              r ||
-              new Response(
-                '<!doctype html><meta charset="utf-8"><title>לא מקוון</title><body dir="rtl" style="font-family:sans-serif;padding:2rem">אין חיבור לרשת. נסה שוב.',
-                { headers: { 'Content-Type': 'text/html; charset=utf-8' } },
-              ),
-          ),
-        ),
+        } catch {
+          return (
+            (await caches.match(request)) ||
+            new Response(
+              '<!doctype html><meta charset="utf-8"><title>לא מקוון</title><body dir="rtl" style="font-family:sans-serif;padding:2rem">אין חיבור לרשת. נסה שוב.',
+              { headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+            )
+          );
+        }
+      })(),
     );
     return;
   }

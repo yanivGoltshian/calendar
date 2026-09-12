@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { getBusinessesOwnedByEmail } from '@/server/repos/business';
 import { findOrCreateUserByEmail } from '@/server/repos/otp';
 import { setClientSession } from '@/lib/session';
+import { safeInternalRedirect } from '@/lib/safeRedirect';
 
 /**
  * גשר זהות: הופך התחברות גוגל (NextAuth/JWT) לעוגיית לקוח חתומה (client_session).
@@ -20,15 +21,9 @@ import { setClientSession } from '@/lib/session';
  */
 export const dynamic = 'force-dynamic';
 
-function safeNext(next: string | null): string {
-  // מקבלים רק נתיב פנימי יחסי, כדי למנוע הפניה פתוחה (open redirect).
-  if (next && next.startsWith('/') && !next.startsWith('//')) return next;
-  return '/account';
-}
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const next = safeNext(url.searchParams.get('next'));
+  const next = safeInternalRedirect(url.searchParams.get('next'), '/account');
 
   const session = await auth();
   const email = session?.user?.email;

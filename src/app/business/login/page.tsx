@@ -6,6 +6,7 @@ import { Container, Section, Card } from '@/components/ui';
 import { describeAuthError } from '@/lib/authErrors';
 import { OwnerSignIn } from './OwnerSignIn';
 import { buildMetadata } from '@/lib/seo';
+import { safeInternalRedirect } from '@/lib/safeRedirect';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export default async function BusinessLoginPage({
   searchParams: Promise<{ redirect?: string; error?: string }>;
 }) {
   const { redirect: redirectTo, error } = await searchParams;
-  const callbackUrl = redirectTo || '/business/resume';
+  const callbackUrl = safeInternalRedirect(redirectTo, '/business/resume');
 
   // עמידות לתקלות תצורה: אם auth() נכשל (למשל AUTH_SECRET שגוי) נתייחס למשתמש
   // כלא-מחובר ונציג את עמוד הכניסה עם הודעה, במקום להחזיר 500.

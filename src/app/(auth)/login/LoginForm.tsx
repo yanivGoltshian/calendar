@@ -9,6 +9,7 @@ import { Card, CardBody, Button, Input } from '@/components/ui/admin';
 import { firebaseEnabled } from '@/lib/firebase/client';
 import { sendFirebasePhoneCode, toE164Israel } from '@/lib/firebase/phone';
 import { CustomerGoogleSignIn } from '@/components/auth/CustomerGoogleSignIn';
+import { safeInternalRedirect } from '@/lib/safeRedirect';
 
 type Step = 'contact' | 'code';
 type Channel = 'phone' | 'email';
@@ -16,7 +17,7 @@ type Channel = 'phone' | 'email';
 export default function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/account';
+  const redirectTo = safeInternalRedirect(searchParams.get('redirect'), '/account');
 
   const [channel, setChannel] = useState<Channel>('phone');
   const [step, setStep] = useState<Step>('contact');

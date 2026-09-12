@@ -6,6 +6,7 @@ import type { ConfirmationResult } from 'firebase/auth';
 import { t } from '@/i18n';
 import { Button } from '@/components/ui';
 import { sendFirebasePhoneCode, toE164Israel, resetFirebaseRecaptcha } from '@/lib/firebase/phone';
+import { safeInternalRedirect } from '@/lib/safeRedirect';
 
 const inputClass =
   'w-full rounded-xl border border-sand-300 bg-white px-4 py-3 text-sand-900 ' +
@@ -31,6 +32,7 @@ export function OwnerSignIn({
   phoneEnabled: boolean;
   callbackUrl: string;
 }) {
+  const safeCallbackUrl = safeInternalRedirect(callbackUrl, '/business/resume');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<'email' | 'phone'>(emailEnabled ? 'email' : 'phone');
@@ -49,7 +51,7 @@ export function OwnerSignIn({
     setError(null);
     setPending(true);
     try {
-      await signIn('google', { callbackUrl });
+      await signIn('google', { callbackUrl: safeCallbackUrl });
     } catch {
       setError(t.business.login.error);
       setPending(false);
@@ -88,7 +90,7 @@ export function OwnerSignIn({
       if (res?.error) {
         setError(t.business.login.emailInvalidCode);
       } else {
-        window.location.assign(callbackUrl);
+        window.location.assign(safeCallbackUrl);
         return;
       }
     } catch {
@@ -136,7 +138,7 @@ export function OwnerSignIn({
       if (res?.error) {
         setError(t.business.login.phoneInvalidCode);
       } else {
-        window.location.assign(callbackUrl);
+        window.location.assign(safeCallbackUrl);
         return;
       }
     } catch {
