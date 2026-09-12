@@ -2,18 +2,19 @@ import {
   localWallTimeToUtc,
   utcToLocalParts,
   weekdayForDateString,
+  addDaysToDateString,
+  formatDateString,
   DEFAULT_TZ,
 } from '@/lib/time';
 
 /**
  * מנוע חישוב משבצות פנויות.
  *
- * הרעיון: לוקחים את שעות העבודה של איש הצוות ליום הרלוונטי, מחסירים הפסקות
- * ותורים קיימים, ומחלקים את מה שנשאר למשבצות ברזולוציה מבוקשת. כל החישוב
- * נעשה ב"דקות מתחילת היום המקומי", וההמרה ל-UTC נעשית רק בסוף.
+ * גבולות שעות העבודה נבחרים לפי השעון המקומי של העסק.
+ * חיסור תורים והפסקות ומדידת משך השירות נעשים בזמן מוחלט, גם במעבר שעון.
  */
 
-export type Interval = { start: number; end: number }; // דקות מתחילת היום
+export type Interval = { start: number; end: number };
 
 export type WorkingHoursInput = {
   weekday: number;
@@ -42,6 +43,32 @@ export type Slot = {
   endAtUtc: string; // ISO
 };
 
+function wallBoundary(date: string, minute: number, timeZone: string): Date {
+  const [year, month, day] = date.split('-').map(Number);
+  // A boundary in a DST gap advances to the first real minute, with a bounded search.
+  for (let shift = 0; shift <= 180; shift++) {
+    const value = minute + shift;
+    const candidate = localWallTimeToUtc(year, month, day, value, timeZone);
+    const expectedDate = value >= 1440 ? addDaysToDateString(date, 1) : date;
+    if (formatDateString(candidate, timeZone) === expectedDate &&
+        utcToLocalParts(candidate, timeZone).minutes === value % 1440) return candidate;
+  }
+  throw new Error('invalid_working_hours_boundary');
+}
+
+export function intervalFitsWorkingHours(
+  startAt: Date, endAt: Date, date: string, hours: WorkingHoursInput[], timeZone: string,
+): boolean {
+  if (endAt <= startAt || formatDateString(startAt, timeZone) !== date) return false;
+  const weekday = weekdayForDateString(date, timeZone);
+  return hours.some((hour) => hour.weekday === weekday &&
+    startAt >= wallBoundary(date, hour.startMinute, timeZone) &&
+    endAt <= wallBoundary(date, hour.endMinute, timeZone) &&
+    !hour.breaks.some(([start, end]) =>
+      startAt < wallBoundary(date, end, timeZone) &&
+      endAt > wallBoundary(date, start, timeZone)));
+}
+
 /** חיסור קבוצת אינטרוולים "תפוסים" מאינטרוול "פנוי" בודד. */
 function subtractIntervals(base: Interval, blocks: Interval[]): Interval[] {
   let free: Interval[] = [{ ...base }];
@@ -60,29 +87,6 @@ function subtractIntervals(base: Interval, blocks: Interval[]): Interval[] {
   return free;
 }
 
-/** המרת רגע UTC לדקות מתחילת היום המקומי עבור תאריך היעד (עם קיזוז לימים אחרים). */
-function busyToLocalMinutes(
-  busy: BusyInterval,
-  dateStr: string,
-  timeZone: string,
-): Interval | null {
-  const startParts = utcToLocalParts(busy.startAt, timeZone);
-  const endParts = utcToLocalParts(busy.endAt, timeZone);
-  const startDate = `${startParts.year}-${String(startParts.month1).padStart(2, '0')}-${String(
-    startParts.day,
-  ).padStart(2, '0')}`;
-  const endDate = `${endParts.year}-${String(endParts.month1).padStart(2, '0')}-${String(
-    endParts.day,
-  ).padStart(2, '0')}`;
-
-  // אם התור כולו מחוץ ליום היעד — התעלם.
-  if (endDate < dateStr || startDate > dateStr) return null;
-
-  const start = startDate < dateStr ? 0 : startParts.minutes;
-  const end = endDate > dateStr ? 24 * 60 : endParts.minutes;
-  return { start, end };
-}
-
 export function computeSlots(params: SlotComputationParams): Slot[] {
   const {
     dateStr,
@@ -95,41 +99,38 @@ export function computeSlots(params: SlotComputationParams): Slot[] {
     now = new Date(),
   } = params;
 
-  if (durationMin <= 0) return [];
+  if (durationMin <= 0 || slotGranularityMin <= 0) return [];
 
   const weekday = weekdayForDateString(dateStr, timeZone);
   const todaysHours = workingHours.filter((w) => w.weekday === weekday);
   if (todaysHours.length === 0) return [];
 
-  // אינטרוולים תפוסים בדקות מקומיות: הפסקות + תורים קיימים.
-  const busyLocal: Interval[] = [];
-  for (const b of busy) {
-    const iv = busyToLocalMinutes(b, dateStr, timeZone);
-    if (iv) busyLocal.push(iv);
-  }
-
   const earliestStartUtc = new Date(now.getTime() + minLeadTimeMinutes * 60_000);
-
-  const [y, m, d] = dateStr.split('-').map(Number);
   const slots: Slot[] = [];
 
   for (const wh of todaysHours) {
-    const breaks: Interval[] = (wh.breaks || []).map(([s, e]) => ({ start: s, end: e }));
+    const closeUtc = wallBoundary(dateStr, wh.endMinute, timeZone);
+    const breakUtc = wh.breaks.map(([start, end]) => ({
+      startAt: wallBoundary(dateStr, start, timeZone),
+      endAt: wallBoundary(dateStr, end, timeZone),
+    }));
     // מיישרים לרשת הרזולוציה פעם אחת — את תחילת חלון העבודה בלבד, כדי ששעת
     // פתיחה לא-עגולה (למשל 09:07) תתחיל במשבצת עגולה (09:15). לעומת זאת, חלון
     // שנפתח אחרי תור או הפסקה מתחיל מהרגע הפנוי עצמו (גב-אל-גב, בלי זמן מת).
     const alignedStart = Math.ceil(wh.startMinute / slotGranularityMin) * slotGranularityMin;
     if (alignedStart >= wh.endMinute) continue;
+    // Subtract and measure elapsed time in UTC so gaps/folds cannot shorten real bookings.
     const freeWindows = subtractIntervals(
-      { start: alignedStart, end: wh.endMinute },
-      [...breaks, ...busyLocal],
+      { start: wallBoundary(dateStr, alignedStart, timeZone).getTime(), end: closeUtc.getTime() },
+      [...breakUtc, ...busy].map((block) => ({ start: block.startAt.getTime(), end: block.endAt.getTime() })),
     );
 
     for (const win of freeWindows) {
       // כל חלון פנוי מתחיל מהרגע הפנוי עצמו: חלון תחילת היום כבר מיושר לרשת,
       // וחלון שאחרי תור מתחיל בדיוק כשהתור הקודם הסתיים.
-      for (let start = win.start; start + durationMin <= win.end; start += slotGranularityMin) {
-        const startAtUtc = localWallTimeToUtc(y, m, d, start, timeZone);
+      for (let instant = win.start; instant + durationMin * 60_000 <= win.end; instant += slotGranularityMin * 60_000) {
+        const startAtUtc = new Date(instant);
+        const start = utcToLocalParts(startAtUtc, timeZone).minutes;
         if (startAtUtc < earliestStartUtc) continue; // כיבוד זמן מינימלי מראש
         const endAtUtc = new Date(startAtUtc.getTime() + durationMin * 60_000);
         slots.push({
@@ -147,7 +148,7 @@ export function computeSlots(params: SlotComputationParams): Slot[] {
   // מיון וייחוד לפי שעת התחלה.
   const seen = new Set<number>();
   return slots
-    .sort((a, b) => a.startMinute - b.startMinute)
+    .sort((a, b) => a.startMinute - b.startMinute || a.startAtUtc.localeCompare(b.startAtUtc))
     .filter((s) => {
       if (seen.has(s.startMinute)) return false;
       seen.add(s.startMinute);

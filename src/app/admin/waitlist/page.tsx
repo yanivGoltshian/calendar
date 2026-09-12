@@ -147,6 +147,9 @@ export default async function AdminWaitlistPage({ searchParams }: Props) {
               </div>
 
               {entry.note ? <p className="mt-2 text-sm text-[#6e655f]">{entry.note}</p> : null}
+              {entry.notifyError === 'no_availability' && <p role="status" className="mt-2 text-sm text-amber-800">
+                {t.admin.hoursExceptions.waitlistUnavailable}
+              </p>}
 
               {entry.status === 'WAITING' || entry.status === 'NOTIFIED' ? (
                 <div className="mt-3 flex flex-wrap gap-2">

@@ -1,8 +1,8 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
-import { addDaysToDateString, formatDateString, localWallTimeToUtc, weekdayForDateString } from '@/lib/time';
-import { computeSlots } from '@/server/availability';
-import { getEffectiveStaffWorkingHours } from '@/server/repos/workingHours';
+import { addDaysToDateString, formatDateString, localWallTimeToUtc } from '@/lib/time';
+import { computeSlots, intervalFitsWorkingHours } from '@/server/availability';
+import { getDateWorkingHours } from '@/server/repos/workingHoursExceptions';
 import { canAcceptPublicBookings } from '@/server/subscription';
 
 export const BLOCKING_STATUSES = ['PENDING', 'CONFIRMED', 'ARRIVED', 'DONE'] as const;
@@ -89,7 +89,7 @@ export async function bookingPolicy(
   const start = localWallTimeToUtc(year, month, day, 0, business.timezone);
   const [ny, nm, nd] = addDaysToDateString(date, 1).split('-').map(Number);
   const end = localWallTimeToUtc(ny, nm, nd, 0, business.timezone);
-  const hours = await getEffectiveStaffWorkingHours(businessId, staffId, db);
+  const workingHours = await getDateWorkingHours(businessId, staffId, date, db);
   const busy = await db.appointment.findMany({
     where: {
       staffId,
@@ -101,15 +101,6 @@ export async function bookingPolicy(
     select: { startAt: true, endAt: true },
   });
   const durationMin = services.reduce((sum, service) => sum + service.durationMin, 0);
-  const workingHours = hours.map((hour) => ({
-    ...hour,
-    breaks: Array.isArray(hour.breaks)
-      ? hour.breaks.filter(
-          (pair): pair is [number, number] =>
-            Array.isArray(pair) && pair.length === 2 && pair.every(Number.isFinite),
-        )
-      : [],
-  }));
   const slots = computeSlots({
     dateStr: date,
     workingHours,
@@ -146,6 +137,7 @@ export async function assertBookable(
   if (!Number.isFinite(input.startAt.getTime()) || input.startAt <= now) {
     throw new BookingError('invalid_time');
   }
+  await db.$queryRaw`SELECT "id" FROM "Business" WHERE "id" = ${input.businessId} FOR UPDATE`;
   const business = await db.business.findUnique({
     where: { id: input.businessId },
     select: { timezone: true },
@@ -165,16 +157,9 @@ export async function assertBookable(
     throw new BookingError('slot_taken', 409);
   }
   const date = formatDateString(input.startAt, business.timezone);
-  const [year, month, day] = date.split('-').map(Number);
   // Approval retains its reserved interval even when the new-booking grid or lead time moves.
   const available = excludeAppointmentId
-    ? policy.workingHours.some((hour) =>
-        hour.weekday === weekdayForDateString(date, business.timezone) &&
-        input.startAt >= localWallTimeToUtc(year, month, day, hour.startMinute, business.timezone) &&
-        endAt <= localWallTimeToUtc(year, month, day, hour.endMinute, business.timezone) &&
-        !hour.breaks.some(([start, end]) =>
-          input.startAt < localWallTimeToUtc(year, month, day, end, business.timezone) &&
-          endAt > localWallTimeToUtc(year, month, day, start, business.timezone)))
+    ? intervalFitsWorkingHours(input.startAt, endAt, date, policy.workingHours, business.timezone)
     : policy.slots.some((slot) => slot.startAtUtc === input.startAt.toISOString());
   if (!available) {
     throw new BookingError('slot_unavailable', 409);

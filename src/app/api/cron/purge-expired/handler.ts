@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { purgeExpiredBusinesses } from '@/server/repos/business';
+import { cleanupExpiredHoursExceptions } from '@/server/repos/workingHoursExceptions';
 
 /**
  * הלוגיקה של נקודת הקצה המתוזמנת למחיקה סופית (purge) של מנויים שהגיע מועד המחיקה
@@ -14,10 +15,12 @@ import { purgeExpiredBusinesses } from '@/server/repos/business';
 
 export type PurgeDeps = {
   purgeExpiredBusinesses: typeof purgeExpiredBusinesses;
+  cleanupExpiredHoursExceptions: typeof cleanupExpiredHoursExceptions;
 };
 
 export const defaultPurgeDeps: PurgeDeps = {
   purgeExpiredBusinesses,
+  cleanupExpiredHoursExceptions,
 };
 
 function extractSecret(req: Request): string | null {
@@ -68,9 +71,11 @@ export async function handlePurgeCron(
   }
 
   try {
+    const expiredExceptions = process.env.HOURS_EXCEPTION_CLEANUP_ENABLED === 'true'
+      ? await deps.cleanupExpiredHoursExceptions(new Date()) : 0;
     const { purgedBusinessIds } = await deps.purgeExpiredBusinesses(new Date());
     console.log(`[cron/purge-expired] purged=${purgedBusinessIds.length}`);
-    return NextResponse.json({ ok: true, purged: purgedBusinessIds.length });
+    return NextResponse.json({ ok: true, purged: purgedBusinessIds.length, expiredExceptions });
   } catch (err) {
     // כשל DB/ריצה: מתעדים ומחזירים 200 עם גוף "מנוון" (degraded) במקום 500, כדי
     // שהמתזמן (שבודק 200) לא ייכשל על blip חולף. הקוד בגוף מאפשר אבחון בלי סודות.

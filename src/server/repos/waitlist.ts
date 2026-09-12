@@ -12,6 +12,7 @@ import {
 import { renderMessage } from '@/server/messages/render';
 import type { WaitlistStatus } from '@prisma/client';
 import { canSendPaidClientSms, getBusinessAccess } from '@/server/subscription';
+import { exceptionsAllowWaitlistOffer } from '@/server/booking/waitlistAvailability';
 
 /**
  * מודול רשימת המתנה (WaitlistEntry).
@@ -110,7 +111,7 @@ export async function notifyWaitlistEntry(
     sendSms?: typeof sendGuardedSms;
     emailConfigured?: boolean;
   },
-): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'not_waiting' | 'no_channel' | 'delivery_failed' | 'delivery_in_progress' | 'delivery_unknown' | 'business_inactive' }> {
+): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'not_waiting' | 'no_channel' | 'no_availability' | 'delivery_failed' | 'delivery_in_progress' | 'delivery_unknown' | 'business_inactive' }> {
   const entry = await prisma.waitlistEntry.findFirst({
     where: { id, businessId },
     include: { business: true, client: { include: { user: true } } },
@@ -119,6 +120,13 @@ export async function notifyWaitlistEntry(
   if (entry.status !== 'WAITING') return { ok: false, reason: 'not_waiting' };
   if (entry.business.accountStatus !== 'ACTIVE' || !getBusinessAccess(entry.business).active) {
     return { ok: false, reason: 'business_inactive' };
+  }
+  if (!await exceptionsAllowWaitlistOffer(entry)) {
+    await prisma.waitlistEntry.updateMany({
+      where: { id, businessId, status: 'WAITING', notifyClaimToken: null },
+      data: { notifyError: 'no_availability' },
+    });
+    return { ok: false, reason: 'no_availability' };
   }
   const channel = resolveWaitlistNotifyChannel({
     isExclusive: canSendPaidClientSms(entry.business) && !!entry.client?.identityVerifiedAt && !!entry.client.user?.phoneVerifiedAt &&

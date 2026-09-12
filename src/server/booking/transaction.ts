@@ -2,6 +2,14 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { BookingError } from './policy';
 
+export function isRetryableBookingTransactionError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && (
+    error.code === 'P2034' || error.code === 'P2002' ||
+    // PostgreSQL serialization errors from explicit row locks use Prisma's raw-query code.
+    (error.code === 'P2010' && error.meta?.code === '40001')
+  );
+}
+
 export async function bookingTransaction<T>(
   work: (db: Prisma.TransactionClient) => Promise<T>,
 ) {
@@ -14,7 +22,7 @@ export async function bookingTransaction<T>(
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if ((error.code === 'P2034' || error.code === 'P2002') && attempt < 4) {
+        if (isRetryableBookingTransactionError(error) && attempt < 4) {
           await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
           continue;
         }

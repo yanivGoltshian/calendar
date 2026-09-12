@@ -85,6 +85,72 @@ npm run dev
 העלאות משויכות לעסק הפעיל, כולל עבודה של מנהל הפלטפורמה באמצעות כניסה מפורשת כבעל העסק.
 בתבניות ההודעות מוצגת תצוגה מקדימה עם פרטי העסק; השדות האוטומטיים נשמרים במצב העריכה.
 
+## Working hours exceptions
+
+Owners manage exceptions under `/admin/working-hours`, below the weekly schedule.
+Choose the entire business or one active employee, a Gregorian or Hebrew starting
+date, and either a full day off or alternative opening/closing times. A one-off
+can cover an inclusive range of up to 366 days. Weekly rules repeat on the weekday
+of their anchor date every 1–52 weeks; every other Monday uses a Monday anchor and
+an interval of 2. Annual rules repeat their selected calendar month/day. Optional
+recurrence end dates are inclusive Gregorian dates, at most 20 years after the
+anchor. Dates are supported from 1900 through 2200; Hebrew input years are
+5661–5960. Recurrence is matched against requested dates without expanding a series.
+
+Full closures always win, including business closures over employee alternatives.
+Overlapping alternative rules intersect, independently of insertion order. An
+alternative replaces that scope's regular hours and breaks for the matching day.
+Business alternatives replace inherited business schedules and cap employees'
+personal schedules. Employee alternatives can open an otherwise absent weekly day,
+subject to any business exception. With no applicable exception, existing weekly
+schedule behavior is preserved.
+
+Hebrew conversion uses the runtime's full ICU calendar support, with bounded,
+round-trip validated inverse conversion and no added dependency. A Hebrew date
+means its corresponding **civil day from local midnight**, rather than sunset.
+Generic Adar follows the last Adar (Adar II in leap years). Explicit Adar I and
+Adar II occur only in leap years. Missing annual dates, including February 29 and
+30 Kislev in a short year, skip that year. Invalid input dates are rejected.
+
+Availability and transaction-time creation/approval share the same effective
+hours. Service durations and busy intervals are measured in UTC, including DST
+transitions; local boundaries use the business timezone. A boundary in a DST gap
+advances to the first valid minute (up to three hours); ambiguous boundaries use
+the existing timezone converter's deterministic occurrence. Repeated slot labels
+show the earliest available occurrence. Existing bookings, service snapshots,
+reminders and histories remain unchanged when rules are added or removed.
+Pending approval rechecks the hours; attendance/completion of already confirmed
+appointments remains ordinary record keeping. Owners see conflicting bookings
+for the next 366 days, scanning at most 1,000 appointments with an explicit
+truncation notice. Conflicts require explicit customer coordination.
+
+Dated waitlist invitations affected by exceptions check the same booking policy,
+including preferred times, before claiming delivery. This scan is capped at 50
+eligible employees and fails closed beyond that limit. Undated invitations retain
+their existing coordination behavior. The existing manual “booked” waitlist marker
+is record keeping and creates no appointment; actual bookings always pass through
+the shared transaction policy.
+
+### Separate feature upgrade
+
+This feature adds migration `20260913000000_working_hours_exceptions` after the 39
+existing migrations. It is additive and replayable, creates no rule automatically,
+and preserves appointments. Deploy it only in a separately reviewed release;
+apply the migration before activating this code. Existing migration files remain
+unchanged. Rolling back application code can leave the new table in place.
+
+Each tenant can store at most 200 rules. Expired one-off definitions disappear on
+read and are removed on the next rule creation. The existing authenticated daily
+purge scheduler can also delete up to 1,000 expired definitions per invocation by
+explicitly setting `HOURS_EXCEPTION_CLEANUP_ENABLED=true` after migration and review.
+This switch defaults to disabled; no new live scheduler or provider delivery is
+enabled by the feature. Cleanup compares the last civil date against each business
+timezone in PostgreSQL and only deletes exception definitions. Recurring rules
+remain available for explicit owner deletion. Internal rule repositories require
+an authorized tenant identifier; all owner actions derive it from authenticated
+ownership/explicit authorized impersonation, and a composite foreign key prevents
+cross-business employee references.
+
 ## סנכרון הענף הראשי לייצור
 
 השלמת פריסה מאושרת כוללת סנכרון של הענף הראשי לקוד המדויק שפעיל בייצור:

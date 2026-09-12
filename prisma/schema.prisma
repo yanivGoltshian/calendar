@@ -61,6 +61,17 @@ enum WorkingHoursScope {
   STAFF
 }
 
+enum ExceptionCalendar {
+  GREGORIAN
+  HEBREW
+}
+
+enum ExceptionRecurrence {
+  ONCE
+  WEEKLY
+  ANNUAL
+}
+
 // סוג העסק — לשימוש בהתאמת חוויית ה-onboarding והתצוגה הציבורית.
 enum BusinessType {
   BARBERSHOP // מספרה לגברים
@@ -259,6 +270,7 @@ model Business {
   staff           StaffMember[]
   services        Service[]
   workingHours    WorkingHours[]
+  hoursExceptions WorkingHoursException[]
   appointments    Appointment[]
   clients         Client[]
   waitlistEntries WaitlistEntry[]
@@ -419,6 +431,7 @@ model StaffMember {
   updatedAt DateTime @updatedAt
 
   workingHours    WorkingHours[]
+  hoursExceptions WorkingHoursException[]
   appointments    Appointment[]
   serviceLinks    ServiceStaff[]
   waitlistEntries WaitlistEntry[]
@@ -428,6 +441,7 @@ model StaffMember {
   sales Sale[] // מודול קופה — קשר אדיטיבי (מי הפעיל את הקופה)
 
   @@unique([businessId, userId])
+  @@unique([businessId, id])
   @@index([businessId])
 }
 
@@ -507,6 +521,32 @@ model WorkingHours {
 
   @@index([staffId, weekday])
   @@index([businessId, weekday])
+}
+
+model WorkingHoursException {
+  id            String              @id @default(cuid())
+  businessId    String
+  business      Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  staffId       String?
+  staff         StaffMember?        @relation(fields: [businessId, staffId], references: [businessId, id], onDelete: Cascade)
+  title         String              @db.VarChar(100)
+  calendar      ExceptionCalendar
+  recurrence    ExceptionRecurrence
+  // Civil ISO dates, never UTC timestamps. Annual dates use the selected calendar.
+  startDate     String              @db.VarChar(10)
+  endDate       String              @db.VarChar(10)
+  until         String?             @db.VarChar(10)
+  intervalWeeks Int                 @default(1)
+  annualMonth   String?             @db.VarChar(10)
+  annualDay     Int?
+  closed        Boolean
+  startMinute   Int?
+  endMinute     Int?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([businessId, startDate])
+  @@index([recurrence, endDate])
 }
 
 model Client {
