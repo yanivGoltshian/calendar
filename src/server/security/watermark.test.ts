@@ -16,4 +16,17 @@ test('watermark audit identifiers require a strong server secret', () => {
   assert.throws(() => createWatermarkAuditId('owner@example.com', {}), {
     message: 'watermark_audit_secret_missing',
   });
+
+  test('watermarks distinguish the actor, tenant and administrative surface', () => {
+    const subject = ['admin', 'owner@example.com', 'tenant-a'];
+    const first = createWatermarkAuditId(JSON.stringify(subject), env);
+    assert.equal(first, createWatermarkAuditId(JSON.stringify(subject), env));
+    for (const other of [
+      ['admin', 'other@example.com', 'tenant-a'],
+      ['admin', 'owner@example.com', 'tenant-b'],
+      ['superadmin', 'owner@example.com'],
+    ]) {
+      assert.notEqual(first, createWatermarkAuditId(JSON.stringify(other), env));
+    }
+  });
 });

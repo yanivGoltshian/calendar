@@ -34,18 +34,11 @@ export type SettingsValuesView = Pick<
 >;
 
 export function settingsClientView(
-  business: Business,
-  settings: BusinessSettings,
-): { business: Business; settings: BusinessSettings } {
-  // SettingsForm still consumes the generated Prisma types. Keep that shared
-  // contract stable while replacing every unused scalar with a non-sensitive
-  // placeholder before the server-to-client boundary.
-  const epoch = new Date(0);
+  business: SettingsBusinessView,
+  settings: SettingsValuesView,
+): { business: SettingsBusinessView; settings: SettingsValuesView } {
   return {
     business: {
-      listed: false,
-      id: '',
-      slug: '',
       name: business.name,
       type: business.type,
       phone: business.phone,
@@ -58,28 +51,8 @@ export function settingsClientView(
       timezone: business.timezone,
       publicPageStyle: business.publicPageStyle,
       landingContent: business.landingContent,
-      createdAt: epoch,
-      updatedAt: epoch,
-      ownerId: null,
-      ownerEmail: null,
-      ownerPhoneIdentity: null,
-      provisionedBy: null,
-      plan: 'basic',
-      subscriptionStatus: 'trialing',
-      trialEndsAt: null,
-      paidUntil: null,
-      manualAmountAgorot: null,
-      planNotes: null,
-      premiumSince: null,
-      priorCalendar: null,
-      referralSource: null,
-      accountStatus: 'ACTIVE',
-      deletionRequestedAt: null,
-      purgeScheduledFor: null,
     },
     settings: {
-      id: '',
-      businessId: '',
       minLeadTimeMinutes: settings.minLeadTimeMinutes,
       cancellationWindowHours: settings.cancellationWindowHours,
       slotGranularityMinutes: settings.slotGranularityMinutes,
@@ -92,11 +65,7 @@ export function settingsClientView(
       notifyOnBooking: settings.notifyOnBooking,
       notifyOnCancellation: settings.notifyOnCancellation,
       pushEnabled: settings.pushEnabled,
-      waitlistEnabled: false,
       onboardingCompleted: settings.onboardingCompleted,
-      onboardingSteps: null,
-      createdAt: epoch,
-      updatedAt: epoch,
     },
   };
 }

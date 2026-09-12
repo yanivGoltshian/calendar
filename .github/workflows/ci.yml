@@ -43,6 +43,7 @@ jobs:
             .test-runtime/**/app.log
             .test-runtime/**/postgres.log
             .test-runtime/**/success.json
+            .test-runtime/**/provisioning-upgrade.json
             .test-runtime/**/*-coverage.json
             playwright-report/
             test-results/

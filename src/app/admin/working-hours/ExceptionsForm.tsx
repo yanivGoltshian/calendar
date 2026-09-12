@@ -1,16 +1,19 @@
 'use client';
 
-import { startTransition, useActionState, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { t } from '@/i18n';
 import { HEBREW_MONTHS, toHebrewDate } from '@/lib/workingHoursExceptions';
-import { saveHoursExceptionAction, deleteHoursExceptionAction, type ExceptionActionState } from './exceptionActions';
+import { useAdminForm } from '@/components/useAdminForm';
+import type { AdminFormState } from '@/lib/adminFormState';
 
 const text = t.admin.hoursExceptions;
 const fieldClass = 'w-full rounded-lg border border-[#d6c8b4] bg-white px-3 py-2 text-[#1b1715]';
-const initial: ExceptionActionState = { ok: false };
+const initial: AdminFormState = { ok: false };
 
-function Result({ state }: { state: ExceptionActionState }) {
-  return state.error ? <p role="alert" className="text-sm text-red-700">{text.errors[state.error]}</p>
+function Result({ state }: { state: AdminFormState }) {
+  const errorText = state.error === 'unconfirmed' ? t.common.saveUnconfirmed
+    : Object.entries(text.errors).find(([code]) => code === state.error)?.[1] ?? text.errors.forbidden;
+  return state.error ? <p role="alert" className="text-sm text-red-700">{errorText}</p>
     : state.ok ? <p role="status" className="text-sm text-green-700">{text.saved}</p> : null;
 }
 
@@ -39,19 +42,14 @@ function DateFields({ prefix, calendar, today, label }: {
 export default function ExceptionsForm({ staff, selectedStaffId, today }: {
   staff: { id: string; displayName: string }[]; selectedStaffId?: string; today: string;
 }) {
-  const [state, action, pending] = useActionState(saveHoursExceptionAction, initial);
+  const { state, onSubmit, pending } = useAdminForm('hours-exceptions', initial);
   const [calendar, setCalendar] = useState('GREGORIAN');
   const [recurrence, setRecurrence] = useState('ONCE');
   const [closed, setClosed] = useState(true);
   const [range, setRange] = useState(false);
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
-  return <form onSubmit={(event) => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    // Dispatch explicitly to retain the draft, including calendar controls, after validation errors.
-    startTransition(() => action(data));
-  }}
+  return <form onSubmit={onSubmit}
     className="space-y-4 rounded-xl border border-[#e7ddcd] bg-white p-4" aria-label={text.add}>
     <h3 className="font-semibold">{text.add}</h3>
     <label className="block">{text.name}<input required name="title" maxLength={100} className={fieldClass} /></label>
@@ -97,8 +95,8 @@ export default function ExceptionsForm({ staff, selectedStaffId, today }: {
 }
 
 export function DeleteExceptionButton({ id, title }: { id: string; title: string }) {
-  const [state, action, pending] = useActionState(deleteHoursExceptionAction, initial);
-  return <form action={action}>
+  const { state, onSubmit, pending } = useAdminForm('hours-exceptions/delete', initial);
+  return <form onSubmit={onSubmit}>
     <input type="hidden" name="id" value={id} />
     <button type="submit" disabled={pending} aria-label={`${text.remove} ${title}`}
       className="rounded-lg border px-3 py-1 text-sm text-red-700">{text.remove}</button>

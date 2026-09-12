@@ -30,7 +30,10 @@ if (
   throw new Error('Nonlocal migration requires explicit --allow-nonlocal authorization');
 }
 let baselineDirectory;
-if (process.argv.includes('--baseline-only')) {
+const legacyBaseline = process.argv.includes('--baseline-only');
+const provisioningBaseline = process.argv.includes('--provisioning-baseline-only');
+if (legacyBaseline && provisioningBaseline) throw new Error('Choose one isolated migration baseline');
+if (legacyBaseline || provisioningBaseline) {
   if (
     process.env.TEST_DATABASE_URL !== process.env.DATABASE_URL ||
     !['localhost', '127.0.0.1'].includes(host)
@@ -41,7 +44,7 @@ if (process.argv.includes('--baseline-only')) {
   cpSync('prisma/schema.prisma', join(baselineDirectory, 'schema.prisma'));
   mkdirSync(join(baselineDirectory, 'migrations'));
   for (const entry of readdirSync('prisma/migrations')) {
-    if (entry < '20260906000000' || entry === 'migration_lock.toml') {
+    if (entry < (provisioningBaseline ? '20260912230000' : '20260906000000') || entry === 'migration_lock.toml') {
       cpSync(
         join('prisma/migrations', entry),
         join(baselineDirectory, 'migrations', entry),

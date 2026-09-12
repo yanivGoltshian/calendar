@@ -18,7 +18,13 @@ test('settings client view removes sensitive values before the client boundary',
     brandColor: null,
     timezone: 'Asia/Jerusalem',
     publicPageStyle: 'BOOKING' as const,
-    landingContent: null,
+    landingContent: {
+      announcement: 'Saved announcement',
+      googleReviewsUrl: 'https://example.com/reviews',
+      heroVideoUrl: '/media/owned-video.mp4',
+      sections: { highlights: false },
+    },
+    businessImportDraft: { privateImportNotes: 'not for settings' },
     createdAt: new Date(),
     updatedAt: new Date(),
     ownerId: 'owner-secret-id',
@@ -61,11 +67,19 @@ test('settings client view removes sensitive values before the client boundary',
   };
 
   const view = settingsClientView(business, settings);
-  assert.equal(view.business.planNotes, null);
-  assert.equal(view.business.manualAmountAgorot, null);
-  assert.equal(view.business.ownerPhoneIdentity, null);
-  assert.equal(view.business.ownerEmail, null);
-  assert.equal(view.business.id, '');
-  assert.equal(view.settings.onboardingSteps, null);
-  assert.equal(view.settings.businessId, '');
+  assert.deepEqual(Object.keys(view.business).sort(), [
+    'name', 'type', 'phone', 'address', 'description', 'instagramUrl', 'logoUrl',
+    'coverImageUrl', 'brandColor', 'timezone', 'publicPageStyle', 'landingContent',
+  ].sort());
+  assert.deepEqual(Object.keys(view.settings).sort(), [
+    'minLeadTimeMinutes', 'cancellationWindowHours', 'slotGranularityMinutes',
+    'maxAdvanceBookingDays', 'bookingRequiresApproval', 'remindersEnabled',
+    'reminderChannel', 'reminderLeadHours', 'confirmationRequired', 'notifyOnBooking',
+    'notifyOnCancellation', 'pushEnabled', 'onboardingCompleted',
+  ].sort());
+  assert.equal(view.business.landingContent, business.landingContent);
+  assert.equal(view.business.name, business.name);
+  assert.equal(view.business.phone, business.phone);
+  assert.equal(view.business.address, business.address);
+  assert.equal(view.settings.reminderChannel, settings.reminderChannel);
 });

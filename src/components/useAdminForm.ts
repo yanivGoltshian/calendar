@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { parseAdminFormState, type AdminFormState } from '@/lib/adminFormState';
 
-type FormKind = 'settings' | 'services' | 'campaigns';
+type FormKind = 'settings' | 'services' | 'campaigns' | 'hours-exceptions' | 'hours-exceptions/delete';
 
 export function useAdminForm(kind: FormKind, initial: AdminFormState) {
   const [state, setState] = useState(initial);
@@ -18,7 +18,9 @@ export function useAdminForm(kind: FormKind, initial: AdminFormState) {
         ? { ok: true, mode: flash === 'service-add' ? 'add' : 'edit' }
         : kind === 'campaigns' && (flash === 'campaign-scheduled' || flash === 'campaign-draft')
           ? { ok: true, scheduled: flash === 'campaign-scheduled' }
-          : null;
+          : kind === 'hours-exceptions' && (flash === 'hours-exception-saved' || flash === 'hours-exception-deleted')
+            ? { ok: true }
+            : null;
     if (!result) return;
     setState(result);
     url.searchParams.delete('_saved');
@@ -45,7 +47,8 @@ export function useAdminForm(kind: FormKind, initial: AdminFormState) {
       if (result.ok && kind !== 'settings') {
         const url = new URL(window.location.href);
         url.searchParams.set('_saved', kind === 'services' ? `service-${result.mode}` :
-          result.scheduled ? 'campaign-scheduled' : 'campaign-draft');
+          kind === 'campaigns' ? result.scheduled ? 'campaign-scheduled' : 'campaign-draft' :
+            kind === 'hours-exceptions' ? 'hours-exception-saved' : 'hours-exception-deleted');
         navigating = true;
         window.location.replace(url.href);
       }

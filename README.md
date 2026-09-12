@@ -69,6 +69,18 @@ npm run dev
 
 אין שינוי באשף ההקמה, בספקי האימות או בנתוני העסקים הקיימים.
 
+## ייבוא נתונים בעת הקמת עסק
+
+מנהל הפלטפורמה יכול לצרף כתובת ציבורית בעת הקמת עסק חדש. הנתונים והמדיה שנמצאו
+מועברים לטיוטה ולמסך סקירה לפני השלמת ההקמה. תוכן פרטי או חסום אינו נעקף,
+ונתונים חסרים ואזהרות מוצגים לבדיקה ידנית.
+
+הייבוא דורש יצירה חדשה תחת נעילת הבעלות הקיימת. עסק שכבר הוקם או נערך נשמר ללא
+החלפת נתוניו. לפני החלת הייבוא נבדקים שוב הפרופיל, השירותים, שעות העסק, הצוות
+והשיוכים שנוצרו. שינוי מקביל גורם להתנגשות מפורשת ומשאיר את עריכת הבעלים.
+בקשה חוזרת לאותו מקור משתמשת בייבוא שנרשם כממתין או שהושלם. כשל לאחר ההקמה
+משאיר את העסק לבדיקה ולעריכה ידנית, ללא מחיקה או ניסיון חוזר אוטומטי.
+
 ## פרסום העמוד לאחר ההקמה
 
 השלמת עורך הפרימיום שומרת בחירה מפורשת בפריסה העשירה, גם כאשר מדלגים על מקטעים.
@@ -131,13 +143,19 @@ their existing coordination behavior. The existing manual “booked” waitlist 
 is record keeping and creates no appointment; actual bookings always pass through
 the shared transaction policy.
 
-### Separate feature upgrade
+### Combined release upgrade
 
-This feature adds migration `20260913000000_working_hours_exceptions` after the 39
-existing migrations. It is additive and replayable, creates no rule automatically,
-and preserves appointments. Deploy it only in a separately reviewed release;
-apply the migration before activating this code. Existing migration files remain
-unchanged. Rolling back application code can leave the new table in place.
+The coordinated importer and hours release adds
+`20260912230000_business_import_review` and
+`20260913000000_working_hours_exceptions` after the 39 existing migrations.
+Apply both additive migrations before activating the combined code. No rule or
+import is created automatically. Existing migration files remain unchanged, and
+rolling back application code can leave the nullable columns and table in place.
+The isolated release gate exercises both the older audit upgrade and a separate
+39-to-41 upgrade, preserves ten populated application tables and the entire prior
+migration ledger, and repeats deployment with no pending changes. The migration
+wrapper's `--provisioning-baseline-only` option is restricted to explicit local
+test databases and is used only to construct that historical fixture.
 
 Each tenant can store at most 200 rules. Expired one-off definitions disappear on
 read and are removed on the next rule creation. The existing authenticated daily
@@ -252,7 +270,7 @@ src/
 - **הזמנות להתקנה**: לכל עסק נשמר מונה מקומי של שלוש הזמנות לכל היותר, עם לפחות 24 שעות בין הצגות. אפשר לדחות או להפסיק לצמיתות. התקנה מזוהה מפסיקה את ההזמנות; ניקוי נתוני הדפדפן מאפס את ההעדפה.
 - **תזמון הודעות**: השליחה מתבצעת בריצה הבאה של המתזמן, שעשויה להתעכב. התהליך בודק גם כשל מדווח בגוף התשובה ומסירות שנכשלו. בקשות מקבילות מוגנות בתפיסה אטומית וביומן מסירה לנמען; מסירה עם תוצאה לא ודאית דורשת בירור לפני ניסיון נוסף.
 - **ניווט בניהול**: קישורי התפריטים נטענים בלחיצה. טעינה ספקולטיבית של כל מסכי הניהול כבויה כדי למנוע עומס ותקיעות לאחר שמירה. מסנני הלקוחות טוענים מסמך מלא, בדומה לחיפוש, כדי להציג רשימה עדכנית גם במעבר מהיר בין קטגוריות.
-- **שמירת טפסים בניהול**: הגדרות, שירותים ויצירת הודעות משתמשים בבקשות מאומתות מאותו מקור עם תגובה עצמאית. כך השמירה אינה תלויה ברענון הזרמת המסך. ההרשאות, הוולידציה, תקרת גוף הבקשה ופסילת המטמון נשמרות. רשימות מתרעננות בניווט מלא לאחר הצלחה, ללא שליחה חוזרת אוטומטית.
+- **שמירת טפסים בניהול**: הגדרות, שירותים, יצירת הודעות ושמירה או מחיקה של החרגות שעות משתמשים בבקשות מאומתות מאותו מקור עם תגובה עצמאית. כך השמירה אינה תלויה ברענון הזרמת המסך. ההרשאות, הוולידציה, תקרת גוף הבקשה ופסילת המטמון נשמרות. רשימות מתרעננות בניווט מלא לאחר הצלחה, ללא שליחה חוזרת אוטומטית. שגיאת אימות משאירה את כל ערכי הטיוטה בטופס.
 
 - **שכבת נתונים** (`src/server/repos/*`) עוטפת את Prisma; הדפים והפעולות אינם ניגשים
   ל-Prisma ישירות.

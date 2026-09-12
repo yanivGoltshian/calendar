@@ -68,7 +68,7 @@ const env = {
   E2E_BASE_URL: `http://127.0.0.1:${appPort}`,
   E2E_BUSINESS_SLUG: 'skin-beauty',
   E2E_ALLOW_BOOKING: '1',
-  E2E_EXPECT_MINIMUM: browserSelection ? '1' : '48',
+  E2E_EXPECT_MINIMUM: browserSelection ? '1' : '54',
   E2E_TARGETED: browserSelection ? '1' : '0',
   TEST_RUNTIME_DIR: runtime,
   ...(process.env.PLAYWRIGHT_BROWSERS_PATH
@@ -234,6 +234,74 @@ try {
     END $$;`,
   ]);
   run(process.execPath, ['scripts/migrate-safe.mjs'], upgradeEnv);
+  // Exercise the currently deployed 39-migration schema independently of the older audit upgrade.
+  const releaseDatabaseName = 'torchick_test_provisioning_upgrade';
+  run(pg('createdb'), ['-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', releaseDatabaseName]);
+  const releaseDatabase = database.replace('/torchick_test?', `/${releaseDatabaseName}?`);
+  const releaseEnv = { DATABASE_URL: releaseDatabase, TEST_DATABASE_URL: releaseDatabase };
+  run(process.execPath, ['scripts/migrate-safe.mjs', '--provisioning-baseline-only'], releaseEnv);
+  const releaseSql = (sql) => run(pg('psql'), [
+    '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', releaseDatabaseName,
+    '-v', 'ON_ERROR_STOP=1', '-c', sql,
+  ]);
+  const releaseTables = [
+    'User', 'Business', 'BusinessSettings', 'StaffMember', 'Client',
+    'Service', 'ServiceStaff', 'WorkingHours', 'Appointment', 'AppointmentService',
+  ];
+  const releaseSnapshot = `SELECT jsonb_build_object(${releaseTables.map(table => {
+    const row = table === 'Business'
+      ? `to_jsonb(t) - ARRAY['businessImportSourceUrl','businessImportDraft','businessImportedAt']`
+      : 'to_jsonb(t)';
+    return `'${table}', (SELECT jsonb_agg(${row} ORDER BY id) FROM "${table}" t)`;
+  }).join(',')}) AS snapshot`;
+  releaseSql(`
+    DO $$ BEGIN
+      IF (SELECT count(*) FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) <> 39
+        OR to_regclass('"WorkingHoursException"') IS NOT NULL
+        OR EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='Business' AND column_name='businessImportDraft')
+      THEN RAISE EXCEPTION 'unexpected provisioning upgrade baseline'; END IF;
+    END $$;
+    INSERT INTO "User" (id,email,"updatedAt") VALUES ('release-user','release@example.invalid',now());
+    INSERT INTO "Business" (id,slug,name,"ownerId","ownerEmail","provisionedBy","landingContent","updatedAt")
+      VALUES ('release-business','release-business','Preserved released business','release-user','release@example.invalid',
+        'synthetic-admin@example.invalid','{"announcement":"Preserve me","sections":{"socialCta":false}}',now());
+    INSERT INTO "BusinessSettings" (id,"businessId","onboardingCompleted","updatedAt")
+      VALUES ('release-settings','release-business',true,now());
+    INSERT INTO "StaffMember" (id,"businessId","userId","displayName","updatedAt")
+      VALUES ('release-staff','release-business','release-user','Preserved staff',now());
+    INSERT INTO "Client" (id,"businessId","userId",name,phone,"updatedAt")
+      VALUES ('release-client','release-business','release-user','Preserved client','0509876333',now());
+    INSERT INTO "Service" (id,"businessId",name,"durationMin","priceAgorot","updatedAt")
+      VALUES ('release-service','release-business','Preserved service',30,5000,now());
+    INSERT INTO "ServiceStaff" (id,"serviceId","staffId") VALUES ('release-link','release-service','release-staff');
+    INSERT INTO "WorkingHours" (id,scope,"businessId",weekday,"startMinute","endMinute","updatedAt")
+      VALUES ('release-hours','BUSINESS','release-business',2,540,1020,now());
+    INSERT INTO "Appointment" (id,"businessId","clientId","staffId","startAt","endAt",status,"totalPriceAgorot","confirmToken","updatedAt")
+      VALUES ('release-appointment','release-business','release-client','release-staff','2026-09-15 08:00',
+        '2026-09-15 08:30','CONFIRMED',5000,'synthetic-release-upgrade-token',now());
+    INSERT INTO "AppointmentService" (id,"appointmentId","serviceId","nameSnapshot","durationMinSnapshot","priceAgorotSnapshot")
+      VALUES ('release-appointment-service','release-appointment','release-service','Preserved service',30,5000);
+    CREATE TABLE test_release_snapshot AS ${releaseSnapshot};
+    CREATE TABLE test_release_migrations AS SELECT * FROM "_prisma_migrations";
+  `);
+  run(process.execPath, ['scripts/migrate-safe.mjs'], releaseEnv);
+  run(process.execPath, ['scripts/migrate-safe.mjs'], releaseEnv);
+  releaseSql(`
+    DO $$ BEGIN
+      IF (SELECT count(*) FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) <> 41
+        OR EXISTS (SELECT to_jsonb(m) FROM test_release_migrations m EXCEPT SELECT to_jsonb(m) FROM "_prisma_migrations" m)
+        OR (SELECT snapshot FROM test_release_snapshot) IS DISTINCT FROM (${releaseSnapshot})
+        OR (SELECT count(*) FROM "WorkingHoursException") <> 0
+        OR EXISTS (SELECT 1 FROM "Business" WHERE "businessImportSourceUrl" IS NOT NULL
+          OR "businessImportDraft" IS NOT NULL OR "businessImportedAt" IS NOT NULL)
+        OR to_regclass('"StaffMember_businessId_id_key"') IS NULL
+      THEN RAISE EXCEPTION 'provisioning upgrade altered historical data or migration records'; END IF;
+    END $$;
+  `);
+  writeFileSync(join(runtime, 'provisioning-upgrade.json'), JSON.stringify({
+    from: 39, to: 41, preservedTables: releaseTables, historicalLedgerUnchanged: true,
+    recordsUnchanged: true, replayPassed: true,
+  }, null, 2));
   if (!process.argv.includes('--migrations-only')) {
     run(process.execPath, ['--import', 'tsx', 'prisma/seed.ts']);
     if (comparePublic)

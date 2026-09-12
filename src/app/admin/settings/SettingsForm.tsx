@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAdminForm } from '@/components/useAdminForm';
 import Link from 'next/link';
-import type { Business, BusinessSettings } from '@prisma/client';
+import type { SettingsBusinessView, SettingsValuesView } from './settingsView';
 import { t } from '@/i18n';
 import SettingsSection from './SettingsSection';
 import {
@@ -33,8 +33,8 @@ export default function SettingsForm({
   isExclusive,
   vapidPublicKey,
 }: {
-  business: Business;
-  settings: BusinessSettings;
+  business: SettingsBusinessView;
+  settings: SettingsValuesView;
   templateOverrides: TemplateOverrides;
   onboardingCompleted: boolean;
   isExclusive: boolean;

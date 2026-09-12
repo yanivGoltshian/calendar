@@ -17,6 +17,8 @@ import TrialBanner from './TrialBanner';
 import ImpersonationBanner from './ImpersonationBanner';
 import { businessIconUrl } from '@/server/businessIcons';
 import { publicMediaContent } from '@/server/media/publicContent';
+import SensitiveWatermark from '@/components/security/SensitiveWatermark';
+import { createWatermarkAuditId } from '@/server/security/watermark';
 
 export const dynamic = 'force-dynamic';
 
@@ -184,6 +186,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     >
       {impersonating && <ImpersonationBanner businessName={business.name} />}
       {access.state === 'trialing' && <TrialBanner daysLeft={access.daysLeft} />}
+      <SensitiveWatermark auditId={createWatermarkAuditId(JSON.stringify(['admin', email, business.id]))} />
       {children}
     </AdminChrome>
   );

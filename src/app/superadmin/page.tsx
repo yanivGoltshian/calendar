@@ -15,6 +15,8 @@ import {
 import PublicSiteLink from './PublicSiteLink';
 import { DeleteBusinessForm } from './DeleteBusinessForm';
 import CreateCustomerForm from './CreateCustomerForm';
+import SensitiveWatermark from '@/components/security/SensitiveWatermark';
+import { createWatermarkAuditId } from '@/server/security/watermark';
 import {
   metricsFor,
   formatShekelFromAgorot,
@@ -175,6 +177,10 @@ export default async function SuperadminPage() {
         paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
       }}
     >
+      <SensitiveWatermark
+        auditId={createWatermarkAuditId(JSON.stringify(['superadmin', admin]))}
+        className="[&>div]:text-white"
+      />
       <div className="mx-auto max-w-7xl">
         <CreateCustomerForm />
         <header
