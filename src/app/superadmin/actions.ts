@@ -1,10 +1,15 @@
 'use server';
 
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
 import { getPlatformAdminEmail } from '@/server/platformAdmin';
 import { isSlugConfirmed, parseEditBusinessInput } from './logic';
+import { createBusiness, BusinessCreationLimitError, BusinessIdentityConflictError } from '@/server/repos/business';
+import { setImpersonationCookie } from '@/server/impersonation';
+import { parseProvisionInput } from './provisionInput';
+import { t } from '@/i18n';
+import { normalizeEmail } from '@/lib/crypto';
 
 /**
  * פעולות שרת לקונסולת ניהול-העל. כל פעולה בודקת מחדש את שער האדמין בצד השרת
@@ -16,6 +21,33 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 async function assertPlatformAdmin(): Promise<void> {
   const email = await getPlatformAdminEmail();
   if (!email) notFound();
+}
+
+export async function provisionBusinessAction(
+  _previous: { error?: string },
+  formData: FormData,
+): Promise<{ error?: string }> {
+  const adminEmail = await getPlatformAdminEmail();
+  if (!adminEmail) notFound();
+  const parsed = parseProvisionInput(formData);
+  if (!parsed.ok) return { error: t.billing.superadmin.create.invalid };
+  const { phoneIdentity, ...input } = parsed.value;
+  let business;
+  try {
+    business = await createBusiness({
+      ...input, provisioning: { adminEmail, phoneIdentity },
+    });
+  } catch (error) {
+    if (error instanceof BusinessIdentityConflictError || error instanceof BusinessCreationLimitError) {
+      console.warn('[superadmin:provision] identity conflict', { adminEmail });
+      return { error: t.billing.superadmin.create.conflict };
+    }
+    throw error;
+  }
+  console.info('[superadmin:provision] business ready', { adminEmail, businessId: business.id });
+  revalidatePath('/superadmin');
+  await setImpersonationCookie(business.id);
+  redirect('/admin/onboarding');
 }
 
 function readBusinessId(formData: FormData): string {
@@ -162,12 +194,18 @@ export async function editBusinessDetailsAction(formData: FormData): Promise<voi
   // קלט לא תקין (שם ריק / מייל פגום) — לא משנים דבר.
   if (!parsed.ok) return;
 
+  const previous = await prisma.business.findUnique({
+    where: { id: businessId }, select: { ownerEmail: true },
+  });
+  if (!previous) notFound();
+  const ownerChanged = normalizeEmail(previous.ownerEmail ?? '') !== normalizeEmail(parsed.data.ownerEmail ?? '');
   const business = await prisma.business.update({
     where: { id: businessId },
     data: {
       name: parsed.data.name,
       phone: parsed.data.phone,
       ownerEmail: parsed.data.ownerEmail,
+      ...(ownerChanged ? { ownerPhoneIdentity: null, provisionedBy: null } : {}),
       planNotes: parsed.data.planNotes,
       ...(formData.get('listingSubmitted') === '1' ? { listed: formData.get('listed') === 'on' } : {}),
     },

@@ -57,6 +57,9 @@ const { createOtp } = require('../src/server/repos/otp') as typeof import('../sr
 const { POST: verifyPhoneOtp } = require('../src/app/api/otp/verify/route') as typeof import('../src/app/api/otp/verify/route');
 const { POST: verifyEmailOtp } = require('../src/app/api/otp/email/verify/route') as typeof import('../src/app/api/otp/email/verify/route');
 const { POST: verifyFirebasePhone } = require('../src/app/api/auth/firebase-phone/route') as typeof import('../src/app/api/auth/firebase-phone/route');
+const { provisionBusinessAction, editBusinessDetailsAction } = require('../src/app/superadmin/actions') as typeof import('../src/app/superadmin/actions');
+const { getBusinessesOwnedByEmail, BusinessIdentityConflictError } = require('../src/server/repos/business') as typeof import('../src/server/repos/business');
+const { ownerEmailForPhone } = require('../src/lib/ownerPhoneIdentity') as typeof import('../src/lib/ownerPhoneIdentity');
 
 const prefix = `tenant-${randomUUID()}`;
 const ownerEmail = `${prefix}-owner@example.test`;
@@ -488,6 +491,119 @@ function registrationEmail(label: string): string {
   registrationEmails.push(email);
   return email;
 }
+
+test('only platform admin can provision a customer; creation sends no verification and enters onboarding', async () => {
+  const email = registrationEmail('provision-action');
+  const fd = form({ name: `${prefix}-prepared`, type: 'BARBERSHOP', email, phone: '+972509003101' });
+  for (const cookie of ['', await ownerCookie(ownerEmail), clientCookie(attackerUserId)]) {
+    await assert.rejects(inRequest(cookie, () => provisionBusinessAction({}, fd)), /NEXT_HTTP_ERROR_FALLBACK;404/);
+  }
+  assert.equal(await prisma.business.count({ where: { ownerEmail: email } }), 0);
+  assert.ok((await inRequest(await ownerCookie(adminEmail), () => provisionBusinessAction({}, form({
+    name: 'Invalid', type: 'OTHER',
+  })))).error);
+  await assert.rejects(
+    inRequest(await ownerCookie(adminEmail), () => provisionBusinessAction({}, fd)),
+    (error: unknown) => {
+      assert.ok(error instanceof Error && 'digest' in error);
+      assert.match(String(error.digest), /NEXT_REDIRECT;replace;\/admin\/onboarding;307/);
+      return true;
+    },
+  );
+  const prepared = await prisma.business.findFirstOrThrow({ where: { ownerEmail: email } });
+  assert.equal(prepared.provisionedBy, adminEmail);
+  assert.equal(prepared.ownerPhoneIdentity, ownerEmailForPhone('+972509003101'));
+  const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+  assert.equal(user.emailVerified, null);
+  assert.equal(user.phone, null);
+  assert.equal(user.phoneVerifiedAt, null);
+  assert.equal(await prisma.otpCode.count({ where: { phone: { in: [email, '+972509003101'] } } }), 0);
+  assert.equal(await prisma.messageLog.count({ where: { businessId: prepared.id } }), 0);
+});
+
+test('either verified owner login reaches the same prepared business and client login does not', async () => {
+  const email = registrationEmail('provision-both');
+  const phone = '+972509003102';
+  const phoneIdentity = ownerEmailForPhone(phone)!;
+  const prepared = await createBusiness({
+    name: `${prefix}-both`, ownerEmail: email, phone,
+    provisioning: { adminEmail, phoneIdentity },
+  });
+  for (const identity of [email.toUpperCase(), phoneIdentity]) {
+    const cookie = await ownerCookie(identity);
+    assert.equal((await inRequest(cookie, () => getActiveBusiness()))?.id, prepared.id);
+    assert.deepEqual((await getBusinessesOwnedByEmail(identity)).map((b) => b.id), [prepared.id]);
+    assert.equal((await inRequest(cookie, () => saveAllSettingsAction({ ok: false }, settingsForm('Prepared by admin')))).ok, true);
+    assert.equal((await createBusiness({ ownerEmail: identity, name: 'Stale signup form' })).id, prepared.id);
+  }
+  assert.equal(await inRequest(clientCookie(attackerUserId, email, phone), () => getActiveBusiness()), null);
+  assert.equal((await prisma.user.findUniqueOrThrow({ where: { email } })).emailVerified, null);
+  assert.equal(await prisma.business.count({ where: { ownerEmail: email } }), 1);
+  await prisma.business.update({ where: { id: prepared.id }, data: { phone: '+972509003199' } });
+  assert.equal((await inRequest(await ownerCookie(phoneIdentity), () => getActiveBusiness()))?.id, prepared.id);
+  assert.equal(await inRequest(await ownerCookie(ownerEmailForPhone('+972509003199')!), () => getActiveBusiness()), null);
+  await prisma.business.update({ where: { id: prepared.id }, data: { accountStatus: 'PENDING_DELETION' } });
+  assert.equal(await inRequest(await ownerCookie(phoneIdentity), () => getActiveBusiness()), null);
+  assert.equal((await inRequest(await ownerCookie(phoneIdentity), () => getActiveBusiness({ allowInactive: true })))?.id, prepared.id);
+});
+
+test('phone-only and email-only provisioning preserve normal owner login and seed existing onboarding', async () => {
+  const phoneIdentity = ownerEmailForPhone('+972509003103')!;
+  registrationEmails.push(phoneIdentity);
+  for (const email of [registrationEmail('provision-email'), phoneIdentity]) {
+    const prepared = await createBusiness({
+      ownerEmail: email, name: `${prefix}-${email === phoneIdentity ? 'phone' : 'email'}`,
+      provisioning: { adminEmail, phoneIdentity: email === phoneIdentity ? phoneIdentity : null },
+    });
+    const seeded = await prisma.business.findUniqueOrThrow({
+      where: { id: prepared.id }, include: { staff: true, services: true, workingHours: true, settings: true },
+    });
+    assert.ok(seeded.staff.length && seeded.services.length && seeded.workingHours.length && seeded.settings);
+    assert.equal((await inRequest(await ownerCookie(email), () => getActiveBusiness()))?.id, prepared.id);
+  }
+});
+
+test('concurrent provisioning is idempotent and refuses mismatched existing owner identities', async () => {
+  const email = registrationEmail('provision-race');
+  const phoneIdentity = ownerEmailForPhone('+972509003104')!;
+  const input = { ownerEmail: email, name: `${prefix}-provision-race`, provisioning: { adminEmail, phoneIdentity } };
+  const prepared = await Promise.all([createBusiness(input), createBusiness(input)]);
+  assert.equal(prepared[0].id, prepared[1].id);
+  const ledger = await prisma.trialLedger.findUniqueOrThrow({ where: { emailHash: computeTrialHashes(email, null).emailHash } });
+  assert.equal(ledger.registrationCount, 1);
+  const otherEmail = registrationEmail('provision-conflict');
+  await assert.rejects(createBusiness({ ...input, ownerEmail: otherEmail }), BusinessIdentityConflictError);
+  await assert.rejects(createBusiness({ ...input, ownerEmail }), BusinessIdentityConflictError);
+  assert.equal(await prisma.user.count({ where: { email: otherEmail } }), 0);
+  assert.equal(await prisma.business.count({ where: { ownerPhoneIdentity: phoneIdentity } }), 1);
+});
+
+test('simultaneous self-signup and provisioning cannot create duplicate ownership', async () => {
+  const email = registrationEmail('provision-vs-signup');
+  const phoneIdentity = ownerEmailForPhone('+972509003105')!;
+  const outcomes = await Promise.allSettled([
+    createBusiness({ ownerEmail: email, name: `${prefix}-self-signup` }),
+    createBusiness({ ownerEmail: email, name: `${prefix}-admin-signup`, provisioning: { adminEmail, phoneIdentity } }),
+  ]);
+  assert.equal(outcomes[0].status, 'fulfilled');
+  if (outcomes[1].status === 'rejected') assert.ok(outcomes[1].reason instanceof BusinessIdentityConflictError);
+  assert.equal(await prisma.business.count({ where: { ownerEmail: email } }), 1);
+});
+
+test('an explicit ownership transfer revokes the old provisioned phone without changing other users', async () => {
+  const email = registrationEmail('provision-transfer');
+  const replacement = registrationEmail('provision-replacement');
+  const phoneIdentity = ownerEmailForPhone('+972509003106')!;
+  const prepared = await createBusiness({
+    ownerEmail: email, name: `${prefix}-transfer`, provisioning: { adminEmail, phoneIdentity },
+  });
+  await inRequest(await ownerCookie(adminEmail), () => editBusinessDetailsAction(form({
+    businessId: prepared.id, name: prepared.name, ownerEmail: replacement, phone: '', planNotes: '',
+  })));
+  assert.equal(await inRequest(await ownerCookie(phoneIdentity), () => getActiveBusiness()), null);
+  assert.equal(await inRequest(await ownerCookie(email), () => getActiveBusiness()), null);
+  assert.equal((await inRequest(await ownerCookie(replacement), () => getActiveBusiness()))?.id, prepared.id);
+});
 
 test('onboarding atomically seeds an immediately bookable eligible basic trial', async () => {
   const email = registrationEmail('new-owner');

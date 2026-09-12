@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db';
 import { getActiveBusiness } from '@/server/repos/business';
 import { bookingUrl } from '@/lib/booking-link';
 import { notifyOwnerOfInquiry } from '@/server/notifications/ownerInquiry';
+import { isBusinessOwnerIdentity } from '@/lib/businessOwnerIdentity';
 
 /**
  * שרת-אקשן לשליחת בקשת הצעת מחיר לשדרוג חבילה (D4).
@@ -42,7 +43,7 @@ export async function submitQuoteRequest(
 
   // Requesting billing assistance remains available after a subscription expires.
   const business = await getActiveBusiness({ allowInactive: true });
-  if (!business || business.ownerEmail !== sessionEmail) {
+  if (!business || !isBusinessOwnerIdentity(sessionEmail, business)) {
     return { ok: false, error: 'auth' };
   }
 

@@ -1,3 +1,5 @@
+import { isBusinessOwnerIdentity } from '@/lib/businessOwnerIdentity';
+
 /**
  * הרשאות ל"אזור הניהול של העסק לפי כתובת העסק" — /b/[slug]/admin.
  *
@@ -37,6 +39,7 @@ export type BusinessAdminAccessInput = {
   email: string | null | undefined;
   /** מייל הבעלים הרשום על העסק (Business.ownerEmail, עשוי להיות null). */
   ownerEmail: string | null | undefined;
+  ownerPhoneIdentity?: string | null;
   /** האם המבקר הוא מנהל פלטפורמה (isPlatformAdminEmail חושב מראש בצד השרת). */
   isPlatformAdmin: boolean;
 };
@@ -48,7 +51,7 @@ export type BusinessAdminAccessInput = {
  */
 export function canAccessBusinessAdmin(input: BusinessAdminAccessInput): boolean {
   if (input.isPlatformAdmin) return true;
-  return isBusinessOwnerEmail(input.email, input.ownerEmail);
+  return isBusinessOwnerIdentity(input.email, input);
 }
 
 /**
@@ -65,7 +68,7 @@ export type BusinessAdminRoute = 'login' | 'owner' | 'platform' | 'forbidden';
 
 export function decideBusinessAdminRoute(input: BusinessAdminAccessInput): BusinessAdminRoute {
   if (!input.email) return 'login';
-  if (isBusinessOwnerEmail(input.email, input.ownerEmail)) return 'owner';
+  if (isBusinessOwnerIdentity(input.email, input)) return 'owner';
   if (input.isPlatformAdmin) return 'platform';
   return 'forbidden';
 }

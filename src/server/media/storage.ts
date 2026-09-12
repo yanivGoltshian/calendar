@@ -3,6 +3,7 @@ import { BlobServiceClient, type ContainerClient } from '@azure/storage-blob';
 import { prisma } from '@/lib/db';
 import { getBusinessAccess } from '@/server/subscription';
 import { assertMediaQuota, MediaError, mediaQuota } from './uploadPolicy';
+import { businessOwnerWhere } from '@/lib/businessOwnerIdentity';
 
 export const MEDIA_CONTAINER = 'hero-videos';
 export const MEDIA_PREFIXES = (businessId: string) => [
@@ -58,7 +59,7 @@ export async function storeBusinessMedia(
       const business = await tx.business.findFirst({
         where: {
           id: businessId,
-          ownerEmail: { equals: ownerEmail.trim(), mode: 'insensitive' },
+          ...businessOwnerWhere(ownerEmail),
         },
       });
       if (

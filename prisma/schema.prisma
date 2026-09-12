@@ -222,6 +222,9 @@ model Business {
   // בעלות דרך NextAuth (Google/מייל): מזהה הבעלים לפי כתובת המייל המאומתת.
   // עמודה אדיטיבית בלבד; אינה נוגעת במודל User (שמבוסס טלפון) ואינה דורסת נתונים.
   ownerEmail String?
+  // An additional owner login explicitly assigned by a platform admin, never a public contact.
+  ownerPhoneIdentity String? @unique
+  provisionedBy      String?
 
   // ── מנוי, ניסיון חינם ותשלום ידני (אפוס חיוב) — כל השדות אדיטיביים ──────────
   // החבילה הנוכחית של העסק (בסיס כברירת מחדל).

@@ -35,6 +35,7 @@ const pg = (name) => (pgBin ? join(pgBin, name) : name);
 const port = Number(process.env.TEST_DB_PORT ?? 55449);
 const appPort = Number(process.env.TEST_APP_PORT ?? 3149);
 const browserSelection = process.argv.find((arg) => arg.startsWith('--e2e='))?.slice(6);
+const integrationSelection = process.argv.find((arg) => arg.startsWith('--integration='))?.slice(14);
 const comparePublic = process.argv.includes('--compare-public');
 async function assertPortFree(value) {
   const server = createServer();
@@ -67,7 +68,7 @@ const env = {
   E2E_BASE_URL: `http://127.0.0.1:${appPort}`,
   E2E_BUSINESS_SLUG: 'skin-beauty',
   E2E_ALLOW_BOOKING: '1',
-  E2E_EXPECT_MINIMUM: browserSelection ? '1' : '37',
+  E2E_EXPECT_MINIMUM: browserSelection ? '1' : '38',
   E2E_TARGETED: browserSelection ? '1' : '0',
   TEST_RUNTIME_DIR: runtime,
   ...(process.env.PLAYWRIGHT_BROWSERS_PATH
@@ -309,6 +310,9 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     if (!ready) throw new Error('Isolated app readiness timed out');
+    if (integrationSelection) {
+      run(process.execPath, ['--import', 'tsx', '--test', '--test-concurrency=1', integrationSelection]);
+    }
     if (comparePublic) {
       run(process.execPath, ['--import', 'tsx', 'scripts/compare-public-ui.ts']);
     } else if (!browserSelection) {
