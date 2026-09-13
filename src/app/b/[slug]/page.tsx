@@ -124,7 +124,7 @@ export default async function BusinessPublicPage({ params }: Props) {
   const heroCtaLabel = landing?.ctaLabel || t.publicPage.bookCta;
 
   const bookHref = `/b/${business.slug}/book`;
-  // הכתובת הקנונית לשיתוף — https://<host>/b/<slug>. ה-OG card מנוהל בקובץ נפרד.
+  // Sharing uses the canonical business URL and its saved logo.
   const shareUrl = absoluteUrl(`/b/${business.slug}`);
 
   const clinicLabels = t.premiumLanding.clinic;

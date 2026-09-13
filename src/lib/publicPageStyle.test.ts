@@ -59,6 +59,22 @@ test('landingDefaults: סוג חסר או לא ידוע ⇐ עותק גנרי (O
   assert.deepEqual(landingDefaults('NOPE'), other);
 });
 
+test('barber booking copy updates the exact saved template and preserves custom content', () => {
+  const expected = 'תספורות, זקן וטיפוח לגבר בסטייל. קבעו תור בצ׳יק.';
+  assert.equal(landingDefaults('BARBERSHOP').heroSubtext, expected);
+  const saved = {
+    heroSubtext: 'תספורות, זקן וטיפוח לגבר בסטייל. קבעו תור בקליק.',
+    sections: { hero: false },
+  };
+  const normalized = normalizeLandingContent(saved);
+  assert.equal(normalized?.heroSubtext, expected);
+  assert.equal(normalized?.sections?.hero, false);
+  assert.equal(saved.heroSubtext, 'תספורות, זקן וטיפוח לגבר בסטייל. קבעו תור בקליק.');
+  assert.deepEqual(normalizeLandingContent(normalized), normalized);
+  const custom = 'המספרה שלי. קבעו תור בקליק.';
+  assert.equal(normalizeLandingContent({ heroSubtext: custom })?.heroSubtext, custom);
+});
+
 test('normalizePublicPageStyle: LANDING נשמר, כל השאר ⇐ BOOKING', () => {
   assert.equal(normalizePublicPageStyle('LANDING'), 'LANDING');
   assert.equal(normalizePublicPageStyle('BOOKING'), 'BOOKING');

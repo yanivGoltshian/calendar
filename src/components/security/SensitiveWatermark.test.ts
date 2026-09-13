@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SensitiveWatermark } from './SensitiveWatermark';
+import { BRAND } from '@/config/brand';
 
 test('sensitive watermark renders a noninteractive audit marker with responsive density', () => {
   const html = renderToStaticMarkup(
@@ -17,6 +18,8 @@ test('sensitive watermark renders a noninteractive audit marker with responsive 
   assert.match(html, /grid-cols-2/);
   assert.match(html, /sm:grid-cols-3/);
   assert.equal(html.includes('@'), false);
+  assert.equal(html.split(`${BRAND.name} · AB12CD34`).length - 1, 18);
+  assert.equal(html.includes('תוכן רגיש'), false);
 });
 
 test('sensitive watermark omits invalid empty identifiers', () => {

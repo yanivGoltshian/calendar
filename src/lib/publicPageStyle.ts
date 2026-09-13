@@ -290,7 +290,7 @@ const DEFAULTS_BY_TYPE: Record<BusinessTypeKey, LandingDefaults> = {
   },
   BARBERSHOP: {
     heroHeadline: 'תספורת שמרגישים בה בבית',
-    heroSubtext: 'תספורות, זקן וטיפוח לגבר בסטייל. קבעו תור בקליק.',
+    heroSubtext: 'תספורות, זקן וטיפוח לגבר בסטייל. קבעו תור בצ׳יק.',
     benefits: [
       { title: 'ספרים מנוסים', text: 'ידיים מקצועיות וסטייל מדויק.' },
       { title: 'אווירה נעימה', text: 'מקום שכיף לשבת בו, לא רק להסתפר.' },
@@ -356,7 +356,10 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
 
   const heroEyebrow = cleanString(source.heroEyebrow, LIMITS.heroEyebrow);
   const heroHeadline = cleanString(source.heroHeadline, LIMITS.heroHeadline);
-  const heroSubtext = cleanString(source.heroSubtext, LIMITS.heroSubtext);
+  const savedHeroSubtext = cleanString(source.heroSubtext, LIMITS.heroSubtext);
+  // Upgrade only the exact old template; preserve owner-authored copy.
+  const heroSubtext = savedHeroSubtext === 'תספורות, זקן וטיפוח לגבר בסטייל. קבעו תור בקליק.'
+    ? DEFAULTS_BY_TYPE.BARBERSHOP.heroSubtext : savedHeroSubtext;
   const about = cleanString(source.about, LIMITS.about);
   const announcement = cleanString(source.announcement, LIMITS.announcement);
   const googleReviewsRaw = cleanString(source.googleReviewsUrl, LIMITS.googleReviewsUrl);

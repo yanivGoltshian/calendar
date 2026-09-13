@@ -1,4 +1,5 @@
 import React from 'react';
+import { BRAND } from '@/config/brand';
 
 type SensitiveWatermarkProps = {
   auditId: string;
@@ -8,7 +9,7 @@ type SensitiveWatermarkProps = {
 export function SensitiveWatermark({ auditId, className = '' }: SensitiveWatermarkProps) {
   const safeAuditId = auditId.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
   if (!safeAuditId) return null;
-  const label = `תוכן רגיש · ${safeAuditId}`;
+  const label = `${BRAND.name} · ${safeAuditId}`;
 
   return (
     <div

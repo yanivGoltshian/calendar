@@ -6,6 +6,8 @@ import { t } from '@/i18n';
 import { authProviderStatus } from '@/auth';
 import BookingStepper from './BookingStepper';
 import { buildMetadata } from '@/lib/seo';
+import { buildBusinessPageMetadata } from '../metadata';
+import { publicMediaContent } from '@/server/media/publicContent';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -13,8 +15,14 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const business = await getBusinessBySlug(slug);
-  return buildMetadata({ title: `${t.booking.title} · ${business?.name ?? ''}`, path: `/b/${slug}/book`, noIndex: true });
+  const business = publicMediaContent(await getBusinessBySlug(slug), slug);
+  const booking = buildMetadata({ title: `${t.booking.title} · ${business?.name ?? ''}`, path: `/b/${slug}/book`, noIndex: true, image: null });
+  const branding = buildBusinessPageMetadata(business);
+  return {
+    ...booking,
+    openGraph: { ...booking.openGraph, images: branding.openGraph?.images },
+    twitter: { ...booking.twitter, card: 'summary', images: branding.twitter?.images },
+  };
 }
 
 // עמוד סטטי לחלוטין: שלד אשף ההזמנה נשמר במטמון ללא תפוגה ומתרענן רק על פי דרישה
