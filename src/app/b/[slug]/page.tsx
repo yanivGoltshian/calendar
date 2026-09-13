@@ -158,14 +158,15 @@ export default async function BusinessPublicPage({ params }: Props) {
     '--c-hero-cta-strong': darken(brand, 0.18),
     '--c-hero-cta-ink': ink,
   } as unknown as CSSProperties;
-  const rootStyle = isClinicPremium
-    ? ({
-        ...themeVars,
-        ...(usesClinicIdentity || landing?.theme
-          ? clinicThemeVars
-          : genericPremiumThemeVars),
-      } as CSSProperties)
-    : themeVars;
+  const rootStyle =
+    landing?.theme || usesClinicIdentity
+      ? ({
+          ...themeVars,
+          ...clinicThemeVars,
+        } as CSSProperties)
+      : isClinicPremium
+        ? ({ ...themeVars, ...genericPremiumThemeVars } as CSSProperties)
+        : themeVars;
   const premiumLabels = {
     ...clinicLabels,
     hoursUnavailable: clinicLabels.topbarHoursUnavailable,
