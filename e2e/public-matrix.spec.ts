@@ -117,7 +117,9 @@ test('install guidance, keyboard dismissal and generated PWA icons work with leg
   request,
 }, info) => {
   const f = await visualFixture();
+  const noLogo = await visualFixture({ basic: true });
   try {
+    await prisma.business.update({ where: { id: noLogo.business.id }, data: { logoUrl: null } });
     await page.goto(`/b/${f.business.slug}`);
     const install = page.getByRole('button', { name: t.install.button, exact: true });
     await install.click();
@@ -145,13 +147,31 @@ test('install guidance, keyboard dismissal and generated PWA icons work with leg
       expect(metadata.format).toBe('png');
       expect(metadata.width).toBeGreaterThan(0);
     }
-    const og = await request.get(`/b/${f.business.slug}/opengraph-image`);
-    expect(og.ok()).toBe(true);
-    const metadata = await sharp(await og.body()).metadata();
-    expect(metadata.format).toBe('png');
-    expect([metadata.width, metadata.height]).toEqual([1200, 630]);
+    const image = page.locator('meta[property="og:image"]');
+    await expect(image).toHaveCount(1);
+    const logoUrl = await image.getAttribute('content');
+    expect(logoUrl).toMatch(/^https?:\/\//);
+    expect(logoUrl).not.toContain('opengraph-image');
+    expect(logoUrl).not.toContain('og-card');
+    await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', logoUrl!);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary');
+    const logo = await request.get(logoUrl!);
+    expect(logo.ok()).toBe(true);
+    const metadata = await sharp(await logo.body()).metadata();
+    expect([metadata.width, metadata.height]).toEqual([120, 90]);
+    const { data } = await sharp(await logo.body()).raw().toBuffer({ resolveWithObject: true });
+    for (const [channel, expected] of [165, 120, 97].entries()) {
+      expect(Math.abs(data[channel] - expected)).toBeLessThanOrEqual(3);
+    }
+    await page.goto(`/b/${f.business.slug}/book`);
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', logoUrl!);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
+    await page.goto(`/b/${noLogo.business.slug}`);
+    await expect(page.locator('meta[property="og:image"]')).toHaveCount(0);
+    await expect(page.locator('meta[name="twitter:image"]')).toHaveCount(0);
   } finally {
     await cleanupFixture(f);
+    await cleanupFixture(noLogo);
   }
 });
 
