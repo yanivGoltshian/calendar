@@ -173,6 +173,8 @@ for (const width of [390, 1366]) {
         data: {
           name: 'עסק בדיקת פלטה',
           type: 'BEAUTY_COSMETICS',
+          address: 'רחוב הבדיקה 1, תל אביב',
+          phone: '0501234567',
           brandColor: bronze.brand,
           logoUrl: image,
           publicPageStyle: 'LANDING',
@@ -235,6 +237,7 @@ for (const width of [390, 1366]) {
       const share = page.locator('[data-palette-surface="share"]');
       const stickyCta = page.locator('[data-palette-surface="sticky-booking"]');
 
+      await expect(location).toBeVisible();
       expect(await headerCta.evaluate((element) => getComputedStyle(element).backgroundImage))
         .toContain(rgb(pink.gold));
       const heroOverlayGradient = await heroOverlay.evaluate((element) => getComputedStyle(element).backgroundImage);
@@ -269,17 +272,43 @@ for (const width of [390, 1366]) {
       });
 
       const { theme: _theme, ...contentWithoutTheme } = landingContent;
-      await prisma.business.update({
-        where: { id: f.business.id },
-        data: { brandColor: bronze.brand, landingContent: contentWithoutTheme },
-      });
-      await page.goto(`/b/${f.business.slug}`);
-      expect(await page.locator('main').evaluate((element) =>
-        getComputedStyle(element).getPropertyValue('--c-gold').trim(),
-      )).toBe(bronze.gold);
-      expect(await page.locator('main').evaluate((element) =>
-        getComputedStyle(element).getPropertyValue('--c-hero-cta').trim(),
-      )).toBe(bronze.accent);
+      const fallback = await bookingFixture();
+      try {
+        await prisma.business.update({
+          where: { id: fallback.business.id },
+          data: {
+            name: 'עסק בדיקת ברירת מחדל',
+            type: 'BEAUTY_COSMETICS',
+            address: 'רחוב הבדיקה 1, תל אביב',
+            phone: '0501234567',
+            brandColor: bronze.brand,
+            logoUrl: image,
+            publicPageStyle: 'LANDING',
+            landingContent: contentWithoutTheme,
+            settings: {
+              update: {
+                onboardingCompleted: true,
+                onboardingSteps: {
+                  services: true,
+                  workingHours: true,
+                  branding: true,
+                  landing: true,
+                },
+              },
+            },
+          },
+        });
+        await page.goto(`/b/${fallback.business.slug}`);
+        await expect(page.locator('[data-palette-surface="premium-header"]')).toBeVisible();
+        expect(await page.locator('main').evaluate((element) =>
+          getComputedStyle(element).getPropertyValue('--c-gold').trim(),
+        )).toBe(bronze.gold);
+        expect(await page.locator('main').evaluate((element) =>
+          getComputedStyle(element).getPropertyValue('--c-hero-cta').trim(),
+        )).toBe(bronze.accent);
+      } finally {
+        await cleanupFixture(fallback);
+      }
     } finally {
       await cleanupFixture(f);
     }
