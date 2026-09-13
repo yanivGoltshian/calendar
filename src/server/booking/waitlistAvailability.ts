@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { isGregorianDate } from '@/lib/workingHoursExceptions';
-import { workingHoursBoundary } from '@/server/availability';
+import { addDaysToDateString, formatDateString, utcToLocalParts } from '@/lib/time';
 import { bookingPolicy, BookingError } from './policy';
 
 /** A dated waitlist invitation must have a real bookable slot before claiming delivery. */
@@ -30,15 +30,15 @@ export async function exceptionsAllowWaitlistOffer(entry: {
     if (!service) continue;
     try {
       const policy = await bookingPolicy(entry.businessId, member.id, [service.serviceId], date);
-      const latestBoundary = workingHoursBoundary(
-        date,
-        entry.latestMinute ?? 1440,
-        policy.business.timezone,
-      );
-      if (policy.slots.some((slot) =>
-        slot.startMinute >= (entry.earliestMinute ?? 0) &&
-        new Date(slot.endAtUtc) <= latestBoundary
-      )) return true;
+      if (policy.slots.some((slot) => {
+        const endAt = new Date(slot.endAtUtc);
+        const endDate = formatDateString(endAt, policy.business.timezone);
+        const endMinute = utcToLocalParts(endAt, policy.business.timezone).minutes +
+          (endDate === date ? 0 : endDate === addDaysToDateString(date, 1) ? 1440 : Infinity);
+        return slot.startMinute >= (entry.earliestMinute ?? 0) &&
+          slot.startMinute < (entry.latestMinute ?? 1440) &&
+          endMinute <= (entry.latestMinute ?? 1440);
+      })) return true;
     } catch (error) {
       if (!(error instanceof BookingError)) throw error;
     }
