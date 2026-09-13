@@ -88,6 +88,41 @@ test('closure wins; alternatives intersect; staff cannot reopen business closure
   assert.equal(resolveExceptionHours(regular, [longer], 'staff', '2026-09-14', false)[0].startMinute, 540);
 });
 
+test('exception overlays preserve every personal break when capped and replace breaks with alternative hours', () => {
+  const personal = [{
+    weekday: 1,
+    startMinute: 540,
+    endMinute: 1020,
+    breaks: [[600, 630], [780, 810]] as [number, number][],
+  }];
+  const businessCap = normalizeException({
+    ...input,
+    closed: false,
+    startMinute: 570,
+    endMinute: 900,
+  });
+  const staffAlternative = normalizeException({
+    ...input,
+    staffId: 'staff',
+    closed: false,
+    startMinute: 660,
+    endMinute: 840,
+  });
+  assert.deepEqual(resolveExceptionHours(personal, [], 'staff', '2026-09-14', false), personal);
+  assert.deepEqual(resolveExceptionHours(personal, [businessCap], 'staff', '2026-09-14', false), [{
+    weekday: 1,
+    startMinute: 570,
+    endMinute: 900,
+    breaks: [[600, 630], [780, 810]],
+  }]);
+  assert.deepEqual(resolveExceptionHours(personal, [staffAlternative], 'staff', '2026-09-14', false), [{
+    weekday: 1,
+    startMinute: 660,
+    endMinute: 840,
+    breaks: [],
+  }]);
+});
+
 test('DST gap slots never alias earlier times, and durations fit actual UTC closing', () => {
   for (const [date, zone] of [['2026-03-27', 'Asia/Jerusalem'], ['2026-03-08', 'America/New_York']]) {
     const hours = [{ weekday: new Date(`${date}T12:00:00Z`).getUTCDay(), startMinute: 60, endMinute: 240, breaks: [] }];

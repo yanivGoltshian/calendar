@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/db';
-import { exceptionMatches, isGregorianDate, MAX_EXCEPTION_RULES } from '@/lib/workingHoursExceptions';
+import { isGregorianDate } from '@/lib/workingHoursExceptions';
+import { workingHoursBoundary } from '@/server/availability';
 import { bookingPolicy, BookingError } from './policy';
 
-/** A dated waitlist invitation must respect applicable exceptions before claiming delivery. */
+/** A dated waitlist invitation must have a real bookable slot before claiming delivery. */
 export async function exceptionsAllowWaitlistOffer(entry: {
   businessId: string; staffId: string | null; serviceId: string | null;
   desiredDate: string | null; earliestMinute: number | null; latestMinute: number | null;
@@ -10,14 +11,6 @@ export async function exceptionsAllowWaitlistOffer(entry: {
   if (!entry.desiredDate) return true;
   const date = entry.desiredDate;
   if (!isGregorianDate(date)) return false;
-  const rules = await prisma.workingHoursException.findMany({
-    where: {
-      businessId: entry.businessId, startDate: { lte: date },
-      ...(entry.staffId ? { OR: [{ staffId: null }, { staffId: entry.staffId }] } : {}),
-    }, take: MAX_EXCEPTION_RULES + 1,
-  });
-  if (rules.length > MAX_EXCEPTION_RULES) return false;
-  if (!rules.some((rule) => exceptionMatches(rule, date))) return true;
   const serviceWhere = {
     businessId: entry.businessId, hidden: false, ...(entry.serviceId ? { id: entry.serviceId } : {}),
   };
@@ -37,8 +30,15 @@ export async function exceptionsAllowWaitlistOffer(entry: {
     if (!service) continue;
     try {
       const policy = await bookingPolicy(entry.businessId, member.id, [service.serviceId], date);
-      if (policy.slots.some((slot) => slot.startMinute >= (entry.earliestMinute ?? 0) &&
-          slot.startMinute + policy.durationMin <= (entry.latestMinute ?? 1440))) return true;
+      const latestBoundary = workingHoursBoundary(
+        date,
+        entry.latestMinute ?? 1440,
+        policy.business.timezone,
+      );
+      if (policy.slots.some((slot) =>
+        slot.startMinute >= (entry.earliestMinute ?? 0) &&
+        new Date(slot.endAtUtc) <= latestBoundary
+      )) return true;
     } catch (error) {
       if (!(error instanceof BookingError)) throw error;
     }

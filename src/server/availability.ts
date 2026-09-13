@@ -43,7 +43,7 @@ export type Slot = {
   endAtUtc: string; // ISO
 };
 
-function wallBoundary(date: string, minute: number, timeZone: string): Date {
+export function workingHoursBoundary(date: string, minute: number, timeZone: string): Date {
   const [year, month, day] = date.split('-').map(Number);
   // A boundary in a DST gap advances to the first real minute, with a bounded search.
   for (let shift = 0; shift <= 180; shift++) {
@@ -62,11 +62,11 @@ export function intervalFitsWorkingHours(
   if (endAt <= startAt || formatDateString(startAt, timeZone) !== date) return false;
   const weekday = weekdayForDateString(date, timeZone);
   return hours.some((hour) => hour.weekday === weekday &&
-    startAt >= wallBoundary(date, hour.startMinute, timeZone) &&
-    endAt <= wallBoundary(date, hour.endMinute, timeZone) &&
+    startAt >= workingHoursBoundary(date, hour.startMinute, timeZone) &&
+    endAt <= workingHoursBoundary(date, hour.endMinute, timeZone) &&
     !hour.breaks.some(([start, end]) =>
-      startAt < wallBoundary(date, end, timeZone) &&
-      endAt > wallBoundary(date, start, timeZone)));
+      startAt < workingHoursBoundary(date, end, timeZone) &&
+      endAt > workingHoursBoundary(date, start, timeZone)));
 }
 
 /** חיסור קבוצת אינטרוולים "תפוסים" מאינטרוול "פנוי" בודד. */
@@ -109,10 +109,10 @@ export function computeSlots(params: SlotComputationParams): Slot[] {
   const slots: Slot[] = [];
 
   for (const wh of todaysHours) {
-    const closeUtc = wallBoundary(dateStr, wh.endMinute, timeZone);
+    const closeUtc = workingHoursBoundary(dateStr, wh.endMinute, timeZone);
     const breakUtc = wh.breaks.map(([start, end]) => ({
-      startAt: wallBoundary(dateStr, start, timeZone),
-      endAt: wallBoundary(dateStr, end, timeZone),
+      startAt: workingHoursBoundary(dateStr, start, timeZone),
+      endAt: workingHoursBoundary(dateStr, end, timeZone),
     }));
     // מיישרים לרשת הרזולוציה פעם אחת — את תחילת חלון העבודה בלבד, כדי ששעת
     // פתיחה לא-עגולה (למשל 09:07) תתחיל במשבצת עגולה (09:15). לעומת זאת, חלון
@@ -121,7 +121,7 @@ export function computeSlots(params: SlotComputationParams): Slot[] {
     if (alignedStart >= wh.endMinute) continue;
     // Subtract and measure elapsed time in UTC so gaps/folds cannot shorten real bookings.
     const freeWindows = subtractIntervals(
-      { start: wallBoundary(dateStr, alignedStart, timeZone).getTime(), end: closeUtc.getTime() },
+      { start: workingHoursBoundary(dateStr, alignedStart, timeZone).getTime(), end: closeUtc.getTime() },
       [...breakUtc, ...busy].map((block) => ({ start: block.startAt.getTime(), end: block.endAt.getTime() })),
     );
 

@@ -22,7 +22,7 @@ type HoursRecord = {
   weekday: number;
   startMinute: number;
   endMinute: number;
-  breaks: unknown;
+  breaks: [number, number][];
 };
 
 function exceptionDateLabel(date: string, calendar: string, annualMonth?: string | null): string {
@@ -43,17 +43,15 @@ function buildRows(records: HoursRecord[]): DayRow[] {
   for (let d = 0; d < 7; d++) {
     const rec = byDay.get(d);
     if (rec) {
-      const firstBreak =
-        Array.isArray(rec.breaks) && Array.isArray(rec.breaks[0])
-          ? (rec.breaks[0] as [number, number])
-          : null;
       rows.push({
         weekday: d,
         open: true,
         start: formatMinutes(rec.startMinute),
         end: formatMinutes(rec.endMinute),
-        breakStart: firstBreak ? formatMinutes(firstBreak[0]) : '',
-        breakEnd: firstBreak ? formatMinutes(firstBreak[1]) : '',
+        breaks: rec.breaks.map(([start, end]) => ({
+          start: formatMinutes(start),
+          end: formatMinutes(end),
+        })),
       });
     } else {
       rows.push({
@@ -61,8 +59,7 @@ function buildRows(records: HoursRecord[]): DayRow[] {
         open: false,
         start: '09:00',
         end: '17:00',
-        breakStart: '',
-        breakEnd: '',
+        breaks: [],
       });
     }
   }
@@ -83,10 +80,10 @@ export default async function AdminWorkingHoursPage({ searchParams }: Props) {
   const scope: 'BUSINESS' | 'STAFF' = selectedStaff ? 'STAFF' : 'BUSINESS';
 
   const records = selectedStaff
-    ? await getStaffHours(selectedStaff.id)
+    ? await getStaffHours(business.id, selectedStaff.id)
     : await getBusinessHours(business.id);
 
-  const rows = buildRows(records as HoursRecord[]);
+  const rows = buildRows(records);
   const [exceptions, conflictInfo] = await Promise.all([
     listHoursExceptions(business.id), getHoursExceptionConflicts(business.id),
   ]);

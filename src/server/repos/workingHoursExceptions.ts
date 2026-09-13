@@ -8,6 +8,7 @@ import {
 } from '@/lib/workingHoursExceptions';
 import { bookingTransaction } from '@/server/booking/transaction';
 import { intervalFitsWorkingHours } from '@/server/availability';
+import { normalizeStoredWorkingHours } from '@/lib/workingHours';
 
 export class HoursExceptionError extends Error {
   constructor(public readonly code: 'invalid' | 'staff' | 'limit' | 'missing') {
@@ -70,13 +71,7 @@ export async function deleteHoursException(businessId: string, id: string) {
 export function normalizeHours(
   hours: { weekday: number; startMinute: number; endMinute: number; breaks: unknown }[],
 ): DayHours[] {
-  return hours.map((hour) => ({
-    ...hour,
-    breaks: Array.isArray(hour.breaks) ? hour.breaks.filter(
-      (pair): pair is [number, number] => Array.isArray(pair) &&
-        pair.length === 2 && pair.every(Number.isFinite),
-    ) : [],
-  }));
+  return normalizeStoredWorkingHours(hours);
 }
 
 export async function getDateWorkingHours(

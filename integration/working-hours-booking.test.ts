@@ -29,7 +29,9 @@ const { workUnitAsyncStorage } = require('next/dist/server/app-render/work-unit-
 const { createWorkStore } = require('next/dist/server/async-storage/work-store') as typeof import('next/dist/server/async-storage/work-store');
 const { IncrementalCache } = require('next/dist/server/lib/incremental-cache') as typeof import('next/dist/server/lib/incremental-cache');
 const { saveHoursExceptionAction, deleteHoursExceptionAction } = require('../src/app/admin/working-hours/exceptionActions') as typeof import('../src/app/admin/working-hours/exceptionActions');
+const { saveWorkingHoursAction } = require('../src/app/admin/working-hours/actions') as typeof import('../src/app/admin/working-hours/actions');
 const { createManualAppointmentAction, setAppointmentStatusAction } = require('../src/app/admin/actions') as typeof import('../src/app/admin/actions');
+const { exceptionsAllowWaitlistOffer } = require('../src/server/booking/waitlistAvailability') as typeof import('../src/server/booking/waitlistAvailability');
 const { POST: availability } = require('../src/app/api/availability/route') as typeof import('../src/app/api/availability/route');
 const { POST: book } = require('../src/app/api/book/route') as typeof import('../src/app/api/book/route');
 const { handlePurgeCron } = require('../src/app/api/cron/purge-expired/handler') as typeof import('../src/app/api/cron/purge-expired/handler');
@@ -110,6 +112,192 @@ test('owner actions deny anonymous, non-owner, inactive and cross-business emplo
     await prisma.business.update({ where: { id: f.business.id }, data: { accountStatus: 'PENDING_DELETION' } });
     assert.deepEqual(await requestContext(f.business.ownerEmail, () => saveHoursExceptionAction({ ok: false }, ruleForm(f))),
       { ok: false, error: 'forbidden' });
+  } finally {
+    await cleanupFixture(f);
+    await cleanupFixture(other);
+  }
+});
+
+test('business and staff working-hour saves preserve every break in canonical order and reject foreign staff or overlaps', async () => {
+  const f = await bookingFixture();
+  const other = await bookingFixture();
+  try {
+    const weekday = new Date(`${formatDateString(f.startAt, f.business.timezone)}T12:00:00Z`).getUTCDay();
+    const businessForm = form({
+      [`open_${weekday}`]: 'on',
+      [`start_${weekday}`]: '09:00',
+      [`end_${weekday}`]: '18:00',
+      [`breakStart_${weekday}`]: '15:00',
+      [`breakEnd_${weekday}`]: '15:15',
+    });
+    businessForm.append(`breakStart_${weekday}`, '12:00');
+    businessForm.append(`breakEnd_${weekday}`, '12:30');
+    businessForm.append(`breakStart_${weekday}`, '12:30');
+    businessForm.append(`breakEnd_${weekday}`, '13:00');
+    assert.deepEqual(
+      await requestContext(f.business.ownerEmail, () =>
+        saveWorkingHoursAction({ ok: false }, businessForm)),
+      { ok: true },
+    );
+    const businessHours = await prisma.workingHours.findMany({
+      where: { businessId: f.business.id, scope: 'BUSINESS' },
+    });
+    assert.equal(businessHours.length, 1);
+    assert.deepEqual(businessHours[0].breaks, [[720, 750], [750, 780], [900, 915]]);
+
+    const staffForm = form({
+      staffId: f.staff.id,
+      [`open_${weekday}`]: 'on',
+      [`start_${weekday}`]: '10:00',
+      [`end_${weekday}`]: '16:00',
+      [`breakStart_${weekday}`]: '14:00',
+      [`breakEnd_${weekday}`]: '14:30',
+    });
+    staffForm.append(`breakStart_${weekday}`, '11:00');
+    staffForm.append(`breakEnd_${weekday}`, '11:15');
+    assert.deepEqual(
+      await requestContext(f.business.ownerEmail, () =>
+        saveWorkingHoursAction({ ok: false }, staffForm)),
+      { ok: true },
+    );
+    assert.deepEqual(
+      (await prisma.workingHours.findMany({
+        where: { staffId: f.staff.id, scope: 'STAFF' },
+      }))[0].breaks,
+      [[660, 675], [840, 870]],
+    );
+
+    const before = await prisma.workingHours.findMany({
+      where: { businessId: f.business.id },
+      orderBy: { id: 'asc' },
+    });
+    const overlap = form({
+      [`open_${weekday}`]: 'on',
+      [`start_${weekday}`]: '09:00',
+      [`end_${weekday}`]: '18:00',
+      [`breakStart_${weekday}`]: '12:00',
+      [`breakEnd_${weekday}`]: '13:00',
+    });
+    overlap.append(`breakStart_${weekday}`, '12:30');
+    overlap.append(`breakEnd_${weekday}`, '13:30');
+    assert.deepEqual(
+      await requestContext(f.business.ownerEmail, () =>
+        saveWorkingHoursAction({ ok: false }, overlap)),
+      { ok: false, error: 'break_overlap' },
+    );
+    const foreign = form({
+      staffId: other.staff.id,
+      [`open_${weekday}`]: 'on',
+      [`start_${weekday}`]: '09:00',
+      [`end_${weekday}`]: '17:00',
+    });
+    assert.deepEqual(
+      await requestContext(f.business.ownerEmail, () =>
+        saveWorkingHoursAction({ ok: false }, foreign)),
+      { ok: false, error: 'noStaff' },
+    );
+    assert.deepEqual(
+      await prisma.workingHours.findMany({
+        where: { businessId: f.business.id },
+        orderBy: { id: 'asc' },
+      }),
+      before,
+    );
+  } finally {
+    await cleanupFixture(f);
+    await cleanupFixture(other);
+  }
+});
+
+test('dated waitlist offers require a real slot outside every business break and remain tenant scoped', async () => {
+  const f = await bookingFixture();
+  const other = await bookingFixture();
+  try {
+    const date = formatDateString(f.startAt, f.business.timezone);
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    await prisma.workingHours.deleteMany({
+      where: { businessId: f.business.id, scope: 'BUSINESS' },
+    });
+
+    test('dated waitlist windows compare actual slot endings across a spring-forward transition', async () => {
+      const f = await bookingFixture();
+      try {
+        const date = '2027-03-14';
+        await prisma.business.update({
+          where: { id: f.business.id },
+          data: { timezone: 'America/New_York' },
+        });
+        await prisma.businessSettings.update({
+          where: { businessId: f.business.id },
+          data: { maxAdvanceBookingDays: 365 },
+        });
+        await prisma.service.update({
+          where: { id: f.service.id },
+          data: { durationMin: 90 },
+        });
+        await prisma.workingHours.deleteMany({
+          where: { businessId: f.business.id, scope: 'BUSINESS' },
+        });
+        await prisma.workingHours.create({
+          data: {
+            businessId: f.business.id,
+            scope: 'BUSINESS',
+            weekday: 0,
+            startMinute: 60,
+            endMinute: 300,
+            breaks: [],
+          },
+        });
+        const entry = {
+          businessId: f.business.id,
+          staffId: f.staff.id,
+          serviceId: f.service.id,
+          desiredDate: date,
+          earliestMinute: 60,
+        };
+        assert.equal(await exceptionsAllowWaitlistOffer({
+          ...entry,
+          latestMinute: 180,
+        }), false);
+        assert.equal(await exceptionsAllowWaitlistOffer({
+          ...entry,
+          latestMinute: 210,
+        }), true);
+      } finally {
+        await cleanupFixture(f);
+      }
+    });
+    await prisma.workingHours.create({
+      data: {
+        businessId: f.business.id,
+        scope: 'BUSINESS',
+        weekday,
+        startMinute: 540,
+        endMinute: 780,
+        breaks: [[570, 600], [660, 690]],
+      },
+    });
+    const entry = {
+      businessId: f.business.id,
+      staffId: f.staff.id,
+      serviceId: f.service.id,
+      desiredDate: date,
+    };
+    assert.equal(await exceptionsAllowWaitlistOffer({
+      ...entry, earliestMinute: 570, latestMinute: 600,
+    }), false);
+    assert.equal(await exceptionsAllowWaitlistOffer({
+      ...entry, earliestMinute: 600, latestMinute: 660,
+    }), true);
+    assert.equal(await exceptionsAllowWaitlistOffer({
+      ...entry, earliestMinute: 660, latestMinute: 690,
+    }), false);
+    assert.equal(await exceptionsAllowWaitlistOffer({
+      ...entry,
+      staffId: other.staff.id,
+      earliestMinute: 600,
+      latestMinute: 660,
+    }), false);
   } finally {
     await cleanupFixture(f);
     await cleanupFixture(other);

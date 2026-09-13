@@ -22,8 +22,21 @@ const DATE = '2026-06-15';
 function makeFakeClient(opts: {
   staff: EffectiveHoursRow[];
   business: EffectiveHoursRow[];
-}): { client: WorkingHoursClient; calls: { scope: string; staffId?: string; businessId?: string }[] } {
-  const calls: { scope: string; staffId?: string; businessId?: string }[] = [];
+}): {
+  client: WorkingHoursClient;
+  calls: {
+    scope: string;
+    staffId?: string;
+    businessId?: string;
+    staff?: { businessId: string };
+  }[];
+} {
+  const calls: {
+    scope: string;
+    staffId?: string;
+    businessId?: string;
+    staff?: { businessId: string };
+  }[] = [];
   const client: WorkingHoursClient = {
     workingHours: {
       async findMany(args) {
@@ -52,6 +65,7 @@ test('רגרסיה: אין שעות STAFF אך יש שעות BUSINESS → נפי
   assert.equal(calls.length, 2);
   assert.equal(calls[0].scope, 'STAFF');
   assert.equal(calls[0].staffId, 'staff-1');
+  assert.deepEqual(calls[0].staff, { businessId: 'biz-1' });
   assert.equal(calls[1].scope, 'BUSINESS');
   assert.equal(calls[1].businessId, 'biz-1');
 
@@ -96,4 +110,21 @@ test('אין שעות STAFF ואין שעות BUSINESS → מחזיר [] (נשא
 
   assert.deepEqual(effective, []);
   assert.equal(calls.length, 2);
+});
+
+test('שעות אפקטיביות ממיינות את כל ההפסקות שנשמרו', async () => {
+  const weekday = weekdayForDateString(DATE, TZ);
+  const staffRows = [{
+    weekday,
+    startMinute: 9 * 60,
+    endMinute: 17 * 60,
+    breaks: [[15 * 60, 15 * 60 + 15], [12 * 60, 12 * 60 + 30]],
+  }];
+  const { client } = makeFakeClient({ staff: staffRows, business: [] });
+  assert.deepEqual(await getEffectiveStaffWorkingHours('biz-1', 'staff-1', client), [{
+    weekday,
+    startMinute: 9 * 60,
+    endMinute: 17 * 60,
+    breaks: [[12 * 60, 12 * 60 + 30], [15 * 60, 15 * 60 + 15]],
+  }]);
 });

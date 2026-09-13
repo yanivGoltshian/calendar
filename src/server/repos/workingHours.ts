@@ -1,17 +1,17 @@
 import { prisma } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
+import {
+  normalizeStoredWorkingHours,
+  normalizeWorkingHoursRows,
+  type WorkingHoursRow,
+} from '@/lib/workingHours';
+
+export type { BreakInterval, WorkingHoursRow } from '@/lib/workingHours';
 
 /**
  * מאגר שעות עבודה — לעסק (scope BUSINESS) או לאיש צוות (scope STAFF).
  * כל יום מיוצג ברשומה אחת עם דקת התחלה, דקת סיום ומערך הפסקות [[start,end], ...].
  */
-
-export type WorkingHoursRow = {
-  weekday: number; // 0=ראשון ... 6=שבת
-  startMinute: number;
-  endMinute: number;
-  breaks: [number, number][];
-};
 
 /**
  * שעות ברירת המחדל של עסק חדש: ראשון–חמישי פתוחים 09:00–17:00, שישי ושבת סגורים.
@@ -33,19 +33,21 @@ export function defaultBusinessHours(): WorkingHoursRow[] {
 }
 
 /** שעות העבודה של העסק (ברירת המחדל). */
-export function getBusinessHours(businessId: string) {
-  return prisma.workingHours.findMany({
+export async function getBusinessHours(businessId: string) {
+  const rows = await prisma.workingHours.findMany({
     where: { scope: 'BUSINESS', businessId },
     orderBy: [{ weekday: 'asc' }, { startMinute: 'asc' }],
   });
+  return normalizeStoredWorkingHours(rows);
 }
 
 /** שעות העבודה של איש צוות מסוים. */
-export function getStaffHours(staffId: string) {
-  return prisma.workingHours.findMany({
-    where: { scope: 'STAFF', staffId },
+export async function getStaffHours(businessId: string, staffId: string) {
+  const rows = await prisma.workingHours.findMany({
+    where: { scope: 'STAFF', staffId, staff: { businessId } },
     orderBy: [{ weekday: 'asc' }, { startMinute: 'asc' }],
   });
+  return normalizeStoredWorkingHours(rows);
 }
 
 /** שורת שעות עבודה מינימלית כפי שנדרשת לחישוב זמינות. */
@@ -63,7 +65,12 @@ export type EffectiveHoursRow = {
 export type WorkingHoursClient = {
   workingHours: {
     findMany(args: {
-      where: { scope: 'STAFF' | 'BUSINESS'; staffId?: string; businessId?: string };
+      where: {
+        scope: 'STAFF' | 'BUSINESS';
+        staffId?: string;
+        businessId?: string;
+        staff?: { businessId: string };
+      };
       orderBy?: Prisma.WorkingHoursOrderByWithRelationInput[];
     }): Promise<EffectiveHoursRow[]>;
   };
@@ -83,15 +90,15 @@ export async function getEffectiveStaffWorkingHours(
   client: WorkingHoursClient = prisma,
 ): Promise<EffectiveHoursRow[]> {
   const staffHours = await client.workingHours.findMany({
-    where: { scope: 'STAFF', staffId },
+    where: { scope: 'STAFF', staffId, staff: { businessId } },
     orderBy: [{ weekday: 'asc' }, { startMinute: 'asc' }],
   });
-  if (staffHours.length > 0) return staffHours;
+  if (staffHours.length > 0) return normalizeStoredWorkingHours(staffHours);
 
-  return client.workingHours.findMany({
+  return normalizeStoredWorkingHours(await client.workingHours.findMany({
     where: { scope: 'BUSINESS', businessId },
     orderBy: [{ weekday: 'asc' }, { startMinute: 'asc' }],
-  });
+  }));
 }
 
 /** החלפה מלאה של שעות העסק ברשומות שהתקבלו (מוחק ובונה מחדש בטרנזקציה). */
@@ -99,9 +106,10 @@ export async function setBusinessHours(
   businessId: string,
   rows: WorkingHoursRow[],
 ): Promise<void> {
+  const normalized = normalizeWorkingHoursRows(rows);
   await prisma.$transaction([
     prisma.workingHours.deleteMany({ where: { scope: 'BUSINESS', businessId } }),
-    ...rows.map((row) =>
+    ...normalized.map((row) =>
       prisma.workingHours.create({
         data: {
           scope: 'BUSINESS',
@@ -125,6 +133,7 @@ export async function setStaffHours(
   staffId: string,
   rows: WorkingHoursRow[],
 ): Promise<boolean> {
+  const normalized = normalizeWorkingHoursRows(rows);
   const member = await prisma.staffMember.findFirst({
     where: { id: staffId, businessId },
     select: { id: true },
@@ -133,7 +142,7 @@ export async function setStaffHours(
 
   await prisma.$transaction([
     prisma.workingHours.deleteMany({ where: { scope: 'STAFF', staffId } }),
-    ...rows.map((row) =>
+    ...normalized.map((row) =>
       prisma.workingHours.create({
         data: {
           scope: 'STAFF',
