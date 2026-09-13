@@ -6,6 +6,7 @@ import {
   openSync,
   closeSync,
   existsSync,
+  readdirSync,
   writeFileSync,
   readFileSync,
   cpSync,
