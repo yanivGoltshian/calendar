@@ -336,6 +336,65 @@ function cleanString(value: unknown, max: number): string {
   return value.trim().slice(0, max);
 }
 
+function isGoogleCountryDomain(hostname: string): boolean {
+  return /^google\.(?:[a-z]{2,3}|(?:com|co)\.[a-z]{2})$/.test(hostname);
+}
+
+/**
+ * Accepts only HTTPS links that identify a Google business profile or its
+ * reviews. Generic searches are excluded because they can resolve to another
+ * business while the public CTA promises this business's reviews.
+ */
+export function normalizeGoogleBusinessUrl(value: unknown): string {
+  const raw = cleanString(value, LIMITS.googleReviewsUrl);
+  if (!raw) return '';
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return '';
+  }
+  if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) {
+    return '';
+  }
+
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+  const path = url.pathname.replace(/\/{2,}/g, '/');
+  if (hostname === 'g.page') return path.length > 1 ? url.toString() : '';
+  if (hostname === 'maps.app.goo.gl') return path.length > 1 ? url.toString() : '';
+  if (hostname === 'goo.gl') return path.startsWith('/maps/') && path.length > 6 ? url.toString() : '';
+
+  const labels = hostname.split('.');
+  const googleIndex = labels.findIndex((label) => label === 'google');
+  if (googleIndex < 0) return '';
+  const prefix = labels.slice(0, googleIndex).join('.');
+  const root = labels.slice(googleIndex).join('.');
+  if (!['', 'www', 'maps', 'search'].includes(prefix) || !isGoogleCountryDomain(root)) return '';
+  const hasIdentifier = (name: string) => Boolean(url.searchParams.get(name)?.trim());
+
+  if (prefix === 'search') {
+    return path === '/local/reviews' && hasIdentifier('placeid') ? url.toString() : '';
+  }
+  if (path.startsWith('/maps/place/') && path.slice('/maps/place/'.length).replaceAll('/', '')) {
+    return url.toString();
+  }
+  if (path.startsWith('/maps/reviews/') && path.slice('/maps/reviews/'.length).replaceAll('/', '')) {
+    return url.toString();
+  }
+  if (path === '/maps' || path === '/maps/') {
+    return hasIdentifier('cid') || hasIdentifier('query_place_id')
+      ? url.toString()
+      : '';
+  }
+  if (path.startsWith('/maps/search/')) {
+    return hasIdentifier('query_place_id') ? url.toString() : '';
+  }
+  if (prefix === 'maps' && path === '/') {
+    return hasIdentifier('cid') || hasIdentifier('query_place_id') ? url.toString() : '';
+  }
+  return '';
+}
+
 function toRecordArray(value: unknown): Record<string, unknown>[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is Record<string, unknown> =>
@@ -359,8 +418,7 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   const heroSubtext = cleanString(source.heroSubtext, LIMITS.heroSubtext);
   const about = cleanString(source.about, LIMITS.about);
   const announcement = cleanString(source.announcement, LIMITS.announcement);
-  const googleReviewsRaw = cleanString(source.googleReviewsUrl, LIMITS.googleReviewsUrl);
-  const googleReviewsUrl = /^https?:\/\//i.test(googleReviewsRaw) ? googleReviewsRaw : '';
+  const googleReviewsUrl = normalizeGoogleBusinessUrl(source.googleReviewsUrl);
   const ctaLabel = cleanString(source.ctaLabel, LIMITS.ctaLabel);
 
   const benefits: LandingBenefit[] = [];

@@ -30,9 +30,12 @@ test('landing updates preserve absent fields, clear empty fields and reject unsa
   assert.equal(parseLandingUpdates(form({ announcement: 'a'.repeat(200) })).ok, true);
   const invalidFields: Record<string, string>[] = [
     { announcement: 'a'.repeat(201) },
+    { googleReviewsUrl: 'http://g.page/r/example/review' },
     { googleReviewsUrl: 'javascript:alert(1)' },
     { googleReviewsUrl: 'https://user:password@example.invalid' },
     { googleReviewsUrl: 'not a URL' },
+    { googleReviewsUrl: 'https://reviews.example.invalid/business' },
+    { googleReviewsUrl: 'https://www.google.com/maps/search/?api=1&query=Wrong+Business' },
     { googleReviewsUrl: 'https://example.invalid/' + 'a'.repeat(2048) },
   ];
   for (const fields of invalidFields) assert.equal(parseLandingUpdates(form(fields)).ok, false);

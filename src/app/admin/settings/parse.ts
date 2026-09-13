@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { BusinessType, ReminderChannel } from '@prisma/client';
-import { MAX_HERO_IMAGES, normalizeLandingTheme, type LandingTheme } from '@/lib/publicPageStyle';
+import {
+  MAX_HERO_IMAGES,
+  normalizeGoogleBusinessUrl,
+  normalizeLandingTheme,
+  type LandingTheme,
+} from '@/lib/publicPageStyle';
 import type { LandingBrandingPatch } from '@/lib/branding';
 import {
   MESSAGE_KEYS,
@@ -122,12 +127,9 @@ export function parseLandingUpdates(
     data[key] = raw.trim() || null;
   }
   if (data.googleReviewsUrl) {
-    const result = z.string().url().safeParse(data.googleReviewsUrl);
-    if (!result.success) return { ok: false, error: 'bad_request' };
-    const url = new URL(result.data);
-    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) {
-      return { ok: false, error: 'bad_request' };
-    }
+    const normalized = normalizeGoogleBusinessUrl(data.googleReviewsUrl);
+    if (!normalized) return { ok: false, error: 'bad_request' };
+    data.googleReviewsUrl = normalized;
   }
   return { ok: true, data };
 }

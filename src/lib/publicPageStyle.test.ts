@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   sectionIconKey,
   landingDefaults,
+  normalizeGoogleBusinessUrl,
   normalizeLandingContent,
   normalizePublicPageStyle,
   isLandingContentEmpty,
@@ -92,6 +93,49 @@ test('normalizeLandingContent: חותך רווחים ומשמר שדות מלא�
   assert.deepEqual(res.benefits, [{ title: 'א', text: 'טקסט' }]);
   assert.deepEqual(res.galleryImageUrls, ['https://x/1.jpg']);
   assert.deepEqual(res.testimonials, [{ name: 'דנה', quote: 'מעולה' }]);
+});
+
+test('normalizeGoogleBusinessUrl: שומר רק קישורי HTTPS לפרופיל או לביקורות של עסק בגוגל', () => {
+  const valid = [
+    'https://g.page/r/synthetic/review',
+    'https://maps.app.goo.gl/synthetic-profile',
+    'https://goo.gl/maps/synthetic-profile',
+    'https://www.google.com/maps/place/Synthetic+Business/@32,34,15z',
+    'https://www.google.co.il/maps?cid=123456789',
+    'https://maps.google.com/?cid=123456789',
+    'https://maps.google.com/maps/search/?api=1&query_place_id=synthetic-place',
+    'https://search.google.com/local/reviews?placeid=synthetic-place',
+  ];
+  for (const url of valid) assert.equal(normalizeGoogleBusinessUrl(url), url);
+
+  const invalid = [
+    '',
+    'http://g.page/r/synthetic/review',
+    'https://g.page/',
+    'https://google.example.invalid/maps/place/Synthetic',
+    'https://www.google.com.evil.invalid/maps/place/Synthetic',
+    'https://www.google.com/search?q=Synthetic',
+    'https://www.google.com/maps/search/?api=1&query=Synthetic',
+    'https://www.google.com/maps?cid=',
+    'https://maps.google.com/?cid=',
+    'https://www.google.com/maps/search/?query_place_id=',
+    'https://www.google.com/maps/place/',
+    'https://www.google.com/maps/reviews-malformed',
+    'https://search.google.com/local/writereview?placeid=synthetic-place',
+    'https://user:pass@www.google.com/maps/place/Synthetic',
+    'javascript:alert(1)',
+  ];
+  for (const url of invalid) assert.equal(normalizeGoogleBusinessUrl(url), '');
+});
+
+test('normalizeLandingContent: invalid Google metadata is omitted while factual testimonials remain', () => {
+  const content = normalizeLandingContent({
+    testimonials: [{ name: 'David', quote: 'Stored factual review' }],
+    googleReviewsUrl: 'https://reviews.example.invalid/david',
+  });
+  assert.deepEqual(content, {
+    testimonials: [{ name: 'David', quote: 'Stored factual review' }],
+  });
 });
 
 test('normalizeLandingContent: מסנן שורות ריקות ומגביל כמויות', () => {

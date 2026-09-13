@@ -74,6 +74,21 @@ test('skipping social content preserves explicitly entered WhatsApp contact thro
   assert.equal(draft.socialLinks?.instagram, 'https://instagram.com/example');
 });
 
+test('premium publication preserves a Google business profile and omits unusable provider metadata', () => {
+  const valid = 'https://g.page/r/synthetic-business/review';
+  assert.equal(
+    parsePremiumDraft(JSON.stringify(publishPremiumDraft({ googleReviewsUrl: valid })))
+      ?.googleReviewsUrl,
+    valid,
+  );
+  assert.equal(
+    parsePremiumDraft(JSON.stringify(publishPremiumDraft({
+      googleReviewsUrl: 'https://www.google.com/maps/search/?api=1&query=wrong+business',
+    })))?.googleReviewsUrl,
+    undefined,
+  );
+});
+
 test('continuing with WhatsApp alone does not publish a follow section', () => {
   const result = publishPremiumDraft(decidePremiumStep({ socialLinks: { whatsapp: '0501234567' } }, 'social', 'continue'));
   assert.equal(result.sections?.socialCta, false);

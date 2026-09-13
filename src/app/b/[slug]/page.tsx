@@ -436,12 +436,15 @@ export default async function BusinessPublicPage({ params }: Props) {
             {servicesSection}
             {staffSection}
             {hoursSection}
-            {landing?.googleReviewsUrl && landing.sections?.testimonials !== false ? (
+            {(landing?.testimonials?.length || landing?.googleReviewsUrl) &&
+            landing.sections?.testimonials !== false ? (
               <LandingTestimonials
-                title={t.publicPage.landing.googleReviewsLabel}
-                items={[]}
+                title={t.publicPage.landing.testimonialsTitle}
+                items={landing.testimonials ?? []}
                 googleReviewsUrl={landing.googleReviewsUrl}
+                googleLabel={t.publicPage.landing.googleReviewsLabel}
                 googleCta={t.publicPage.landing.googleReviewsCta}
+                googleEmptyText={t.publicPage.landing.googleReviewsEmpty}
               />
             ) : null}
           </>

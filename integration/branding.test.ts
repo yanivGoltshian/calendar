@@ -9,6 +9,7 @@ after(() => prisma.$disconnect());
 
 test('concurrent partial branding edits preserve the latest other landing content', async () => {
   const f = await bookingFixture();
+  const other = await bookingFixture();
   try {
     const original = {
       presentation: 'premium', heroHeadline: 'Preserved headline',
@@ -16,6 +17,14 @@ test('concurrent partial branding edits preserve the latest other landing conten
       heroVideoUrl: '/images/retained-video.mp4',
     };
     await prisma.business.update({ where: { id: f.business.id }, data: { landingContent: original } });
+    const otherLanding = {
+      testimonials: [{ name: 'Other tenant', quote: 'Must stay isolated' }],
+      googleReviewsUrl: 'https://g.page/r/other-tenant/review',
+    };
+    await prisma.business.update({
+      where: { id: other.business.id },
+      data: { landingContent: otherLanding },
+    });
     const theme = BRAND_PRESETS[3].theme;
     const profile: BusinessProfileInput = {
       name: f.business.name, type: f.business.type, phone: f.business.phone,
@@ -40,7 +49,12 @@ test('concurrent partial branding edits preserve the latest other landing conten
     await updateBusinessProfile(f.business.id, profile, { announcement: null, googleReviewsUrl: null });
     assert.deepEqual((await prisma.business.findUniqueOrThrow({ where: { id: f.business.id } })).landingContent,
       { ...original, theme, heroImages: ['/icons/icon-192.png'] });
+    assert.deepEqual(
+      (await prisma.business.findUniqueOrThrow({ where: { id: other.business.id } })).landingContent,
+      otherLanding,
+    );
   } finally {
     await cleanupFixture(f);
+    await cleanupFixture(other);
   }
 });

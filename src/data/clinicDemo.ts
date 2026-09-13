@@ -163,7 +163,6 @@ export function buildClinicLandingContent(): LandingContent {
     // שורת עדכון חי לדוגמה — בעל העסק עורך אותה מעמוד ניהול העסק.
     announcement: 'זמינות נוספת נפתחה לשבוע הקרוב — מוזמנים לקבוע תור אונליין בכמה קליקים.',
     // קישור לביקורות העסק בגוגל (לדוגמה) — מפעיל את מיתוג ביקורות גוגל במקטע ההמלצות.
-    googleReviewsUrl: 'https://www.google.com/maps/search/?api=1&query=סקין+ביוטי+קליניק+יבנה',
     socialLinks: {
       whatsapp: CLINIC_IDENTITY.whatsapp,
       instagram: CLINIC_IDENTITY.instagramUrl,
