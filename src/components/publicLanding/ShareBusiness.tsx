@@ -125,28 +125,32 @@ export default function ShareBusiness({ shareUrl, businessName }: ShareBusinessP
   const fbHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
 
   const pill =
-    'inline-flex items-center gap-2 rounded-full border border-[#e7ddcd] bg-[#fbf7f0] px-4 py-2.5 text-sm font-bold text-[#4a423c] transition hover:bg-[#f3ece0] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b0855f]/40';
+    'inline-flex items-center gap-2 rounded-full border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface-muted,#fbf7f0)] px-4 py-2.5 text-sm font-bold text-[color:var(--c-ink,#4a423c)] transition hover:bg-[color:var(--c-gold-soft,#f3ece0)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--c-brand,#b0855f)]/40';
 
   return (
     <section
       dir="rtl"
       aria-label={s.ariaShare.replace('{name}', businessName)}
-      className="rounded-[22px] border border-[#e7ddcd] bg-[#faf6ef] px-5 py-8 text-center shadow-[0_18px_40px_-30px_rgba(40,28,18,0.5)] sm:px-8"
+      data-palette-surface="share"
+      className="rounded-[22px] border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-cream,#faf6ef)] px-5 py-8 text-center sm:px-8"
+      style={{ boxShadow: '0 18px 40px -30px var(--c-shadow, rgba(40,28,18,0.5))' }}
     >
-      {/* כותרת מקטע — פס זהב ממורכז כמו בעיצוב */}
-      <div className="text-[0.85rem] font-extrabold text-[#c6a86a]">{s.eyebrow}</div>
-      <h2 className="mt-1 text-2xl font-extrabold text-[#211c1a]">{s.title}</h2>
-      <div className="mx-auto mt-3 h-[3px] w-20 rounded-full bg-[linear-gradient(90deg,transparent,#c6a86a,transparent)]" />
+      <div className="text-[0.85rem] font-extrabold text-[color:var(--c-gold-text,#c6a86a)]">{s.eyebrow}</div>
+      <h2 className="mt-1 text-2xl font-extrabold text-[color:var(--c-ink,#211c1a)]">{s.title}</h2>
+      <div
+        className="mx-auto mt-3 h-[3px] w-20 rounded-full"
+        style={{ background: 'linear-gradient(90deg, transparent, var(--c-gold), transparent)' }}
+      />
 
       {/* כרטיס השיתוף */}
       <div className="mx-auto mt-7 max-w-[560px]">
-        <p className="text-sm font-semibold text-[#6e655f]">{s.subtitle}</p>
+        <p className="text-sm font-semibold text-[color:var(--c-muted,#6e655f)]">{s.subtitle}</p>
 
         {/* שורת הקישור — הצגת הכתובת + כפתור העתקה במותג */}
         <div className="mx-auto mt-4 flex max-w-[520px] items-center gap-2">
           <span
             dir="ltr"
-            className="min-w-0 flex-1 truncate rounded-xl border border-[#e7ddcd] bg-[#fbf7f0] px-3.5 py-2.5 text-left text-sm font-medium text-[#4a423c]"
+            className="min-w-0 flex-1 truncate rounded-xl border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface-muted,#fbf7f0)] px-3.5 py-2.5 text-left text-sm font-medium text-[color:var(--c-ink,#4a423c)]"
           >
             {shareUrl}
           </span>
@@ -154,7 +158,7 @@ export default function ShareBusiness({ shareUrl, businessName }: ShareBusinessP
             type="button"
             onClick={handleCopy}
             aria-label={s.copyLink}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#b0855f] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#8c6748] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#b0855f]/50"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[color:var(--c-brand,#b0855f)] px-4 py-2.5 text-sm font-bold text-[color:var(--c-on-brand,#ffffff)] transition hover:bg-[color:var(--c-brand-strong,#8c6748)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--c-brand,#b0855f)]/50"
           >
             {copied ? (
               <CheckIcon className="h-4 w-4" />
@@ -169,7 +173,7 @@ export default function ShareBusiness({ shareUrl, businessName }: ShareBusinessP
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
           {canShare ? (
             <button type="button" onClick={handleNativeShare} className={pill}>
-              <ShareIcon className="h-4 w-4 text-[#b0855f]" />
+              <ShareIcon className="h-4 w-4 text-[color:var(--c-brand,#b0855f)]" />
               {s.button}
             </button>
           ) : null}
@@ -193,7 +197,7 @@ export default function ShareBusiness({ shareUrl, businessName }: ShareBusinessP
           </p>
         ) : null}
         {igHint ? (
-          <p role="status" className="mt-3 text-sm text-[#6e655f]">
+          <p role="status" className="mt-3 text-sm text-[color:var(--c-muted,#6e655f)]">
             {s.instagramHint}
           </p>
         ) : null}

@@ -42,12 +42,12 @@ function AppointmentRow({
   if (state.ok) return null;
 
   return (
-    <li className="rounded-2xl border border-[#e7ddcd] bg-[#fbf7f0] p-4">
+    <li className="rounded-2xl border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface-muted,#fbf7f0)] p-4">
       <p className="text-base font-black text-[color:var(--c-ink,#1b1715)]">{appt.title}</p>
       <p className="mt-0.5 text-sm font-semibold text-[color:var(--c-muted,#6e655f)]">
         {appt.staffLabel}
       </p>
-      <p className="mt-2 text-sm font-bold tabular-nums text-[#a06c63]">{appt.whenLabel}</p>
+      <p className="mt-2 text-sm font-bold tabular-nums text-[color:var(--c-accent-strong,#a06c63)]">{appt.whenLabel}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <a
@@ -55,7 +55,7 @@ function AppointmentRow({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={addToCalendarAria}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--c-brand,#b0855f)] bg-white px-3.5 py-2 text-sm font-bold text-[color:var(--c-brand,#b0855f)] transition hover:bg-[color:var(--c-brand,#b0855f)] hover:text-white"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--c-brand,#b0855f)] bg-[color:var(--c-surface,#ffffff)] px-3.5 py-2 text-sm font-bold text-[color:var(--c-brand,#b0855f)] transition hover:bg-[color:var(--c-brand,#b0855f)] hover:text-[color:var(--c-on-brand,#ffffff)]"
         >
           <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -68,7 +68,7 @@ function AppointmentRow({
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="inline-flex items-center rounded-full border border-[#e2c9c4] bg-white px-3.5 py-2 text-sm font-semibold text-[#a06c63] transition hover:bg-[#f4e9e6]"
+            className="inline-flex items-center rounded-full border border-rose-200 bg-white px-3.5 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
           >
             {t.account.cancelCta}
           </button>
@@ -97,7 +97,7 @@ function AppointmentRow({
               type="button"
               disabled={pending}
               onClick={() => setConfirming(false)}
-              className="rounded-full border border-[#e7ddcd] bg-white px-3.5 py-2 text-sm font-semibold text-[color:var(--c-ink,#1b1715)] transition hover:bg-[#fbf7f0] disabled:opacity-60"
+              className="rounded-full border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface,#ffffff)] px-3.5 py-2 text-sm font-semibold text-[color:var(--c-ink,#1b1715)] transition hover:bg-[color:var(--c-surface-muted,#fbf7f0)] disabled:opacity-60"
             >
               {t.account.cancelKeep}
             </button>
@@ -125,13 +125,20 @@ export default function ReturningCustomer({ name, slug, appointments, heading }:
 
   return (
     <section id="lp-hello" className="mt-8 scroll-mt-24">
-      <div className="relative overflow-hidden rounded-[26px] border border-[#e7ddcd] bg-white p-5 shadow-[0_30px_60px_-30px_rgba(40,28,18,0.5)] sm:p-[26px]">
-        <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#c6a86a,#c08f86,#b0855f)]" />
+      <div
+        className="relative overflow-hidden rounded-[26px] border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface,#ffffff)] p-5 sm:p-[26px]"
+        style={{ boxShadow: '0 30px 60px -30px var(--c-shadow, rgba(40,28,18,0.5))' }}
+      >
+        <span
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-1"
+          style={{ background: 'linear-gradient(90deg, var(--c-gold), var(--c-accent), var(--c-brand))' }}
+        />
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-2xl font-black text-[color:var(--c-ink,#1b1715)]">
             {heading ?? (name ? `${r.greeting} ${name}` : r.greeting)}
           </h2>
-          <span className="inline-flex items-center rounded-full bg-[#c08f86]/15 px-3.5 py-1.5 text-xs font-extrabold text-[#a06c63]">
+          <span className="inline-flex items-center rounded-full bg-[color:var(--c-accent-soft,rgba(192,143,134,0.15))] px-3.5 py-1.5 text-xs font-extrabold text-[color:var(--c-accent-strong,#a06c63)]">
             {r.subtitle}
           </span>
         </div>

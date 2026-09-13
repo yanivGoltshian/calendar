@@ -17,7 +17,7 @@ export default function LandingFacebookFeed({ title, pageUrl, eyebrow }: Props) 
   return (
     <section className="mt-16 sm:mt-24">
       <SectionHeading eyebrow={eyebrow} title={title} />
-      <div className="mx-auto mt-10 flex max-w-[360px] justify-center overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-white shadow-soft">
+      <div className="mx-auto mt-10 flex max-w-[360px] justify-center overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] shadow-soft">
         <iframe
           src={src}
           title={title}

@@ -21,7 +21,7 @@ export default function SectionHeading({ eyebrow, title, lede, icon, align = 'ce
         </span>
       ) : null}
       <h2
-        className={`${eyebrow ? 'mt-2.5' : ''} font-display text-3xl font-bold leading-tight tracking-tight text-slate-900 sm:text-4xl`}
+        className={`${eyebrow ? 'mt-2.5' : ''} font-display text-3xl font-bold leading-tight tracking-tight text-[color:var(--c-ink,#0f172a)] sm:text-4xl`}
       >
         {title}
       </h2>
@@ -32,7 +32,7 @@ export default function SectionHeading({ eyebrow, title, lede, icon, align = 'ce
       />
       {lede ? (
         <p
-          className={`mt-4 text-sm leading-relaxed text-slate-600 sm:text-base ${centered ? 'mx-auto max-w-xl' : 'max-w-xl'}`}
+          className={`mt-4 text-sm leading-relaxed text-[color:var(--c-muted,#475569)] sm:text-base ${centered ? 'mx-auto max-w-xl' : 'max-w-xl'}`}
         >
           {lede}
         </p>

@@ -163,9 +163,9 @@ export default function PremiumClinicHeader({
   const secondary = heroImages[1];
 
   return (
-    <header className="overflow-hidden bg-[color:var(--c-cream,#faf6ef)]">
+    <header data-palette-surface="premium-header" className="overflow-hidden bg-[color:var(--c-cream,#faf6ef)]">
       {/* סרגל עליון כהה — טלפון, שעות היום ורשתות חברתיות */}
-      <div className="bg-[color:var(--c-ink,#1b1715)] text-[color:var(--c-cream,#faf6ef)]">
+      <div className="bg-[color:var(--c-ink,#1b1715)] text-[color:var(--c-on-dark,#ffffff)]">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-2 text-xs sm:text-sm">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {phone ? (
@@ -199,7 +199,7 @@ export default function PremiumClinicHeader({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={labels.instagramAria}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 transition hover:bg-[color:var(--c-gold,#c6a86a)] hover:text-[color:var(--c-ink,#1b1715)]"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 transition hover:bg-[color:var(--c-gold,#c6a86a)] hover:text-[color:var(--c-on-gold,#1b1715)]"
               >
                 <InstagramIcon className="h-4 w-4" />
               </a>
@@ -210,7 +210,7 @@ export default function PremiumClinicHeader({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={labels.facebookAria}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 transition hover:bg-[color:var(--c-gold,#c6a86a)] hover:text-[color:var(--c-ink,#1b1715)]"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 transition hover:bg-[color:var(--c-gold,#c6a86a)] hover:text-[color:var(--c-on-gold,#1b1715)]"
               >
                 <FacebookIcon className="h-4 w-4" />
               </a>
@@ -256,7 +256,7 @@ export default function PremiumClinicHeader({
             </a> : null}
             <Link
               href={bookHref}
-              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] px-3 py-1.5 text-[11px] font-bold text-[color:var(--c-ink,#1b1715)] shadow-soft transition hover:-translate-y-0.5 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
+              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] px-3 py-1.5 text-[11px] font-bold text-[color:var(--c-on-gold,#1b1715)] shadow-soft transition hover:-translate-y-0.5 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
             >
               {labels.bookCta}
               <ArrowLeftIcon className="h-4 w-4" />
@@ -279,7 +279,7 @@ export default function PremiumClinicHeader({
                     aria-haspopup="menu"
                     className="inline-flex items-center gap-2 rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 py-1.5 pe-3 ps-1.5 text-sm font-semibold text-[color:var(--c-ink,#1b1715)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
                   >
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-on-gold,#1b1715)]">
                       {accountInitial}
                     </span>
                     {accountFirstName ? (
@@ -314,7 +314,7 @@ export default function PremiumClinicHeader({
                         className="absolute end-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white p-2 shadow-elevated"
                       >
                         <div className="flex items-center gap-2.5 px-2 py-2">
-                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
+                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-on-gold,#1b1715)]">
                             {accountInitial}
                           </span>
                           <span className="flex min-w-0 flex-col">
@@ -416,7 +416,7 @@ export default function PremiumClinicHeader({
                 {effectiveAccount ? (
                   <>
                     <div className="flex items-center gap-2.5 px-1 pb-2">
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-base font-bold text-[color:var(--c-ink,#1b1715)]">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-base font-bold text-[color:var(--c-on-gold,#1b1715)]">
                         {accountInitial}
                       </span>
                       <span className="flex min-w-0 flex-col">
@@ -468,7 +468,7 @@ export default function PremiumClinicHeader({
 
       {/* רצועת עדכונים — טקסט מתגלגל שנשלט מניהול העסק (חופשה · זמינות · הודעה). נופלת חזרה לפס מבצע כשאין עדכון */}
       {updatesText ? (
-        <div className="tc-ticker overflow-hidden bg-[color:var(--c-ink,#1b1715)] text-[color:var(--c-cream,#faf6ef)]">
+        <div className="tc-ticker overflow-hidden bg-[color:var(--c-ink,#1b1715)] text-[color:var(--c-on-dark,#ffffff)]">
           <div className="mx-auto flex max-w-5xl items-center gap-3 px-5 py-2.5">
             <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-[color:var(--c-gold,#c6a86a)]">
               <MegaphoneIcon className="h-4 w-4" />
@@ -486,8 +486,8 @@ export default function PremiumClinicHeader({
         </div>
       ) : showOffer && launchOffer && countdown ? (
         <div
-          className="text-[#f4e9d6]"
-          style={{ backgroundImage: 'linear-gradient(90deg, var(--biz-ink) 0%, var(--biz-ink-strong) 100%)' }}
+          className="text-[color:var(--c-on-dark,#ffffff)]"
+          style={{ backgroundImage: 'linear-gradient(90deg, var(--c-dark-surface) 0%, var(--c-dark-surface-soft) 100%)' }}
         >
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-2.5 gap-y-1 px-5 py-2.5 text-center text-xs font-semibold sm:text-sm">
             <span>{launchOffer.text}</span>
@@ -496,7 +496,7 @@ export default function PremiumClinicHeader({
                 <span aria-hidden className="text-[color:var(--c-gold,#c6a86a)]">·</span>
                 <span>
                   {labels.offerRemaining}{' '}
-                  <b className="font-bold text-white">{launchOffer.spotsLeft}</b> {labels.offerSpotsCalm}
+                  <b className="font-bold text-[color:var(--c-on-dark,#ffffff)]">{launchOffer.spotsLeft}</b> {labels.offerSpotsCalm}
                 </span>
               </>
             ) : null}
@@ -505,7 +505,7 @@ export default function PremiumClinicHeader({
                 <span aria-hidden className="text-[color:var(--c-gold,#c6a86a)]">·</span>
                 <span>
                   {labels.offerRemaining}{' '}
-                  <b dir="ltr" className="font-bold tabular-nums text-white">{countdown.days}</b> {labels.countdown.days}
+                  <b dir="ltr" className="font-bold tabular-nums text-[color:var(--c-on-dark,#ffffff)]">{countdown.days}</b> {labels.countdown.days}
                 </span>
               </>
             ) : null}
@@ -513,8 +513,8 @@ export default function PremiumClinicHeader({
         </div>
       ) : null}
 
-      {/* הירו מלא רוחב — תמונה ראשית ברקע, וידאו בצד, טקסט לבן על מסכת ברונזה חמה. RTL מלא */}
-      <section className="relative isolate flex min-h-[520px] items-center overflow-hidden text-white sm:min-h-[600px]">
+      {/* הירו מלא רוחב — תמונה ראשית ברקע, וידאו בצד ומסכת ניגודיות שנגזרת מהפלטה. */}
+      <section className="relative isolate flex min-h-[520px] items-center overflow-hidden text-[color:var(--c-on-dark,#ffffff)] sm:min-h-[600px]">
         <div className="absolute inset-0 -z-10">
           {primary ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -531,16 +531,17 @@ export default function PremiumClinicHeader({
             feather
           />
         ) : null}
-          {/* מסכת ברונזה להקראת טקסט לבן + זוהר תחתון חמים */}
+          {/* מסכת ניגודיות וזוהר תחתון נגזרים מהפלטה שנבחרה. */}
           <span
             aria-hidden
+            data-palette-overlay="hero"
             className="pointer-events-none absolute inset-0 -z-10"
-            style={{ background: 'linear-gradient(to right, rgba(44,37,34,0.14), rgba(44,37,34,0.5) 52%, rgba(44,37,34,0.88))' }}
+            style={{ background: 'linear-gradient(to right, var(--c-hero-overlay-soft), var(--c-hero-overlay-medium) 52%, var(--c-hero-overlay-strong))' }}
           />
           <span
             aria-hidden
             className="pointer-events-none absolute inset-0 -z-10"
-            style={{ background: 'linear-gradient(to top, rgba(140,103,72,0.38), transparent 58%)' }}
+            style={{ background: 'linear-gradient(to top, var(--c-hero-glow), transparent 58%)' }}
           />
 
         <div className="mx-auto w-full max-w-5xl px-5 py-16 sm:py-20">
@@ -551,7 +552,7 @@ export default function PremiumClinicHeader({
               </span>
             ) : null}
             <h1
-              className={`${heroEyebrow ? 'mt-5' : ''} font-display text-4xl font-black leading-[1.08] tracking-tight text-white drop-shadow-sm sm:text-5xl`}
+              className={`${heroEyebrow ? 'mt-5' : ''} font-display text-4xl font-black leading-[1.08] tracking-tight text-[color:var(--c-on-dark,#ffffff)] drop-shadow-sm sm:text-5xl`}
             >
               {heroHeadline}
             </h1>
@@ -562,12 +563,12 @@ export default function PremiumClinicHeader({
             {heroTagline ? (
               <p
                 className="mt-4 text-sm font-bold tracking-wide sm:text-base"
-                style={{ color: 'var(--c-brand,#b0855f)' }}
+                style={{ color: 'var(--c-gold,#c6a86a)' }}
               >
                 {heroTagline}
               </p>
             ) : null}
-            <p className="mt-5 max-w-lg text-base leading-relaxed text-white/85 sm:text-lg">
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-[color:var(--c-on-dark,#ffffff)]/85 sm:text-lg">
               {heroSubtext}
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">

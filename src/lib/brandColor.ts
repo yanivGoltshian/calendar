@@ -38,9 +38,30 @@ function toRgb(hex: string): [number, number, number] {
   ];
 }
 
-/** בוחר טקסט קריא (לבן או נייבי כהה) לפי בהירות הרקע. */
+function relativeLuminance(hex: string): number {
+  const channels = toRgb(hex).map((channel) => {
+    const value = channel / 255;
+    return value <= 0.04045
+      ? value / 12.92
+      : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(foreground: string, background: string): number {
+  const lighter = Math.max(relativeLuminance(foreground), relativeLuminance(background));
+  const darker = Math.min(relativeLuminance(foreground), relativeLuminance(background));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** בוחר טקסט בהיר או כהה שעומד בניגוד WCAG AA מול צבע הרקע כשאפשר. */
 export function readableText(hex: string): string {
-  const [r, g, b] = toRgb(hex);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.62 ? '#0A182D' : '#ffffff';
+  const background = expand(hex);
+  const dark = '#0A182D';
+  const light = '#ffffff';
+  const darkContrast = contrastRatio(dark, background);
+  const lightContrast = contrastRatio(light, background);
+  if (darkContrast >= 4.5 && darkContrast >= lightContrast) return dark;
+  if (lightContrast >= 4.5) return light;
+  return '#000000';
 }

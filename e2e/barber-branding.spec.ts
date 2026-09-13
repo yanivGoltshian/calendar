@@ -8,8 +8,15 @@ import { t } from '../src/i18n';
 import { canAcceptPublicBookings } from '../src/server/subscription';
 
 const blue = BRAND_PRESETS.find((preset) => preset.id === 'clinical-blue')!.theme;
+const bronze = BRAND_PRESETS.find((preset) => preset.id === 'skin-bronze')!.theme;
+const pink = BRAND_PRESETS.find((preset) => preset.id === 'soft-rose')!.theme;
 const profiles = ['persisted-barber', 'explicit-booking', 'rich-blue', 'partial-new'] as const;
 test.afterAll(() => prisma.$disconnect());
+
+function rgb(hex: string) {
+  const value = hex.slice(1);
+  return `rgb(${parseInt(value.slice(0, 2), 16)}, ${parseInt(value.slice(2, 4), 16)}, ${parseInt(value.slice(4, 6), 16)})`;
+}
 
 for (const width of [390, 1366]) {
   for (const profile of profiles) {
@@ -29,7 +36,7 @@ for (const width of [390, 1366]) {
             subscriptionStatus: 'trialing',
             trialEndsAt: new Date(Date.now() + 30 * 86_400_000),
             paidUntil: null,
-            brandColor: blue.brand,
+            brandColor: partial ? blue.brand : bronze.brand,
             logoUrl: partial ? null : themeOnly ? `https://bundled-assets.example.invalid${logo}` : logo,
             publicPageStyle: profile === 'explicit-booking' ? 'BOOKING' : 'LANDING',
             landingContent: partial ? { heroHeadline: 'עסק חדש' } : themeOnly ? { theme: blue } : {
@@ -124,4 +131,157 @@ for (const width of [390, 1366]) {
       }
     });
   }
+
+  test(`premium sections use the saved pink palette at ${width}px`, async ({ page }, info) => {
+    const f = await bookingFixture();
+    const image = '/icons/icon-192.png';
+    const landingContent = {
+      presentation: 'premium' as const,
+      theme: pink,
+      announcement: 'Synthetic palette announcement',
+      heroEyebrow: 'Synthetic eyebrow',
+      heroHeadline: 'Synthetic pink palette',
+      heroSubtext: 'Every rendered section inherits the saved palette.',
+      heroImages: [image],
+      launchOffer: { text: 'Synthetic launch offer', spotsLeft: 4, endsAt: '2099-12-31' },
+      hotDeals: { eyebrow: 'Synthetic deals', title: 'Synthetic promotion', images: [image] },
+      benefits: [{ title: 'Benefit', text: 'Palette coverage' }],
+      galleryImageUrls: [image],
+      beforeAfter: [{ beforeUrl: image, afterUrl: image, label: 'Synthetic result' }],
+      testimonials: [{ name: 'Synthetic customer', quote: 'Palette matched.' }],
+      faq: [{ question: 'Palette question?', answer: 'Palette answer.' }],
+      about: 'Synthetic palette coverage copy.',
+      socialLinks: {
+        whatsapp: '0501234567',
+        instagram: 'https://instagram.com/synthetic',
+      },
+      sections: {
+        highlights: true,
+        services: true,
+        gallery: true,
+        beforeAfter: true,
+        testimonials: true,
+        faq: true,
+        about: true,
+        location: true,
+        socialCta: true,
+      },
+    };
+    try {
+      await prisma.business.update({
+        where: { id: f.business.id },
+        data: {
+          name: 'עסק בדיקת פלטה',
+          type: 'BEAUTY_COSMETICS',
+          brandColor: bronze.brand,
+          logoUrl: image,
+          publicPageStyle: 'LANDING',
+          landingContent,
+          settings: {
+            update: {
+              onboardingCompleted: true,
+              onboardingSteps: {
+                services: true,
+                workingHours: true,
+                branding: true,
+                landing: true,
+              },
+            },
+          },
+        },
+      });
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(`/b/${f.business.slug}`);
+
+      const main = page.locator('main');
+      await expect(page.locator('[data-palette-surface="premium-header"]')).toBeVisible();
+      const variables = await main.evaluate((element) => {
+        const styles = getComputedStyle(element);
+        return {
+          brand: styles.getPropertyValue('--c-brand').trim(),
+          gold: styles.getPropertyValue('--c-gold').trim(),
+          cream: styles.getPropertyValue('--c-cream').trim(),
+          ink: styles.getPropertyValue('--c-ink').trim(),
+          accent: styles.getPropertyValue('--c-accent').trim(),
+        };
+      });
+      expect(variables).toEqual({
+        brand: pink.brand,
+        gold: pink.gold,
+        cream: pink.cream,
+        ink: pink.ink,
+        accent: pink.accent,
+      });
+      const inheritedSections = await main.locator('section').evaluateAll((sections) =>
+        sections.map((section) => {
+          const styles = getComputedStyle(section);
+          return {
+            brand: styles.getPropertyValue('--c-brand').trim(),
+            gold: styles.getPropertyValue('--c-gold').trim(),
+            cream: styles.getPropertyValue('--c-cream').trim(),
+          };
+        }),
+      );
+      expect(inheritedSections.length).toBeGreaterThanOrEqual(10);
+      expect(inheritedSections.every((theme) =>
+        theme.brand === pink.brand && theme.gold === pink.gold && theme.cream === pink.cream,
+      )).toBe(true);
+
+      const headerCta = page.locator('header').locator(`a[href="/b/${f.business.slug}/book"]`).first();
+      const heroOverlay = page.locator('[data-palette-overlay="hero"]');
+      const bookingAccent = page.locator('[data-palette-accent="booking"]');
+      const promotion = page.locator('[data-palette-surface="promotion"]');
+      const location = page.locator('[data-palette-surface="location"]');
+      const share = page.locator('[data-palette-surface="share"]');
+      const stickyCta = page.locator('[data-palette-surface="sticky-booking"]');
+
+      expect(await headerCta.evaluate((element) => getComputedStyle(element).backgroundImage))
+        .toContain(rgb(pink.gold));
+      const heroOverlayGradient = await heroOverlay.evaluate((element) => getComputedStyle(element).backgroundImage);
+      expect(heroOverlayGradient).toContain('36, 26, 30');
+      expect(heroOverlayGradient).not.toContain('44, 37, 34');
+      const bookingGradient = await bookingAccent.evaluate((element) => getComputedStyle(element).backgroundImage);
+      for (const color of [pink.gold, pink.accent, pink.brand]) {
+        expect(bookingGradient).toContain(rgb(color));
+      }
+      for (const surface of [promotion, location]) {
+        const background = await surface.evaluate((element) => getComputedStyle(element).backgroundImage);
+        expect(background).toContain('224, 179, 191');
+        expect(background).not.toContain('198, 168, 106');
+      }
+      await expect(share).toHaveCSS('background-color', rgb(pink.cream));
+      const stickyGradient = await stickyCta.evaluate((element) => getComputedStyle(element).backgroundImage);
+      expect(stickyGradient).toContain(rgb(pink.brand));
+      expect(stickyGradient).toContain(rgb(pink.brandDark));
+      expect(stickyGradient).not.toContain(rgb(bronze.brandDark));
+
+      await info.attach(`pink-header-${width}.png`, {
+        body: await page.locator('[data-palette-surface="premium-header"]').screenshot({ animations: 'disabled' }),
+        contentType: 'image/png',
+      });
+      await info.attach(`pink-promotion-${width}.png`, {
+        body: await promotion.screenshot({ animations: 'disabled' }),
+        contentType: 'image/png',
+      });
+      await info.attach(`pink-location-${width}.png`, {
+        body: await location.screenshot({ animations: 'disabled' }),
+        contentType: 'image/png',
+      });
+
+      const { theme: _theme, ...contentWithoutTheme } = landingContent;
+      await prisma.business.update({
+        where: { id: f.business.id },
+        data: { brandColor: bronze.brand, landingContent: contentWithoutTheme },
+      });
+      await page.goto(`/b/${f.business.slug}`);
+      expect(await page.locator('main').evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--c-gold').trim(),
+      )).toBe(bronze.gold);
+      expect(await page.locator('main').evaluate((element) =>
+        getComputedStyle(element).getPropertyValue('--c-hero-cta').trim(),
+      )).toBe(bronze.accent);
+    } finally {
+      await cleanupFixture(f);
+    }
+  });
 }

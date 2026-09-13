@@ -67,6 +67,7 @@ export default function LandingLocation({
     return (
       <section
         id="lp-location"
+        data-palette-surface="location"
         dir="rtl"
         className="relative mt-16 scroll-mt-24 sm:mt-24"
         style={{
@@ -74,8 +75,8 @@ export default function LandingLocation({
           marginInline: 'calc(50% - 50vw)',
           overflowX: 'clip',
           background:
-            'radial-gradient(1200px 500px at 15% -10%, rgba(198,168,106,0.20), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(176,133,95,0.22), transparent 55%), linear-gradient(160deg, #1b1513, #2c2420)',
-          color: '#fff',
+            'radial-gradient(1200px 500px at 15% -10%, var(--c-dark-glow-primary), transparent 60%), radial-gradient(900px 500px at 100% 0%, var(--c-dark-glow-secondary), transparent 55%), linear-gradient(160deg, var(--c-dark-surface), var(--c-dark-surface-soft))',
+          color: 'var(--c-on-dark)',
         }}
       >
         {/* רצועה כהה אופקית: טור פרטים זהב מימין, מפה מוטמעת משמאל (RTL), קורסת לטור אחד במובייל */}
@@ -83,19 +84,19 @@ export default function LandingLocation({
           {/* טור טקסט: עינית זהב, כתובת ככותרת, קו זהב, פרטים וכפתורי ניווט */}
           <div className="order-2 lg:order-1">
             {eyebrow ? (
-              <p className="text-sm font-extrabold tracking-wide text-[#c6a86a]">{eyebrow}</p>
+              <p className="text-sm font-extrabold tracking-wide text-[color:var(--c-gold,#c6a86a)]">{eyebrow}</p>
             ) : null}
             <h2 className="mt-1 font-display text-3xl font-black leading-tight sm:text-4xl">{title}</h2>
             <span
               aria-hidden
               className="mt-3 block h-[3px] w-20 rounded-full"
-              style={{ background: 'linear-gradient(90deg, #c6a86a, transparent)' }}
+              style={{ background: 'linear-gradient(90deg, var(--c-gold), transparent)' }}
             />
 
             <ul className="mt-6 space-y-3 text-sm text-white/90">
               {address ? (
                 <li className="flex items-start gap-2">
-                  <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#c6a86a]" />
+                  <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--c-gold,#c6a86a)]" />
                   <span>{address}</span>
                 </li>
               ) : null}
@@ -106,20 +107,20 @@ export default function LandingLocation({
                     aria-label={contactCta ?? callCta}
                     className="flex items-center gap-2 transition hover:text-white"
                   >
-                    <PhoneIcon className="h-4 w-4 shrink-0 text-[#c6a86a]" />
+                    <PhoneIcon className="h-4 w-4 shrink-0 text-[color:var(--c-gold,#c6a86a)]" />
                     <span dir="ltr" className="tabular-nums">{phoneDisplay}</span>
                   </a>
                 </li>
               ) : null}
               {hasHours ? (
                 <li className="flex items-start gap-2">
-                  <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#c6a86a]" />
+                  <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--c-gold,#c6a86a)]" />
                   <ul className="space-y-1">
                     {[0, 1, 2, 3, 4, 5, 6].map((d) => {
                       const wh = byDay.get(d);
                       if (!wh) return null;
                       return (
-                        <li key={d} data-hours-day={d} data-today-class="font-semibold text-[#c6a86a]" className="flex gap-2">
+                        <li key={d} data-hours-day={d} data-today-class="font-semibold text-[color:var(--c-gold,#c6a86a)]" className="flex gap-2">
                           <span className="min-w-[3.5rem]">{weekdays[d]}</span>
                           <span dir="ltr" className="tabular-nums">
                             {formatMinutes(wh.startMinute)}–{formatMinutes(wh.endMinute)}
@@ -135,7 +136,7 @@ export default function LandingLocation({
             {/* כפתורי ניווט: Google (זהב), Waze (רפאים), וואטסאפ (אקו) */}
             <div className="mt-6">
               {navTitle ? (
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#c6a86a]">{navTitle}</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--c-gold,#c6a86a)]">{navTitle}</p>
               ) : null}
               <div className="flex flex-wrap gap-3">
                 {gmapsUrl ? (
@@ -143,8 +144,8 @@ export default function LandingLocation({
                     href={gmapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-[#241d10] shadow-soft transition hover:-translate-y-0.5"
-                    style={{ background: 'linear-gradient(90deg, #a6863f, #c6a86a)' }}
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-[color:var(--c-on-gold,#241d10)] shadow-soft transition hover:-translate-y-0.5"
+                    style={{ background: 'linear-gradient(90deg, var(--c-gold-strong), var(--c-gold))' }}
                   >
                     <NavigationIcon className="h-4 w-4" />
                     {mapsCta}
@@ -155,7 +156,7 @@ export default function LandingLocation({
                     href={wazeHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5"
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-[color:var(--c-on-dark,#ffffff)] transition hover:-translate-y-0.5"
                     style={{ background: 'rgba(255,255,255,0.10)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.35)' }}
                   >
                     <NavigationIcon className="h-4 w-4" />
@@ -167,8 +168,7 @@ export default function LandingLocation({
                     href={socialHref('whatsapp', whatsappTrimmed)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5"
-                    style={{ background: '#c08f86' }}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 text-sm font-bold text-[#071f11] transition hover:-translate-y-0.5"
                   >
                     <WhatsappIcon className="h-4 w-4" />
                     {whatsappCta}

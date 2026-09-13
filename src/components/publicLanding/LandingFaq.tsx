@@ -14,13 +14,13 @@ export default function LandingFaq({ title, items, eyebrow }: Props) {
         {items.map((item, i) => (
           <details
             key={i}
-            className="group rounded-3xl border border-[color:var(--biz-border)] bg-white px-6 py-5 shadow-soft [&_summary::-webkit-details-marker]:hidden"
+            className="group rounded-3xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] px-6 py-5 shadow-soft [&_summary::-webkit-details-marker]:hidden"
           >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-display text-base font-bold text-slate-900">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-display text-base font-bold text-[color:var(--c-ink,#0f172a)]">
               {item.question}
               <PlusIcon className="h-5 w-5 shrink-0 text-[color:var(--biz-strong)] transition group-open:rotate-45" />
             </summary>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.answer}</p>
+            <p className="mt-3 text-sm leading-relaxed text-[color:var(--c-muted,#475569)]">{item.answer}</p>
           </details>
         ))}
       </div>

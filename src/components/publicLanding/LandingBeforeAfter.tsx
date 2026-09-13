@@ -94,7 +94,7 @@ export default function LandingBeforeAfter({ title, items, beforeLabel, afterLab
           <figure key={i}>
             <Slider item={item} beforeLabel={beforeLabel} afterLabel={afterLabel} />
             {item.label ? (
-              <figcaption className="mt-3 text-center text-sm font-medium text-slate-600">{item.label}</figcaption>
+              <figcaption className="mt-3 text-center text-sm font-medium text-[color:var(--c-muted,#475569)]">{item.label}</figcaption>
             ) : null}
           </figure>
         ))}

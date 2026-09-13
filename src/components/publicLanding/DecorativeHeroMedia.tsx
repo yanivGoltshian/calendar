@@ -129,7 +129,7 @@ export default function DecorativeHeroMedia({
             aria-hidden
             className="pointer-events-none absolute inset-y-0 right-0 w-24"
             style={{
-              background: 'linear-gradient(to left, rgba(44,37,34,0.72), transparent)',
+              background: 'linear-gradient(to left, var(--c-hero-overlay-strong, rgba(44,37,34,0.72)), transparent)',
             }}
           />
         ) : null}

@@ -190,18 +190,26 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
 
   return (
     <section id="lp-book" className="relative z-[5] -mt-14 scroll-mt-24 sm:-mt-16">
-      <div className="relative overflow-hidden rounded-[26px] border border-[#e7ddcd] bg-white p-5 shadow-[0_30px_60px_-30px_rgba(40,28,18,0.5)] sm:p-[26px]">
-        {/* פס עליון בגרדיאנט זהב→אקו→מותג — חתימת הכרטיס הצף */}
-        <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#c6a86a,#c08f86,#b0855f)]" />
+      <div
+        data-palette-surface="booking"
+        className="relative overflow-hidden rounded-[26px] border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface,#ffffff)] p-5 sm:p-[26px]"
+        style={{ boxShadow: '0 30px 60px -30px var(--c-shadow, rgba(40,28,18,0.5))' }}
+      >
+        <span
+          aria-hidden
+          data-palette-accent="booking"
+          className="absolute inset-x-0 top-0 h-1"
+          style={{ background: 'linear-gradient(90deg, var(--c-gold), var(--c-accent), var(--c-brand))' }}
+        />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-2xl font-black text-[color:var(--c-ink,#1b1715)]">{labels.title}</h2>
-          <span className="inline-flex items-center rounded-full bg-[#c08f86]/15 px-3.5 py-1.5 text-xs font-extrabold text-[#a06c63]">
+          <span className="inline-flex items-center rounded-full bg-[color:var(--c-accent-soft,rgba(192,143,134,0.15))] px-3.5 py-1.5 text-xs font-extrabold text-[color:var(--c-accent-strong,#a06c63)]">
             {labels.pill}
           </span>
         </div>
 
         {blocked ? (
-          <div className="mt-[18px] rounded-2xl border border-[#e7ddcd] bg-[#faf6ef] p-7 text-center">
+          <div className="mt-[18px] rounded-2xl border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface-muted,#faf6ef)] p-7 text-center">
             <p className="text-lg font-black text-[color:var(--c-ink,#1b1715)]">{labels.unavailableTitle}</p>
             <p className="mx-auto mt-2 max-w-md text-[0.95rem] leading-relaxed text-[color:var(--c-muted,#6e655f)]">
               {labels.unavailableBody}
@@ -222,8 +230,8 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                   aria-pressed={serviceId === s.id}
                   className={`max-w-full whitespace-normal rounded-full border px-3.5 py-2 text-start text-sm font-semibold [overflow-wrap:anywhere] transition ${
                     serviceId === s.id
-                      ? 'border-transparent bg-[color:var(--c-brand,#b0855f)] text-white'
-                      : 'border-[#e7ddcd] bg-[#fbf7f0] text-[#4a423c] hover:border-[color:var(--c-brand,#b0855f)]'
+                      ? 'border-transparent bg-[color:var(--c-brand,#b0855f)] text-[color:var(--c-on-brand,#ffffff)]'
+                      : 'border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface-muted,#fbf7f0)] text-[color:var(--c-ink,#4a423c)] hover:border-[color:var(--c-brand,#b0855f)]'
                   }`}
                 >
                   {s.name}
@@ -241,8 +249,8 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                   aria-pressed={effectiveStaffId === m.id}
                   className={`max-w-full whitespace-normal rounded-full border px-3.5 py-2 text-start text-sm font-semibold [overflow-wrap:anywhere] transition ${
                     effectiveStaffId === m.id
-                      ? 'border-transparent bg-[color:var(--c-brand,#b0855f)] text-white'
-                      : 'border-[#e7ddcd] bg-[#fbf7f0] text-[#4a423c] hover:border-[color:var(--c-brand,#b0855f)]'
+                      ? 'border-transparent bg-[color:var(--c-brand,#b0855f)] text-[color:var(--c-on-brand,#ffffff)]'
+                      : 'border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface-muted,#fbf7f0)] text-[color:var(--c-ink,#4a423c)] hover:border-[color:var(--c-brand,#b0855f)]'
                   }`}
                 >
                   {m.displayName}
@@ -254,14 +262,14 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
           {/* תאריך — לוח מיני דקורטיבי */}
           <div>
             <p className="mb-2 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.dateLabel}</p>
-            <div className="rounded-2xl border border-[#e7ddcd] bg-[#fbf7f0] p-3">
+            <div className="rounded-2xl border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface-muted,#fbf7f0)] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => shiftMonth(-1)}
                   disabled={atCurrentMonth}
                   aria-label={labels.prevMonth}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-[color:var(--c-ink,#1b1715)]/70 transition enabled:hover:bg-white disabled:opacity-30"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-[color:var(--c-ink,#1b1715)]/70 transition enabled:hover:bg-[color:var(--c-surface,#ffffff)] disabled:opacity-30"
                 >
                   <ArrowLeftIcon className="h-4 w-4 rotate-180" />
                 </button>
@@ -273,14 +281,14 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                   onClick={() => shiftMonth(1)}
                   disabled={!todayStr || !view.y}
                   aria-label={labels.nextMonth}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-[color:var(--c-ink,#1b1715)]/70 transition hover:bg-white"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-[color:var(--c-ink,#1b1715)]/70 transition hover:bg-[color:var(--c-surface,#ffffff)]"
                 >
                   <ArrowLeftIcon className="h-4 w-4" />
                 </button>
               </div>
               <div className="grid grid-cols-7 gap-1 text-center">
                 {labels.weekdays.map((d) => (
-                  <span key={d} className="py-1 text-[11px] font-bold text-[#9a8f82]">
+                  <span key={d} className="py-1 text-[11px] font-bold text-[color:var(--c-muted,#9a8f82)]">
                     {d}
                   </span>
                 ))}
@@ -295,10 +303,10 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                       onClick={() => setDate(c.dateStr as string)}
                       className={`flex h-8 items-center justify-center rounded-lg text-sm transition ${
                         date === c.dateStr
-                          ? 'bg-[color:var(--c-brand,#b0855f)] font-bold text-white'
+                          ? 'bg-[color:var(--c-brand,#b0855f)] font-bold text-[color:var(--c-on-brand,#ffffff)]'
                           : c.past
                             ? 'cursor-default text-[color:var(--c-ink,#1b1715)]/25'
-                            : 'text-[color:var(--c-ink,#1b1715)]/80 hover:bg-white'
+                            : 'text-[color:var(--c-ink,#1b1715)]/80 hover:bg-[color:var(--c-surface,#ffffff)]'
                       }`}
                     >
                       {c.day}
@@ -315,7 +323,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
             {!dateReady || slotsLoading ? (
               <p className="py-3 text-sm text-[color:var(--c-ink,#1b1715)]/50">{labels.loadingSlots}</p>
             ) : slotsError ? (
-              <div role="alert" className="py-3 text-sm text-[#4a423c]">
+              <div role="alert" className="py-3 text-sm text-[color:var(--c-ink,#4a423c)]">
                 <p>{slotsError === 'configuration' ? labels.configurationError : labels.loadError}</p>
                 <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 underline">
                   {labels.retrySlots}
@@ -333,8 +341,8 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                     onClick={() => setTime(slot.label)}
                     className={`rounded-[10px] border px-3.5 py-2 text-sm font-bold tabular-nums transition ${
                       time === slot.label
-                        ? 'border-transparent bg-[#c08f86] text-white'
-                        : 'border-[#e7ddcd] bg-white text-[#4a423c] hover:border-[color:var(--c-brand,#b0855f)]'
+                        ? 'border-transparent bg-[color:var(--c-hero-cta,#c08f86)] text-[color:var(--c-hero-cta-ink,#ffffff)]'
+                        : 'border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-surface,#ffffff)] text-[color:var(--c-ink,#4a423c)] hover:border-[color:var(--c-brand,#b0855f)]'
                     }`}
                   >
                     {slot.label}
@@ -345,11 +353,12 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
           </div>
         </div>
 
-        <div className="mt-[18px] flex flex-wrap items-center justify-between gap-4 border-t border-dashed border-[#e7ddcd] pt-4">
+        <div className="mt-[18px] flex flex-wrap items-center justify-between gap-4 border-t border-dashed border-[color:var(--c-border,#e7ddcd)] pt-4">
           <p className="min-w-0 max-w-full text-[0.9rem] text-[color:var(--c-muted,#6e655f)] [overflow-wrap:anywhere]">{summary}</p>
           <Link
             href={ctaHref}
-            className="group inline-flex items-center gap-2 rounded-full bg-[#c08f86] px-8 py-3 text-base font-bold text-white shadow-elevated transition hover:-translate-y-0.5 hover:bg-[#a06c63]"
+            className="group inline-flex items-center gap-2 rounded-full px-8 py-3 text-base font-bold text-[color:var(--c-hero-cta-ink,#ffffff)] shadow-elevated transition hover:-translate-y-0.5"
+            style={{ backgroundImage: 'linear-gradient(to left, var(--c-hero-cta), var(--c-hero-cta-strong))' }}
           >
             {labels.cta}
             <ArrowLeftIcon className="h-4 w-4 transition group-hover:-translate-x-1" />

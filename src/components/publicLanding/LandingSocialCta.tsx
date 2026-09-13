@@ -28,8 +28,8 @@ export default function LandingSocialCta({ ctaTitle, ctaText, ctaLabel, bookHref
 
   return (
     <section className="mt-16 overflow-hidden rounded-[2.5rem] border border-[color:var(--biz-border)] bg-gradient-to-b from-[var(--biz-soft)] to-[var(--biz-softer)] px-6 py-12 text-center shadow-soft sm:mt-24 sm:px-10 sm:py-16">
-      <h2 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">{ctaTitle}</h2>
-      <p className="mx-auto mt-3 max-w-md leading-relaxed text-slate-600 sm:text-lg">{ctaText}</p>
+      <h2 className="font-display text-3xl font-bold text-[color:var(--c-ink,#0f172a)] sm:text-4xl">{ctaTitle}</h2>
+      <p className="mx-auto mt-3 max-w-md leading-relaxed text-[color:var(--c-muted,#475569)] sm:text-lg">{ctaText}</p>
       <Link
         href={bookHref}
         className="group mt-8 inline-flex items-center gap-2 rounded-full bg-[var(--biz)] px-9 py-4 text-base font-bold text-[color:var(--biz-ink)] shadow-elevated transition hover:-translate-y-0.5 hover:bg-[var(--biz-strong)]"
@@ -40,7 +40,7 @@ export default function LandingSocialCta({ ctaTitle, ctaText, ctaLabel, bookHref
 
       {socials.length > 0 ? (
         <div className="mt-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{socialTitle}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--c-muted,#64748b)]">{socialTitle}</p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
             {socials.map(({ kind, label, icon: Icon, href }) => (
               <a
@@ -49,7 +49,7 @@ export default function LandingSocialCta({ ctaTitle, ctaText, ctaLabel, bookHref
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--biz-border)] bg-white text-[color:var(--biz-strong)] shadow-soft transition hover:-translate-y-0.5 hover:bg-[var(--biz)] hover:text-[color:var(--biz-ink)]"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] text-[color:var(--biz-strong)] shadow-soft transition hover:-translate-y-0.5 hover:bg-[var(--biz)] hover:text-[color:var(--biz-ink)]"
               >
                 <Icon className="h-5 w-5" />
               </a>

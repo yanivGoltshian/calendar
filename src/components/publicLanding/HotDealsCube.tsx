@@ -40,7 +40,7 @@ const PRISM_FACE_TRANSFORMS = [
 
 // מסגרת פאה אחידה — פינות מעוגלות, מסגרת זהב, רקע כהה וצל.
 const FRAME =
-  'absolute inset-0 overflow-hidden rounded-2xl border-2 border-[color:var(--c-gold,#c6a86a)] bg-[#1b1513] shadow-elevated';
+  'absolute inset-0 overflow-hidden rounded-2xl border-2 border-[color:var(--c-gold,#c6a86a)] bg-[color:var(--c-dark-surface,#1b1513)] shadow-elevated';
 
 // תמונת פאה עם מידות מפורשות (מונע CLS) ושכבת גרדיאנט עדינה לקריאוּת.
 function FaceImg({ src }: { src: string }) {
@@ -81,7 +81,7 @@ function SingleStage({ src }: { src: string }) {
         <span
           aria-hidden
           className="pointer-events-none absolute -inset-6 rounded-[2rem] blur-2xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(198,168,106,0.35), transparent)' }}
+          style={{ background: 'radial-gradient(closest-side, var(--c-gold-glow, rgba(198,168,106,0.35)), transparent)' }}
         />
         <div
           aria-hidden
@@ -206,6 +206,7 @@ export default function HotDealsCube({ eyebrow, title, text, ctaLabel, ctaHref, 
   return (
     <section
       id="lp-offers"
+      data-palette-surface="promotion"
       dir="rtl"
       className="relative mt-16 scroll-mt-24 sm:mt-24"
       style={{
@@ -213,27 +214,27 @@ export default function HotDealsCube({ eyebrow, title, text, ctaLabel, ctaHref, 
         marginInline: 'calc(50% - 50vw)',
         overflowX: 'clip',
         background:
-          'radial-gradient(1200px 500px at 15% -10%, rgba(198,168,106,0.20), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(176,133,95,0.22), transparent 55%), linear-gradient(160deg, #1b1513, #2c2420)',
-        color: '#fff',
+          'radial-gradient(1200px 500px at 15% -10%, var(--c-dark-glow-primary), transparent 60%), radial-gradient(900px 500px at 100% 0%, var(--c-dark-glow-secondary), transparent 55%), linear-gradient(160deg, var(--c-dark-surface), var(--c-dark-surface-soft))',
+        color: 'var(--c-on-dark)',
       }}
     >
       {/* רצועה כהה אופקית: טור טקסט זהב מימין, קובייה מסתובבת משמאל (RTL), קורסת לטור אחד במובייל */}
       <div className="mx-auto grid max-w-[1120px] items-center gap-10 px-4 py-16 sm:py-20 lg:grid-cols-2">
         <div className="order-2 text-center lg:order-1 lg:text-start">
           {eyebrow ? (
-            <p className="text-sm font-extrabold tracking-wide text-[#c6a86a]">{eyebrow}</p>
+            <p className="text-sm font-extrabold tracking-wide text-[color:var(--c-gold,#c6a86a)]">{eyebrow}</p>
           ) : null}
           <h2 className="mt-1 font-display text-3xl font-black leading-tight sm:text-4xl">{title}</h2>
           <span
             aria-hidden
             className="mx-auto mt-3 block h-[3px] w-20 rounded-full lg:mx-0"
-            style={{ background: 'linear-gradient(90deg, #c6a86a, transparent)' }}
+            style={{ background: 'linear-gradient(90deg, var(--c-gold), transparent)' }}
           />
-          {text ? <p className="mx-auto mt-4 max-w-xl text-white/80 lg:mx-0">{text}</p> : null}
+          {text ? <p className="mx-auto mt-4 max-w-xl text-[color:var(--c-on-dark,#ffffff)]/80 lg:mx-0">{text}</p> : null}
           <a
             href={ctaHref}
-            className="group mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-base font-bold text-[#241d10] shadow-elevated transition hover:-translate-y-0.5"
-            style={{ background: 'linear-gradient(90deg, #a6863f, #c6a86a)' }}
+            className="group mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-base font-bold text-[color:var(--c-on-gold,#241d10)] shadow-elevated transition hover:-translate-y-0.5"
+            style={{ background: 'linear-gradient(90deg, var(--c-gold-strong), var(--c-gold))' }}
           >
             {ctaLabel}
             <ArrowLeftIcon className="h-4 w-4 transition group-hover:-translate-x-1" />

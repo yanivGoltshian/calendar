@@ -40,18 +40,18 @@ export default function LandingServices({ title, services, bookHref, iconKey, bo
           <Link
             key={s.id}
             href={`${bookHref}?service=${s.id}`}
-            className="group flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-[color:var(--biz-border)] bg-white px-5 py-4 shadow-soft transition duration-200 hover:-translate-y-0.5 hover:shadow-elevated sm:px-6"
+            className="group flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] px-5 py-4 shadow-soft transition duration-200 hover:-translate-y-0.5 hover:shadow-elevated sm:px-6"
           >
             <div className="min-w-[210px] flex-1">
-              <h3 className="font-display text-[1.08rem] font-extrabold leading-snug text-slate-900 sm:text-lg">
+              <h3 className="font-display text-[1.08rem] font-extrabold leading-snug text-[color:var(--c-ink,#0f172a)] sm:text-lg">
                 {s.name}
               </h3>
               {s.description ? (
-                <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-slate-500">{s.description}</p>
+                <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-[color:var(--c-muted,#64748b)]">{s.description}</p>
               ) : null}
             </div>
             {!s.hideDuration ? (
-              <span className="inline-flex items-center gap-1 whitespace-nowrap text-sm text-slate-500">
+              <span className="inline-flex items-center gap-1 whitespace-nowrap text-sm text-[color:var(--c-muted,#64748b)]">
                 <ClockIcon className="h-3.5 w-3.5 shrink-0" />
                 {formatDuration(s.durationMin)}
               </span>

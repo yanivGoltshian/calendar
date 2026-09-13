@@ -8,8 +8,8 @@ export default function LandingAbout({ title, text, eyebrow }: Props) {
   return (
     <section className="mt-16 sm:mt-24">
       <SectionHeading eyebrow={eyebrow} title={title} />
-      <div className="mx-auto mt-10 max-w-2xl rounded-3xl border border-[color:var(--biz-border)] bg-white p-7 shadow-soft sm:p-10">
-        <p className="whitespace-pre-line text-center leading-relaxed text-slate-700 sm:text-lg">{text}</p>
+      <div className="mx-auto mt-10 max-w-2xl rounded-3xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] p-7 shadow-soft sm:p-10">
+        <p className="whitespace-pre-line text-center leading-relaxed text-[color:var(--c-muted,#334155)] sm:text-lg">{text}</p>
       </div>
     </section>
   );

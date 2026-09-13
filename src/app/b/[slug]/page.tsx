@@ -114,7 +114,7 @@ export default async function BusinessPublicPage({ params }: Props) {
     brandColor: business.brandColor,
     hasLandingContent: landing != null,
   });
-  const { isLanding, isClinicPremium, clinicThemeVars } = publicPagePresentation(
+  const { isLanding, isClinicPremium, landingThemeVars } = publicPagePresentation(
     business.publicPageStyle, landing, onboarding.visualLevel,
   );
   const defaults = landingDefaults(business.type);
@@ -133,7 +133,7 @@ export default async function BusinessPublicPage({ params }: Props) {
   const clinicHeroTagline =
     business.slug === CLINIC_IDENTITY.slug ? clinicLabels.heroTagline : null;
   const rootStyle = isClinicPremium || landing?.theme
-    ? ({ ...themeVars, ...clinicThemeVars } as CSSProperties)
+    ? ({ ...themeVars, ...landingThemeVars } as CSSProperties)
     : themeVars;
 
   const jsonLd = localBusinessJsonLd({
@@ -193,7 +193,7 @@ export default async function BusinessPublicPage({ params }: Props) {
 
   const servicesSection = (
     <section className="mt-10">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[color:var(--c-ink,#0f172a)]">
         <SectionIcon iconKey={iconKey} className="h-5 w-5 text-[color:var(--biz-strong)]" />
         {t.publicPage.servicesTitle}
       </h2>
@@ -205,12 +205,12 @@ export default async function BusinessPublicPage({ params }: Props) {
             <li key={s.id}>
               <Link
                 href={`${bookHref}?service=${s.id}`}
-                className="flex items-center justify-between rounded-2xl border border-[color:var(--biz-border)] bg-white px-4 py-3.5 shadow-sm transition hover:border-[color:var(--biz)] hover:shadow-md"
+                className="flex items-center justify-between rounded-2xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] px-4 py-3.5 shadow-sm transition hover:border-[color:var(--biz)] hover:shadow-md"
               >
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-900">{s.name}</p>
+                  <p className="font-semibold text-[color:var(--c-ink,#0f172a)]">{s.name}</p>
                   {!s.hideDuration ? (
-                    <p className="mt-0.5 flex items-center gap-1 text-sm text-slate-500">
+                    <p className="mt-0.5 flex items-center gap-1 text-sm text-[color:var(--c-muted,#64748b)]">
                       <ClockIcon className="h-3.5 w-3.5 shrink-0" />
                       {formatDuration(s.durationMin)}
                     </p>
@@ -229,7 +229,7 @@ export default async function BusinessPublicPage({ params }: Props) {
 
   const staffSection = staff.length > 0 ? (
     <section className="mt-10">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[color:var(--c-ink,#0f172a)]">
         <UsersIcon className="h-5 w-5 text-[color:var(--biz-strong)]" />
         {t.publicPage.teamTitle}
       </h2>
@@ -237,7 +237,7 @@ export default async function BusinessPublicPage({ params }: Props) {
         {staff.map((m) => (
           <div
             key={m.id}
-            className="flex items-center gap-4 rounded-2xl border border-[color:var(--biz-border)] bg-white p-4 shadow-sm"
+            className="flex items-center gap-4 rounded-2xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] p-4 shadow-sm"
           >
             <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--biz-soft)] ring-2 ring-[color:var(--biz-border)]">
               {m.avatarUrl ? (
@@ -248,9 +248,9 @@ export default async function BusinessPublicPage({ params }: Props) {
               )}
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-slate-900">{m.displayName}</p>
+              <p className="font-semibold text-[color:var(--c-ink,#0f172a)]">{m.displayName}</p>
               {m.title ? <p className="text-sm font-medium text-[color:var(--biz-ink-strong)]">{m.title}</p> : null}
-              {m.bio ? <p className="mt-1 text-sm leading-snug text-slate-600">{m.bio}</p> : null}
+              {m.bio ? <p className="mt-1 text-sm leading-snug text-[color:var(--c-muted,#475569)]">{m.bio}</p> : null}
             </div>
           </div>
         ))}
@@ -260,11 +260,11 @@ export default async function BusinessPublicPage({ params }: Props) {
 
   const hoursSection = business.workingHours.length > 0 ? (
     <section className="mt-10">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[color:var(--c-ink,#0f172a)]">
         <ClockIcon className="h-5 w-5 text-[color:var(--biz-strong)]" />
         {t.publicPage.hoursTitle}
       </h2>
-      <ul className="overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-white shadow-sm">
+      <ul className="overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] shadow-sm">
         {[0, 1, 2, 3, 4, 5, 6].map((d) => {
           const wh = hoursByDay.get(d);
           return (
@@ -274,9 +274,9 @@ export default async function BusinessPublicPage({ params }: Props) {
               data-today-class="bg-[var(--biz-soft)] font-semibold"
               className={`flex items-center justify-between px-4 py-2.5 text-sm ${d > 0 ? 'border-t border-slate-100' : ''}`}
             >
-              <span className="text-slate-900">{t.publicPage.weekdays[d]}</span>
+              <span className="text-[color:var(--c-ink,#0f172a)]">{t.publicPage.weekdays[d]}</span>
               {wh ? (
-                <span dir="ltr" className="tabular-nums text-slate-700">
+                <span dir="ltr" className="tabular-nums text-[color:var(--c-muted,#334155)]">
                   {formatMinutes(wh.startMinute)}–{formatMinutes(wh.endMinute)}
                 </span>
               ) : (
@@ -293,7 +293,7 @@ export default async function BusinessPublicPage({ params }: Props) {
     <main
       dir="rtl"
       style={rootStyle}
-      className={`relative min-h-screen overflow-x-clip pb-28 ${isClinicPremium ? 'bg-[color:var(--c-cream,#faf6ef)]' : 'bg-slate-50'}`}
+      className={`relative min-h-screen overflow-x-clip pb-28 ${isClinicPremium || landing?.theme ? 'bg-[color:var(--c-cream,#faf6ef)]' : 'bg-slate-50'}`}
     >
       <JsonLd data={jsonLd} />
       {/* הדגשת "היום" בטבלת השעות מתבצעת בצד הלקוח (ה-HTML הסטטי חף מתלות ביום/שעה). */}
@@ -428,8 +428,8 @@ export default async function BusinessPublicPage({ params }: Props) {
             {/* על העסק */}
             {business.description ? (
               <section className="mt-8">
-                <h2 className="mb-2 text-lg font-semibold text-slate-900">{t.publicPage.aboutTitle}</h2>
-                <p className="whitespace-pre-line leading-relaxed text-slate-700">{business.description}</p>
+                <h2 className="mb-2 text-lg font-semibold text-[color:var(--c-ink,#0f172a)]">{t.publicPage.aboutTitle}</h2>
+                <p className="whitespace-pre-line leading-relaxed text-[color:var(--c-muted,#334155)]">{business.description}</p>
               </section>
             ) : null}
 
@@ -458,7 +458,7 @@ export default async function BusinessPublicPage({ params }: Props) {
             variant="business"
             appName={business.name}
             logoUrl={business.logoUrl}
-            brandColor={business.brandColor}
+            brandColor={landing?.theme?.brand ?? business.brandColor}
           />
         </div>
 
@@ -475,11 +475,12 @@ export default async function BusinessPublicPage({ params }: Props) {
       </div>
 
       {/* CTA קבוע בתחתית — בצבע המותג של העסק */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 p-4 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-4">
         <div className={`mx-auto ${isLanding ? 'max-w-[1120px]' : 'max-w-3xl'}`}>
           <Link
             href={bookHref}
             style={{ backgroundImage: 'linear-gradient(90deg, var(--biz) 0%, var(--biz-strong) 100%)', color: 'var(--biz-ink)' }}
+            data-palette-surface="sticky-booking"
             className="block w-full rounded-xl py-3.5 text-center text-base font-bold shadow-md transition hover:opacity-95"
           >
             {t.publicPage.bookCta}

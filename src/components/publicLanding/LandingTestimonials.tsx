@@ -32,7 +32,7 @@ export default function LandingTestimonials({ title, items, eyebrow, googleRevie
     <section className="mt-16 sm:mt-24">
       <SectionHeading eyebrow={eyebrow} title={items.length ? title : googleLabel ?? title} />
       {isGoogle ? (
-        <div className="mx-auto mt-6 flex w-fit items-center gap-3 rounded-full border border-[color:var(--biz-border)] bg-white px-5 py-2.5 shadow-soft">
+        <div className="mx-auto mt-6 flex w-fit items-center gap-3 rounded-full border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] px-5 py-2.5 shadow-soft">
           <GoogleGlyph className="h-5 w-5" />
           {googleLabel ? (
             <span className="text-sm font-semibold text-[color:var(--biz-ink-strong)]">{googleLabel}</span>
@@ -43,14 +43,15 @@ export default function LandingTestimonials({ title, items, eyebrow, googleRevie
         {items.map((tm, i) => (
           <figure
             key={i}
-            className="rounded-[20px] border border-[color:var(--biz-border)] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(40,28,18,0.5)]"
+            className="rounded-[20px] border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] p-6"
+            style={{ boxShadow: '0 18px 40px -30px var(--c-shadow, rgba(40,28,18,0.5))' }}
           >
-            <div className="flex gap-0.5" style={{ color: '#f5b301', letterSpacing: '2px' }} aria-hidden>
+            <div className="flex gap-0.5 text-[color:var(--c-gold-strong,#f5b301)]" style={{ letterSpacing: '2px' }} aria-hidden>
               {[0, 1, 2, 3, 4].map((n) => (
                 <StarIcon key={n} className="h-4 w-4" />
               ))}
             </div>
-            <blockquote className="mt-3 font-display text-[0.98rem] leading-relaxed text-[#463f3a]">{tm.quote}</blockquote>
+            <blockquote className="mt-3 font-display text-[0.98rem] leading-relaxed text-[color:var(--c-ink,#463f3a)]">{tm.quote}</blockquote>
             {tm.name ? (
               <figcaption className="mt-4 flex items-center gap-3">
                 <span

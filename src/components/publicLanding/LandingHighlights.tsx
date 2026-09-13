@@ -19,12 +19,12 @@ export default function LandingHighlights({ title, benefits, eyebrow }: Props) {
           return (
             <div
               key={i}
-              className="rounded-3xl border border-[color:var(--biz-border)] bg-white p-7 text-center shadow-soft transition duration-200 hover:-translate-y-1 hover:shadow-elevated"
+              className="rounded-3xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] p-7 text-center shadow-soft transition duration-200 hover:-translate-y-1 hover:shadow-elevated"
             >
               <span
                 aria-hidden
-                className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-[#9a7343]"
-                style={{ background: 'linear-gradient(160deg, rgba(198,168,106,0.24), rgba(176,133,95,0.18))' }}
+                className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-[color:var(--c-gold-text,#9a7343)]"
+                style={{ background: 'linear-gradient(160deg, var(--c-gold-soft), var(--c-brand-soft))' }}
               >
                 <Icon className="h-7 w-7" />
               </span>
