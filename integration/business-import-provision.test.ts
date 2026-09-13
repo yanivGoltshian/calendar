@@ -641,7 +641,7 @@ test('child edits during media preserve services, hours, staff, and links', asyn
           weekday: 4,
           startMinute: 660,
           endMinute: 840,
-          breaks: [[720, 750]],
+          breaks: [[720, 750], [810, 825]],
         },
       }),
     ]);
@@ -668,6 +668,7 @@ test('child edits during media preserve services, hours, staff, and links', asyn
     assert.equal(after.staff[0]?.displayName, 'Owner staff during media');
     assert.equal(after.workingHours.length, 1);
     assert.equal(after.workingHours[0]?.weekday, 4);
+    assert.deepEqual(after.workingHours[0]?.breaks, [[720, 750], [810, 825]]);
     assert.equal(
       await prisma.serviceStaff.count({
         where: { serviceId: service.id, staffId: staff.id },

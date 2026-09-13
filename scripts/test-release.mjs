@@ -274,8 +274,8 @@ try {
     INSERT INTO "Service" (id,"businessId",name,"durationMin","priceAgorot","updatedAt")
       VALUES ('release-service','release-business','Preserved service',30,5000,now());
     INSERT INTO "ServiceStaff" (id,"serviceId","staffId") VALUES ('release-link','release-service','release-staff');
-    INSERT INTO "WorkingHours" (id,scope,"businessId",weekday,"startMinute","endMinute","updatedAt")
-      VALUES ('release-hours','BUSINESS','release-business',2,540,1020,now());
+    INSERT INTO "WorkingHours" (id,scope,"businessId",weekday,"startMinute","endMinute",breaks,"updatedAt")
+      VALUES ('release-hours','BUSINESS','release-business',2,540,1020,'[[720,750],[900,915]]'::jsonb,now());
     INSERT INTO "Appointment" (id,"businessId","clientId","staffId","startAt","endAt",status,"totalPriceAgorot","confirmToken","updatedAt")
       VALUES ('release-appointment','release-business','release-client','release-staff','2026-09-15 08:00',
         '2026-09-15 08:30','CONFIRMED',5000,'synthetic-release-upgrade-token',now());
@@ -294,6 +294,8 @@ try {
         OR (SELECT count(*) FROM "WorkingHoursException") <> 0
         OR EXISTS (SELECT 1 FROM "Business" WHERE "businessImportSourceUrl" IS NOT NULL
           OR "businessImportDraft" IS NOT NULL OR "businessImportedAt" IS NOT NULL)
+        OR NOT EXISTS (SELECT 1 FROM "WorkingHours" WHERE id='release-hours'
+          AND breaks='[[720,750],[900,915]]'::jsonb)
         OR to_regclass('"StaffMember_businessId_id_key"') IS NULL
       THEN RAISE EXCEPTION 'provisioning upgrade altered historical data or migration records'; END IF;
     END $$;

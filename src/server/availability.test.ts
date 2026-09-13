@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeSlots, type WorkingHoursInput, type BusyInterval } from './availability';
+import {
+  computeSlots,
+  intervalFitsWorkingHours,
+  type WorkingHoursInput,
+  type BusyInterval,
+} from './availability';
 import { weekdayForDateString, localWallTimeToUtc } from '@/lib/time';
 
 /**
@@ -140,6 +145,66 @@ test('הפסקה מוסרת מהחלון: אין משבצות בתוך 12:00–1
   assert.ok(!labels.includes('12:00'));
   assert.ok(!labels.includes('12:30'));
   assert.ok(labels.includes('13:00'));
+});
+
+test('כל ההפסקות מוסרות פעם אחת, עם גבולות מדויקים והמשך מיידי אחרי הפסקה לא עגולה', () => {
+  const hours = hoursForDate(SUMMER_DATE, 9 * 60, 17 * 60, [
+    [10 * 60, 10 * 60 + 20],
+    [12 * 60, 13 * 60],
+  ]);
+  const slots = computeSlots({
+    dateStr: SUMMER_DATE,
+    workingHours: [hours],
+    busy: [],
+    durationMin: 30,
+    slotGranularityMin: 30,
+    timeZone: TZ,
+    now: FAR_PAST,
+  });
+  const labels = slots.map((slot) => slot.label);
+  assert.ok(labels.includes('09:30'));
+  assert.ok(!labels.includes('10:00'));
+  assert.ok(labels.includes('10:20'));
+  assert.ok(labels.includes('11:20'));
+  assert.ok(!labels.includes('11:50'));
+  assert.ok(!labels.includes('12:00'));
+  assert.ok(!labels.includes('12:30'));
+  assert.ok(labels.includes('13:00'));
+  assert.equal(intervalFitsWorkingHours(
+    localWallTimeToUtc(2026, 6, 15, 9 * 60 + 30, TZ),
+    localWallTimeToUtc(2026, 6, 15, 10 * 60, TZ),
+    SUMMER_DATE,
+    [hours],
+    TZ,
+  ), true);
+  assert.equal(intervalFitsWorkingHours(
+    localWallTimeToUtc(2026, 6, 15, 10 * 60 + 20, TZ),
+    localWallTimeToUtc(2026, 6, 15, 10 * 60 + 50, TZ),
+    SUMMER_DATE,
+    [hours],
+    TZ,
+  ), true);
+});
+
+test('הפסקות מרובות נשמרות בזמן מוחלט גם סביב קפיצת שעון קיץ', () => {
+  const date = '2026-03-08';
+  const zone = 'America/New_York';
+  const hours: WorkingHoursInput = {
+    weekday: 0,
+    startMinute: 60,
+    endMinute: 300,
+    breaks: [[90, 210], [240, 270]],
+  };
+  const labels = computeSlots({
+    dateStr: date,
+    workingHours: [hours],
+    busy: [],
+    durationMin: 30,
+    slotGranularityMin: 30,
+    timeZone: zone,
+    now: FAR_PAST,
+  }).map((slot) => slot.label);
+  assert.deepEqual(labels, ['01:00', '03:30', '04:30']);
 });
 
 test('תור קיים חוסם משבצות: 10:00–11:00 תפוס', () => {

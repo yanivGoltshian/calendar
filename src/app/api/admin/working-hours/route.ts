@@ -1,0 +1,9 @@
+import { saveWorkingHoursAction } from '@/app/admin/working-hours/actions';
+import { createAdminFormPost } from '@/server/adminFormRoute';
+import { getActiveBusiness } from '@/server/repos/business';
+
+export const runtime = 'nodejs';
+export const POST = createAdminFormPost(
+  data => saveWorkingHoursAction({ ok: false }, data),
+  async () => Boolean(await getActiveBusiness()),
+);

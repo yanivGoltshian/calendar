@@ -6,6 +6,7 @@ import {
   readBusinessImportChildBaseline,
   type BusinessImportChildBaseline,
 } from '@/server/businessImport/baseline';
+import { normalizeWorkingHoursRows } from '@/lib/workingHours';
 
 interface ImportClaimMarker {
   version: 1;
@@ -212,6 +213,7 @@ export async function markBusinessImportFailed(input: {
 export async function applyClaimedBusinessImport(
   input: ApplyBusinessImportInput,
 ): Promise<ApplyBusinessImportResult> {
+  const normalizedHours = normalizeWorkingHoursRows(input.hours);
   try {
     return await prisma.$transaction(
       async (tx) => {
@@ -283,9 +285,9 @@ export async function applyClaimedBusinessImport(
         await tx.workingHours.deleteMany({
           where: { scope: 'BUSINESS', businessId: input.businessId },
         });
-        if (input.hours.length > 0) {
+        if (normalizedHours.length > 0) {
           await tx.workingHours.createMany({
-            data: input.hours.map((row) => ({
+            data: normalizedHours.map((row) => ({
               ...row,
               scope: 'BUSINESS' as const,
               businessId: input.businessId,
