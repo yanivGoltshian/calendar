@@ -8,6 +8,7 @@
  */
 
 import {
+  normalizeGoogleBusinessUrl,
   normalizeLandingContent,
   landingDefaults,
   landingSectionEnabledByDefault,
@@ -222,6 +223,29 @@ export function parsePremiumDraft(raw: unknown): LandingContent | null {
   }
 
   return normalizeLandingContent(parsed);
+}
+
+export function premiumDraftError(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const googleReviewsUrl = (parsed as Record<string, unknown>).googleReviewsUrl;
+  if (googleReviewsUrl === undefined || googleReviewsUrl === null || googleReviewsUrl === '') {
+    return null;
+  }
+  if (
+    typeof googleReviewsUrl !== 'string' ||
+    googleReviewsUrl.length > 2048 ||
+    !normalizeGoogleBusinessUrl(googleReviewsUrl)
+  ) {
+    return 'google_reviews_url';
+  }
+  return null;
 }
 
 /**

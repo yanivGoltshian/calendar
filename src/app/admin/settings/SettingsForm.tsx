@@ -74,6 +74,8 @@ export default function SettingsForm({
     state.error === 'unconfirmed' ? t.common.saveUnconfirmed :
     state.error === 'name'
       ? s.profile.errorName
+      : state.error === 'google_reviews_url'
+        ? s.pageStyle.googleReviewsError
       : state.error === 'number'
         ? s.policy.errorNumber
         : state.error
@@ -86,7 +88,14 @@ export default function SettingsForm({
     <>
       <form onSubmit={onSubmit} onInput={markDirty} onChange={markDirty} className="space-y-6 pb-28">
         <SettingsSection title={s.profile.title} description={s.profile.description}>
-          <ProfileFields b={business} />
+          <ProfileFields
+            b={business}
+            googleReviewsError={
+              state.error === 'google_reviews_url'
+                ? s.pageStyle.googleReviewsError
+                : undefined
+            }
+          />
         </SettingsSection>
 
         <SettingsSection title={s.policy.title} description={s.policy.description}>

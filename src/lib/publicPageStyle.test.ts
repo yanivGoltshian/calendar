@@ -5,6 +5,7 @@ import {
   landingDefaults,
   normalizeGoogleBusinessUrl,
   normalizeLandingContent,
+  storedGoogleBusinessUrl,
   normalizePublicPageStyle,
   isLandingContentEmpty,
   resolveLandingSections,
@@ -114,6 +115,7 @@ test('normalizeLandingContent: חותך רווחים ומשמר שדות מלא�
 test('normalizeGoogleBusinessUrl: שומר רק קישורי HTTPS לפרופיל או לביקורות של עסק בגוגל', () => {
   const valid = [
     'https://g.page/r/synthetic/review',
+    'https://share.google/RJsPMrkBplt5Zjx4K',
     'https://maps.app.goo.gl/synthetic-profile',
     'https://goo.gl/maps/synthetic-profile',
     'https://www.google.com/maps/place/Synthetic+Business/@32,34,15z',
@@ -128,6 +130,9 @@ test('normalizeGoogleBusinessUrl: שומר רק קישורי HTTPS לפרופי�
     '',
     'http://g.page/r/synthetic/review',
     'https://g.page/',
+    'https://share.google/',
+    'https://share.google.evil.invalid/RJsPMrkBplt5Zjx4K',
+    'https://share-google.example/RJsPMrkBplt5Zjx4K',
     'https://google.example.invalid/maps/place/Synthetic',
     'https://www.google.com.evil.invalid/maps/place/Synthetic',
     'https://www.google.com/search?q=Synthetic',
@@ -142,6 +147,17 @@ test('normalizeGoogleBusinessUrl: שומר רק קישורי HTTPS לפרופי�
     'javascript:alert(1)',
   ];
   for (const url of invalid) assert.equal(normalizeGoogleBusinessUrl(url), '');
+});
+
+test('storedGoogleBusinessUrl preserves an existing legacy value for settings edits', () => {
+  assert.equal(
+    storedGoogleBusinessUrl({
+      googleReviewsUrl: '  https://legacy.example.invalid/google-profile  ',
+      theme: { brand: '#000000' },
+    }),
+    'https://legacy.example.invalid/google-profile',
+  );
+  assert.equal(storedGoogleBusinessUrl(null), '');
 });
 
 test('normalizeLandingContent: invalid Google metadata is omitted while factual testimonials remain', () => {

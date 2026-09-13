@@ -116,19 +116,31 @@ export function parseBrandingTheme(fd: FormData): ParseResult<LandingTheme | nul
 
 export function parseLandingUpdates(
   fd: FormData,
+  currentGoogleReviewsUrl?: string,
 ): ParseResult<Pick<LandingBrandingPatch, 'announcement' | 'googleReviewsUrl'>> {
   const data: Pick<LandingBrandingPatch, 'announcement' | 'googleReviewsUrl'> = {};
   for (const key of ['announcement', 'googleReviewsUrl'] as const) {
     const raw = fd.get(key);
     if (raw === null) continue;
     if (typeof raw !== 'string' || raw.length > (key === 'announcement' ? 200 : 2048)) {
-      return { ok: false, error: 'bad_request' };
+      return {
+        ok: false,
+        error: key === 'googleReviewsUrl' ? 'google_reviews_url' : 'bad_request',
+      };
     }
-    data[key] = raw.trim() || null;
+    const trimmed = raw.trim();
+    if (
+      key === 'googleReviewsUrl' &&
+      currentGoogleReviewsUrl !== undefined &&
+      trimmed === currentGoogleReviewsUrl.trim()
+    ) {
+      continue;
+    }
+    data[key] = trimmed || null;
   }
   if (data.googleReviewsUrl) {
     const normalized = normalizeGoogleBusinessUrl(data.googleReviewsUrl);
-    if (!normalized) return { ok: false, error: 'bad_request' };
+    if (!normalized) return { ok: false, error: 'google_reviews_url' };
     data.googleReviewsUrl = normalized;
   }
   return { ok: true, data };

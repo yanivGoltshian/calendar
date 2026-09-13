@@ -3,7 +3,11 @@ import { BusinessType, ReminderChannel } from '@prisma/client';
 import Link from 'next/link';
 import { t } from '@/i18n';
 import { BRAND } from '@/config/brand';
-import { normalizeLandingContent, MAX_HERO_IMAGES } from '@/lib/publicPageStyle';
+import {
+  normalizeLandingContent,
+  storedGoogleBusinessUrl,
+  MAX_HERO_IMAGES,
+} from '@/lib/publicPageStyle';
 import { inputClass } from './fieldStyles';
 import { BrandColorField } from './BrandColorField';
 import { TimezoneField } from './TimezoneField';
@@ -38,10 +42,17 @@ export type ProfileValues = Pick<
   | 'landingContent'
 >;
 
-export function ProfileFields({ b }: { b: ProfileValues }) {
+export function ProfileFields({
+  b,
+  googleReviewsError,
+}: {
+  b: ProfileValues;
+  googleReviewsError?: string;
+}) {
   const s = t.admin.settings.profile;
   const l = t.admin.settings.pageStyle;
   const landing = normalizeLandingContent(b.landingContent);
+  const googleReviewsUrl = storedGoogleBusinessUrl(b.landingContent);
   const isLanding = b.publicPageStyle === 'LANDING';
   // באג 13: בסגנון עמוד נחיתה, מקור האמת לתמונות הרקע הוא landingContent.heroImages
   // (אותו מקור שבאשף ההקמה ובעמוד הציבורי), ולכן חושפים כאן את אותן תמונות.
@@ -246,12 +257,22 @@ export function ProfileFields({ b }: { b: ProfileValues }) {
           type="url"
           dir="ltr"
           maxLength={2048}
-          defaultValue={landing?.googleReviewsUrl ?? ''}
+          defaultValue={googleReviewsUrl}
           placeholder={l.googleReviewsPlaceholder}
-          aria-describedby="google-reviews-hint"
+          aria-describedby={
+            googleReviewsError
+              ? 'google-reviews-hint google-reviews-error'
+              : 'google-reviews-hint'
+          }
+          aria-invalid={Boolean(googleReviewsError)}
           className={inputClass}
         />
         <p id="google-reviews-hint" className={hintClass}>{l.googleReviewsHint}</p>
+        {googleReviewsError ? (
+          <p id="google-reviews-error" role="alert" className="mt-1 text-xs font-medium text-red-600">
+            {googleReviewsError}
+          </p>
+        ) : null}
       </div>
 
       <div>

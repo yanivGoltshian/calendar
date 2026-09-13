@@ -27,6 +27,18 @@ test('landing updates preserve absent fields, clear empty fields and reject unsa
     { ok: true, data: { announcement: null, googleReviewsUrl: null } });
   assert.deepEqual(parseLandingUpdates(form({ announcement: '  Holiday hours ', googleReviewsUrl: 'https://maps.app.goo.gl/example' })),
     { ok: true, data: { announcement: 'Holiday hours', googleReviewsUrl: 'https://maps.app.goo.gl/example' } });
+  assert.deepEqual(parseLandingUpdates(form({ googleReviewsUrl: 'https://share.google/RJsPMrkBplt5Zjx4K' })),
+    { ok: true, data: { googleReviewsUrl: 'https://share.google/RJsPMrkBplt5Zjx4K' } });
+  assert.deepEqual(
+    parseLandingUpdates(
+      form({
+        announcement: 'Updated',
+        googleReviewsUrl: 'https://legacy.example.invalid/google-profile',
+      }),
+      'https://legacy.example.invalid/google-profile',
+    ),
+    { ok: true, data: { announcement: 'Updated' } },
+  );
   assert.equal(parseLandingUpdates(form({ announcement: 'a'.repeat(200) })).ok, true);
   const invalidFields: Record<string, string>[] = [
     { announcement: 'a'.repeat(201) },
@@ -38,7 +50,17 @@ test('landing updates preserve absent fields, clear empty fields and reject unsa
     { googleReviewsUrl: 'https://www.google.com/maps/search/?api=1&query=Wrong+Business' },
     { googleReviewsUrl: 'https://example.invalid/' + 'a'.repeat(2048) },
   ];
-  for (const fields of invalidFields) assert.equal(parseLandingUpdates(form(fields)).ok, false);
+  for (const fields of invalidFields) {
+    const parsed = parseLandingUpdates(form(fields));
+    assert.equal(parsed.ok, false);
+    if (
+      !parsed.ok &&
+      Object.hasOwn(fields, 'googleReviewsUrl') &&
+      fields.googleReviewsUrl.length <= 2048
+    ) {
+      assert.equal(parsed.error, 'google_reviews_url');
+    }
+  }
   const upload = form({});
   upload.set('announcement', new Blob(['not text']));
   assert.equal(parseLandingUpdates(upload).ok, false);

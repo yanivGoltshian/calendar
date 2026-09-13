@@ -26,7 +26,7 @@ import type { SaveState } from '../settings/parse';
 import { parseBrandingTheme } from '../settings/parse';
 import { isSafeBusinessMediaWrite } from '../settings/mediaValidation';
 import { ONBOARDING_CHECKLIST_DISMISS_COOKIE } from './checklistState';
-import { parsePremiumDraft } from './premium';
+import { parsePremiumDraft, premiumDraftError } from './premium';
 import { computeSetupState } from './setup';
 
 /**
@@ -225,8 +225,11 @@ export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promis
   const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
 
+  const premiumDraft = fd.get('premiumDraft');
+  const draftError = premiumDraftError(premiumDraft);
+  if (draftError) return { ok: false, error: draftError };
   // ניתוח בטוח של טיוטת הפרימיום: null כשאין תוכן ממשי (ישמור NULL במסד).
-  const landingContent = parsePremiumDraft(fd.get('premiumDraft'));
+  const landingContent = parsePremiumDraft(premiumDraft);
 
   // כתובת העסק ניתנת לעריכה בעורך הפרימיום ומגיעה כשדה מוסתר. שומרים את הערך
   // החדש (לאחר trim); כשהשדה חסר לגמרי (לקוח ישן) נשמר הערך הקיים כדי לא לאבד
