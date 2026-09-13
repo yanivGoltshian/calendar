@@ -12,16 +12,25 @@ test.afterAll(() => prisma.$disconnect());
 for (const width of [390, 1366]) {
   test(`branding saves immediately and settings edits the same full palette at ${width}px`, async ({ page, context }) => {
     const f = await bookingFixture();
+    const other = await bookingFixture();
     const original = {
       presentation: 'premium', theme: BRAND_PRESETS[0].theme,
       heroHeadline: 'Existing synthetic business', heroImages: ['/icons/icon-192.png'],
       sections: { highlights: false, socialCta: false }, socialLinks: { whatsapp: '0501234567' },
+    };
+    const otherLanding = {
+      testimonials: [{ name: 'Other tenant', quote: 'Must remain isolated' }],
+      googleReviewsUrl: 'https://g.page/r/other-tenant/review',
     };
     try {
       await prisma.business.update({ where: { id: f.business.id }, data: {
         publicPageStyle: 'LANDING', logoUrl: '/icons/icon-192.png',
         landingContent: original, brandColor: original.theme.brand,
       } });
+      await prisma.business.update({
+        where: { id: other.business.id },
+        data: { landingContent: otherLanding },
+      });
       await prisma.businessSettings.update({ where: { businessId: f.business.id }, data: { onboardingCompleted: true } });
       const token = await encode({
         token: { email: f.business.ownerEmail }, secret: process.env.AUTH_SECRET!, salt: 'authjs.session-token',
@@ -97,8 +106,12 @@ for (const width of [390, 1366]) {
       await page.goto(`/b/${f.business.slug}`);
       await expect(page.getByText(announcement, { exact: true })).toHaveCount(0);
       await expect(page.getByRole('link', { name: t.publicPage.landing.googleReviewsCta, exact: true })).toHaveCount(0);
+      expect((await prisma.business.findUniqueOrThrow({
+        where: { id: other.business.id },
+      })).landingContent).toEqual(otherLanding);
     } finally {
       await cleanupFixture(f);
+      await cleanupFixture(other);
     }
   });
 }

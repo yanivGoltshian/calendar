@@ -1,4 +1,3 @@
-import { StarIcon } from './icons';
 import SectionHeading from './SectionHeading';
 
 type Testimonial = { name?: string; quote: string };
@@ -10,6 +9,7 @@ type Props = {
   googleReviewsUrl?: string;
   googleLabel?: string;
   googleCta?: string;
+  googleEmptyText?: string;
 };
 
 // סמל גוגל בארבעת הצבעים — לזיהוי מיידי של מקור הביקורות.
@@ -25,19 +25,24 @@ function GoogleGlyph({ className }: { className?: string }) {
 }
 
 // A Google link does not verify the provenance or rating of owner-authored testimonials.
-export default function LandingTestimonials({ title, items, eyebrow, googleReviewsUrl, googleLabel, googleCta }: Props) {
+export default function LandingTestimonials({
+  title,
+  items,
+  eyebrow,
+  googleReviewsUrl,
+  googleLabel,
+  googleCta,
+  googleEmptyText,
+}: Props) {
   if (items.length === 0 && !googleReviewsUrl) return null;
   const isGoogle = Boolean(googleReviewsUrl);
   return (
     <section className="mt-16 sm:mt-24">
       <SectionHeading eyebrow={eyebrow} title={items.length ? title : googleLabel ?? title} />
-      {isGoogle ? (
-        <div className="mx-auto mt-6 flex w-fit items-center gap-3 rounded-full border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] px-5 py-2.5 shadow-soft">
-          <GoogleGlyph className="h-5 w-5" />
-          {googleLabel ? (
-            <span className="text-sm font-semibold text-[color:var(--biz-text,#334155)]">{googleLabel}</span>
-          ) : null}
-        </div>
+      {items.length === 0 && googleEmptyText ? (
+        <p className="mx-auto mt-5 max-w-xl text-center text-sm leading-relaxed text-[color:var(--c-muted,#665d57)]">
+          {googleEmptyText}
+        </p>
       ) : null}
       {items.length > 0 ? <div className="mt-10 grid gap-5 min-[821px]:grid-cols-3">
         {items.map((tm, i) => (
@@ -46,12 +51,7 @@ export default function LandingTestimonials({ title, items, eyebrow, googleRevie
             className="rounded-[20px] border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] p-6"
             style={{ boxShadow: '0 18px 40px -30px var(--c-shadow, rgba(40,28,18,0.5))' }}
           >
-            <div className="flex gap-0.5 text-[color:var(--c-gold-strong,#f5b301)]" style={{ letterSpacing: '2px' }} aria-hidden>
-              {[0, 1, 2, 3, 4].map((n) => (
-                <StarIcon key={n} className="h-4 w-4" />
-              ))}
-            </div>
-            <blockquote className="mt-3 font-display text-[0.98rem] leading-relaxed text-[color:var(--c-ink,#463f3a)]">{tm.quote}</blockquote>
+            <blockquote className="font-display text-[0.98rem] leading-relaxed text-[color:var(--c-ink,#463f3a)]">{tm.quote}</blockquote>
             {tm.name ? (
               <figcaption className="mt-4 flex items-center gap-3">
                 <span

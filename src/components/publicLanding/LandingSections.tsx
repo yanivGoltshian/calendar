@@ -141,6 +141,7 @@ export default function LandingSections({
                 googleReviewsUrl={content?.googleReviewsUrl}
                 googleLabel={l.googleReviewsLabel}
                 googleCta={l.googleReviewsCta}
+                googleEmptyText={l.googleReviewsEmpty}
               />
             );
           case 'faq':
