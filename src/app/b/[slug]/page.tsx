@@ -82,6 +82,7 @@ export default async function BusinessPublicPage({ params }: Props) {
 
   const services = business.services;
   const staff = business.staff;
+  const bookableStaff = staff.filter((member) => member.serviceLinks.length > 0);
   const hoursByDay = new Map<number, (typeof business.workingHours)[number]>();
   for (const wh of business.workingHours) hoursByDay.set(wh.weekday, wh);
 
@@ -502,7 +503,10 @@ export default async function BusinessPublicPage({ params }: Props) {
               content={landing}
               type={business.type}
               services={services}
-              staff={staff.map((m) => ({ id: m.id, displayName: m.displayName }))}
+              staff={bookableStaff.map((m) => ({
+                id: m.id,
+                displayName: m.displayName,
+              }))}
               businessName={business.name}
               slug={slug}
               workingHours={business.workingHours}
