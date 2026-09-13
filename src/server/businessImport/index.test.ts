@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { runBusinessImportCli } from '../../../scripts/import-business';
+import { extractBusinessDraft } from './extract';
 import {
   BusinessImportError,
   createPinnedLookup,
   detectBusinessImportSource,
   fetchPublicImage,
+  fetchPublicVideo,
   importBusinessFromUrl,
   isPublicNetworkAddress,
   type BusinessImportFetch,
@@ -68,6 +70,11 @@ function fixtureFetch(
 
 test('מזהה את ארבעת סוגי המקור', () => {
   assert.equal(detectBusinessImportSource('https://app.calmark.co.il/noa'), 'calmark');
+  assert.equal(detectBusinessImportSource('https://calmark.io/p/Nquzv'), 'calmark');
+  assert.equal(
+    detectBusinessImportSource('https://calmark.evil.example/p/Nquzv'),
+    'generic-site',
+  );
   assert.equal(detectBusinessImportSource('https://instagram.com/noa'), 'instagram');
   assert.equal(detectBusinessImportSource('https://m.facebook.com/noa'), 'facebook');
   assert.equal(detectBusinessImportSource('https://example.com'), 'generic-site');
@@ -96,6 +103,7 @@ test('אתר רגיל מחזיר טיוטה מלאה ממידע מובנה ומ�
 
   const draft = await importBusinessFromUrl('https://example.com', fetch, {
     resolveHostname: publicResolver,
+    maxSocialProfiles: 0,
   });
 
   assert.equal(draft.sourceType, 'generic-site');
@@ -107,6 +115,14 @@ test('אתר רגיל מחזיר טיוטה מלאה ממידע מובנה ומ�
   assert.equal(draft.location.formattedAddress, 'הרצל 10, תל אביב, תל אביב, 61000, IL');
   assert.equal(draft.hours.length, 2);
   assert.equal(draft.services.length, 2);
+  assert.deepEqual(
+    draft.staff.map(({ name, title, serviceNames }) => ({
+      name,
+      title,
+      serviceNames,
+    })),
+    [{ name: 'דנה לוי', title: 'קוסמטיקאית', serviceNames: [] }],
+  );
   assert.deepEqual(
     draft.services.map(({ name, price, currency, durationMinutes }) => ({
       name,
@@ -147,8 +163,8 @@ test('אתר רגיל מחזיר טיוטה מלאה ממידע מובנה ומ�
 test('קאלמרק מחלץ שירות, מחיר, משך ושעות', async () => {
   const html = await fixture('calmark.html');
   const draft = await importBusinessFromUrl(
-    'https://app.calmark.co.il/noa',
-    fixtureFetch({ 'https://app.calmark.co.il/noa': { body: html } }),
+    'https://calmark.io/p/Nquzv',
+    fixtureFetch({ 'https://calmark.io/p/Nquzv': { body: html } }),
     { resolveHostname: publicResolver },
   );
   assert.equal(draft.sourceType, 'calmark');
@@ -158,6 +174,134 @@ test('קאלמרק מחלץ שירות, מחיר, משך ושעות', async () =
   assert.equal(draft.services[0]?.durationMinutes, 60);
   assert.equal(draft.hours[0]?.opens, '08:30');
   assert.equal(draft.hours[0]?.closes, '17:00');
+  assert.equal(draft.location.formattedAddress, 'דיזנגוף 10, תל אביב');
+  assert.deepEqual(
+    draft.staff.map(({ name }) => name),
+    ['נועה'],
+  );
+  assert.deepEqual(draft.staff[0]?.serviceNames, ['מניקור ג׳ל']);
+  assert.ok(draft.staff[0]?.evidence.length);
+  assert.ok(
+    draft.staff[0]?.evidence.every(
+      ({ method, confidence }) => method === 'embedded-json' && confidence === 'medium',
+    ),
+  );
+  assert.deepEqual(draft.bookingPolicy, {
+    minLeadTimeMinutes: 120,
+    cancellationWindowHours: 24,
+    maxAdvanceBookingDays: 45,
+    bookingRequiresApproval: true,
+    notes: [],
+  });
+});
+
+test('אתר במבנה Yakiz משלב תוכן אתר ומטא דאטה ציבורי מאינסטגרם בלי להמציא שדות', async () => {
+  const [home, treatments, instagram] = await Promise.all([
+    fixture('yakiz-home.html'),
+    fixture('yakiz-treatments.html'),
+    fixture('yakiz-instagram.html'),
+  ]);
+  const draft = await importBusinessFromUrl(
+    'https://yakiz.example/',
+    fixtureFetch({
+      'https://yakiz.example/': { body: home },
+      'https://yakiz.example/about': { body: treatments },
+      'https://www.instagram.com/yakiz_barber_beauty/': { body: instagram },
+    }),
+    { resolveHostname: publicResolver },
+  );
+
+  assert.equal(draft.business.name, 'YAKIZ BARBER & BEAUTY SALON');
+  assert.equal(
+    draft.business.description,
+    'סלון טיפוח לנשים ולגברים עם עיצוב שיער וטיפולי אסתטיקה.',
+  );
+  assert.equal(draft.location.formattedAddress, 'הרצל 85, ראשון לציון');
+  assert.equal(draft.location.locality, 'ראשון לציון');
+  assert.deepEqual(
+    draft.services.map(({ name }) => name),
+    [
+      'ברבר ומעצב שיער לנשים, גברים וילדים',
+      'ציפורניים',
+      'עיצוב גבות ושפם',
+      'איפור קבוע לגבות ולעיניים',
+      'טיפולי פנים',
+      'עיסויים',
+    ],
+  );
+  assert.ok(
+    draft.services.every(
+      ({ price, durationMinutes }) => price === null && durationMinutes === null,
+    ),
+  );
+  assert.equal(draft.media.logoUrl, 'https://cdn.example.com/multi/logo-yakiz.png');
+  assert.equal(draft.media.coverImageUrl, 'https://cdn.example.com/multi/salon.jpg');
+  assert.deepEqual(draft.media.instagramPostUrls, [
+    'https://www.instagram.com/yakiz_barber_beauty/p/POST1/',
+  ]);
+  assert.deepEqual(draft.socialLinks, [
+    { platform: 'whatsapp', url: 'https://wa.me/972507373364' },
+    {
+      platform: 'instagram',
+      url: 'https://www.instagram.com/yakiz_barber_beauty/',
+    },
+  ]);
+  assert.equal(draft.hours.length, 0);
+  assert.equal(draft.staff.length, 0);
+  assert.equal(draft.bookingPolicy.notes.length, 0);
+  assert.ok(draft.warnings.some(({ code }) => code === 'missing-hours'));
+  assert.ok(draft.warnings.some(({ code }) => code === 'missing-staff'));
+  assert.ok(draft.warnings.some(({ code }) => code === 'missing-policy'));
+  assert.ok(
+    draft.evidence.length > 0 &&
+      draft.evidence.every(({ confidence }) =>
+        ['high', 'medium', 'low'].includes(confidence ?? ''),
+      ),
+  );
+});
+
+test('מקור חברתי מסנן דומיינים מתחזים ותוכן שאינו שייך לפרופיל', () => {
+  const url = 'https://www.instagram.com/acme/';
+  const draft = extractBusinessDraft(
+    [
+      {
+        requestedUrl: url,
+        finalUrl: url,
+        html: `
+          <title>Acme (@acme) • Instagram</title>
+          <a href="/acme/p/OWNED/">owned</a>
+          <a href="/other/reel/OTHER/">other</a>
+          <a href="https://evilinstagram.com/acme/p/LOOKALIKE/">lookalike</a>
+        `,
+      },
+    ],
+    'instagram',
+    url,
+  );
+  assert.deepEqual(draft.media.instagramPostUrls, [
+    'https://www.instagram.com/acme/p/OWNED/',
+  ]);
+});
+
+test('פלט החילוץ מוגבל ומדווח על קיטום', () => {
+  const url = 'https://example.com/';
+  const html = `<title>Bounded business</title>${Array.from(
+    { length: 140 },
+    (_, index) =>
+      `<img src="https://cdn.example.com/image-${index}.jpg" width="800" height="600">`,
+  ).join('')}`;
+  const draft = extractBusinessDraft(
+    [{ requestedUrl: url, finalUrl: url, html }],
+    'generic-site',
+    url,
+  );
+  assert.equal(draft.media.galleryImageUrls.length, 100);
+  assert.deepEqual(
+    draft.warnings
+      .filter(({ code }) => code === 'result-truncated')
+      .map(({ sourceUrl }) => sourceUrl),
+    [url],
+  );
 });
 
 test('אינסטגרם ופייסבוק מסתפקים במטא דאטה ציבורי ומצהירים על המגבלה', async () => {
@@ -459,6 +603,36 @@ test('הורדת תמונה עוברת דרך אותן הגנות SSRF, הפני
     ),
     (error: unknown) =>
       error instanceof BusinessImportError && error.code === 'response_too_large',
+  );
+});
+
+test('הורדת וידאו ישיר משתמשת באותה מעטפת SSRF ומסרבת לדף HTML', async () => {
+  const video = await fetchPublicVideo(
+    'https://media.example/hero.mp4',
+    fixtureFetch({
+      'https://media.example/hero.mp4': {
+        body: '0000ftypisom',
+        headers: { 'content-type': 'video/mp4' },
+      },
+    }),
+    { resolveHostname: publicResolver, maxResponseBytes: 100 },
+  );
+  assert.equal(video.contentType, 'video/mp4');
+  assert.equal(video.bytes.toString(), '0000ftypisom');
+
+  await assert.rejects(
+    fetchPublicVideo(
+      'https://media.example/not-video',
+      fixtureFetch({
+        'https://media.example/not-video': {
+          body: '<html></html>',
+          headers: { 'content-type': 'text/html' },
+        },
+      }),
+      { resolveHostname: publicResolver },
+    ),
+    (error: unknown) =>
+      error instanceof BusinessImportError && error.code === 'content_type',
   );
 });
 

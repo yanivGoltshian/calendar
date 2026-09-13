@@ -232,10 +232,10 @@ model Business {
 
   // בעלות דרך NextAuth (Google/מייל): מזהה הבעלים לפי כתובת המייל המאומתת.
   // עמודה אדיטיבית בלבד; אינה נוגעת במודל User (שמבוסס טלפון) ואינה דורסת נתונים.
-  ownerEmail String?
+  ownerEmail              String?
   // An additional owner login explicitly assigned by a platform admin, never a public contact.
-  ownerPhoneIdentity String? @unique
-  provisionedBy      String?
+  ownerPhoneIdentity      String?   @unique
+  provisionedBy           String?
   // נתוני ייבוא שנאספו בעת הכנת העסק בידי סופר-אדמין. נשמרים לבדיקת האדם,
   // לא מפרסמים את העסק ולא מחליפים את מקור האמת של שדות העסק עצמם.
   businessImportSourceUrl String?
@@ -326,7 +326,7 @@ model MessageTemplate {
   // נושא המייל (null במסרון). טקסט פשוט עם placeholders.
   subject String?
   // גוף ההודעה. טקסט פשוט בלבד — ה-HTML למייל נבנה על-ידי המערכת (escape + מעטפת RTL).
-  body String
+  body    String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -370,7 +370,7 @@ model BusinessSettings {
   // כיבוי/הפעלה של רשימת ההמתנה פר-עסק. ברירת מחדל דלוקה (true) לשימור התנהגות
   // קיימת לכל העסקים; בעל עסק שאינו רוצה לאפשר הרשמה לרשימת המתנה יכבה זאת
   // בעמוד /admin/waitlist, ואז ה-CTA נעלם מעמוד ההזמנה של הלקוח וההרשמה נדחית.
-  waitlistEnabled      Boolean @default(true)
+  waitlistEnabled Boolean @default(true)
 
   // מצב אונבורדינג — האם ההקמה הראשונית הושלמה. נוסף במודול ההקמה.
   onboardingCompleted Boolean @default(false)
@@ -398,20 +398,20 @@ model PushSubscription {
 }
 
 model User {
-  id             String    @id @default(cuid())
+  id              String    @id @default(cuid())
   // טלפון ומייל שניהם אופציונליים-ייחודיים: משתמש יכול להיווצר לפי טלפון (OTP/Firebase)
   // או לפי מייל (email OTP). האכיפה של "לפחות אחד מהם" היא בשכבת האפליקציה, לא ב-DB.
   // ב-Postgres כמה ערכי NULL מותרים תחת אינדקס ייחודי, ולכן nullable-unique בטוח.
-  phone          String?   @unique
-  email          String?   @unique
-  emailVerified  DateTime?
+  phone           String?   @unique
+  email           String?   @unique
+  emailVerified   DateTime?
   phoneVerifiedAt DateTime?
-  name           String?
-  role           Role      @default(CLIENT)
+  name            String?
+  role            Role      @default(CLIENT)
   // מזהים רגישים נשמרים כ-hash בלבד (למשל ת"ז) — לא בשימוש ב-MVP אך שמור מראש
-  nationalIdHash String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  nationalIdHash  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   ownedBusinesses  Business[]    @relation("BusinessOwner")
   staffMemberships StaffMember[]
@@ -422,8 +422,10 @@ model StaffMember {
   id         String   @id @default(cuid())
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Imported public staff profiles may exist before a login identity is known.
+  // They can later be claimed by assigning a verified User through the admin flow.
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   displayName     String
   title           String?
@@ -555,12 +557,12 @@ model WorkingHoursException {
 }
 
 model Client {
-  id         String   @id @default(cuid())
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  userId     String?
+  id                 String    @id @default(cuid())
+  businessId         String
+  business           Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId             String?
   identityVerifiedAt DateTime?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user               User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   name    String
   // טלפון אופציונלי: מאפשר לקוחות שנרשמו/הזמינו לפי מייל בלבד (ללא טלפון).
@@ -606,15 +608,15 @@ model Appointment {
   cancelledBy      String?
 
   // תזכורת 24 שעות ואישור הגעה של הלקוח (מודול תזכורות)
-  reminderSentAt     DateTime? // מתי נשלחה תזכורת ה-24 שעות (ריק = טרם נשלחה)
-  reminderClaimToken  String?
-  reminderClaimedAt   DateTime?
-  reminderLastError   String?
-  googleSyncPending  Boolean @default(false)
+  reminderSentAt       DateTime? // מתי נשלחה תזכורת ה-24 שעות (ריק = טרם נשלחה)
+  reminderClaimToken   String?
+  reminderClaimedAt    DateTime?
+  reminderLastError    String?
+  googleSyncPending    Boolean            @default(false)
   googleSyncClaimToken String?
-  googleSyncClaimedAt DateTime?
-  confirmationStatus ConfirmationStatus @default(PENDING) // אישור ההגעה מצד הלקוח
-  confirmToken       String             @unique @default(cuid()) // מזהה ציבורי לקישור האישור /c/<token>
+  googleSyncClaimedAt  DateTime?
+  confirmationStatus   ConfirmationStatus @default(PENDING) // אישור ההגעה מצד הלקוח
+  confirmToken         String             @unique @default(cuid()) // מזהה ציבורי לקישור האישור /c/<token>
 
   // מזהה האירוע ביומן Google של בעל העסק (מודול סנכרון יומן). ריק כשאין ייצוא/חיבור.
   // משמש לעדכון/מחיקה של האירוע המיוצא כשהתור מבוטל. אדיטיבי, אופציונלי.
@@ -633,10 +635,10 @@ model Appointment {
 
   sales Sale[] // מודול קופה — קשר אדיטיבי
 
+  @@unique([bookingScope, bookingKey])
   @@index([businessId, startAt])
   @@index([staffId, startAt])
   @@index([reminderSentAt, startAt]) // סריקת חלון התזכורות ב-cron
-  @@unique([bookingScope, bookingKey])
   @@index([businessId, status, pendingExpiresAt])
   @@index([googleSyncPending, googleSyncClaimedAt])
 }
@@ -750,14 +752,14 @@ model WaitlistEntry {
   latestMinute   Int?
   note           String?
 
-  status     WaitlistStatus @default(WAITING)
-  notifiedAt DateTime? // מתי נשלחה הודעת עדכון ללקוח
+  status           WaitlistStatus @default(WAITING)
+  notifiedAt       DateTime? // מתי נשלחה הודעת עדכון ללקוח
   notifyClaimToken String?
-  notifyClaimedAt DateTime?
-  notifyError String?
-  promotedAt DateTime? // מתי קודם ידנית (הוזמן) מהרשימה
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  notifyClaimedAt  DateTime?
+  notifyError      String?
+  promotedAt       DateTime? // מתי קודם ידנית (הוזמן) מהרשימה
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([businessId, status])
 }
@@ -967,11 +969,11 @@ model Campaign {
 
 // יומן הודעות דיוור — רשומה לכל נמען (מקושרת לקמפיין וללקוח כשקיימים).
 model MessageLog {
-  id         String   @id @default(cuid())
-  idempotencyKey String? @unique
-  reservedAt DateTime?
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id             String    @id @default(cuid())
+  idempotencyKey String?   @unique
+  reservedAt     DateTime?
+  businessId     String
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   campaignId String?
   campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)

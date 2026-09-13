@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import type { StaffPermission } from '@prisma/client';
+import { Prisma, type StaffPermission } from '@prisma/client';
 import { normalizePhone } from '@/lib/crypto';
 
 /** אנשי צוות פעילים בעסק. */
@@ -56,6 +56,13 @@ export type StaffInput = {
   active: boolean;
 };
 
+export type UpdateStaffMemberResult =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: 'not_found' | 'duplicate' | 'identity_conflict';
+    };
+
 /**
  * יצירת איש צוות חדש: מאתרים או יוצרים משתמש לפי הטלפון (מנורמל ל-E.164),
  * ואז יוצרים רשומת StaffMember. מסרבים כאשר המשתמש כבר משויך כאיש צוות בעסק.
@@ -64,33 +71,39 @@ export async function createStaffMember(
   businessId: string,
   data: StaffInput,
 ): Promise<{ ok: true; id: string } | { ok: false; reason: 'duplicate' }> {
-  const phone = normalizePhone(data.phone);
+  try {
+    const phone = normalizePhone(data.phone);
+    const user = await prisma.user.upsert({
+      where: { phone },
+      update: data.name ? { name: data.name } : {},
+      create: { phone, name: data.name ?? null, role: 'STAFF' },
+    });
 
-  const user = await prisma.user.upsert({
-    where: { phone },
-    update: data.name ? { name: data.name } : {},
-    create: { phone, name: data.name ?? null, role: 'STAFF' },
-  });
+    const existing = await prisma.staffMember.findUnique({
+      where: { businessId_userId: { businessId, userId: user.id } },
+      select: { id: true },
+    });
+    if (existing) return { ok: false, reason: 'duplicate' };
 
-  const existing = await prisma.staffMember.findUnique({
-    where: { businessId_userId: { businessId, userId: user.id } },
-    select: { id: true },
-  });
-  if (existing) return { ok: false, reason: 'duplicate' };
-
-  const created = await prisma.staffMember.create({
-    data: {
-      businessId,
-      userId: user.id,
-      displayName: data.displayName,
-      title: data.title ?? null,
-      bio: data.bio ?? null,
-      permissionLevel: data.permissionLevel,
-      active: data.active,
-    },
-    select: { id: true },
-  });
-  return { ok: true, id: created.id };
+    const created = await prisma.staffMember.create({
+      data: {
+        businessId,
+        userId: user.id,
+        displayName: data.displayName,
+        title: data.title ?? null,
+        bio: data.bio ?? null,
+        permissionLevel: data.permissionLevel,
+        active: data.active,
+      },
+      select: { id: true },
+    });
+    return { ok: true, id: created.id };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return { ok: false, reason: 'duplicate' };
+    }
+    throw error;
+  }
 }
 
 /**
@@ -172,30 +185,69 @@ export async function updateStaffMember(
   businessId: string,
   id: string,
   data: StaffInput,
-): Promise<boolean> {
-  const member = await prisma.staffMember.findFirst({
-    where: { id, businessId },
-    select: { userId: true },
-  });
-  if (!member) return false;
+): Promise<UpdateStaffMemberResult> {
+  const phone = data.phone.trim() ? normalizePhone(data.phone) : null;
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`
+          SELECT "id" FROM "StaffMember"
+          WHERE "id" = ${id} AND "businessId" = ${businessId}
+          FOR UPDATE
+        `;
+        const member = await tx.staffMember.findFirst({
+          where: { id, businessId },
+          select: {
+            userId: true,
+            user: { select: { phone: true } },
+          },
+        });
+        if (!member) return { ok: false, reason: 'not_found' };
 
-  const phone = normalizePhone(data.phone);
-  await prisma.user.update({
-    where: { id: member.userId },
-    data: { phone, name: data.name ?? null },
-  });
+        let userId = member.userId;
+        if (userId && phone && member.user?.phone !== phone) {
+          return { ok: false, reason: 'identity_conflict' };
+        }
+        if (!userId && phone) {
+          const user = await tx.user.upsert({
+            where: { phone },
+            update: {},
+            create: { phone, name: data.name ?? null, role: 'STAFF' },
+            select: { id: true },
+          });
+          const existing = await tx.staffMember.findUnique({
+            where: { businessId_userId: { businessId, userId: user.id } },
+            select: { id: true },
+          });
+          if (existing && existing.id !== id) {
+            return { ok: false, reason: 'duplicate' };
+          }
+          userId = user.id;
+        }
 
-  await prisma.staffMember.update({
-    where: { id },
-    data: {
-      displayName: data.displayName,
-      title: data.title ?? null,
-      bio: data.bio ?? null,
-      permissionLevel: data.permissionLevel,
-      active: data.active,
-    },
-  });
-  return true;
+        const updated = await tx.staffMember.updateMany({
+          where: { id, businessId, userId: member.userId },
+          data: {
+            ...(userId ? { userId } : {}),
+            displayName: data.displayName,
+            title: data.title ?? null,
+            bio: data.bio ?? null,
+            permissionLevel: data.permissionLevel,
+            active: data.active,
+          },
+        });
+        return updated.count === 1
+          ? { ok: true }
+          : { ok: false, reason: 'identity_conflict' };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    );
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return { ok: false, reason: 'duplicate' };
+    }
+    throw error;
+  }
 }
 
 /** הפעלה או השבתה של איש צוות (מתג active). */
@@ -216,13 +268,18 @@ export async function deleteStaffMember(
   businessId: string,
   id: string,
 ): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'in_use' }> {
-  const member = await prisma.staffMember.findFirst({
-    where: { id, businessId },
-    include: { _count: { select: { appointments: true } } },
-  });
-  if (!member) return { ok: false, reason: 'not_found' };
-  if (member._count.appointments > 0) return { ok: false, reason: 'in_use' };
+  return prisma.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "StaffMember"
+      WHERE "id" = ${id} AND "businessId" = ${businessId}
+      FOR UPDATE
+    `;
+    if (locked.length === 0) return { ok: false, reason: 'not_found' };
 
-  await prisma.staffMember.delete({ where: { id } });
-  return { ok: true };
+    const appointmentCount = await tx.appointment.count({ where: { staffId: id } });
+    if (appointmentCount > 0) return { ok: false, reason: 'in_use' };
+
+    const deleted = await tx.staffMember.deleteMany({ where: { id, businessId } });
+    return deleted.count === 1 ? { ok: true } : { ok: false, reason: 'not_found' };
+  });
 }

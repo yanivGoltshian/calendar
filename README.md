@@ -46,6 +46,7 @@ npm run dev
 
 - עמוד העסק הציבורי: <http://localhost:3000/b/demo-barbershop>
 - זרימת ההזמנה: <http://localhost:3000/b/demo-barbershop/book>
+- חוזה ייבוא עסקים ובטיחות מקורות: [docs/business-import.md](docs/business-import.md)
 - היומן הניהולי: <http://localhost:3000/admin>
 
 ### קוד ה-OTP בפיתוח
@@ -146,16 +147,18 @@ the shared transaction policy.
 ### Combined release upgrade
 
 The coordinated importer and hours release adds
-`20260912230000_business_import_review` and
-`20260913000000_working_hours_exceptions` after the 39 existing migrations.
-Apply both additive migrations before activating the combined code. No rule or
-import is created automatically. Existing migration files remain unchanged, and
-rolling back application code can leave the nullable columns and table in place.
-The isolated release gate exercises both the older audit upgrade and a separate
-39-to-41 upgrade, preserves ten populated application tables and the entire prior
-migration ledger, and repeats deployment with no pending changes. The migration
-wrapper's `--provisioning-baseline-only` option is restricted to explicit local
-test databases and is used only to construct that historical fixture.
+`20260912230000_business_import_review`,
+`20260913000000_working_hours_exceptions`, and
+`20260913110000_allow_unclaimed_imported_staff` after the 39 existing migrations.
+Apply all three additive migrations before activating the combined code. No rule,
+import, or unclaimed staff profile is created automatically. Existing migration
+files remain unchanged, and rolling back application code can leave the nullable
+columns and table in place. The isolated release gate exercises both the older
+audit upgrade and a separate 39-to-42 upgrade, preserves ten populated application
+tables and the entire prior migration ledger, and repeats deployment with no
+pending changes. The migration wrapper's `--provisioning-baseline-only` option is
+restricted to explicit local test databases and is used only to construct that
+historical fixture.
 
 Each tenant can store at most 200 rules. Expired one-off definitions disappear on
 read and are removed on the next rule creation. The existing authenticated daily
@@ -185,20 +188,20 @@ main
 
 כל המשתנים מתועדים ב-[`.env.example`](.env.example):
 
-| משתנה | תיאור |
-| --- | --- |
-| `DATABASE_URL` | מחרוזת חיבור ל-PostgreSQL |
-| `BUSINESS_TIMEZONE` | אזור זמן עסקי ברירת מחדל (IANA), למשל `Asia/Jerusalem` |
-| `SESSION_SECRET` | מפתח לחתימת עוגיית ההתחברות (מחרוזת אקראית ארוכה) |
-| `OTP_PEPPER` | "פלפל" להצפנת קודי OTP (מחרוזת אקראית ארוכה) |
-| `MESSAGING_PROVIDER` | ספק ההודעות: `console` (פיתוח) או `whatsapp-cloud` (פרודקשן). תאימות לאחור ל-`SMS_PROVIDER` |
-| `NEXT_PUBLIC_APP_URL` | כתובת בסיס ציבורית של האפליקציה |
-| `NEXTAUTH_SECRET` | סוד לחתימת ה-JWT של כניסת הבעלים (NextAuth). חובה בפרודקשן |
-| `NEXTAUTH_URL` | כתובת בסיס ל-callbacks של NextAuth, למשל `https://torchick.com` |
-| `GOOGLE_CLIENT_ID` | מזהה לקוח של Google OAuth. ריק = כפתור Google מוסתר |
-| `GOOGLE_CLIENT_SECRET` | סוד לקוח של Google OAuth. ריק = כפתור Google מוסתר |
-| `EMAIL_SERVER` | חיבור SMTP ל-magic-link (אופציונלי, מושבת כברירת מחדל) |
-| `EMAIL_FROM` | כתובת שולח ל-magic-link (אופציונלי) |
+| משתנה                  | תיאור                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | מחרוזת חיבור ל-PostgreSQL                                                                   |
+| `BUSINESS_TIMEZONE`    | אזור זמן עסקי ברירת מחדל (IANA), למשל `Asia/Jerusalem`                                      |
+| `SESSION_SECRET`       | מפתח לחתימת עוגיית ההתחברות (מחרוזת אקראית ארוכה)                                           |
+| `OTP_PEPPER`           | "פלפל" להצפנת קודי OTP (מחרוזת אקראית ארוכה)                                                |
+| `MESSAGING_PROVIDER`   | ספק ההודעות: `console` (פיתוח) או `whatsapp-cloud` (פרודקשן). תאימות לאחור ל-`SMS_PROVIDER` |
+| `NEXT_PUBLIC_APP_URL`  | כתובת בסיס ציבורית של האפליקציה                                                             |
+| `NEXTAUTH_SECRET`      | סוד לחתימת ה-JWT של כניסת הבעלים (NextAuth). חובה בפרודקשן                                  |
+| `NEXTAUTH_URL`         | כתובת בסיס ל-callbacks של NextAuth, למשל `https://torchick.com`                             |
+| `GOOGLE_CLIENT_ID`     | מזהה לקוח של Google OAuth. ריק = כפתור Google מוסתר                                         |
+| `GOOGLE_CLIENT_SECRET` | סוד לקוח של Google OAuth. ריק = כפתור Google מוסתר                                          |
+| `EMAIL_SERVER`         | חיבור SMTP ל-magic-link (אופציונלי, מושבת כברירת מחדל)                                      |
+| `EMAIL_FROM`           | כתובת שולח ל-magic-link (אופציונלי)                                                         |
 
 ### שליחת הודעות (WhatsApp)
 
@@ -207,42 +210,42 @@ main
 
 מתאם WhatsApp Cloud API של מטא (`MESSAGING_PROVIDER=whatsapp-cloud`) שולח את קוד ה-OTP דרך תבנית מסוג authentication, ותומך גם בהודעות טקסט חופשי:
 
-| משתנה | תיאור |
-| --- | --- |
-| `WHATSAPP_PHONE_NUMBER_ID` | מזהה מספר הטלפון העסקי ב-Graph (חובה) |
-| `WHATSAPP_ACCESS_TOKEN` | access token של WhatsApp Cloud API (סוד; חובה) |
-| `WHATSAPP_OTP_TEMPLATE` | שם תבנית ה-OTP המאושרת ב-Meta (authentication; חובה) |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | מזהה חשבון ה-WhatsApp Business (אופציונלי) |
-| `WHATSAPP_OTP_TEMPLATE_LANG` | קוד שפת התבנית (ברירת מחדל `he`; חייב להתאים לתבנית שאושרה) |
-| `WHATSAPP_OTP_BUTTON_SUBTYPE` | סוג כפתור העתקת-קוד (ברירת מחדל `url`; `none`/ריק = ללא כפתור) |
-| `WHATSAPP_GRAPH_VERSION` | גרסת Graph API (ברירת מחדל `v21.0`) |
-| `WHATSAPP_GRAPH_BASE_URL` | כתובת בסיס של Graph (ברירת מחדל `https://graph.facebook.com`) |
-| `WHATSAPP_DEFAULT_COUNTRY_CODE` | קידומת מדינה לנרמול מספרים מקומיים (ברירת מחדל `972`) |
+| משתנה                           | תיאור                                                          |
+| ------------------------------- | -------------------------------------------------------------- |
+| `WHATSAPP_PHONE_NUMBER_ID`      | מזהה מספר הטלפון העסקי ב-Graph (חובה)                          |
+| `WHATSAPP_ACCESS_TOKEN`         | access token של WhatsApp Cloud API (סוד; חובה)                 |
+| `WHATSAPP_OTP_TEMPLATE`         | שם תבנית ה-OTP המאושרת ב-Meta (authentication; חובה)           |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID`  | מזהה חשבון ה-WhatsApp Business (אופציונלי)                     |
+| `WHATSAPP_OTP_TEMPLATE_LANG`    | קוד שפת התבנית (ברירת מחדל `he`; חייב להתאים לתבנית שאושרה)    |
+| `WHATSAPP_OTP_BUTTON_SUBTYPE`   | סוג כפתור העתקת-קוד (ברירת מחדל `url`; `none`/ריק = ללא כפתור) |
+| `WHATSAPP_GRAPH_VERSION`        | גרסת Graph API (ברירת מחדל `v21.0`)                            |
+| `WHATSAPP_GRAPH_BASE_URL`       | כתובת בסיס של Graph (ברירת מחדל `https://graph.facebook.com`)  |
+| `WHATSAPP_DEFAULT_COUNTRY_CODE` | קידומת מדינה לנרמול מספרים מקומיים (ברירת מחדל `972`)          |
 
 > מתאם SMS עתידי יכול להתחבר לאותו ממשק (`sendSms`/`sendWhatsApp`/`sendOtp`) בלי לשנות את הצרכנים; כרגע אין ערוץ SMS בתשלום, ו-`sendSms` מאציל ל-WhatsApp.
 
 הגבלת קצב של בקשות OTP (הגנה מפני ניצול לרעה ועלויות):
 
-| משתנה | תיאור |
-| --- | --- |
-| `OTP_COOLDOWN_SECONDS` | קול-דאון בין שליחות חוזרות לאותו טלפון (ברירת מחדל 60) |
-| `OTP_MAX_PER_PHONE_PER_DAY` | תקרת בקשות ליום לכל טלפון (ברירת מחדל 8) |
-| `OTP_MAX_PER_IP_PER_DAY` | תקרת בקשות ליום לכל IP (ברירת מחדל 30) |
+| משתנה                       | תיאור                                                  |
+| --------------------------- | ------------------------------------------------------ |
+| `OTP_COOLDOWN_SECONDS`      | קול-דאון בין שליחות חוזרות לאותו טלפון (ברירת מחדל 60) |
+| `OTP_MAX_PER_PHONE_PER_DAY` | תקרת בקשות ליום לכל טלפון (ברירת מחדל 8)               |
+| `OTP_MAX_PER_IP_PER_DAY`    | תקרת בקשות ליום לכל IP (ברירת מחדל 30)                 |
 
 ## סקריפטים שימושיים
 
-| פקודה | פעולה |
-| --- | --- |
-| `npm run dev` | שרת פיתוח |
-| `npm run build` | בנייה לייצור (כולל `prisma generate`) |
-| `npm run start` | הרצת בניית הייצור |
-| `npm run typecheck` | בדיקת טיפוסים (`tsc --noEmit`) |
-| `npm run lint` | בדיקת ESLint |
-| `npm run format` | עיצוב קוד עם Prettier |
-| `npm run prisma:migrate` | הרצת מיגרציות פיתוח |
-| `npm run db:seed` | אכלוס נתוני דמו |
-| `npm run db:reset` | איפוס המסד והרצת מיגרציות מחדש |
-| `npm run gen:icons` | יצירת אייקוני ה-PWA |
+| פקודה                    | פעולה                                 |
+| ------------------------ | ------------------------------------- |
+| `npm run dev`            | שרת פיתוח                             |
+| `npm run build`          | בנייה לייצור (כולל `prisma generate`) |
+| `npm run start`          | הרצת בניית הייצור                     |
+| `npm run typecheck`      | בדיקת טיפוסים (`tsc --noEmit`)        |
+| `npm run lint`           | בדיקת ESLint                          |
+| `npm run format`         | עיצוב קוד עם Prettier                 |
+| `npm run prisma:migrate` | הרצת מיגרציות פיתוח                   |
+| `npm run db:seed`        | אכלוס נתוני דמו                       |
+| `npm run db:reset`       | איפוס המסד והרצת מיגרציות מחדש        |
+| `npm run gen:icons`      | יצירת אייקוני ה-PWA                   |
 
 ## מבנה הפרויקט
 

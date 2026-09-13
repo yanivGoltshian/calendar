@@ -26,8 +26,8 @@ export default async function AdminTeamPage({ searchParams }: Props) {
   const initial: StaffFormValues | undefined = editing
     ? {
         id: editing.id,
-        phone: displayPhone(editing.user.phone),
-        name: editing.user.name ?? '',
+        phone: displayPhone(editing.user?.phone ?? ''),
+        name: editing.user?.name ?? '',
         displayName: editing.displayName,
         title: editing.title ?? '',
         bio: editing.bio ?? '',
@@ -45,9 +45,7 @@ export default async function AdminTeamPage({ searchParams }: Props) {
         </h1>
       </header>
 
-      <h2 className="mb-3 text-lg font-bold text-[#1b1715]">
-        {t.admin.team.listTitle}
-      </h2>
+      <h2 className="mb-3 text-lg font-bold text-[#1b1715]">{t.admin.team.listTitle}</h2>
 
       {staff.length === 0 ? (
         <p className="rounded-xl border border-[#e7ddcd] bg-white p-6 text-center text-[#8f8478]">
@@ -80,7 +78,7 @@ export default async function AdminTeamPage({ searchParams }: Props) {
                     <p className="mt-0.5 text-sm text-[#8f8478]">{m.title}</p>
                   ) : null}
                   <p className="mt-1 text-sm text-[#6e655f]" dir="ltr">
-                    {displayPhone(m.user.phone)}
+                    {m.user?.phone ? displayPhone(m.user.phone) : 'טרם שויך טלפון'}
                   </p>
                   <p className="mt-1 text-xs text-[#8f8478]">
                     {t.admin.team.appointmentsCount}: {m._count.appointments}

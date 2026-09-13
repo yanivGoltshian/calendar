@@ -34,6 +34,24 @@ export function PhoneIcon({ className }: IconProps) {
   );
 }
 
+export function MailIcon({ className }: IconProps) {
+  return (
+    <svg {...svgProps(className)}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m4 7 8 6 8-6" />
+    </svg>
+  );
+}
+
+export function GlobeIcon({ className }: IconProps) {
+  return (
+    <svg {...svgProps(className)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+    </svg>
+  );
+}
+
 export function InstagramIcon({ className }: IconProps) {
   return (
     <svg {...svgProps(className)}>
@@ -73,7 +91,13 @@ export function CheckIcon({ className }: IconProps) {
 
 export function StarIcon({ className }: IconProps) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="none"
+      aria-hidden
+    >
       <path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.2l1-5.8L3.5 9.2l5.9-.9Z" />
     </svg>
   );
@@ -220,7 +244,13 @@ export function CalendarIcon({ className }: IconProps) {
   );
 }
 
-export function SectionIcon({ iconKey, className }: { iconKey: SectionIconKey; className?: string }) {
+export function SectionIcon({
+  iconKey,
+  className,
+}: {
+  iconKey: SectionIconKey;
+  className?: string;
+}) {
   switch (iconKey) {
     case 'scissors':
       return <ScissorsIcon className={className} />;

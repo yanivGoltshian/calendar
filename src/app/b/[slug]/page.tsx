@@ -22,6 +22,8 @@ import { CLINIC_IDENTITY } from '@/data/clinicDemo';
 import {
   MapPinIcon,
   PhoneIcon,
+  MailIcon,
+  GlobeIcon,
   InstagramIcon,
   ClockIcon,
   UsersIcon,
@@ -115,12 +117,25 @@ export default async function BusinessPublicPage({ params }: Props) {
     hasLandingContent: landing != null,
   });
   const { isLanding, isClinicPremium, clinicThemeVars } = publicPagePresentation(
-    business.publicPageStyle, landing, onboarding.visualLevel,
+    business.publicPageStyle,
+    landing,
+    onboarding.visualLevel,
   );
   const defaults = landingDefaults(business.type);
-  const heroHeadline = landing?.sections?.hero === false ? business.name : landing?.heroHeadline ?? defaults.heroHeadline;
-  const heroSubtext = landing?.sections?.hero === false ? '' : landing?.heroSubtext ?? defaults.heroSubtext;
-  const heroEyebrow = landing?.sections?.hero === false ? '' : landing?.heroEyebrow ?? t.publicPage.landing.eyebrow;
+  const importedLanding = landing?.imported === true;
+  const heroHeadline =
+    landing?.sections?.hero === false
+      ? business.name
+      : (landing?.heroHeadline ??
+        (importedLanding ? business.name : defaults.heroHeadline));
+  const heroSubtext =
+    landing?.sections?.hero === false
+      ? ''
+      : (landing?.heroSubtext ?? (importedLanding ? '' : defaults.heroSubtext));
+  const heroEyebrow =
+    landing?.sections?.hero === false
+      ? ''
+      : (landing?.heroEyebrow ?? t.publicPage.landing.eyebrow);
   const heroCtaLabel = landing?.ctaLabel || t.publicPage.bookCta;
 
   const bookHref = `/b/${business.slug}/book`;
@@ -128,13 +143,41 @@ export default async function BusinessPublicPage({ params }: Props) {
   const shareUrl = absoluteUrl(`/b/${business.slug}`);
 
   const clinicLabels = t.premiumLanding.clinic;
+  const usesClinicIdentity = business.slug === CLINIC_IDENTITY.slug;
   // תת-הכותרת הממותגת של הקליניקה ("טיפולי יופי ואסתטיקה...") שייכת רק לעסק הדמו
   // (skin-beauty). לכל שאר עסקי הפרימיום מזינים null כדי שהיא לא תדלוף כברירת מחדל (באג 3).
-  const clinicHeroTagline =
-    business.slug === CLINIC_IDENTITY.slug ? clinicLabels.heroTagline : null;
-  const rootStyle = isClinicPremium || landing?.theme
-    ? ({ ...themeVars, ...clinicThemeVars } as CSSProperties)
+  const clinicHeroTagline = usesClinicIdentity ? clinicLabels.heroTagline : null;
+  const genericPremiumThemeVars = {
+    '--c-gold': brand,
+    '--c-gold-strong': darken(brand, 0.18),
+    '--c-gold-text': darken(brand, 0.28),
+    '--c-cream': '#fffdf8',
+    '--c-ink': '#1b1715',
+    '--c-brand': brand,
+    '--c-hero-cta': brand,
+    '--c-hero-cta-strong': darken(brand, 0.18),
+    '--c-hero-cta-ink': ink,
+  } as unknown as CSSProperties;
+  const rootStyle = isClinicPremium
+    ? ({
+        ...themeVars,
+        ...(usesClinicIdentity || landing?.theme
+          ? clinicThemeVars
+          : genericPremiumThemeVars),
+      } as CSSProperties)
     : themeVars;
+  const premiumLabels = {
+    ...clinicLabels,
+    hoursUnavailable: clinicLabels.topbarHoursUnavailable,
+    ...(usesClinicIdentity
+      ? {}
+      : {
+          callAria: `התקשרות אל ${business.name}`,
+          instagramAria: `עמוד האינסטגרם של ${business.name}`,
+          facebookAria: `עמוד הפייסבוק של ${business.name}`,
+          heroImageAlt: `תמונה של ${business.name}`,
+        }),
+  };
 
   const jsonLd = localBusinessJsonLd({
     name: business.name,
@@ -161,7 +204,10 @@ export default async function BusinessPublicPage({ params }: Props) {
         </p>
       ) : null}
       {business.phone ? (
-        <a href={`tel:${business.phone}`} className="flex items-center gap-1.5 text-sm opacity-90 transition hover:opacity-100">
+        <a
+          href={`tel:${business.phone}`}
+          className="flex items-center gap-1.5 text-sm opacity-90 transition hover:opacity-100"
+        >
           <PhoneIcon className="h-4 w-4 shrink-0 opacity-80" />
           <span dir="ltr">{business.phone}</span>
         </a>
@@ -177,6 +223,26 @@ export default async function BusinessPublicPage({ params }: Props) {
           <span>{t.publicPage.instagram}</span>
         </a>
       ) : null}
+      {landing?.contact?.email ? (
+        <a
+          href={`mailto:${landing.contact.email}`}
+          className="flex items-center gap-1.5 break-all text-sm opacity-90 transition hover:opacity-100"
+        >
+          <MailIcon className="h-4 w-4 shrink-0 opacity-80" />
+          <span dir="ltr">{landing.contact.email}</span>
+        </a>
+      ) : null}
+      {landing?.contact?.websiteUrl ? (
+        <a
+          href={landing.contact.websiteUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 text-sm opacity-90 transition hover:opacity-100"
+        >
+          <GlobeIcon className="h-4 w-4 shrink-0 opacity-80" />
+          <span dir="ltr">{new URL(landing.contact.websiteUrl).hostname}</span>
+        </a>
+      ) : null}
     </div>
   );
 
@@ -184,9 +250,16 @@ export default async function BusinessPublicPage({ params }: Props) {
     <div className="mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/25 bg-white/95 shadow-lg sm:h-20 sm:w-20">
       {business.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <MediaImage src={business.logoUrl} alt={business.name} sizes="80px" className="h-full w-full object-contain p-1.5" />
+        <MediaImage
+          src={business.logoUrl}
+          alt={business.name}
+          sizes="80px"
+          className="h-full w-full object-contain p-1.5"
+        />
       ) : (
-        <span className="text-3xl font-bold text-[color:var(--biz-strong)] sm:text-4xl">{business.name.charAt(0)}</span>
+        <span className="text-3xl font-bold text-[color:var(--biz-strong)] sm:text-4xl">
+          {business.name.charAt(0)}
+        </span>
       )}
     </div>
   );
@@ -194,7 +267,10 @@ export default async function BusinessPublicPage({ params }: Props) {
   const servicesSection = (
     <section className="mt-10">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
-        <SectionIcon iconKey={iconKey} className="h-5 w-5 text-[color:var(--biz-strong)]" />
+        <SectionIcon
+          iconKey={iconKey}
+          className="h-5 w-5 text-[color:var(--biz-strong)]"
+        />
         {t.publicPage.servicesTitle}
       </h2>
       {services.length === 0 ? (
@@ -217,7 +293,9 @@ export default async function BusinessPublicPage({ params }: Props) {
                   ) : null}
                 </div>
                 {!s.hidePrice ? (
-                  <span className="shrink-0 ps-3 font-bold text-[color:var(--biz-ink-strong)]">{formatAgorot(s.priceAgorot)}</span>
+                  <span className="shrink-0 ps-3 font-bold text-[color:var(--biz-ink-strong)]">
+                    {formatAgorot(s.priceAgorot)}
+                  </span>
                 ) : null}
               </Link>
             </li>
@@ -227,67 +305,82 @@ export default async function BusinessPublicPage({ params }: Props) {
     </section>
   );
 
-  const staffSection = staff.length > 0 ? (
-    <section className="mt-10">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
-        <UsersIcon className="h-5 w-5 text-[color:var(--biz-strong)]" />
-        {t.publicPage.teamTitle}
-      </h2>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {staff.map((m) => (
-          <div
-            key={m.id}
-            className="flex items-center gap-4 rounded-2xl border border-[color:var(--biz-border)] bg-white p-4 shadow-sm"
-          >
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--biz-soft)] ring-2 ring-[color:var(--biz-border)]">
-              {m.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <MediaImage src={m.avatarUrl} alt={m.displayName} sizes="64px" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-xl font-bold text-[color:var(--biz-strong)]">{m.displayName.charAt(0)}</span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-slate-900">{m.displayName}</p>
-              {m.title ? <p className="text-sm font-medium text-[color:var(--biz-ink-strong)]">{m.title}</p> : null}
-              {m.bio ? <p className="mt-1 text-sm leading-snug text-slate-600">{m.bio}</p> : null}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  ) : null;
-
-  const hoursSection = business.workingHours.length > 0 ? (
-    <section className="mt-10">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
-        <ClockIcon className="h-5 w-5 text-[color:var(--biz-strong)]" />
-        {t.publicPage.hoursTitle}
-      </h2>
-      <ul className="overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-white shadow-sm">
-        {[0, 1, 2, 3, 4, 5, 6].map((d) => {
-          const wh = hoursByDay.get(d);
-          return (
-            <li
-              key={d}
-              data-hours-day={d}
-              data-today-class="bg-[var(--biz-soft)] font-semibold"
-              className={`flex items-center justify-between px-4 py-2.5 text-sm ${d > 0 ? 'border-t border-slate-100' : ''}`}
+  const staffSection =
+    staff.length > 0 ? (
+      <section className="mt-10">
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <UsersIcon className="h-5 w-5 text-[color:var(--biz-strong)]" />
+          {t.publicPage.teamTitle}
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {staff.map((m) => (
+            <div
+              key={m.id}
+              className="flex items-center gap-4 rounded-2xl border border-[color:var(--biz-border)] bg-white p-4 shadow-sm"
             >
-              <span className="text-slate-900">{t.publicPage.weekdays[d]}</span>
-              {wh ? (
-                <span dir="ltr" className="tabular-nums text-slate-700">
-                  {formatMinutes(wh.startMinute)}–{formatMinutes(wh.endMinute)}
-                </span>
-              ) : (
-                <span className="text-slate-400">{t.publicPage.hoursClosed}</span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  ) : null;
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--biz-soft)] ring-2 ring-[color:var(--biz-border)]">
+                {m.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <MediaImage
+                    src={m.avatarUrl}
+                    alt={m.displayName}
+                    sizes="64px"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xl font-bold text-[color:var(--biz-strong)]">
+                    {m.displayName.charAt(0)}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900">{m.displayName}</p>
+                {m.title ? (
+                  <p className="text-sm font-medium text-[color:var(--biz-ink-strong)]">
+                    {m.title}
+                  </p>
+                ) : null}
+                {m.bio ? (
+                  <p className="mt-1 text-sm leading-snug text-slate-600">{m.bio}</p>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    ) : null;
+
+  const hoursSection =
+    business.workingHours.length > 0 ? (
+      <section className="mt-10">
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <ClockIcon className="h-5 w-5 text-[color:var(--biz-strong)]" />
+          {t.publicPage.hoursTitle}
+        </h2>
+        <ul className="overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-white shadow-sm">
+          {[0, 1, 2, 3, 4, 5, 6].map((d) => {
+            const wh = hoursByDay.get(d);
+            return (
+              <li
+                key={d}
+                data-hours-day={d}
+                data-today-class="bg-[var(--biz-soft)] font-semibold"
+                className={`flex items-center justify-between px-4 py-2.5 text-sm ${d > 0 ? 'border-t border-slate-100' : ''}`}
+              >
+                <span className="text-slate-900">{t.publicPage.weekdays[d]}</span>
+                {wh ? (
+                  <span dir="ltr" className="tabular-nums text-slate-700">
+                    {formatMinutes(wh.startMinute)}–{formatMinutes(wh.endMinute)}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">{t.publicPage.hoursClosed}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ) : null;
 
   return (
     <main
@@ -316,8 +409,16 @@ export default async function BusinessPublicPage({ params }: Props) {
             startMinute: wh.startMinute,
             endMinute: wh.endMinute,
           }))}
-          instagramUrl={landing?.sections?.socialCta === false ? null : landing?.socialLinks?.instagram ?? business.instagramUrl ?? null}
-          facebookUrl={landing?.sections?.socialCta === false ? null : landing?.socialLinks?.facebook ?? null}
+          instagramUrl={
+            landing?.sections?.socialCta === false
+              ? null
+              : (landing?.socialLinks?.instagram ?? business.instagramUrl ?? null)
+          }
+          facebookUrl={
+            landing?.sections?.socialCta === false
+              ? null
+              : (landing?.socialLinks?.facebook ?? null)
+          }
           bookHref={bookHref}
           heroImages={landing?.heroImages ?? []}
           heroVideoUrl={landing?.heroVideoUrl ?? null}
@@ -335,25 +436,26 @@ export default async function BusinessPublicPage({ params }: Props) {
           accountHref="/account"
           loginHref={loginHref}
           labels={{
-            bookCta: clinicLabels.bookCta,
-            navServices: clinicLabels.navServices,
-            navOffers: clinicLabels.navOffers,
-            navLocation: clinicLabels.navLocation,
-            hoursToday: clinicLabels.topbarHoursToday,
-            closedToday: clinicLabels.topbarClosedToday,
-            offerSpots: clinicLabels.offerSpots,
-            offerSpotsCalm: clinicLabels.offerSpotsCalm,
-            offerRemaining: clinicLabels.offerRemaining,
-            offerEndsIn: clinicLabels.offerEndsIn,
-            offerClose: clinicLabels.offerClose,
-            callAria: clinicLabels.callAria,
-            instagramAria: clinicLabels.instagramAria,
-            facebookAria: clinicLabels.facebookAria,
-            heroImageAlt: clinicLabels.heroImageAlt,
+            bookCta: premiumLabels.bookCta,
+            navServices: premiumLabels.navServices,
+            navOffers: premiumLabels.navOffers,
+            navLocation: premiumLabels.navLocation,
+            hoursToday: premiumLabels.topbarHoursToday,
+            closedToday: premiumLabels.topbarClosedToday,
+            hoursUnavailable: premiumLabels.hoursUnavailable,
+            offerSpots: premiumLabels.offerSpots,
+            offerSpotsCalm: premiumLabels.offerSpotsCalm,
+            offerRemaining: premiumLabels.offerRemaining,
+            offerEndsIn: premiumLabels.offerEndsIn,
+            offerClose: premiumLabels.offerClose,
+            callAria: premiumLabels.callAria,
+            instagramAria: premiumLabels.instagramAria,
+            facebookAria: premiumLabels.facebookAria,
+            heroImageAlt: premiumLabels.heroImageAlt,
             heroSecondaryCta: t.premiumLanding.heroSecondaryCta,
-            updatesLabel: clinicLabels.updatesLabel,
-            menu: clinicLabels.menu,
-            countdown: clinicLabels.countdown,
+            updatesLabel: premiumLabels.updatesLabel,
+            menu: premiumLabels.menu,
+            countdown: premiumLabels.countdown,
           }}
         />
       ) : (
@@ -361,11 +463,16 @@ export default async function BusinessPublicPage({ params }: Props) {
         <header className="relative overflow-hidden">
           <div
             className="relative"
-            style={{ backgroundImage: 'linear-gradient(135deg, var(--biz-dark) 0%, var(--biz) 58%, var(--biz-light) 130%)' }}
+            style={{
+              backgroundImage:
+                'linear-gradient(135deg, var(--biz-dark) 0%, var(--biz) 58%, var(--biz-light) 130%)',
+            }}
           >
             {business.coverImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <MediaImage priority sizes="100vw"
+              <MediaImage
+                priority
+                sizes="100vw"
                 src={business.coverImageUrl}
                 alt=""
                 className="absolute inset-0 h-full w-full object-cover opacity-20"
@@ -376,7 +483,9 @@ export default async function BusinessPublicPage({ params }: Props) {
               style={{ color: 'var(--biz-ink)' }}
             >
               {logoTile}
-              <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{business.name}</h1>
+              <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
+                {business.name}
+              </h1>
               {contactRows}
 
               {isLanding ? (
@@ -392,7 +501,10 @@ export default async function BusinessPublicPage({ params }: Props) {
           </div>
           <div
             className="h-1.5 w-full"
-            style={{ backgroundImage: 'linear-gradient(90deg, var(--biz-dark), var(--biz-light), var(--biz-dark))' }}
+            style={{
+              backgroundImage:
+                'linear-gradient(90deg, var(--biz-dark), var(--biz-light), var(--biz-dark))',
+            }}
           />
         </header>
       )}
@@ -400,36 +512,47 @@ export default async function BusinessPublicPage({ params }: Props) {
       <div className={`mx-auto px-5 ${isLanding ? 'max-w-[1120px]' : 'max-w-3xl'}`}>
         {/* שורת עדכון חי — נשלטת מעמוד ניהול העסק, לדוגמה הודעת חופשה. בפרימיום מוצגת ברצועת הכותרת */}
         {!isClinicPremium && landing?.announcement ? (
-          <AnnouncementBar text={landing.announcement} dismissAria={t.publicPage.landing.announcementDismiss} />
+          <AnnouncementBar
+            text={landing.announcement}
+            dismissAria={t.publicPage.landing.announcementDismiss}
+          />
         ) : null}
 
         {isLanding ? (
-          <LandingSections
-            premium={isClinicPremium}
-            timeZone={business.timezone}
-            content={landing}
-            type={business.type}
-            services={services}
-            staff={staff.map((m) => ({ id: m.id, displayName: m.displayName }))}
-            slug={slug}
-            workingHours={business.workingHours}
-            address={business.address}
-            phone={business.phone}
-            bookHref={bookHref}
-            iconKey={iconKey}
-            returning={
-              <Suspense fallback={null}>
-                <ReturningCustomerLoader slug={slug} />
-              </Suspense>
-            }
-          />
+          <>
+            <LandingSections
+              premium={isClinicPremium}
+              timeZone={business.timezone}
+              content={landing}
+              type={business.type}
+              services={services}
+              staff={staff.map((m) => ({ id: m.id, displayName: m.displayName }))}
+              businessName={business.name}
+              slug={slug}
+              workingHours={business.workingHours}
+              address={business.address}
+              phone={business.phone}
+              bookHref={bookHref}
+              iconKey={iconKey}
+              returning={
+                <Suspense fallback={null}>
+                  <ReturningCustomerLoader slug={slug} />
+                </Suspense>
+              }
+            />
+            {landing?.showStaff ? staffSection : null}
+          </>
         ) : (
           <>
             {/* על העסק */}
             {business.description ? (
               <section className="mt-8">
-                <h2 className="mb-2 text-lg font-semibold text-slate-900">{t.publicPage.aboutTitle}</h2>
-                <p className="whitespace-pre-line leading-relaxed text-slate-700">{business.description}</p>
+                <h2 className="mb-2 text-lg font-semibold text-slate-900">
+                  {t.publicPage.aboutTitle}
+                </h2>
+                <p className="whitespace-pre-line leading-relaxed text-slate-700">
+                  {business.description}
+                </p>
               </section>
             ) : null}
 
@@ -479,7 +602,11 @@ export default async function BusinessPublicPage({ params }: Props) {
         <div className={`mx-auto ${isLanding ? 'max-w-[1120px]' : 'max-w-3xl'}`}>
           <Link
             href={bookHref}
-            style={{ backgroundImage: 'linear-gradient(90deg, var(--biz) 0%, var(--biz-strong) 100%)', color: 'var(--biz-ink)' }}
+            style={{
+              backgroundImage:
+                'linear-gradient(90deg, var(--biz) 0%, var(--biz-strong) 100%)',
+              color: 'var(--biz-ink)',
+            }}
             className="block w-full rounded-xl py-3.5 text-center text-base font-bold shadow-md transition hover:opacity-95"
           >
             {t.publicPage.bookCta}

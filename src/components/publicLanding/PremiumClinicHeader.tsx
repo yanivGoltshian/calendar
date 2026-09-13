@@ -29,6 +29,7 @@ type Labels = {
   navLocation: string;
   hoursToday: string;
   closedToday: string;
+  hoursUnavailable: string;
   offerSpots: string;
   offerSpotsCalm: string;
   offerRemaining: string;
@@ -143,17 +144,26 @@ export default function PremiumClinicHeader({
   // שעות "היום" מחושבות בצד הלקוח בלבד: ה-HTML הסטטי חף מיום/שעה קונקרטיים,
   // וההצגה מתעדכנת מיד לאחר הטעינה לפי היום האמיתי בדפדפן.
   const today = useBusinessDate(timeZone);
-  const wh = today ? workingHours.find((w) => w.weekday === weekdayForDateString(today, timeZone)) : null;
-  const todayHours = wh ? `${formatMinutes(wh.startMinute)}–${formatMinutes(wh.endMinute)}` : null;
+  const wh = today
+    ? workingHours.find((w) => w.weekday === weekdayForDateString(today, timeZone))
+    : null;
+  const todayHours = wh
+    ? `${formatMinutes(wh.startMinute)}–${formatMinutes(wh.endMinute)}`
+    : null;
   const hoursReady = !!today;
 
   const effectiveAccount = resolveAccount ? resolvedAccount : account;
   const phoneDisplay = formatIsraeliPhoneDisplay(phone);
   // שם ואווטאר הלקוח לצ'יפ החשבון (דסקטופ) ולכותרת המגירה (מובייל).
   // ראשי־התיבות נופלים חלופית לשם, למייל, ולבסוף לעיגול ריק — לעולם לא קורסים.
-  const accountName = effectiveAccount?.name?.trim() || effectiveAccount?.email?.split('@')[0]?.trim() || '';
+  const accountName =
+    effectiveAccount?.name?.trim() ||
+    effectiveAccount?.email?.split('@')[0]?.trim() ||
+    '';
   const accountFirstName = accountName ? accountName.split(/\s+/)[0] : '';
-  const accountInitial = (accountName || effectiveAccount?.email?.trim() || '').charAt(0).toUpperCase();
+  const accountInitial = (accountName || effectiveAccount?.email?.trim() || '')
+    .charAt(0)
+    .toUpperCase();
   // פס המבצע מוצג רק כשיש מבצע תקין ולא הסתיים. הספירה מחושבת פעם אחת (ימים בלבד),
   // בלי טיימר מתקתק — כך אין קפיצה, אין לחץ, ואין אי-התאמת הידרציה.
   const countdown = launchOffer ? computeCountdown(launchOffer.endsAt) : null;
@@ -175,7 +185,9 @@ export default function PremiumClinicHeader({
                 className="inline-flex items-center gap-1.5 opacity-90 transition hover:opacity-100"
               >
                 <PhoneIcon className="h-3.5 w-3.5" />
-                <span dir="ltr" className="tabular-nums">{phoneDisplay}</span>
+                <span dir="ltr" className="tabular-nums">
+                  {phoneDisplay}
+                </span>
               </a>
             ) : null}
             <span className="inline-flex items-center gap-1.5 opacity-90">
@@ -183,8 +195,12 @@ export default function PremiumClinicHeader({
               <span>
                 {labels.hoursToday}:{' '}
                 {hoursReady ? (
-                  todayHours ? (
-                    <span dir="ltr" className="tabular-nums">{todayHours}</span>
+                  workingHours.length === 0 ? (
+                    labels.hoursUnavailable
+                  ) : todayHours ? (
+                    <span dir="ltr" className="tabular-nums">
+                      {todayHours}
+                    </span>
                   ) : (
                     labels.closedToday
                   )
@@ -220,15 +236,22 @@ export default function PremiumClinicHeader({
       </div>
 
       {/* שורת ניווט בגוון קרם — לוגו ושם לצד עוגני ניווט וכפתור זהב לקביעת תור */}
-      <div className="border-b border-[color:var(--c-gold,#c6a86a)]/30">
+      <div className="border-[color:var(--c-gold,#c6a86a)]/30 border-b">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-[color:var(--c-gold,#c6a86a)]/40 bg-[color:var(--c-cream,#faf6ef)] shadow-soft sm:h-12 sm:w-12">
+            <span className="border-[color:var(--c-gold,#c6a86a)]/40 inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border bg-[color:var(--c-cream,#faf6ef)] shadow-soft sm:h-12 sm:w-12">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <MediaImage src={logoUrl} alt={name} sizes="64px" className="h-full w-full object-cover" />
+                <MediaImage
+                  src={logoUrl}
+                  alt={name}
+                  sizes="64px"
+                  className="h-full w-full object-cover"
+                />
               ) : (
-                <span className="text-lg font-bold text-[color:var(--biz-strong)]">{name.charAt(0)}</span>
+                <span className="text-lg font-bold text-[color:var(--biz-strong)]">
+                  {name.charAt(0)}
+                </span>
               )}
             </span>
             <span className="truncate font-display text-sm font-bold text-[color:var(--c-ink,#1b1715)] sm:text-xl">
@@ -238,22 +261,26 @@ export default function PremiumClinicHeader({
           <nav className="flex items-center gap-1 sm:gap-2">
             <a
               href="#lp-services"
-              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-strong)] sm:inline-block"
+              className="text-[color:var(--c-ink,#1b1715)]/80 hidden rounded-full px-3 py-2 text-sm font-medium transition hover:text-[color:var(--biz-strong)] sm:inline-block"
             >
               {labels.navServices}
             </a>
-            {showOffers ? <a
-              href="#lp-offers"
-              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-strong)] sm:inline-block"
-            >
-              {labels.navOffers}
-            </a> : null}
-            {showLocation ? <a
-              href="#lp-location"
-              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-strong)] sm:inline-block"
-            >
-              {labels.navLocation}
-            </a> : null}
+            {showOffers ? (
+              <a
+                href="#lp-offers"
+                className="text-[color:var(--c-ink,#1b1715)]/80 hidden rounded-full px-3 py-2 text-sm font-medium transition hover:text-[color:var(--biz-strong)] sm:inline-block"
+              >
+                {labels.navOffers}
+              </a>
+            ) : null}
+            {showLocation ? (
+              <a
+                href="#lp-location"
+                className="text-[color:var(--c-ink,#1b1715)]/80 hidden rounded-full px-3 py-2 text-sm font-medium transition hover:text-[color:var(--biz-strong)] sm:inline-block"
+              >
+                {labels.navLocation}
+              </a>
+            ) : null}
             <Link
               href={bookHref}
               className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] px-3 py-1.5 text-[11px] font-bold text-[color:var(--c-ink,#1b1715)] shadow-soft transition hover:-translate-y-0.5 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
@@ -277,7 +304,7 @@ export default function PremiumClinicHeader({
                     onClick={() => setAccountOpen((v) => !v)}
                     aria-expanded={accountOpen}
                     aria-haspopup="menu"
-                    className="inline-flex items-center gap-2 rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 py-1.5 pe-3 ps-1.5 text-sm font-semibold text-[color:var(--c-ink,#1b1715)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
+                    className="border-[color:var(--c-gold,#c6a86a)]/40 hover:bg-[color:var(--c-gold,#c6a86a)]/10 inline-flex items-center gap-2 rounded-full border py-1.5 pe-3 ps-1.5 text-sm font-semibold text-[color:var(--c-ink,#1b1715)] transition"
                   >
                     <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
                       {accountInitial}
@@ -311,7 +338,7 @@ export default function PremiumClinicHeader({
                       />
                       <div
                         role="menu"
-                        className="absolute end-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white p-2 shadow-elevated"
+                        className="border-[color:var(--c-gold,#c6a86a)]/25 absolute end-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border bg-white p-2 shadow-elevated"
                       >
                         <div className="flex items-center gap-2.5 px-2 py-2">
                           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-ink,#1b1715)]">
@@ -326,7 +353,7 @@ export default function PremiumClinicHeader({
                             {effectiveAccount.email ? (
                               <span
                                 dir="ltr"
-                                className="truncate text-start text-xs text-[color:var(--c-ink,#1b1715)]/65"
+                                className="text-[color:var(--c-ink,#1b1715)]/65 truncate text-start text-xs"
                               >
                                 {effectiveAccount.email}
                               </span>
@@ -337,7 +364,7 @@ export default function PremiumClinicHeader({
                           href={accountHref}
                           role="menuitem"
                           onClick={() => setAccountOpen(false)}
-                          className="mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/12"
+                          className="hover:bg-[color:var(--c-gold,#c6a86a)]/12 mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-[color:var(--biz-strong)] transition"
                         >
                           {labels.menu.account}
                         </Link>
@@ -345,7 +372,7 @@ export default function PremiumClinicHeader({
                           <button
                             type="submit"
                             role="menuitem"
-                            className="block w-full rounded-xl px-3 py-2.5 text-start text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:bg-[color:var(--c-ink,#1b1715)]/5"
+                            className="text-[color:var(--c-ink,#1b1715)]/80 hover:bg-[color:var(--c-ink,#1b1715)]/5 block w-full rounded-xl px-3 py-2.5 text-start text-sm font-medium transition"
                           >
                             {labels.menu.logout}
                           </button>
@@ -357,7 +384,7 @@ export default function PremiumClinicHeader({
               ) : (
                 <Link
                   href={loginHref}
-                  className="inline-flex items-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 px-4 py-2 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
+                  className="border-[color:var(--c-gold,#c6a86a)]/40 hover:bg-[color:var(--c-gold,#c6a86a)]/10 inline-flex items-center rounded-full border px-4 py-2 text-sm font-semibold text-[color:var(--biz-strong)] transition"
                 >
                   {labels.menu.login}
                 </Link>
@@ -369,15 +396,25 @@ export default function PremiumClinicHeader({
               aria-expanded={menuOpen}
               aria-controls="tc-clinic-menu"
               aria-label={menuOpen ? labels.menu.close : labels.menu.open}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 text-[color:var(--c-ink,#1b1715)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10 sm:hidden"
+              className="border-[color:var(--c-gold,#c6a86a)]/40 hover:bg-[color:var(--c-gold,#c6a86a)]/10 inline-flex h-10 w-10 items-center justify-center rounded-full border text-[color:var(--c-ink,#1b1715)] transition sm:hidden"
             >
               {menuOpen ? (
                 <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
-                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path
+                    d="M6 6l12 12M18 6L6 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 </svg>
               ) : (
                 <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
-                  <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <path
+                    d="M4 7h16M4 12h16M4 17h16"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 </svg>
               )}
             </button>
@@ -388,31 +425,35 @@ export default function PremiumClinicHeader({
         {menuOpen ? (
           <div id="tc-clinic-menu" className="sm:hidden">
             <div className="mx-auto max-w-5xl px-5 pb-4">
-              <nav className="flex flex-col gap-1 border-t border-[color:var(--c-gold,#c6a86a)]/20 pt-3">
+              <nav className="border-[color:var(--c-gold,#c6a86a)]/20 flex flex-col gap-1 border-t pt-3">
                 <a
                   href="#lp-services"
                   onClick={() => setMenuOpen(false)}
-                  className="rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/85 transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
+                  className="text-[color:var(--c-ink,#1b1715)]/85 hover:bg-[color:var(--c-gold,#c6a86a)]/10 rounded-xl px-3 py-2.5 text-sm font-medium transition"
                 >
                   {labels.navServices}
                 </a>
-                {showOffers ? <a
-                  href="#lp-offers"
-                  onClick={() => setMenuOpen(false)}
-                  className="rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/85 transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
-                >
-                  {labels.navOffers}
-                </a> : null}
-                {showLocation ? <a
-                  href="#lp-location"
-                  onClick={() => setMenuOpen(false)}
-                  className="rounded-xl px-3 py-2.5 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/85 transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
-                >
-                  {labels.navLocation}
-                </a> : null}
+                {showOffers ? (
+                  <a
+                    href="#lp-offers"
+                    onClick={() => setMenuOpen(false)}
+                    className="text-[color:var(--c-ink,#1b1715)]/85 hover:bg-[color:var(--c-gold,#c6a86a)]/10 rounded-xl px-3 py-2.5 text-sm font-medium transition"
+                  >
+                    {labels.navOffers}
+                  </a>
+                ) : null}
+                {showLocation ? (
+                  <a
+                    href="#lp-location"
+                    onClick={() => setMenuOpen(false)}
+                    className="text-[color:var(--c-ink,#1b1715)]/85 hover:bg-[color:var(--c-gold,#c6a86a)]/10 rounded-xl px-3 py-2.5 text-sm font-medium transition"
+                  >
+                    {labels.navLocation}
+                  </a>
+                ) : null}
               </nav>
 
-              <div className="mt-3 rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white/60 p-3">
+              <div className="border-[color:var(--c-gold,#c6a86a)]/25 mt-3 rounded-2xl border bg-white/60 p-3">
                 {effectiveAccount ? (
                   <>
                     <div className="flex items-center gap-2.5 px-1 pb-2">
@@ -429,7 +470,10 @@ export default function PremiumClinicHeader({
                           </span>
                         ) : null}
                         {effectiveAccount.email ? (
-                          <span dir="ltr" className="truncate text-start text-xs text-[color:var(--c-ink,#1b1715)]/70">
+                          <span
+                            dir="ltr"
+                            className="text-[color:var(--c-ink,#1b1715)]/70 truncate text-start text-xs"
+                          >
                             {effectiveAccount.email}
                           </span>
                         ) : null}
@@ -438,14 +482,14 @@ export default function PremiumClinicHeader({
                     <Link
                       href={accountHref}
                       onClick={() => setMenuOpen(false)}
-                      className="mt-1 block rounded-xl bg-[color:var(--c-gold,#c6a86a)]/15 px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/25"
+                      className="bg-[color:var(--c-gold,#c6a86a)]/15 hover:bg-[color:var(--c-gold,#c6a86a)]/25 mt-1 block rounded-xl px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-strong)] transition"
                     >
                       {labels.menu.account}
                     </Link>
                     <form action={logout} className="mt-2">
                       <button
                         type="submit"
-                        className="block w-full rounded-xl border border-[color:var(--c-ink,#1b1715)]/15 px-3 py-2.5 text-center text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:bg-[color:var(--c-ink,#1b1715)]/5"
+                        className="border-[color:var(--c-ink,#1b1715)]/15 text-[color:var(--c-ink,#1b1715)]/80 hover:bg-[color:var(--c-ink,#1b1715)]/5 block w-full rounded-xl border px-3 py-2.5 text-center text-sm font-medium transition"
                       >
                         {labels.menu.logout}
                       </button>
@@ -455,7 +499,7 @@ export default function PremiumClinicHeader({
                   <Link
                     href={loginHref}
                     onClick={() => setMenuOpen(false)}
-                    className="block rounded-xl bg-[color:var(--c-gold,#c6a86a)]/15 px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/25"
+                    className="bg-[color:var(--c-gold,#c6a86a)]/15 hover:bg-[color:var(--c-gold,#c6a86a)]/25 block rounded-xl px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-strong)] transition"
                   >
                     {labels.menu.login}
                   </Link>
@@ -487,25 +531,36 @@ export default function PremiumClinicHeader({
       ) : showOffer && launchOffer && countdown ? (
         <div
           className="text-[#f4e9d6]"
-          style={{ backgroundImage: 'linear-gradient(90deg, var(--biz-ink) 0%, var(--biz-ink-strong) 100%)' }}
+          style={{
+            backgroundImage:
+              'linear-gradient(90deg, var(--biz-ink) 0%, var(--biz-ink-strong) 100%)',
+          }}
         >
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-2.5 gap-y-1 px-5 py-2.5 text-center text-xs font-semibold sm:text-sm">
             <span>{launchOffer.text}</span>
             {typeof launchOffer.spotsLeft === 'number' ? (
               <>
-                <span aria-hidden className="text-[color:var(--c-gold,#c6a86a)]">·</span>
+                <span aria-hidden className="text-[color:var(--c-gold,#c6a86a)]">
+                  ·
+                </span>
                 <span>
                   {labels.offerRemaining}{' '}
-                  <b className="font-bold text-white">{launchOffer.spotsLeft}</b> {labels.offerSpotsCalm}
+                  <b className="font-bold text-white">{launchOffer.spotsLeft}</b>{' '}
+                  {labels.offerSpotsCalm}
                 </span>
               </>
             ) : null}
             {countdown.days > 0 ? (
               <>
-                <span aria-hidden className="text-[color:var(--c-gold,#c6a86a)]">·</span>
+                <span aria-hidden className="text-[color:var(--c-gold,#c6a86a)]">
+                  ·
+                </span>
                 <span>
                   {labels.offerRemaining}{' '}
-                  <b dir="ltr" className="font-bold tabular-nums text-white">{countdown.days}</b> {labels.countdown.days}
+                  <b dir="ltr" className="font-bold tabular-nums text-white">
+                    {countdown.days}
+                  </b>{' '}
+                  {labels.countdown.days}
                 </span>
               </>
             ) : null}
@@ -518,9 +573,18 @@ export default function PremiumClinicHeader({
         <div className="absolute inset-0 -z-10">
           {primary ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <MediaImage src={primary} alt={labels.heroImageAlt} priority sizes="100vw" className="absolute inset-0 h-full w-full object-cover" />
+            <MediaImage
+              src={primary}
+              alt={labels.heroImageAlt}
+              priority
+              sizes="100vw"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           ) : (
-            <span aria-hidden className="absolute inset-0 bg-[color:var(--c-ink,#1b1715)]" />
+            <span
+              aria-hidden
+              className="absolute inset-0 bg-[color:var(--c-ink,#1b1715)]"
+            />
           )}
         </div>
         {heroVideoUrl ? (
@@ -531,22 +595,27 @@ export default function PremiumClinicHeader({
             feather
           />
         ) : null}
-          {/* מסכת ברונזה להקראת טקסט לבן + זוהר תחתון חמים */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10"
-            style={{ background: 'linear-gradient(to right, rgba(44,37,34,0.14), rgba(44,37,34,0.5) 52%, rgba(44,37,34,0.88))' }}
-          />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10"
-            style={{ background: 'linear-gradient(to top, rgba(140,103,72,0.38), transparent 58%)' }}
-          />
+        {/* מסכת ברונזה להקראת טקסט לבן + זוהר תחתון חמים */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{
+            background:
+              'linear-gradient(to right, rgba(44,37,34,0.14), rgba(44,37,34,0.5) 52%, rgba(44,37,34,0.88))',
+          }}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10"
+          style={{
+            background: 'linear-gradient(to top, rgba(140,103,72,0.38), transparent 58%)',
+          }}
+        />
 
         <div className="mx-auto w-full max-w-5xl px-5 py-16 sm:py-20">
           <div className="max-w-xl">
             {heroEyebrow ? (
-              <span className="inline-flex items-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/45 bg-white/10 px-4 py-1.5 text-xs font-bold tracking-[0.02em] text-[color:var(--c-gold,#c6a86a)] backdrop-blur-sm">
+              <span className="border-[color:var(--c-gold,#c6a86a)]/45 inline-flex items-center rounded-full border bg-white/10 px-4 py-1.5 text-xs font-bold tracking-[0.02em] text-[color:var(--c-gold,#c6a86a)] backdrop-blur-sm">
                 {heroEyebrow}
               </span>
             ) : null}
@@ -575,7 +644,8 @@ export default function PremiumClinicHeader({
                 href={bookHref}
                 className="group inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-base font-bold text-white shadow-elevated transition hover:-translate-y-0.5"
                 style={{
-                  backgroundImage: 'linear-gradient(to left, var(--c-hero-cta,#c08f86), var(--c-hero-cta-strong,#a06c63))',
+                  backgroundImage:
+                    'linear-gradient(to left, var(--c-hero-cta,#c08f86), var(--c-hero-cta-strong,#a06c63))',
                   color: 'var(--c-hero-cta-ink,#ffffff)',
                 }}
               >

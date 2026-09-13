@@ -14,7 +14,11 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const business = await getBusinessBySlug(slug);
-  return buildMetadata({ title: `${t.booking.title} · ${business?.name ?? ''}`, path: `/b/${slug}/book`, noIndex: true });
+  return buildMetadata({
+    title: `${t.booking.title} · ${business?.name ?? ''}`,
+    path: `/b/${slug}/book`,
+    noIndex: true,
+  });
 }
 
 // עמוד סטטי לחלוטין: שלד אשף ההזמנה נשמר במטמון ללא תפוגה ומתרענן רק על פי דרישה
@@ -50,11 +54,13 @@ export default async function BookPage({ params }: Props) {
     hideDuration: s.hideDuration,
   }));
 
-  const staff = business.staff.map((m) => ({
-    id: m.id,
-    displayName: m.displayName,
-    title: m.title,
-  }));
+  const staff = business.staff
+    .filter((m) => m.serviceLinks.length > 0)
+    .map((m) => ({
+      id: m.id,
+      displayName: m.displayName,
+      title: m.title,
+    }));
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-6">

@@ -31,10 +31,14 @@ export interface BusinessImportReviewSnapshot {
   version: 1;
   draft: BusinessImportDraft;
   warnings: BusinessImportWarning[];
+  missingFields?: string[];
   applied: {
     serviceCount: number;
+    staffCount?: number;
     hoursCount: number;
     ownedMediaCount: number;
+    bookingPolicyFieldCount?: number;
+    mediaAssets?: ImportedOwnedMedia['assets'];
   };
 }
 
@@ -60,10 +64,58 @@ function parseStoredSnapshot(
 ): BusinessImportReviewSnapshot | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const candidate = value as Record<string, unknown>;
-  if (candidate.version !== 1 || !candidate.draft || !Array.isArray(candidate.warnings)) {
+  if (
+    candidate.version !== 1 ||
+    !candidate.draft ||
+    typeof candidate.draft !== 'object' ||
+    Array.isArray(candidate.draft) ||
+    !Array.isArray(candidate.warnings) ||
+    !candidate.applied ||
+    typeof candidate.applied !== 'object' ||
+    Array.isArray(candidate.applied)
+  ) {
     return null;
   }
-  return value as unknown as BusinessImportReviewSnapshot;
+  const draft = candidate.draft as unknown as BusinessImportDraft;
+  const applied = candidate.applied as Record<string, unknown>;
+  return {
+    ...(candidate as unknown as BusinessImportReviewSnapshot),
+    draft: {
+      ...draft,
+      location: { ...draft.location, mapUrl: draft.location?.mapUrl ?? null },
+      staff: Array.isArray(draft.staff) ? draft.staff : [],
+      bookingPolicy: draft.bookingPolicy ?? {
+        minLeadTimeMinutes: null,
+        cancellationWindowHours: null,
+        maxAdvanceBookingDays: null,
+        bookingRequiresApproval: null,
+        notes: [],
+      },
+      media: {
+        ...draft.media,
+        instagramPostUrls: draft.media?.instagramPostUrls ?? [],
+      },
+    },
+    missingFields: Array.isArray(candidate.missingFields)
+      ? candidate.missingFields.filter(
+          (field): field is string => typeof field === 'string',
+        )
+      : [],
+    applied: {
+      serviceCount: typeof applied.serviceCount === 'number' ? applied.serviceCount : 0,
+      staffCount: typeof applied.staffCount === 'number' ? applied.staffCount : 0,
+      hoursCount: typeof applied.hoursCount === 'number' ? applied.hoursCount : 0,
+      ownedMediaCount:
+        typeof applied.ownedMediaCount === 'number' ? applied.ownedMediaCount : 0,
+      bookingPolicyFieldCount:
+        typeof applied.bookingPolicyFieldCount === 'number'
+          ? applied.bookingPolicyFieldCount
+          : 0,
+      mediaAssets: Array.isArray(applied.mediaAssets)
+        ? (applied.mediaAssets as ImportedOwnedMedia['assets'])
+        : [],
+    },
+  };
 }
 
 export function readBusinessImportReview(
@@ -107,17 +159,46 @@ function buildSnapshot(
   mapped: MappedBusinessImport,
   media: ImportedOwnedMedia,
 ): BusinessImportReviewSnapshot {
+  const ownedMediaUrls = new Set(
+    [
+      media.logoUrl,
+      media.coverImageUrl,
+      ...media.galleryImageUrls,
+      media.heroVideoUrl,
+      ...Object.values(media.staffAvatarUrls ?? {}),
+    ].filter((value): value is string => Boolean(value)),
+  );
+  const missingFields = [
+    !draft.business.name && 'business.name',
+    !draft.business.typeSuggestion && 'business.category',
+    draft.contacts.phones.length === 0 && 'contacts.phone',
+    draft.contacts.emails.length === 0 && 'contacts.email',
+    !draft.location.formattedAddress && 'location.address',
+    mapped.hours.length === 0 && 'hours',
+    mapped.services.length === 0 && 'services',
+    mapped.staff.length === 0 && 'staff',
+    !media.logoUrl && 'media.logo',
+    !media.coverImageUrl && 'media.hero',
+    media.galleryImageUrls.length === 0 && 'media.gallery',
+    draft.bookingPolicy.notes.length === 0 &&
+      draft.bookingPolicy.minLeadTimeMinutes === null &&
+      draft.bookingPolicy.cancellationWindowHours === null &&
+      draft.bookingPolicy.maxAdvanceBookingDays === null &&
+      draft.bookingPolicy.bookingRequiresApproval === null &&
+      'bookingPolicy',
+  ].filter((value): value is string => Boolean(value));
   return {
     version: 1,
     draft,
     warnings: [...mapped.warnings, ...media.warnings],
+    missingFields,
     applied: {
       serviceCount: mapped.services.length,
+      staffCount: mapped.staff.length,
       hoursCount: mapped.hours.length,
-      ownedMediaCount:
-        Number(Boolean(media.logoUrl)) +
-        Number(Boolean(media.coverImageUrl)) +
-        media.galleryImageUrls.length,
+      ownedMediaCount: ownedMediaUrls.size,
+      bookingPolicyFieldCount: Object.keys(mapped.bookingPolicy).length,
+      mediaAssets: media.assets ?? [],
     },
   };
 }
@@ -230,6 +311,18 @@ export async function provisionBusinessForAdmin(
       mapped.media,
     );
     const galleryImageUrls = media.galleryImageUrls;
+    const heroImages = [media.coverImageUrl, ...galleryImageUrls]
+      .filter((value): value is string => Boolean(value))
+      .slice(0, 2);
+    const landingContent = mapped.landingContent
+      ? {
+          ...mapped.landingContent,
+          ...(heroImages.length ? { heroImages } : {}),
+          ...(galleryImageUrls.length ? { galleryImageUrls } : {}),
+          ...(media.heroVideoUrl ? { heroVideoUrl: media.heroVideoUrl } : {}),
+          ...(media.coverImageUrl ? { heroPosterUrl: media.coverImageUrl } : {}),
+        }
+      : null;
     const snapshot = buildSnapshot(draft, mapped, media);
     const applied = await (dependencies.applyImport ?? applyClaimedBusinessImport)({
       businessId: business.id,
@@ -248,14 +341,19 @@ export async function provisionBusinessForAdmin(
         coverImageUrl: media.coverImageUrl,
         brandColor: business.brandColor,
         timezone: business.timezone,
-        landingContent: mapped.landingContent
-          ? { ...mapped.landingContent, galleryImageUrls }
-          : galleryImageUrls.length > 0
-            ? { galleryImageUrls }
-            : null,
+        publicPageStyle: mapped.publicPageStyle,
+        landingContent:
+          landingContent === null
+            ? null
+            : (landingContent as unknown as Prisma.InputJsonValue),
       },
       hours: mapped.hours,
       services: mapped.services,
+      staff: mapped.staff.map((member) => ({
+        ...member,
+        avatarUrl: media.staffAvatarUrls?.[member.key] ?? null,
+      })),
+      bookingPolicy: mapped.bookingPolicy,
       snapshot: snapshot as unknown as Prisma.InputJsonValue,
     });
     if (applied.status !== 'completed') throw new BusinessImportConflictError();

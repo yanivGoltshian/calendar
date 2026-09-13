@@ -55,12 +55,40 @@ test('superadmin imports one business and lands on its review screen', async ({
     expect(businesses).toHaveLength(1);
     expect(businesses[0]?.listed).toBe(false);
     expect(businesses[0]?.businessImportedAt).not.toBeNull();
+    expect(businesses[0]?.publicPageStyle).toBe('LANDING');
     expect(businesses[0]?.services.map(({ name }) => name).sort()).toEqual([
       'אבחון עור',
       'טיפול פנים',
     ]);
     expect(businesses[0]?.workingHours).toHaveLength(6);
     await expect(page.getByText('נושאים שדורשים בדיקה')).toBeVisible();
+    await expect(page.getByText('מקורות ורמת ביטחון')).toBeVisible();
+    await expect(page.getByText('מידע שחסר להשלמת ההקמה')).toBeVisible();
+
+    for (const width of [390, 1366]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(`/b/${businesses[0]!.slug}`);
+      await expect(
+        page.getByRole('heading', { name: 'קליניקת אור', exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByText('קליניקה לטיפולי עור ואסתטיקה.', { exact: true }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: t.publicPage.servicesTitle, exact: true }),
+      ).toBeVisible();
+      await expect(page.getByText('טיפול פנים', { exact: true }).first()).toBeVisible();
+      await expect(page.getByText('הרצל 10, תל אביב, תל אביב, 61000, IL')).toBeVisible();
+      await expect(
+        page.locator('a[href="mailto:hello@example.com"]').first(),
+      ).toBeVisible();
+      await expect(page.locator('a[href="https://example.com/"]').first()).toBeVisible();
+      await expect(page.getByText('דנה לוי', { exact: true }).first()).toBeVisible();
+      await expect(page.getByText('צוות מנוסה', { exact: true })).toHaveCount(0);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      ).toBe(true);
+    }
   } finally {
     await prisma.business.deleteMany({ where: { ownerEmail: email } });
     await prisma.user.deleteMany({ where: { email } });

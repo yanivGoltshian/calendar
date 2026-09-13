@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { getActiveBusiness } from '@/server/repos/business';
-import { prisma } from '@/lib/db';
 import {
   createStaffMember,
+  updateStaffMember,
   setStaffActive,
   deleteStaffMember,
   type StaffInput,
@@ -61,7 +61,10 @@ export async function saveStaffAction(
 
   const data = parsed.data;
   const normalizedPhone = data.phone ? normalizePhone(data.phone) : null;
-  if ((mode === 'add' && !normalizedPhone) || (normalizedPhone && !isValidIsraeliMobile(normalizedPhone))) {
+  if (
+    (mode === 'add' && !normalizedPhone) ||
+    (normalizedPhone && !isValidIsraeliMobile(normalizedPhone))
+  ) {
     return { ok: false, mode, error: 'phone' };
   }
 
@@ -79,26 +82,19 @@ export async function saveStaffAction(
   };
 
   if (mode === 'edit' && data.id) {
-    const member = await prisma.staffMember.findFirst({
-      where: { id: data.id, businessId: business.id },
-      select: { user: { select: { phone: true } } },
-    });
-    if (!member) return { ok: false, mode, error: 'generic' };
-    // A tenant may edit its staff profile, not reassign a global login identity.
-    if (member.user.phone !== normalizedPhone) {
-      return { ok: false, mode, error: 'phone' };
+    const result = await updateStaffMember(business.id, data.id, input);
+    if (!result.ok) {
+      return {
+        ok: false,
+        mode,
+        error:
+          result.reason === 'duplicate'
+            ? 'duplicate'
+            : result.reason === 'identity_conflict'
+              ? 'phone'
+              : 'generic',
+      };
     }
-    const updated = await prisma.staffMember.updateMany({
-      where: { id: data.id, businessId: business.id },
-      data: {
-        displayName: input.displayName,
-        title: input.title,
-        bio: input.bio,
-        permissionLevel: input.permissionLevel,
-        active: input.active,
-      },
-    });
-    if (!updated.count) return { ok: false, mode, error: 'generic' };
   } else {
     // Names belong to this tenant's displayName, never to another user's global profile.
     const res = await createStaffMember(business.id, { ...input, name: null });

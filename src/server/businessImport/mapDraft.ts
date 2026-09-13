@@ -1,4 +1,10 @@
 import type { BusinessType } from '@prisma/client';
+import type { LandingContent } from '@/lib/publicPageStyle';
+import {
+  isDirectVideoUrl,
+  isSupportedSocialVideoUrl,
+  normalizeInstagramPostUrl,
+} from '@/lib/publicMediaUrl';
 import type {
   BusinessImportDraft,
   BusinessImportWarning,
@@ -36,6 +42,23 @@ export interface ImportedMediaCandidates {
   logoUrl: string | null;
   coverImageUrl: string | null;
   galleryImageUrls: string[];
+  videoUrls?: string[];
+  staffImages?: Array<{ staffKey: string; url: string }>;
+}
+
+export interface ImportedStaffInput {
+  key: string;
+  name: string;
+  title: string | null;
+  bio: string | null;
+  serviceNames: string[];
+}
+
+export interface ImportedBookingPolicyInput {
+  minLeadTimeMinutes?: number;
+  cancellationWindowHours?: number;
+  maxAdvanceBookingDays?: number;
+  bookingRequiresApproval?: boolean;
 }
 
 export interface MappedBusinessImport {
@@ -45,13 +68,12 @@ export interface MappedBusinessImport {
   description: string | null;
   address: string | null;
   instagramUrl: string | null;
-  landingContent: {
-    heroHeadline?: string;
-    heroSubtext?: string;
-    galleryImageUrls?: string[];
-  } | null;
+  publicPageStyle: 'BOOKING' | 'LANDING';
+  landingContent: LandingContent | null;
   services: ImportedServiceInput[];
+  staff: ImportedStaffInput[];
   hours: ImportedWorkingHoursInput[];
+  bookingPolicy: ImportedBookingPolicyInput;
   media: ImportedMediaCandidates;
   warnings: BusinessImportWarning[];
 }
@@ -132,6 +154,10 @@ function dedupeUrls(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
+function staffKey(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
 export function mapBusinessImportDraft(
   draft: BusinessImportDraft,
   manual: { name?: string | null; type?: BusinessType | null; phone?: string | null },
@@ -151,6 +177,122 @@ export function mapBusinessImportDraft(
     ...draft.media.galleryImageUrls,
     ...draft.services.map(({ imageUrl }) => imageUrl),
   ]).slice(0, 24);
+  const socialLinks = Object.fromEntries(
+    draft.socialLinks
+      .filter(({ platform }) =>
+        ['instagram', 'facebook', 'whatsapp', 'tiktok'].includes(platform),
+      )
+      .map(({ platform, url }) => [platform, url]),
+  );
+  const staff = draft.staff.slice(0, 20).map((member) => ({
+    key: staffKey(member.name),
+    name: member.name.trim().slice(0, 120),
+    title: cleanOptional(member.title, 120),
+    bio: cleanOptional(member.bio, 1_000),
+    serviceNames: member.serviceNames
+      .map((serviceName) => serviceName.trim().slice(0, 120))
+      .filter(Boolean),
+  }));
+  const hours = mapHours(draft);
+  const directVideoUrls = draft.media.videoUrls.filter(isDirectVideoUrl);
+  const instagramPostUrls = draft.media.instagramPostUrls
+    .map((url) => normalizeInstagramPostUrl(url))
+    .filter((url): url is string => Boolean(url));
+  const instagramPostKeys = new Set(instagramPostUrls);
+  const socialVideoUrls = draft.media.videoUrls.filter(
+    (url) =>
+      isSupportedSocialVideoUrl(url) &&
+      !instagramPostKeys.has(normalizeInstagramPostUrl(url) ?? ''),
+  );
+  const rejectedMediaUrls = [
+    ...draft.media.videoUrls.filter(
+      (url) =>
+        !directVideoUrls.includes(url) &&
+        !socialVideoUrls.includes(url) &&
+        !instagramPostKeys.has(normalizeInstagramPostUrl(url) ?? ''),
+    ),
+    ...draft.media.instagramPostUrls.filter((url) => !normalizeInstagramPostUrl(url)),
+  ];
+  const mappingWarnings = [
+    ...draft.warnings,
+    ...services.warnings,
+    ...rejectedMediaUrls.map((sourceUrl): BusinessImportWarning => ({
+      code: 'media-rejected',
+      message: 'An unsupported public media URL was omitted from the imported page.',
+      sourceUrl,
+    })),
+  ];
+  if (
+    staff.length > 0 &&
+    services.services.length > 0 &&
+    staff.every(({ serviceNames }) => serviceNames.length === 0)
+  ) {
+    mappingWarnings.push({
+      code: 'staff-service-links-assumed',
+      message:
+        'Staff and services were found without explicit assignments. Services were linked to the primary imported staff member for review.',
+      sourceUrl: draft.sourceUrl,
+    });
+  }
+  const hasRichContent = Boolean(
+    description ||
+    galleryImageUrls.length ||
+    directVideoUrls.length ||
+    socialVideoUrls.length ||
+    instagramPostUrls.length ||
+    Object.keys(socialLinks).length ||
+    draft.business.websiteUrl ||
+    draft.contacts.emails.length ||
+    draft.location.mapUrl ||
+    services.services.length ||
+    staff.length ||
+    hours.length,
+  );
+  const landingContent: LandingContent | null = hasRichContent
+    ? {
+        imported: true,
+        presentation: 'premium',
+        showStaff: staff.length > 0,
+        heroHeadline: name,
+        ...(description ? { heroSubtext: description, about: description } : {}),
+        ...(socialVideoUrls.length
+          ? { socialVideoUrls: socialVideoUrls.slice(0, 6) }
+          : {}),
+        ...(instagramPostUrls.length
+          ? { instagramPostUrls: instagramPostUrls.slice(0, 6) }
+          : {}),
+        ...(Object.keys(socialLinks).length ? { socialLinks } : {}),
+        ...(draft.business.websiteUrl || draft.contacts.emails[0] || draft.location.mapUrl
+          ? {
+              contact: {
+                ...(draft.contacts.emails[0] ? { email: draft.contacts.emails[0] } : {}),
+                ...(draft.business.websiteUrl
+                  ? { websiteUrl: draft.business.websiteUrl }
+                  : {}),
+                ...(draft.location.mapUrl ? { mapUrl: draft.location.mapUrl } : {}),
+              },
+            }
+          : {}),
+        sections: {
+          highlights: false,
+          services: services.services.length > 0,
+          gallery: galleryImageUrls.length > 0,
+          beforeAfter: false,
+          testimonials: false,
+          faq: false,
+          about: Boolean(description),
+          location: Boolean(
+            draft.location.formattedAddress ||
+            draft.contacts.phones.length ||
+            hours.length ||
+            draft.contacts.emails.length ||
+            draft.business.websiteUrl ||
+            draft.location.mapUrl,
+          ),
+          socialCta: Object.keys(socialLinks).length > 0,
+        },
+      }
+    : null;
 
   return {
     name,
@@ -159,20 +301,36 @@ export function mapBusinessImportDraft(
     description,
     address: cleanOptional(draft.location.formattedAddress, 500),
     instagramUrl,
-    landingContent:
-      description || galleryImageUrls.length > 0
-        ? {
-            heroHeadline: name,
-            heroSubtext: description ?? undefined,
-          }
-        : null,
+    publicPageStyle: landingContent ? 'LANDING' : 'BOOKING',
+    landingContent,
     services: services.services,
-    hours: mapHours(draft),
+    staff,
+    hours,
+    bookingPolicy: {
+      ...(draft.bookingPolicy.minLeadTimeMinutes !== null
+        ? { minLeadTimeMinutes: draft.bookingPolicy.minLeadTimeMinutes }
+        : {}),
+      ...(draft.bookingPolicy.cancellationWindowHours !== null
+        ? { cancellationWindowHours: draft.bookingPolicy.cancellationWindowHours }
+        : {}),
+      ...(draft.bookingPolicy.maxAdvanceBookingDays !== null
+        ? { maxAdvanceBookingDays: draft.bookingPolicy.maxAdvanceBookingDays }
+        : {}),
+      ...(draft.bookingPolicy.bookingRequiresApproval !== null
+        ? { bookingRequiresApproval: draft.bookingPolicy.bookingRequiresApproval }
+        : {}),
+    },
     media: {
       logoUrl: draft.media.logoUrl,
       coverImageUrl: draft.media.coverImageUrl,
       galleryImageUrls,
+      videoUrls: directVideoUrls.slice(0, 2),
+      staffImages: draft.staff.flatMap((member) =>
+        member.imageUrl
+          ? [{ staffKey: staffKey(member.name), url: member.imageUrl }]
+          : [],
+      ),
     },
-    warnings: [...draft.warnings, ...services.warnings],
+    warnings: mappingWarnings,
   };
 }

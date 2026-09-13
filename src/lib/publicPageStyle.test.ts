@@ -131,6 +131,8 @@ test('isLandingContentEmpty: מזהה תוכן ריק מול תוכן ממשי',
 
 test('normalizeLandingContent: מנרמל שדות עשירים (faq, לפני/אחרי, אודות, רשתות, CTA)', () => {
   const res = normalizeLandingContent({
+    imported: true,
+    showStaff: true,
     heroEyebrow: ' סטודיו יופי ',
     about: '  קצת עלינו  ',
     ctaLabel: ' לקביעת תור ',
@@ -142,23 +144,44 @@ test('normalizeLandingContent: מנרמל שדות עשירים (faq, לפני/�
       { beforeUrl: ' https://x/b.jpg ', afterUrl: ' https://x/a.jpg ', label: ' טיפול ' },
       { beforeUrl: 'https://x/b2.jpg', afterUrl: '' }, // חסר after — יורד
     ],
-    socialLinks: { whatsapp: ' https://wa.me/1 ', instagram: '', tiktok: 'https://tt/x' },
+    socialLinks: {
+      whatsapp: ' https://wa.me/1 ',
+      instagram: '',
+      tiktok: 'https://tiktok.com/@x',
+    },
+    contact: {
+      email: ' Hello@Example.com ',
+      websiteUrl: ' https://example.com ',
+      mapUrl: 'javascript:alert(1)',
+    },
   });
   assert.ok(res);
   if (!res) return;
   assert.equal(res.heroEyebrow, 'סטודיו יופי');
   assert.equal(res.about, 'קצת עלינו');
   assert.equal(res.ctaLabel, 'לקביעת תור');
+  assert.equal(res.imported, true);
+  assert.equal(res.showStaff, true);
+  assert.deepEqual(res.contact, {
+    email: 'hello@example.com',
+    websiteUrl: 'https://example.com',
+  });
   assert.deepEqual(res.faq, [{ question: 'שאלה', answer: 'תשובה' }]);
   assert.deepEqual(res.beforeAfter, [
     { beforeUrl: 'https://x/b.jpg', afterUrl: 'https://x/a.jpg', label: 'טיפול' },
   ]);
-  assert.deepEqual(res.socialLinks, { whatsapp: 'https://wa.me/1', tiktok: 'https://tt/x' });
+  assert.deepEqual(res.socialLinks, {
+    whatsapp: 'https://wa.me/1',
+    tiktok: 'https://tiktok.com/@x',
+  });
 });
 
 test('normalizeLandingContent: מגביל כמויות של faq ולפני/אחרי', () => {
   const res = normalizeLandingContent({
-    faq: Array.from({ length: MAX_FAQ + 2 }, (_, i) => ({ question: `ש${i}`, answer: `ת${i}` })),
+    faq: Array.from({ length: MAX_FAQ + 2 }, (_, i) => ({
+      question: `ש${i}`,
+      answer: `ת${i}`,
+    })),
     beforeAfter: Array.from({ length: MAX_BEFORE_AFTER + 2 }, (_, i) => ({
       beforeUrl: `https://x/b${i}.jpg`,
       afterUrl: `https://x/a${i}.jpg`,
@@ -195,7 +218,9 @@ test('resolveLandingSections: ברירת מחדל — hero תמיד, faq כבו�
   const clinicToggles = resolveLandingSections({
     type: 'CLINIC',
     content: {
-      beforeAfter: [{ beforeUrl: 'https://x/b.jpg', afterUrl: 'https://x/a.jpg', label: '' }],
+      beforeAfter: [
+        { beforeUrl: 'https://x/b.jpg', afterUrl: 'https://x/a.jpg', label: '' },
+      ],
     },
   });
   assert.ok(!clinicToggles.includes('beforeAfter')); // כבוי כברירת מחדל למרות שיש תוכן
@@ -230,7 +255,9 @@ test('resolveLandingSections: שומר על הסדר הקבוע של LANDING_SEC
     content: {
       sections: { faq: true },
       galleryImageUrls: ['https://x/1.jpg'],
-      beforeAfter: [{ beforeUrl: 'https://x/b.jpg', afterUrl: 'https://x/a.jpg', label: '' }],
+      beforeAfter: [
+        { beforeUrl: 'https://x/b.jpg', afterUrl: 'https://x/a.jpg', label: '' },
+      ],
       testimonials: [{ name: '', quote: 'מעולה' }],
       faq: [{ question: 'ש', answer: 'ת' }],
       about: 'עלינו',
@@ -252,24 +279,41 @@ test('normalizeLandingContent: מנרמל מבצע השקה עם spotsLeft של�
   const res = normalizeLandingContent({
     launchOffer: { text: '  מבצעי השקה  ', spotsLeft: 7.9, endsAt: '2026-08-31' },
   });
-  assert.deepEqual(res?.launchOffer, { text: 'מבצעי השקה', endsAt: '2026-08-31', spotsLeft: 7 });
+  assert.deepEqual(res?.launchOffer, {
+    text: 'מבצעי השקה',
+    endsAt: '2026-08-31',
+    spotsLeft: 7,
+  });
 });
 
 test('normalizeLandingContent: מבצע השקה ללא טקסט/מועד או עם מועד לא תקין ⇐ מושמט', () => {
-  assert.equal(normalizeLandingContent({ launchOffer: { text: '', endsAt: '2026-08-31' } }), null);
+  assert.equal(
+    normalizeLandingContent({ launchOffer: { text: '', endsAt: '2026-08-31' } }),
+    null,
+  );
   assert.equal(normalizeLandingContent({ launchOffer: { text: 'x', endsAt: '' } }), null);
-  assert.equal(normalizeLandingContent({ launchOffer: { text: 'x', endsAt: 'bad' } }), null);
+  assert.equal(
+    normalizeLandingContent({ launchOffer: { text: 'x', endsAt: 'bad' } }),
+    null,
+  );
 });
 
 test('normalizeLandingContent: מבצע השקה ללא spotsLeft נשמר בלי השדה', () => {
-  const res = normalizeLandingContent({ launchOffer: { text: 'מבצע', endsAt: '2026-08-31' } });
+  const res = normalizeLandingContent({
+    launchOffer: { text: 'מבצע', endsAt: '2026-08-31' },
+  });
   assert.deepEqual(res?.launchOffer, { text: 'מבצע', endsAt: '2026-08-31' });
 });
 
 test('normalizeLandingContent: מנרמל בלוק מבצעים חמים ומגביל לשש תמונות', () => {
   const imgs = Array.from({ length: 9 }, (_, i) => `/images/clinic/treatments/t${i}.jpg`);
   const res = normalizeLandingContent({
-    hotDeals: { eyebrow: 'מבצעים חמים', title: 'הטיפולים המבוקשים', ctaLabel: 'לכל הטיפולים', images: imgs },
+    hotDeals: {
+      eyebrow: 'מבצעים חמים',
+      title: 'הטיפולים המבוקשים',
+      ctaLabel: 'לכל הטיפולים',
+      images: imgs,
+    },
   });
   assert.equal(res?.hotDeals?.images.length, 6);
   assert.equal(res?.hotDeals?.eyebrow, 'מבצעים חמים');
@@ -279,7 +323,10 @@ test('normalizeLandingContent: מנרמל בלוק מבצעים חמים ומג�
 
 test('normalizeLandingContent: בלוק מבצעים חמים ללא תמונות ⇐ מושמט', () => {
   assert.equal(normalizeLandingContent({ hotDeals: { title: 'x', images: [] } }), null);
-  assert.equal(normalizeLandingContent({ hotDeals: { title: 'x', images: ['  ', ''] } }), null);
+  assert.equal(
+    normalizeLandingContent({ hotDeals: { title: 'x', images: ['  ', ''] } }),
+    null,
+  );
 });
 
 test('normalizeLandingContent: מגביל heroImages לשתי תמונות ומסנן ריקים', () => {
@@ -297,6 +344,7 @@ test('normalizeLandingContent: instagramPostUrls — שומר רק /p/ ו-/reel/
       'https://instagram.com/reel/XYZ789/',
       'https://instagram.com/some.user/', // פרופיל — יורד
       'https://example.com/p/notinsta/', // דומיין אחר — יורד
+      'https://evilinstagram.com/p/lookalike/', // דומיין מתחזה — יורד
       '',
     ],
   });
@@ -318,6 +366,7 @@ test('normalizeLandingContent: socialVideoUrls — שומר רק http(s), מסנ
     socialVideoUrls: [
       ' https://www.tiktok.com/@u/video/123 ',
       'https://youtu.be/dQw4w9WgXcQ',
+      'https://evil-youtube.com/watch?v=lookalike', // דומיין מתחזה — יורד
       '/local/video.mp4', // לא http(s) — יורד
       'just text', // זבל — יורד
       '',
@@ -344,10 +393,21 @@ test('normalizeLandingContent: facebookFeedUrl — שומר כתובת facebook.
 });
 
 test('normalizeLandingContent: facebookFeedUrl — מסנן כתובת שאינה facebook או אינה http(s)', () => {
-  const bad = normalizeLandingContent({ heroHeadline: 'יש', facebookFeedUrl: 'https://example.com/x' });
+  const bad = normalizeLandingContent({
+    heroHeadline: 'יש',
+    facebookFeedUrl: 'https://example.com/x',
+  });
   assert.equal(bad?.facebookFeedUrl, undefined);
-  const notHttp = normalizeLandingContent({ heroHeadline: 'יש', facebookFeedUrl: 'facebook.com/mybiz' });
+  const notHttp = normalizeLandingContent({
+    heroHeadline: 'יש',
+    facebookFeedUrl: 'facebook.com/mybiz',
+  });
   assert.equal(notHttp?.facebookFeedUrl, undefined);
+  const lookalike = normalizeLandingContent({
+    heroHeadline: 'יש',
+    facebookFeedUrl: 'https://facebook.com.evil.example/mybiz',
+  });
+  assert.equal(lookalike?.facebookFeedUrl, undefined);
 });
 
 test('normalizeLandingContent: socialLinks.facebook לבדו אינו מפעיל facebookFeedUrl (ניתוק כוונות)', () => {
@@ -356,5 +416,26 @@ test('normalizeLandingContent: socialLinks.facebook לבדו אינו מפעיל
     socialLinks: { facebook: 'https://www.facebook.com/profile.php?id=61587016828234' },
   });
   assert.equal(res?.facebookFeedUrl, undefined);
-  assert.equal(res?.socialLinks?.facebook, 'https://www.facebook.com/profile.php?id=61587016828234');
+  assert.equal(
+    res?.socialLinks?.facebook,
+    'https://www.facebook.com/profile.php?id=61587016828234',
+  );
+});
+
+test('normalizeLandingContent: מסנן כתובות חיצוניות לא תקינות או מתחזות', () => {
+  const res = normalizeLandingContent({
+    heroHeadline: 'יש',
+    contact: {
+      websiteUrl: 'http://',
+      mapUrl: 'https://maps.example/path',
+    },
+    socialLinks: {
+      instagram: 'https://instagram.com.evil.example/acme',
+      facebook: 'https://facebook.com.evil.example/acme',
+      tiktok: 'https://tiktok.com.evil.example/@acme',
+      whatsapp: 'https://wa.me.evil.example/972501234567',
+    },
+  });
+  assert.deepEqual(res?.contact, { mapUrl: 'https://maps.example/path' });
+  assert.equal(res?.socialLinks, undefined);
 });

@@ -5,6 +5,10 @@ import { registerHooks } from 'node:module';
 import { prisma } from '../src/lib/db';
 import { computeTrialHashes } from '../src/server/repos/trialLedger';
 import type { BusinessImportDraft } from '../src/server/businessImport';
+import { normalizeLandingContent } from '../src/lib/publicPageStyle';
+import { requireIsolatedDatabase } from './fixtures';
+
+requireIsolatedDatabase();
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -22,6 +26,10 @@ const {
   require('../src/server/businessImport/provision') as typeof import('../src/server/businessImport/provision');
 const { claimBusinessImport } =
   require('../src/server/repos/businessImport') as typeof import('../src/server/repos/businessImport');
+const { updateStaffMember } =
+  require('../src/server/repos/staff') as typeof import('../src/server/repos/staff');
+const { getBusinessBySlug } =
+  require('../src/server/repos/business') as typeof import('../src/server/repos/business');
 
 after(() => prisma.$disconnect());
 
@@ -46,6 +54,7 @@ function importedDraft(): BusinessImportDraft {
       region: null,
       postalCode: null,
       country: 'IL',
+      mapUrl: 'https://maps.example/place',
     },
     hours: [
       {
@@ -68,11 +77,20 @@ function importedDraft(): BusinessImportDraft {
         evidence: [],
       },
     ],
+    staff: [],
+    bookingPolicy: {
+      minLeadTimeMinutes: null,
+      cancellationWindowHours: null,
+      maxAdvanceBookingDays: null,
+      bookingRequiresApproval: null,
+      notes: [],
+    },
     media: {
       logoUrl: 'https://example.com/logo.jpg',
       coverImageUrl: null,
       galleryImageUrls: [],
       videoUrls: [],
+      instagramPostUrls: [],
     },
     socialLinks: [
       { platform: 'instagram', url: 'https://instagram.com/imported-business' },
@@ -159,6 +177,7 @@ test('same-source pending and completed retries reuse one import before creation
     const business = await prisma.business.findUniqueOrThrow({
       where: { id: first.business.id },
       include: {
+        settings: true,
         services: { include: { staffLinks: true } },
         workingHours: { where: { scope: 'BUSINESS' } },
       },
@@ -167,6 +186,24 @@ test('same-source pending and completed retries reuse one import before creation
     assert.equal(business.type, 'CLINIC');
     assert.equal(business.description, 'Imported profile');
     assert.equal(business.phone, '0501234567');
+    assert.equal(business.publicPageStyle, 'LANDING');
+    const landing = normalizeLandingContent(business.landingContent);
+    assert.equal(landing?.imported, true);
+    assert.equal(landing?.heroHeadline, 'Imported integration business');
+    assert.equal(landing?.heroSubtext, 'Imported profile');
+    assert.equal(landing?.benefits, undefined);
+    assert.deepEqual(landing?.contact, {
+      email: 'public@example.com',
+      websiteUrl: 'https://example.com/imported-business',
+      mapUrl: 'https://maps.example/place',
+    });
+    assert.deepEqual(business.settings?.onboardingSteps, {
+      services: true,
+      hours: true,
+      branding: false,
+      richContent: true,
+    });
+    assert.equal(business.settings?.onboardingCompleted, false);
     assert.equal(business.listed, false);
     assert.equal(business.services.length, 1);
     assert.equal(business.services[0]?.name, 'Imported treatment');
@@ -185,6 +222,9 @@ test('same-source pending and completed retries reuse one import before creation
         ({ code }) => code === 'media-storage-unavailable',
       ),
     );
+    assert.ok(first.importReview?.missingFields?.includes('media.logo'));
+    assert.ok(first.importReview?.missingFields?.includes('media.hero'));
+    assert.ok(first.importReview?.missingFields?.includes('media.gallery'));
   } finally {
     const businesses = await prisma.business.findMany({
       where: { ownerEmail: email },
@@ -195,6 +235,205 @@ test('same-source pending and completed retries reuse one import before creation
     });
     await prisma.business.deleteMany({ where: { ownerEmail: email } });
     await prisma.user.deleteMany({ where: { email } });
+    await prisma.trialLedger.deleteMany({
+      where: { emailHash: computeTrialHashes(email, null).emailHash },
+    });
+  }
+});
+
+test('rich import applies staff, service links, policy, media, and onboarding state atomically', async () => {
+  const email = `business-import-rich-${randomUUID()}@example.invalid`;
+  const claimPhones = ['+972509998877', '+972509998878'];
+  const draft = importedDraft();
+  draft.staff = [
+    {
+      name: 'נועה',
+      title: 'מטפלת',
+      bio: 'מתמחה בטיפולי פנים.',
+      imageUrl: 'https://example.com/noa.jpg',
+      serviceNames: ['Imported treatment'],
+      sourceUrl: draft.sourceUrl,
+      evidence: [],
+    },
+    {
+      name: 'דנה',
+      title: 'קוסמטיקאית',
+      bio: null,
+      imageUrl: null,
+      serviceNames: [],
+      sourceUrl: draft.sourceUrl,
+      evidence: [],
+    },
+  ];
+  draft.bookingPolicy = {
+    minLeadTimeMinutes: 120,
+    cancellationWindowHours: 24,
+    maxAdvanceBookingDays: 45,
+    bookingRequiresApproval: true,
+    notes: ['ביטול עד 24 שעות מראש.'],
+  };
+  let businessId: string | undefined;
+
+  try {
+    const result = await provisionBusinessForAdmin(
+      {
+        name: null,
+        type: null,
+        ownerName: null,
+        ownerEmail: email,
+        phoneIdentity: null,
+        importUrl: draft.sourceUrl,
+      },
+      'platform-admin@example.invalid',
+      {
+        importer: async () => draft,
+        importMedia: async () => ({
+          logoUrl: '/owned/logo.webp',
+          coverImageUrl: '/owned/cover.webp',
+          galleryImageUrls: ['/owned/gallery.webp'],
+          heroVideoUrl: '/owned/hero.mp4',
+          staffAvatarUrls: { נועה: '/owned/noa.webp' },
+          assets: [],
+          warnings: [],
+        }),
+      },
+    );
+    businessId = result.business.id;
+    const business = await prisma.business.findUniqueOrThrow({
+      where: { id: businessId },
+      include: {
+        settings: true,
+        staff: { orderBy: { createdAt: 'asc' } },
+        services: { include: { staffLinks: true } },
+      },
+    });
+    assert.equal(business.publicPageStyle, 'LANDING');
+    assert.equal(business.settings?.onboardingCompleted, true);
+    assert.deepEqual(business.settings?.onboardingSteps, {
+      services: true,
+      hours: true,
+      branding: true,
+      richContent: true,
+    });
+    assert.equal(business.settings?.minLeadTimeMinutes, 120);
+    assert.equal(business.settings?.cancellationWindowHours, 24);
+    assert.equal(business.settings?.maxAdvanceBookingDays, 45);
+    assert.equal(business.settings?.bookingRequiresApproval, true);
+    assert.deepEqual(
+      business.staff.map(
+        ({ displayName, title, avatarUrl, userId, permissionLevel }) => ({
+          displayName,
+          title,
+          avatarUrl,
+          hasIdentity: userId !== null,
+          permissionLevel,
+        }),
+      ),
+      [
+        {
+          displayName: 'Imported integration business',
+          title: null,
+          avatarUrl: null,
+          hasIdentity: true,
+          permissionLevel: 'MANAGER',
+        },
+        {
+          displayName: 'נועה',
+          title: 'מטפלת',
+          avatarUrl: '/owned/noa.webp',
+          hasIdentity: false,
+          permissionLevel: 'CALENDAR_ONLY',
+        },
+        {
+          displayName: 'דנה',
+          title: 'קוסמטיקאית',
+          avatarUrl: null,
+          hasIdentity: false,
+          permissionLevel: 'CALENDAR_ONLY',
+        },
+      ],
+    );
+    const importedNoa = business.staff.find(({ displayName }) => displayName === 'נועה');
+    const importedDana = business.staff.find(({ displayName }) => displayName === 'דנה');
+    assert.ok(importedNoa);
+    assert.ok(importedDana);
+    assert.equal(business.services[0]?.staffLinks.length, 1);
+    assert.equal(business.services[0]?.staffLinks[0]?.staffId, importedNoa.id);
+    const publicBusiness = await getBusinessBySlug(business.slug);
+    assert.deepEqual(
+      publicBusiness?.staff
+        .filter(({ serviceLinks }) => serviceLinks.length > 0)
+        .map(({ displayName }) => displayName),
+      ['נועה'],
+    );
+    const landing = normalizeLandingContent(business.landingContent);
+    assert.equal(landing?.heroVideoUrl, '/owned/hero.mp4');
+    assert.deepEqual(landing?.heroImages, ['/owned/cover.webp', '/owned/gallery.webp']);
+    assert.deepEqual(landing?.galleryImageUrls, ['/owned/gallery.webp']);
+    assert.equal(landing?.showStaff, true);
+    assert.deepEqual(
+      await updateStaffMember(business.id, importedNoa.id, {
+        phone: '',
+        name: 'נועה',
+        displayName: 'נועה',
+        title: 'מטפלת בכירה',
+        bio: null,
+        permissionLevel: 'CALENDAR_ONLY',
+        active: true,
+      }),
+      { ok: true },
+    );
+    const claimResults = await Promise.all([
+      updateStaffMember(business.id, importedNoa.id, {
+        phone: claimPhones[0],
+        name: 'נועה',
+        displayName: 'נועה',
+        title: 'מטפלת בכירה',
+        bio: null,
+        permissionLevel: 'CALENDAR_ONLY',
+        active: true,
+      }),
+      updateStaffMember(business.id, importedNoa.id, {
+        phone: claimPhones[1],
+        name: 'נועה',
+        displayName: 'נועה',
+        title: 'מטפלת בכירה',
+        bio: null,
+        permissionLevel: 'CALENDAR_ONLY',
+        active: true,
+      }),
+    ]);
+    assert.equal(claimResults.filter(({ ok }) => ok).length, 1);
+    assert.deepEqual(
+      claimResults.find(({ ok }) => !ok),
+      { ok: false, reason: 'identity_conflict' },
+    );
+    const claimedStaff = await prisma.staffMember.findUniqueOrThrow({
+      where: { id: importedNoa.id },
+      include: { user: true },
+    });
+    assert.ok(claimPhones.includes(claimedStaff.user?.phone ?? ''));
+    assert.equal(claimedStaff.title, 'מטפלת בכירה');
+    assert.equal(await prisma.user.count({ where: { phone: { in: claimPhones } } }), 1);
+    assert.deepEqual(
+      await updateStaffMember(business.id, importedDana.id, {
+        phone: claimedStaff.user!.phone!,
+        name: 'דנה',
+        displayName: 'דנה',
+        title: 'קוסמטיקאית',
+        bio: null,
+        permissionLevel: 'CALENDAR_ONLY',
+        active: true,
+      }),
+      { ok: false, reason: 'duplicate' },
+    );
+  } finally {
+    if (businessId) {
+      await prisma.appointment.deleteMany({ where: { businessId } });
+      await prisma.business.deleteMany({ where: { id: businessId } });
+    }
+    await prisma.user.deleteMany({ where: { email } });
+    await prisma.user.deleteMany({ where: { phone: { in: claimPhones } } });
     await prisma.trialLedger.deleteMany({
       where: { emailHash: computeTrialHashes(email, null).emailHash },
     });

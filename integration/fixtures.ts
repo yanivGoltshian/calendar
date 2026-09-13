@@ -105,5 +105,7 @@ export async function cleanupFixture(
 ) {
   await prisma.appointment.deleteMany({ where: { businessId: fixture.business.id } });
   await prisma.business.delete({ where: { id: fixture.business.id } });
-  await prisma.user.delete({ where: { id: fixture.staff.userId } });
+  if (fixture.staff.userId) {
+    await prisma.user.delete({ where: { id: fixture.staff.userId } });
+  }
 }
