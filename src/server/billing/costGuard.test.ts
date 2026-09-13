@@ -8,6 +8,9 @@ import {
   monthStartUtc,
   evaluateGuard,
   getMonthlyPaidUsageAgorot,
+  getCostGuardStatus,
+  messageQuotaAlert,
+  messageQuotaStatus,
   sendGuardedSms,
   type CostGuardConfig,
   type GuardedSmsDeps,
@@ -125,6 +128,69 @@ test('getMonthlyPaidUsageAgorot: סכום ריק מוחזר כאפס', async () 
   } as any;
   const used = await getMonthlyPaidUsageAgorot('biz-1', { prismaClient });
   assert.equal(used, 0);
+});
+
+test('message quota derives allowance, used and remaining counts from the enforced cost units', () => {
+  assert.deepEqual(messageQuotaStatus(1200, CONFIG), {
+    usedMessages: 120,
+    allowanceMessages: 450,
+    alertAtMessages: 400,
+    remainingMessages: 330,
+    usagePercent: 27,
+    atAlert: false,
+    blocked: false,
+  });
+  assert.deepEqual(messageQuotaStatus(4005, CONFIG), {
+    usedMessages: 401,
+    allowanceMessages: 450,
+    alertAtMessages: 400,
+    remainingMessages: 49,
+    usagePercent: 89,
+    atAlert: true,
+    blocked: false,
+  });
+  assert.deepEqual(messageQuotaStatus(1250, {
+    capAgorot: 9000,
+    alertAgorot: 8000,
+    unitCostAgorot: 25,
+  }), {
+    usedMessages: 50,
+    allowanceMessages: 360,
+    alertAtMessages: 320,
+    remainingMessages: 310,
+    usagePercent: 14,
+    atAlert: false,
+    blocked: false,
+  });
+});
+
+test('owner quota alerts contain message counts without monetary values', () => {
+  const content = messageQuotaAlert('Synthetic business', messageQuotaStatus(4005, CONFIG));
+  assert.match(content.subject, /מכסת מסרונים/);
+  assert.match(content.text, /401 הודעות/);
+  assert.match(content.text, /מכסה של 450/);
+  assert.match(content.text, /נותרו 49 הודעות/);
+  assert.doesNotMatch(`${content.subject}\n${content.text}`, /₪|ש"ח|אגור|עלות/);
+});
+
+test('getCostGuardStatus exposes count-only owner data', async () => {
+  const status = await getCostGuardStatus('biz-1', {
+    now: new Date('2026-05-10T00:00:00.000Z'),
+    config: CONFIG,
+    prismaClient: {
+      messageLog: { aggregate: async () => ({ _sum: { costAgorot: 1200 } }) },
+    } as any,
+  });
+  assert.deepEqual(status, messageQuotaStatus(1200, CONFIG));
+  assert.deepEqual(Object.keys(status).sort(), [
+    'alertAtMessages',
+    'allowanceMessages',
+    'atAlert',
+    'blocked',
+    'remainingMessages',
+    'usagePercent',
+    'usedMessages',
+  ]);
 });
 
 // ---------- sendGuardedSms ----------

@@ -1,5 +1,4 @@
 import { t } from '@/i18n';
-import { formatAgorot } from '@/lib/money';
 import type { CostGuardStatus } from '@/server/billing/costGuard';
 import SettingsSection from './SettingsSection';
 
@@ -12,10 +11,6 @@ type Props = { status: CostGuardStatus };
  */
 export default function CostGuardPanel({ status }: Props) {
   const labels = t.admin.settings.costGuard;
-  const pct =
-    status.capAgorot > 0
-      ? Math.min(100, Math.round((status.usedAgorot / status.capAgorot) * 100))
-      : 0;
   const barColor = status.blocked
     ? 'bg-red-500'
     : status.atAlert
@@ -29,19 +24,22 @@ export default function CostGuardPanel({ status }: Props) {
           <div className="flex items-baseline justify-between text-sm">
             <span className="text-slate-600">{labels.usageLabel}</span>
             <span className="font-medium text-slate-900">
-              {formatAgorot(status.usedAgorot)} {labels.ofLabel}{' '}
-              {formatAgorot(status.capAgorot)}
+              {status.usedMessages} {labels.ofLabel} {status.allowanceMessages}{' '}
+              {labels.messagesLabel}
             </span>
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+            <div
+              className={`h-full rounded-full ${barColor}`}
+              style={{ width: `${status.usagePercent}%` }}
+            />
           </div>
           <div className="mt-2 flex items-baseline justify-between text-xs text-slate-500">
             <span>
-              {labels.alertLabel}: {formatAgorot(status.alertAgorot)}
+              {labels.alertLabel}: {status.alertAtMessages} {labels.messagesLabel}
             </span>
             <span>
-              {labels.remainingLabel}: {formatAgorot(status.remainingAgorot)}
+              {labels.remainingLabel}: {status.remainingMessages} {labels.messagesLabel}
             </span>
           </div>
         </div>
