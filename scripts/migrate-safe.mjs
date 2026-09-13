@@ -6,6 +6,7 @@ import {
   readdirSync,
   rmSync,
   mkdirSync,
+  existsSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,7 +33,8 @@ if (
 let baselineDirectory;
 const legacyBaseline = process.argv.includes('--baseline-only');
 const provisioningBaseline = process.argv.includes('--provisioning-baseline-only');
-if (legacyBaseline && provisioningBaseline) throw new Error('Choose one isolated migration baseline');
+if (legacyBaseline && provisioningBaseline)
+  throw new Error('Choose one isolated migration baseline');
 if (legacyBaseline || provisioningBaseline) {
   if (
     process.env.TEST_DATABASE_URL !== process.env.DATABASE_URL ||
@@ -44,7 +46,10 @@ if (legacyBaseline || provisioningBaseline) {
   cpSync('prisma/schema.prisma', join(baselineDirectory, 'schema.prisma'));
   mkdirSync(join(baselineDirectory, 'migrations'));
   for (const entry of readdirSync('prisma/migrations')) {
-    if (entry < (provisioningBaseline ? '20260912230000' : '20260906000000') || entry === 'migration_lock.toml') {
+    if (
+      entry < (provisioningBaseline ? '20260912230000' : '20260906000000') ||
+      entry === 'migration_lock.toml'
+    ) {
       cpSync(
         join('prisma/migrations', entry),
         join(baselineDirectory, 'migrations', entry),
@@ -73,7 +78,39 @@ function run(args) {
   return result.status ?? 1;
 }
 const db = new PrismaClient();
+const migrationRoot = baselineDirectory
+  ? join(baselineDirectory, 'migrations')
+  : 'prisma/migrations';
+
+async function assertAppliedMigrationChecksums() {
+  const [state] = await db.$queryRaw`
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema=current_schema() AND table_name='_prisma_migrations'
+    ) AS exists
+  `;
+  if (!state.exists) return;
+
+  const applied = await db.$queryRaw`
+    SELECT migration_name, checksum FROM "_prisma_migrations"
+    WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL
+  `;
+  for (const row of applied) {
+    const migrationPath = join(migrationRoot, row.migration_name, 'migration.sql');
+    if (!existsSync(migrationPath)) {
+      throw new Error(`Applied migration is missing locally: ${row.migration_name}`);
+    }
+    const checksum = createHash('sha256')
+      .update(readFileSync(migrationPath))
+      .digest('hex');
+    if (checksum !== row.checksum) {
+      throw new Error(`Applied migration checksum mismatch: ${row.migration_name}`);
+    }
+  }
+}
+
 try {
+  await assertAppliedMigrationChecksums();
   const status = run(['deploy']);
   if (status !== 0) {
     const failed = await db.$queryRaw`

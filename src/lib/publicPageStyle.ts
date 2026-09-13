@@ -8,6 +8,12 @@
  */
 
 import { resolveEndTime } from './launchOffer';
+import {
+  isSupportedSocialVideoUrl,
+  isUrlForDomain,
+  normalizeHttpUrl,
+  normalizeInstagramPostUrl,
+} from './publicMediaUrl';
 
 /** מפתחות סוגי העסק (תואמים ל-enum BusinessType בסכימה). */
 export type BusinessTypeKey =
@@ -85,9 +91,8 @@ export const LANDING_SECTION_ORDER: LandingSectionKey[] = [
 ];
 
 /** המקטעים שהבעלים יכול לכבות/להדליק (hero תמיד מוצג — הוא כותרת העמוד). */
-export const TOGGLEABLE_LANDING_SECTIONS: LandingSectionKey[] = LANDING_SECTION_ORDER.filter(
-  (key) => key !== 'hero',
-);
+export const TOGGLEABLE_LANDING_SECTIONS: LandingSectionKey[] =
+  LANDING_SECTION_ORDER.filter((key) => key !== 'hero');
 
 /** יתרון בודד בעמוד הנחיתה. */
 export interface LandingBenefit {
@@ -120,6 +125,12 @@ export interface LandingSocialLinks {
   instagram?: string;
   facebook?: string;
   tiktok?: string;
+}
+
+export interface LandingContact {
+  email?: string;
+  websiteUrl?: string;
+  mapUrl?: string;
 }
 
 /** מפת הצגה/הסתרה של מקטעי עמוד הנחיתה (true = מוצג). */
@@ -155,6 +166,8 @@ export type LandingTheme = {
 
 /** תוכן עמוד הנחיתה הנשמר בשדה Business.landingContent (Json). כל השדות אופציונליים. */
 export interface LandingContent {
+  imported?: true;
+  showStaff?: boolean;
   presentation?: 'premium';
   theme?: LandingTheme; // פלטת מותג מתואמת שנבחרה באונבורדינג
   heroEyebrow?: string;
@@ -175,6 +188,7 @@ export interface LandingContent {
   socialVideoUrls?: string[]; // קישורי סרטונים (טיקטוק/יוטיוב) להטמעה רשמית בעמוד הציבורי
   facebookFeedUrl?: string; // כתובת עמוד פייסבוק להטמעת פיד רשמי (נפרד מכפתור האייקון ב-socialLinks)
   socialLinks?: LandingSocialLinks;
+  contact?: LandingContact;
   ctaLabel?: string;
   sections?: LandingSectionToggles;
   launchOffer?: LandingLaunchOffer; // אופציונלי, אדיטיבי — לא משפיע על עסקים קיימים
@@ -217,6 +231,7 @@ const LIMITS = {
   googleReviewsUrl: 2048,
   ctaLabel: 40,
   socialUrl: 2048,
+  contactEmail: 254,
   launchOfferText: 160,
   hotDealsEyebrow: 60,
   hotDealsTitle: 140,
@@ -397,8 +412,8 @@ export function normalizeGoogleBusinessUrl(value: unknown): string {
 
 function toRecordArray(value: unknown): Record<string, unknown>[] {
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is Record<string, unknown> =>
-    typeof item === 'object' && item !== null,
+  return value.filter(
+    (item): item is Record<string, unknown> => typeof item === 'object' && item !== null,
   );
 }
 
@@ -434,7 +449,9 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   }
 
   const galleryImageUrls: string[] = [];
-  const rawGallery = Array.isArray(source.galleryImageUrls) ? source.galleryImageUrls : [];
+  const rawGallery = Array.isArray(source.galleryImageUrls)
+    ? source.galleryImageUrls
+    : [];
   for (const item of rawGallery) {
     const url = cleanString(item, LIMITS.galleryUrl);
     if (!url) continue;
@@ -444,32 +461,39 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
 
   // קישורי פוסטים של אינסטגרם — שומרים רק כתובות פוסט/ריל תקינות (instagram.com/p/ או /reel/).
   const instagramPostUrls: string[] = [];
-  const rawInstagram = Array.isArray(source.instagramPostUrls) ? source.instagramPostUrls : [];
+  const rawInstagram = Array.isArray(source.instagramPostUrls)
+    ? source.instagramPostUrls
+    : [];
   for (const item of rawInstagram) {
     const url = cleanString(item, LIMITS.socialUrl);
     if (!url) continue;
-    if (!/instagram\.com\/(p|reel)\//i.test(url)) continue;
-    instagramPostUrls.push(url);
+    const normalized = normalizeInstagramPostUrl(url);
+    if (!normalized) continue;
+    instagramPostUrls.push(normalized);
     if (instagramPostUrls.length >= MAX_INSTAGRAM_POSTS) break;
   }
 
   // קישורי סרטונים חברתיים (טיקטוק/יוטיוב) — שומרים רק כתובות http(s) תקינות.
   const socialVideoUrls: string[] = [];
-  const rawSocialVideos = Array.isArray(source.socialVideoUrls) ? source.socialVideoUrls : [];
+  const rawSocialVideos = Array.isArray(source.socialVideoUrls)
+    ? source.socialVideoUrls
+    : [];
   for (const item of rawSocialVideos) {
     const url = cleanString(item, LIMITS.socialUrl);
     if (!url) continue;
-    if (!/^https?:\/\//i.test(url)) continue;
-    socialVideoUrls.push(url);
+    const normalized = normalizeHttpUrl(url);
+    if (!normalized || !isSupportedSocialVideoUrl(normalized)) continue;
+    socialVideoUrls.push(normalized);
     if (socialVideoUrls.length >= MAX_SOCIAL_VIDEOS) break;
   }
 
   // כתובת פיד פייסבוק — הצטרפות מפורשת בלבד. שומרים רק כתובת http(s) של facebook.com,
   // ומנותקת לחלוטין מכפתור האייקון ב-socialLinks.facebook (שאינו מטמיע פיד).
   const rawFacebookFeed = cleanString(source.facebookFeedUrl, LIMITS.socialUrl);
+  const normalizedFacebookFeed = normalizeHttpUrl(rawFacebookFeed);
   const facebookFeedUrl =
-    rawFacebookFeed && /^https?:\/\/([^/]+\.)?facebook\.com\//i.test(rawFacebookFeed)
-      ? rawFacebookFeed
+    normalizedFacebookFeed && isUrlForDomain(normalizedFacebookFeed, 'facebook.com')
+      ? normalizedFacebookFeed
       : '';
 
   const beforeAfter: LandingBeforeAfter[] = [];
@@ -501,6 +525,7 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   }
 
   const socialLinks = normalizeSocialLinks(source.socialLinks);
+  const contact = normalizeLandingContact(source.contact);
   const sections = normalizeSectionToggles(source.sections);
   const launchOffer = normalizeLaunchOffer(source.launchOffer);
   const hotDeals = normalizeHotDeals(source.hotDeals);
@@ -521,6 +546,8 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   const heroPosterUrl = /^(https?:\/\/|\/)/i.test(heroPosterRaw) ? heroPosterRaw : '';
 
   const content: LandingContent = {};
+  if (source.imported === true) content.imported = true;
+  if (typeof source.showStaff === 'boolean') content.showStaff = source.showStaff;
   if (source.presentation === 'premium') content.presentation = 'premium';
   if (heroEyebrow) content.heroEyebrow = heroEyebrow;
   if (heroHeadline) content.heroHeadline = heroHeadline;
@@ -540,6 +567,7 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   if (announcement) content.announcement = announcement;
   if (googleReviewsUrl) content.googleReviewsUrl = googleReviewsUrl;
   if (socialLinks) content.socialLinks = socialLinks;
+  if (contact) content.contact = contact;
   if (ctaLabel) content.ctaLabel = ctaLabel;
   if (sections) content.sections = sections;
   if (launchOffer) content.launchOffer = launchOffer;
@@ -547,6 +575,21 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
   if (theme) content.theme = theme;
 
   return Object.keys(content).length ? content : null;
+}
+
+function normalizeLandingContact(value: unknown): LandingContact | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Record<string, unknown>;
+  const result: LandingContact = {};
+  const email = cleanString(source.email, LIMITS.contactEmail).toLowerCase();
+  const websiteUrl = cleanString(source.websiteUrl, LIMITS.socialUrl);
+  const mapUrl = cleanString(source.mapUrl, LIMITS.socialUrl);
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) result.email = email;
+  const normalizedWebsiteUrl = normalizeHttpUrl(websiteUrl);
+  const normalizedMapUrl = normalizeHttpUrl(mapUrl);
+  if (normalizedWebsiteUrl) result.websiteUrl = normalizedWebsiteUrl;
+  if (normalizedMapUrl) result.mapUrl = normalizedMapUrl;
+  return Object.keys(result).length ? result : null;
 }
 
 /** מנרמל מבצע השקה; דורש טקסט ומועד סיום תקין. spotsLeft הוא מספר שלם אי-שלילי אופציונלי. */
@@ -594,7 +637,16 @@ function normalizeHotDeals(value: unknown): LandingHotDeals | null {
 export function normalizeLandingTheme(value: unknown): LandingTheme | null {
   if (!value || typeof value !== 'object') return null;
   const source = value as Record<string, unknown>;
-  const keys: (keyof LandingTheme)[] = ['brand', 'brandDark', 'gold', 'goldStrong', 'goldText', 'cream', 'ink', 'accent'];
+  const keys: (keyof LandingTheme)[] = [
+    'brand',
+    'brandDark',
+    'gold',
+    'goldStrong',
+    'goldText',
+    'cream',
+    'ink',
+    'accent',
+  ];
   const hex = /^#[0-9a-fA-F]{6}$/;
   const result = {} as LandingTheme;
   for (const key of keys) {
@@ -614,10 +666,23 @@ function normalizeSocialLinks(value: unknown): LandingSocialLinks | null {
   const instagram = cleanString(source.instagram, LIMITS.socialUrl);
   const facebook = cleanString(source.facebook, LIMITS.socialUrl);
   const tiktok = cleanString(source.tiktok, LIMITS.socialUrl);
-  if (whatsapp) result.whatsapp = whatsapp;
-  if (instagram) result.instagram = instagram;
-  if (facebook) result.facebook = facebook;
-  if (tiktok) result.tiktok = tiktok;
+  const normalizeProviderValue = (raw: string, domains: string[]): string => {
+    if (!/^https?:\/\//i.test(raw)) return raw;
+    const normalized = normalizeHttpUrl(raw);
+    return normalized && domains.some((domain) => isUrlForDomain(normalized, domain))
+      ? normalized
+      : '';
+  };
+  const normalizedWhatsapp = normalizeProviderValue(whatsapp, ['wa.me', 'whatsapp.com']);
+  const normalizedInstagram = normalizeProviderValue(instagram, ['instagram.com']);
+  const normalizedFacebook = normalizeProviderValue(facebook, ['facebook.com']);
+  const normalizedTiktok = normalizeProviderValue(tiktok, ['tiktok.com']);
+  if (normalizedWhatsapp) result.whatsapp = normalizedWhatsapp;
+  if (normalizedInstagram && !normalizeInstagramPostUrl(normalizedInstagram)) {
+    result.instagram = normalizedInstagram;
+  }
+  if (normalizedFacebook) result.facebook = normalizedFacebook;
+  if (normalizedTiktok) result.tiktok = normalizedTiktok;
   return Object.keys(result).length ? result : null;
 }
 
@@ -634,7 +699,9 @@ function normalizeSectionToggles(value: unknown): LandingSectionToggles | null {
 }
 
 /** האם תוכן עמוד הנחיתה ריק (או חסר) — שימושי כדי להחליט אם לשמור NULL. */
-export function isLandingContentEmpty(content: LandingContent | null | undefined): boolean {
+export function isLandingContentEmpty(
+  content: LandingContent | null | undefined,
+): boolean {
   return normalizeLandingContent(content ?? null) === null;
 }
 
@@ -657,7 +724,10 @@ const CONTENT_REQUIRED_SECTIONS: ReadonlySet<LandingSectionKey> = new Set([
 ]);
 
 /** ברירת המחדל של הדלקת/כיבוי מקטע לפי סוג העסק (לפני התאמות הבעלים). */
-function defaultSectionEnabled(section: LandingSectionKey, type: BusinessTypeKey): boolean {
+function defaultSectionEnabled(
+  section: LandingSectionKey,
+  type: BusinessTypeKey,
+): boolean {
   if (section === 'hero') return true; // כותרת העמוד — תמיד מוצגת
   if (section === 'beforeAfter') return BEFORE_AFTER_DEFAULT_TYPES.has(type);
   if (section === 'faq') return false; // אופט-אין — מודלק כשממלאים שאלות
@@ -677,7 +747,10 @@ export function landingSectionEnabledByDefault(
 }
 
 /** האם למקטע תלוי-תוכן יש בפועל תוכן להצגה. */
-function sectionHasContent(section: LandingSectionKey, content: LandingContent | null): boolean {
+function sectionHasContent(
+  section: LandingSectionKey,
+  content: LandingContent | null,
+): boolean {
   if (!content) return false;
   switch (section) {
     case 'gallery':
@@ -709,7 +782,9 @@ export interface ResolveLandingSectionsInput {
  *  - מסנן מקטעים תלויי-תוכן שאין להם תוכן ממשי.
  * פונקציה טהורה — ניתנת לבדיקה תחת ה-runner של הריפו.
  */
-export function resolveLandingSections(input: ResolveLandingSectionsInput): LandingSectionKey[] {
+export function resolveLandingSections(
+  input: ResolveLandingSectionsInput,
+): LandingSectionKey[] {
   const content = input.content ?? null;
   const type = (input.type ?? 'OTHER') as BusinessTypeKey;
   const toggles = content?.sections ?? {};
@@ -717,9 +792,11 @@ export function resolveLandingSections(input: ResolveLandingSectionsInput): Land
   return LANDING_SECTION_ORDER.filter((section) => {
     if (section === 'hero') return true;
     const override = toggles[section];
-    const enabled = typeof override === 'boolean' ? override : defaultSectionEnabled(section, type);
+    const enabled =
+      typeof override === 'boolean' ? override : defaultSectionEnabled(section, type);
     if (!enabled) return false;
-    if (CONTENT_REQUIRED_SECTIONS.has(section)) return sectionHasContent(section, content);
+    if (CONTENT_REQUIRED_SECTIONS.has(section))
+      return sectionHasContent(section, content);
     return true;
   });
 }

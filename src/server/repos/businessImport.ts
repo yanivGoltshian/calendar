@@ -54,6 +54,7 @@ export interface ApplyBusinessImportInput {
     coverImageUrl: string | null;
     brandColor: string | null;
     timezone: string;
+    publicPageStyle: 'BOOKING' | 'LANDING';
     landingContent: Prisma.InputJsonValue | null;
   };
   hours: Array<{
@@ -71,6 +72,20 @@ export interface ApplyBusinessImportInput {
     hideDuration: boolean;
     hidden: boolean;
   }>;
+  staff: Array<{
+    key: string;
+    name: string;
+    title: string | null;
+    bio: string | null;
+    avatarUrl: string | null;
+    serviceNames: string[];
+  }>;
+  bookingPolicy: {
+    minLeadTimeMinutes?: number;
+    cancellationWindowHours?: number;
+    maxAdvanceBookingDays?: number;
+    bookingRequiresApproval?: boolean;
+  };
   snapshot: Prisma.InputJsonValue;
 }
 
@@ -93,6 +108,10 @@ function parseClaimMarker(value: Prisma.JsonValue | null): ImportClaimMarker | n
     return null;
   }
   return candidate as unknown as ImportClaimMarker;
+}
+
+function normalizedName(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 export async function getBusinessImportState(businessId: string) {
@@ -247,11 +266,12 @@ export async function applyClaimedBusinessImport(
           return { status: 'modified' };
         }
 
-        const staff = await tx.staffMember.findMany({
+        const existingStaff = await tx.staffMember.findMany({
           where: { businessId: input.businessId, active: true },
-          select: { id: true },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, userId: true },
         });
-        if (staff.length === 0) return { status: 'modified' };
+        if (existingStaff.length === 0) return { status: 'modified' };
 
         const existingServiceIds = (
           await tx.service.findMany({
@@ -294,18 +314,64 @@ export async function applyClaimedBusinessImport(
         }
 
         await tx.service.deleteMany({ where: { businessId: input.businessId } });
+        const appliedStaff: Array<{
+          id: string;
+          key: string | null;
+          serviceNames: string[];
+        }> = [];
+        if (input.staff.length > 0) {
+          for (const member of input.staff) {
+            const created = await tx.staffMember.create({
+              data: {
+                businessId: input.businessId,
+                displayName: member.name,
+                title: member.title,
+                bio: member.bio,
+                avatarUrl: member.avatarUrl,
+                permissionLevel: 'CALENDAR_ONLY',
+                active: true,
+              },
+              select: { id: true },
+            });
+            appliedStaff.push({
+              id: created.id,
+              key: member.key,
+              serviceNames: member.serviceNames,
+            });
+          }
+        } else {
+          appliedStaff.push(
+            ...existingStaff.map(({ id }) => ({
+              id,
+              key: null,
+              serviceNames: [],
+            })),
+          );
+        }
+
         for (const [sortOrder, service] of input.services.entries()) {
-          // Mirrors the service repository contract: explicit active staff IDs are
-          // validated above and their links are created atomically with the service.
-          await tx.service.create({
+          const created = await tx.service.create({
             data: {
               businessId: input.businessId,
               sortOrder,
               ...service,
-              staffLinks: {
-                create: staff.map(({ id }) => ({ staffId: id })),
-              },
             },
+            select: { id: true, name: true },
+          });
+          const explicitStaff = appliedStaff.filter(({ serviceNames }) =>
+            serviceNames.some(
+              (serviceName) =>
+                normalizedName(serviceName) === normalizedName(created.name),
+            ),
+          );
+          const linkedStaff = explicitStaff.length
+            ? explicitStaff
+            : appliedStaff.slice(0, 1);
+          await tx.serviceStaff.createMany({
+            data: linkedStaff.map(({ id }) => ({
+              serviceId: created.id,
+              staffId: id,
+            })),
           });
         }
 
@@ -322,12 +388,54 @@ export async function applyClaimedBusinessImport(
             coverImageUrl: input.profile.coverImageUrl,
             brandColor: input.profile.brandColor,
             timezone: input.profile.timezone,
+            publicPageStyle: input.profile.publicPageStyle,
             landingContent:
               input.profile.landingContent === null
                 ? Prisma.DbNull
                 : input.profile.landingContent,
             businessImportDraft: input.snapshot,
             businessImportedAt: new Date(),
+          },
+        });
+        const landingRecord =
+          input.profile.landingContent &&
+          typeof input.profile.landingContent === 'object' &&
+          !Array.isArray(input.profile.landingContent)
+            ? (input.profile.landingContent as Record<string, unknown>)
+            : null;
+        const onboardingSteps = {
+          services: input.services.length > 0,
+          hours: input.hours.length > 0,
+          branding: Boolean(
+            input.profile.logoUrl ||
+            input.profile.coverImageUrl ||
+            (Array.isArray(landingRecord?.galleryImageUrls) &&
+              landingRecord.galleryImageUrls.length > 0),
+          ),
+          richContent: input.profile.landingContent !== null,
+        };
+        await tx.businessSettings.upsert({
+          where: { businessId: input.businessId },
+          update: {
+            ...input.bookingPolicy,
+            onboardingSteps,
+            onboardingCompleted:
+              onboardingSteps.services &&
+              onboardingSteps.hours &&
+              onboardingSteps.branding &&
+              onboardingSteps.richContent &&
+              appliedStaff.length > 0,
+          },
+          create: {
+            businessId: input.businessId,
+            ...input.bookingPolicy,
+            onboardingSteps,
+            onboardingCompleted:
+              onboardingSteps.services &&
+              onboardingSteps.hours &&
+              onboardingSteps.branding &&
+              onboardingSteps.richContent &&
+              appliedStaff.length > 0,
           },
         });
         return {

@@ -97,7 +97,7 @@ export default function StaffForm({ initial }: Props) {
           </label>
           <input
             name="phone"
-            required
+            required={!isEdit || Boolean(initial?.phone)}
             type="tel"
             dir="ltr"
             defaultValue={initial?.phone ?? ''}

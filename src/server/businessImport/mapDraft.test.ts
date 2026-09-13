@@ -24,6 +24,7 @@ function draft(): BusinessImportDraft {
       region: null,
       postalCode: null,
       country: 'IL',
+      mapUrl: 'https://maps.example/place',
     },
     hours: [
       {
@@ -56,6 +57,14 @@ function draft(): BusinessImportDraft {
         evidence: [],
       },
     ],
+    staff: [],
+    bookingPolicy: {
+      minLeadTimeMinutes: null,
+      cancellationWindowHours: null,
+      maxAdvanceBookingDays: null,
+      bookingRequiresApproval: null,
+      notes: [],
+    },
     media: {
       logoUrl: 'https://example.com/logo.png',
       coverImageUrl: 'https://example.com/cover.jpg',
@@ -64,6 +73,7 @@ function draft(): BusinessImportDraft {
         'https://example.com/service.jpg',
       ],
       videoUrls: ['https://example.com/video.mp4'],
+      instagramPostUrls: [],
     },
     socialLinks: [
       { platform: 'instagram', url: 'https://instagram.com/imported' },
@@ -81,6 +91,28 @@ test('maps imported fields without inventing public values', () => {
   assert.equal(mapped.phone, '0501234567');
   assert.equal(mapped.address, 'Herzl 10, Tel Aviv');
   assert.equal(mapped.instagramUrl, 'https://instagram.com/imported');
+  assert.equal(mapped.publicPageStyle, 'LANDING');
+  assert.equal(mapped.landingContent?.imported, true);
+  assert.equal(mapped.landingContent?.heroHeadline, 'Imported clinic');
+  assert.equal(mapped.landingContent?.heroSubtext, 'Public description');
+  assert.deepEqual(mapped.landingContent?.sections, {
+    highlights: false,
+    services: true,
+    gallery: true,
+    beforeAfter: false,
+    testimonials: false,
+    faq: false,
+    about: true,
+    location: true,
+    socialCta: true,
+  });
+  assert.equal(mapped.landingContent?.benefits, undefined);
+  assert.equal(mapped.landingContent?.testimonials, undefined);
+  assert.deepEqual(mapped.landingContent?.contact, {
+    email: 'hello@example.com',
+    websiteUrl: 'https://example.com/',
+    mapUrl: 'https://maps.example/place',
+  });
   assert.deepEqual(mapped.hours, [
     { weekday: 1, startMinute: 540, endMinute: 1050, breaks: [] },
     { weekday: 2, startMinute: 540, endMinute: 1050, breaks: [] },
@@ -138,4 +170,25 @@ test('missing imported and manual name is rejected before business creation', ()
     () => mapBusinessImportDraft(missing, { name: null, type: null }),
     /BUSINESS_IMPORT_NAME_REQUIRED/,
   );
+});
+
+test('partial imports keep unsupported marketing claims absent', () => {
+  const partial = draft();
+  partial.business.description = null;
+  partial.services = [];
+  partial.media = {
+    logoUrl: null,
+    coverImageUrl: null,
+    galleryImageUrls: [],
+    videoUrls: [],
+    instagramPostUrls: [],
+  };
+  partial.socialLinks = [];
+  partial.contacts.emails = [];
+  partial.location.mapUrl = null;
+  const mapped = mapBusinessImportDraft(partial, { name: null, type: null });
+  assert.equal(mapped.landingContent?.heroSubtext, undefined);
+  assert.equal(mapped.landingContent?.benefits, undefined);
+  assert.equal(mapped.landingContent?.testimonials, undefined);
+  assert.equal(mapped.landingContent?.about, undefined);
 });

@@ -24,11 +24,14 @@ export type BusinessImportEvidenceMethod =
   | 'link'
   | 'heuristic';
 
+export type BusinessImportConfidence = 'high' | 'medium' | 'low';
+
 export interface BusinessImportEvidence {
   field: string;
   value: string;
   sourceUrl: string;
   method: BusinessImportEvidenceMethod;
+  confidence?: BusinessImportConfidence;
   detail?: string;
 }
 
@@ -43,11 +46,17 @@ export interface BusinessImportWarning {
     | 'missing-address'
     | 'missing-hours'
     | 'missing-services'
+    | 'missing-staff'
+    | 'missing-policy'
     | 'missing-media'
+    | 'social-profile-fetch-failed'
+    | 'staff-service-links-assumed'
     | 'unsupported-currency'
     | 'default-duration'
     | 'media-storage-unavailable'
-    | 'media-fetch-failed';
+    | 'media-fetch-failed'
+    | 'media-rejected'
+    | 'result-truncated';
   message: string;
   sourceUrl?: string;
 }
@@ -69,6 +78,24 @@ export interface BusinessImportService {
   imageUrl: string | null;
   sourceUrl: string;
   evidence: BusinessImportEvidence[];
+}
+
+export interface BusinessImportStaff {
+  name: string;
+  title: string | null;
+  bio: string | null;
+  imageUrl: string | null;
+  serviceNames: string[];
+  sourceUrl: string;
+  evidence: BusinessImportEvidence[];
+}
+
+export interface BusinessImportBookingPolicy {
+  minLeadTimeMinutes: number | null;
+  cancellationWindowHours: number | null;
+  maxAdvanceBookingDays: number | null;
+  bookingRequiresApproval: boolean | null;
+  notes: string[];
 }
 
 export interface BusinessImportSocialLink {
@@ -100,14 +127,18 @@ export interface BusinessImportDraft {
     region: string | null;
     postalCode: string | null;
     country: string | null;
+    mapUrl: string | null;
   };
   hours: BusinessImportHours[];
   services: BusinessImportService[];
+  staff: BusinessImportStaff[];
+  bookingPolicy: BusinessImportBookingPolicy;
   media: {
     logoUrl: string | null;
     coverImageUrl: string | null;
     galleryImageUrls: string[];
     videoUrls: string[];
+    instagramPostUrls: string[];
   };
   socialLinks: BusinessImportSocialLink[];
   evidence: BusinessImportEvidence[];

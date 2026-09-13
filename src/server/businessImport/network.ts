@@ -31,6 +31,13 @@ export interface ImportedPublicImage {
   bytes: Buffer;
 }
 
+export interface ImportedPublicVideo {
+  requestedUrl: string;
+  finalUrl: string;
+  contentType: 'video/mp4' | 'video/webm' | 'video/quicktime' | 'video/x-m4v';
+  bytes: Buffer;
+}
+
 export type BusinessImportErrorCode =
   | 'invalid_url'
   | 'blocked_hostname'
@@ -67,6 +74,7 @@ export class BusinessImportError extends Error {
 const DEFAULT_TIMEOUT_MS = 8_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const DEFAULT_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const DEFAULT_MAX_VIDEO_BYTES = 30 * 1024 * 1024;
 const DEFAULT_MAX_REDIRECTS = 3;
 
 const blockedIpv4Addresses = new BlockList();
@@ -580,6 +588,121 @@ export async function fetchPublicImage(
         requestedUrl,
         finalUrl: current.href,
         contentType,
+        bytes: await readLimitedBytes(response, maxResponseBytes, current),
+      };
+    } catch (error) {
+      if (error instanceof BusinessImportError) throw error;
+      if (
+        controller.signal.aborted ||
+        (error instanceof Error && error.name === 'AbortError')
+      ) {
+        throw new BusinessImportError('timeout', 'The request timed out.', current.href);
+      }
+      throw new BusinessImportError('network_error', 'The request failed.', current.href);
+    } finally {
+      clearTimeout(timer);
+      await dispatcher.close();
+    }
+  }
+}
+
+/**
+ * Downloads one direct public video file through the same DNS-pinned SSRF
+ * boundary as HTML and images. Streaming manifests and platform pages are not
+ * treated as downloadable video assets.
+ */
+export async function fetchPublicVideo(
+  input: string | URL,
+  fetchImpl: BusinessImportFetch,
+  options: BusinessImportNetworkOptions = {},
+): Promise<ImportedPublicVideo> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_VIDEO_BYTES;
+  const maxRedirects = options.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
+  const resolver =
+    options.resolveHostname ??
+    ((hostname: string) => lookup(hostname, { all: true, verbatim: true }));
+
+  let current = parsePublicHttpUrl(input);
+  const requestedUrl = current.href;
+
+  for (let redirectCount = 0; ; redirectCount += 1) {
+    const addresses = await resolvePublicAddresses(current, resolver, timeoutMs);
+    const dispatcher = new Agent({
+      connect: {
+        lookup: createPinnedLookup(addresses),
+        autoSelectFamily: true,
+        autoSelectFamilyAttemptTimeout: 250,
+      },
+    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetchImpl(current, {
+        redirect: 'manual',
+        signal: controller.signal,
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+        dispatcher,
+        headers: {
+          Accept: 'video/mp4,video/webm,video/quicktime,video/x-m4v',
+          'User-Agent': 'TorChickBusinessImporter/1.0 (+public-media-copy)',
+        },
+      });
+
+      if (isRedirect(response.status)) {
+        await response.body?.cancel();
+        if (redirectCount >= maxRedirects) {
+          throw new BusinessImportError(
+            'redirect_limit',
+            `The response exceeded ${maxRedirects} redirects.`,
+            current.href,
+            response.status,
+          );
+        }
+        const location = response.headers.get('location');
+        if (!location) {
+          throw new BusinessImportError(
+            'redirect_location',
+            'The redirect response did not include a location.',
+            current.href,
+            response.status,
+          );
+        }
+        current = parsePublicHttpUrl(new URL(location, current));
+        continue;
+      }
+
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new BusinessImportError(
+          'http_status',
+          `The source returned HTTP ${response.status}.`,
+          current.href,
+          response.status,
+        );
+      }
+      const contentType =
+        response.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase() ??
+        '';
+      if (
+        !['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v'].includes(
+          contentType,
+        )
+      ) {
+        await response.body?.cancel();
+        throw new BusinessImportError(
+          'content_type',
+          `Unsupported content type: ${contentType || 'missing'}.`,
+          current.href,
+          response.status,
+        );
+      }
+      return {
+        requestedUrl,
+        finalUrl: current.href,
+        contentType: contentType as ImportedPublicVideo['contentType'],
         bytes: await readLimitedBytes(response, maxResponseBytes, current),
       };
     } catch (error) {

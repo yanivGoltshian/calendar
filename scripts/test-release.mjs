@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   mkdirSync,
   mkdtempSync,
@@ -10,7 +11,7 @@ import {
   cpSync,
   rmSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { createServer } from 'node:net';
 
 const root = process.cwd();
@@ -35,7 +36,9 @@ const pg = (name) => (pgBin ? join(pgBin, name) : name);
 const port = Number(process.env.TEST_DB_PORT ?? 55449);
 const appPort = Number(process.env.TEST_APP_PORT ?? 3149);
 const browserSelection = process.argv.find((arg) => arg.startsWith('--e2e='))?.slice(6);
-const integrationSelection = process.argv.find((arg) => arg.startsWith('--integration='))?.slice(14);
+const integrationSelection = process.argv
+  .find((arg) => arg.startsWith('--integration='))
+  ?.slice(14);
 const comparePublic = process.argv.includes('--compare-public');
 async function assertPortFree(value) {
   const server = createServer();
@@ -85,8 +88,16 @@ function run(command, args, overrides = {}) {
   if (result.status !== 0)
     throw new Error(`${command} ${args.join(' ')} exited ${result.status}`);
 }
+function filesUnder(directory) {
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory() ? filesUnder(path) : [path];
+  });
+}
 let databaseStarted = false;
 let app;
+let publicStaticAssetPath;
 const visualAssets = resolve('public/images/visual-regression');
 if (existsSync(visualAssets))
   throw new Error('Refusing to overwrite visual regression assets');
@@ -236,24 +247,61 @@ try {
   run(process.execPath, ['scripts/migrate-safe.mjs'], upgradeEnv);
   // Exercise the currently deployed 39-migration schema independently of the older audit upgrade.
   const releaseDatabaseName = 'torchick_test_provisioning_upgrade';
-  run(pg('createdb'), ['-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', releaseDatabaseName]);
-  const releaseDatabase = database.replace('/torchick_test?', `/${releaseDatabaseName}?`);
-  const releaseEnv = { DATABASE_URL: releaseDatabase, TEST_DATABASE_URL: releaseDatabase };
-  run(process.execPath, ['scripts/migrate-safe.mjs', '--provisioning-baseline-only'], releaseEnv);
-  const releaseSql = (sql) => run(pg('psql'), [
-    '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', releaseDatabaseName,
-    '-v', 'ON_ERROR_STOP=1', '-c', sql,
+  run(pg('createdb'), [
+    '-h',
+    '127.0.0.1',
+    '-p',
+    String(port),
+    '-U',
+    'postgres',
+    releaseDatabaseName,
   ]);
+  const releaseDatabase = database.replace('/torchick_test?', `/${releaseDatabaseName}?`);
+  const releaseEnv = {
+    DATABASE_URL: releaseDatabase,
+    TEST_DATABASE_URL: releaseDatabase,
+  };
+  run(
+    process.execPath,
+    ['scripts/migrate-safe.mjs', '--provisioning-baseline-only'],
+    releaseEnv,
+  );
+  const releaseSql = (sql) =>
+    run(pg('psql'), [
+      '-h',
+      '127.0.0.1',
+      '-p',
+      String(port),
+      '-U',
+      'postgres',
+      '-d',
+      releaseDatabaseName,
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-c',
+      sql,
+    ]);
   const releaseTables = [
-    'User', 'Business', 'BusinessSettings', 'StaffMember', 'Client',
-    'Service', 'ServiceStaff', 'WorkingHours', 'Appointment', 'AppointmentService',
+    'User',
+    'Business',
+    'BusinessSettings',
+    'StaffMember',
+    'Client',
+    'Service',
+    'ServiceStaff',
+    'WorkingHours',
+    'Appointment',
+    'AppointmentService',
   ];
-  const releaseSnapshot = `SELECT jsonb_build_object(${releaseTables.map(table => {
-    const row = table === 'Business'
-      ? `to_jsonb(t) - ARRAY['businessImportSourceUrl','businessImportDraft','businessImportedAt']`
-      : 'to_jsonb(t)';
-    return `'${table}', (SELECT jsonb_agg(${row} ORDER BY id) FROM "${table}" t)`;
-  }).join(',')}) AS snapshot`;
+  const releaseSnapshot = `SELECT jsonb_build_object(${releaseTables
+    .map((table) => {
+      const row =
+        table === 'Business'
+          ? `to_jsonb(t) - ARRAY['businessImportSourceUrl','businessImportDraft','businessImportedAt']`
+          : 'to_jsonb(t)';
+      return `'${table}', (SELECT jsonb_agg(${row} ORDER BY id) FROM "${table}" t)`;
+    })
+    .join(',')}) AS snapshot`;
   releaseSql(`
     DO $$ BEGIN
       IF (SELECT count(*) FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) <> 39
@@ -285,11 +333,16 @@ try {
     CREATE TABLE test_release_migrations AS SELECT * FROM "_prisma_migrations";
   `);
   run(process.execPath, ['scripts/migrate-safe.mjs'], releaseEnv);
+  releaseSql(
+    `CREATE TABLE test_release_post_upgrade_migrations AS SELECT * FROM "_prisma_migrations";`,
+  );
   run(process.execPath, ['scripts/migrate-safe.mjs'], releaseEnv);
   releaseSql(`
     DO $$ BEGIN
-      IF (SELECT count(*) FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) <> 41
+      IF (SELECT count(*) FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) <> 42
         OR EXISTS (SELECT to_jsonb(m) FROM test_release_migrations m EXCEPT SELECT to_jsonb(m) FROM "_prisma_migrations" m)
+        OR EXISTS (SELECT to_jsonb(m) FROM test_release_post_upgrade_migrations m EXCEPT SELECT to_jsonb(m) FROM "_prisma_migrations" m)
+        OR EXISTS (SELECT to_jsonb(m) FROM "_prisma_migrations" m EXCEPT SELECT to_jsonb(m) FROM test_release_post_upgrade_migrations m)
         OR (SELECT snapshot FROM test_release_snapshot) IS DISTINCT FROM (${releaseSnapshot})
         OR (SELECT count(*) FROM "WorkingHoursException") <> 0
         OR EXISTS (SELECT 1 FROM "Business" WHERE "businessImportSourceUrl" IS NOT NULL
@@ -297,11 +350,62 @@ try {
         OR to_regclass('"StaffMember_businessId_id_key"') IS NULL
       THEN RAISE EXCEPTION 'provisioning upgrade altered historical data or migration records'; END IF;
     END $$;
+    INSERT INTO "StaffMember" (id,"businessId","displayName","updatedAt")
+      VALUES ('release-imported-staff','release-business','Unclaimed imported staff',now());
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM "StaffMember"
+        WHERE id='release-imported-staff' AND "userId" IS NULL
+      )
+      THEN RAISE EXCEPTION 'nullable imported staff identity is unavailable'; END IF;
+    END $$;
+    DELETE FROM "StaffMember" WHERE id='release-imported-staff';
   `);
-  writeFileSync(join(runtime, 'provisioning-upgrade.json'), JSON.stringify({
-    from: 39, to: 41, preservedTables: releaseTables, historicalLedgerUnchanged: true,
-    recordsUnchanged: true, replayPassed: true,
-  }, null, 2));
+  const latestMigration = '20260913110000_allow_unclaimed_imported_staff';
+  const latestMigrationChecksum = createHash('sha256')
+    .update(readFileSync(join('prisma/migrations', latestMigration, 'migration.sql')))
+    .digest('hex');
+  releaseSql(
+    `UPDATE "_prisma_migrations" SET checksum=repeat('0',64)
+     WHERE migration_name='${latestMigration}' AND rolled_back_at IS NULL;`,
+  );
+  let checksumDrift;
+  try {
+    checksumDrift = spawnSync(process.execPath, ['scripts/migrate-safe.mjs'], {
+      env: { ...env, ...releaseEnv },
+      encoding: 'utf8',
+    });
+  } finally {
+    releaseSql(
+      `UPDATE "_prisma_migrations" SET checksum='${latestMigrationChecksum}'
+       WHERE migration_name='${latestMigration}' AND rolled_back_at IS NULL;`,
+    );
+  }
+  if (checksumDrift.error) throw checksumDrift.error;
+  if (
+    checksumDrift.status === 0 ||
+    !/Applied migration checksum mismatch/.test(
+      `${checksumDrift.stdout}\n${checksumDrift.stderr}`,
+    )
+  ) {
+    throw new Error('Expected applied migration checksum drift to fail closed');
+  }
+  run(process.execPath, ['scripts/migrate-safe.mjs'], releaseEnv);
+  writeFileSync(
+    join(runtime, 'provisioning-upgrade.json'),
+    JSON.stringify(
+      {
+        from: 39,
+        to: 42,
+        preservedTables: releaseTables,
+        historicalLedgerUnchanged: true,
+        recordsUnchanged: true,
+        replayPassed: true,
+      },
+      null,
+      2,
+    ),
+  );
   if (!process.argv.includes('--migrations-only')) {
     run(process.execPath, ['--import', 'tsx', 'prisma/seed.ts']);
     if (comparePublic)
@@ -321,6 +425,20 @@ try {
     const development = process.argv.includes('--development');
     if (!development && !process.argv.includes('--reuse-build'))
       run('npm', ['run', 'build']);
+    if (!development) {
+      const staticJavaScript = filesUnder(resolve('.next/static')).find((file) =>
+        file.endsWith('.js'),
+      );
+      if (!staticJavaScript)
+        throw new Error('Built application has no public JavaScript');
+      if (filesUnder(resolve('.next/static')).some((file) => file.endsWith('.map'))) {
+        throw new Error('Public source maps were emitted');
+      }
+      publicStaticAssetPath = `/_next/static/${relative(
+        resolve('.next/static'),
+        staticJavaScript,
+      ).replaceAll('\\', '/')}`;
+    }
     const log = openSync(join(runtime, 'app.log'), 'w');
     if (!development) {
       cpSync('public', '.next/standalone/public', { recursive: true });
@@ -384,8 +502,22 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     if (!ready) throw new Error('Isolated app readiness timed out');
+    if (publicStaticAssetPath) {
+      const asset = await fetch(`${env.E2E_BASE_URL}${publicStaticAssetPath}`);
+      if (!asset.ok) throw new Error('Built public asset is unavailable');
+      const sourceMap = await fetch(`${env.E2E_BASE_URL}${publicStaticAssetPath}.map`);
+      if (sourceMap.status !== 404) {
+        throw new Error('Public source map endpoint must return 404');
+      }
+    }
     if (integrationSelection) {
-      run(process.execPath, ['--import', 'tsx', '--test', '--test-concurrency=1', integrationSelection]);
+      run(process.execPath, [
+        '--import',
+        'tsx',
+        '--test',
+        '--test-concurrency=1',
+        integrationSelection,
+      ]);
     }
     if (comparePublic) {
       run(process.execPath, ['--import', 'tsx', 'scripts/compare-public-ui.ts']);

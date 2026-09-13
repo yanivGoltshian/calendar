@@ -58,11 +58,13 @@ export default async function BookPage({ params }: Props) {
     hideDuration: s.hideDuration,
   }));
 
-  const staff = business.staff.map((m) => ({
-    id: m.id,
-    displayName: m.displayName,
-    title: m.title,
-  }));
+  const staff = business.staff
+    .filter((m) => m.serviceLinks.length > 0)
+    .map((m) => ({
+      id: m.id,
+      displayName: m.displayName,
+      title: m.title,
+    }));
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-6">

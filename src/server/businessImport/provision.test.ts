@@ -95,7 +95,28 @@ test('completed same-source retry returns the stored review before import or cre
     }) as never,
   });
   assert.equal(result.business.id, 'existing-business');
-  assert.equal(result.importReview, storedReview);
+  assert.deepEqual(result.importReview, {
+    ...storedReview,
+    draft: {
+      location: { mapUrl: null },
+      staff: [],
+      bookingPolicy: {
+        minLeadTimeMinutes: null,
+        cancellationWindowHours: null,
+        maxAdvanceBookingDays: null,
+        bookingRequiresApproval: null,
+        notes: [],
+      },
+      media: { instagramPostUrls: [] },
+    },
+    missingFields: [],
+    applied: {
+      ...storedReview.applied,
+      staffCount: 0,
+      bookingPolicyFieldCount: 0,
+      mediaAssets: [],
+    },
+  });
   assert.equal(importerCalls, 0);
   assert.equal(createCalls, 0);
 });
@@ -131,7 +152,28 @@ test('pending same-source retry waits for the stored review before import or cre
     }) as never,
   });
   assert.equal(result.business.id, 'existing-business');
-  assert.equal(result.importReview, storedReview);
+  assert.deepEqual(result.importReview, {
+    ...storedReview,
+    draft: {
+      location: { mapUrl: null },
+      staff: [],
+      bookingPolicy: {
+        minLeadTimeMinutes: null,
+        cancellationWindowHours: null,
+        maxAdvanceBookingDays: null,
+        bookingRequiresApproval: null,
+        notes: [],
+      },
+      media: { instagramPostUrls: [] },
+    },
+    missingFields: [],
+    applied: {
+      ...storedReview.applied,
+      staffCount: 0,
+      bookingPolicyFieldCount: 0,
+      mediaAssets: [],
+    },
+  });
   assert.equal(stateReads, 1);
   assert.equal(importerCalls, 0);
   assert.equal(createCalls, 0);
@@ -162,4 +204,110 @@ test('media copy failures remain explicit warnings instead of external URLs', as
     result.warnings.map(({ code }) => code),
     ['media-fetch-failed'],
   );
+});
+
+test('media import deduplicates resized variants and preserves owned attribution', async () => {
+  let fetches = 0;
+  let stores = 0;
+  const result = await importBusinessMedia(
+    'business-1',
+    'owner@example.com',
+    {
+      logoUrl: 'https://cdn.example.com/multi/logo.png',
+      coverImageUrl: 'https://cdn.example.com/multi/hero.jpg',
+      galleryImageUrls: [
+        'https://cdn.example.com/multi/opt/logo-1920w.png',
+        'https://cdn.example.com/multi/hero.jpg',
+      ],
+    },
+    {
+      storageConfigured: () => true,
+      fetchImpl: async (input) => {
+        fetches += 1;
+        return new Response(Buffer.from(String(input)), {
+          headers: { 'content-type': 'image/png' },
+        });
+      },
+      networkOptions: {
+        resolveHostname: async () => [{ address: '8.8.8.8', family: 4 }],
+      },
+      inspectImage: async () => ({ width: 800, height: 600, format: 'png' }),
+      optimize: async (input) => input,
+      store: async (_businessId, _ownerEmail, input) => {
+        stores += 1;
+        return `https://owned.example/${input.toString().includes('logo') ? 'logo' : 'hero'}.webp`;
+      },
+    },
+  );
+  assert.equal(fetches, 2);
+  assert.equal(stores, 2);
+  assert.equal(result.logoUrl, 'https://owned.example/logo.webp');
+  assert.equal(result.coverImageUrl, 'https://owned.example/hero.webp');
+  assert.deepEqual(result.galleryImageUrls, []);
+  assert.deepEqual(
+    result.assets?.map(({ sourceUrl }) => sourceUrl),
+    ['https://cdn.example.com/multi/logo.png', 'https://cdn.example.com/multi/hero.jpg'],
+  );
+});
+
+test('one copied image can satisfy multiple imported media roles', async () => {
+  let fetches = 0;
+  const result = await importBusinessMedia(
+    'business-1',
+    'owner@example.com',
+    {
+      logoUrl: 'https://cdn.example.com/multi/logo.png',
+      coverImageUrl: 'https://cdn.example.com/multi/opt/logo-1920w.png',
+      galleryImageUrls: [],
+    },
+    {
+      storageConfigured: () => true,
+      fetchImpl: async () => {
+        fetches += 1;
+        return new Response(Buffer.from('image'), {
+          headers: { 'content-type': 'image/png' },
+        });
+      },
+      networkOptions: {
+        resolveHostname: async () => [{ address: '8.8.8.8', family: 4 }],
+      },
+      inspectImage: async () => ({ width: 800, height: 600, format: 'png' }),
+      optimize: async (input) => input,
+      store: async () => 'https://owned.example/logo.webp',
+    },
+  );
+  assert.equal(fetches, 1);
+  assert.equal(result.logoUrl, 'https://owned.example/logo.webp');
+  assert.equal(result.coverImageUrl, 'https://owned.example/logo.webp');
+  assert.equal(result.assets?.length, 1);
+});
+
+test('media import copies a direct public video after signature validation', async () => {
+  const bytes = Buffer.from('0000ftypisom');
+  const result = await importBusinessMedia(
+    'business-1',
+    'owner@example.com',
+    {
+      logoUrl: null,
+      coverImageUrl: null,
+      galleryImageUrls: [],
+      videoUrls: ['https://media.example/hero.mp4'],
+    },
+    {
+      storageConfigured: () => true,
+      fetchImpl: async () =>
+        new Response(bytes, { headers: { 'content-type': 'video/mp4' } }),
+      networkOptions: {
+        resolveHostname: async () => [{ address: '8.8.8.8', family: 4 }],
+      },
+      store: async (_businessId, _ownerEmail, input, type, ext) => {
+        assert.deepEqual(input, bytes);
+        assert.equal(type, 'video/mp4');
+        assert.equal(ext, 'mp4');
+        return 'https://owned.example/hero.mp4';
+      },
+    },
+  );
+  assert.equal(result.heroVideoUrl, 'https://owned.example/hero.mp4');
+  assert.equal(result.assets?.[0]?.sourceUrl, 'https://media.example/hero.mp4');
 });

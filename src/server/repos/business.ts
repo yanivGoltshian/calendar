@@ -35,6 +35,12 @@ export async function getBusinessBySlug(slug: string) {
       staff: {
         where: { active: true },
         orderBy: { createdAt: 'asc' },
+        include: {
+          serviceLinks: {
+            where: { service: { hidden: false } },
+            select: { serviceId: true },
+          },
+        },
       },
       workingHours: {
         where: { scope: 'BUSINESS' },
@@ -110,7 +116,7 @@ export async function getExampleBusinesses() {
     }),
   ]);
   const fallback =
-    standard ?? premium
+    (standard ?? premium)
       ? null
       : await prisma.business.findFirst({
           orderBy: { createdAt: 'asc' },
@@ -123,7 +129,9 @@ export async function getExampleBusinesses() {
 }
 
 /** שליפת כל ה-slugs של העסקים — לשימוש במפת האתר ובבנייה סטטית. */
-export async function getAllBusinessSlugs(): Promise<{ slug: string; updatedAt: Date }[]> {
+export async function getAllBusinessSlugs(): Promise<
+  { slug: string; updatedAt: Date }[]
+> {
   return prisma.business.findMany({
     // עסק שממתין למחיקה מוסתר גם ממפת האתר (sitemap) כמו מהעמוד הציבורי עצמו.
     where: { accountStatus: { not: 'PENDING_DELETION' } },
@@ -178,8 +186,10 @@ export async function getActiveBusiness(options: { allowInactive?: boolean } = {
         orderBy: { createdAt: 'desc' },
       });
   if (!business) return null;
-  if (!options.allowInactive &&
-      (business.accountStatus !== 'ACTIVE' || !getBusinessAccess(business).active)) {
+  if (
+    !options.allowInactive &&
+    (business.accountStatus !== 'ACTIVE' || !getBusinessAccess(business).active)
+  ) {
     return null;
   }
   return business;
@@ -210,18 +220,22 @@ export async function getBusinessMetricsMap(
 ): Promise<Map<string, BusinessMetrics>> {
   if (businessIds.length === 0) return new Map();
   const where = { businessId: { in: businessIds } };
-  const [clientRows, appointmentCountRows, appointmentValueRows, saleRows] = await Promise.all([
-    prisma.client.groupBy({ by: ['businessId'], where, _count: { _all: true } }),
-    prisma.appointment.groupBy({ by: ['businessId'], where, _count: { _all: true } }),
-    prisma.appointment.groupBy({
-      by: ['businessId'],
-      where: { ...where, status: { not: 'CANCELLED' } },
-      _sum: { totalPriceAgorot: true },
-    }),
-    prisma.sale.groupBy({ by: ['businessId'], where, _sum: { paidAgorot: true } }),
-  ]);
+  const [clientRows, appointmentCountRows, appointmentValueRows, saleRows] =
+    await Promise.all([
+      prisma.client.groupBy({ by: ['businessId'], where, _count: { _all: true } }),
+      prisma.appointment.groupBy({ by: ['businessId'], where, _count: { _all: true } }),
+      prisma.appointment.groupBy({
+        by: ['businessId'],
+        where: { ...where, status: { not: 'CANCELLED' } },
+        _sum: { totalPriceAgorot: true },
+      }),
+      prisma.sale.groupBy({ by: ['businessId'], where, _sum: { paidAgorot: true } }),
+    ]);
   return shapeBusinessMetrics({
-    clientCounts: clientRows.map((row) => ({ businessId: row.businessId, count: row._count._all })),
+    clientCounts: clientRows.map((row) => ({
+      businessId: row.businessId,
+      count: row._count._all,
+    })),
     appointmentCounts: appointmentCountRows.map((row) => ({
       businessId: row.businessId,
       count: row._count._all,
@@ -253,12 +267,17 @@ function slugifyName(name: string): string {
 }
 
 /** מייצר slug ייחודי; מוסיף סיפוקס מספרי בהתנגשות (לא דורס עסקים קיימים). */
-async function generateUniqueSlug(name: string, db: Prisma.TransactionClient): Promise<string> {
+async function generateUniqueSlug(
+  name: string,
+  db: Prisma.TransactionClient,
+): Promise<string> {
   const base = slugifyName(name);
   let candidate = base;
   let n = 1;
   // בדיקת ייחודיות מול העמודה הייחודית slug.
-  while (await db.business.findUnique({ where: { slug: candidate }, select: { id: true } })) {
+  while (
+    await db.business.findUnique({ where: { slug: candidate }, select: { id: true } })
+  ) {
     n += 1;
     candidate = `${base}-${n}`;
   }
@@ -320,110 +339,174 @@ export async function createBusiness(
 ): Promise<CreatedBusiness | NewlyCreatedBusiness> {
   const ownerEmail = normalizeEmail(input.ownerEmail);
   if (!ownerEmail) throw new Error('An authenticated owner email is required.');
-  const hashes = computeTrialHashes(ownerEmail, input.phone ?? null, input.ownerGoogleSub);
-  const ownerIdentities = [...new Set([ownerEmail, input.provisioning?.phoneIdentity].filter(
-    (identity): identity is string => Boolean(identity),
-  ))];
+  const hashes = computeTrialHashes(
+    ownerEmail,
+    input.phone ?? null,
+    input.ownerGoogleSub,
+  );
+  const ownerIdentities = [
+    ...new Set(
+      [ownerEmail, input.provisioning?.phoneIdentity].filter(
+        (identity): identity is string => Boolean(identity),
+      ),
+    ),
+  ];
   const fingerprintOr = [
     { emailHash: hashes.emailHash },
     ...(hashes.phoneHash ? [{ phoneHash: hashes.phoneHash }] : []),
     ...(hashes.googleSubHash ? [{ googleSubHash: hashes.googleSubHash }] : []),
   ];
   const lockKeys = [
-    ...ownerIdentities.map((identity) => `business-owner:${computeTrialHashes(identity, null).emailHash}`),
+    ...ownerIdentities.map(
+      (identity) => `business-owner:${computeTrialHashes(identity, null).emailHash}`,
+    ),
     `business-slug:${slugifyName(input.name)}`,
-    ...Object.values(hashes).filter((hash): hash is string => Boolean(hash)).map((hash) => `trial:${hash}`),
+    ...Object.values(hashes)
+      .filter((hash): hash is string => Boolean(hash))
+      .map((hash) => `trial:${hash}`),
   ].sort();
 
   for (let attempt = 0; ; attempt++) {
     try {
-      return await prisma.$transaction(async (tx) => {
-        for (const key of lockKeys) {
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
-        }
-        const existingOwners = await tx.business.findMany({
-          where: { OR: ownerIdentities.map(businessOwnerWhere) },
-          include: { settings: true, staff: true, services: true },
-        });
-        if (input.provisioning && existingOwners.length > 0) {
-          if (input.provisioning.mustCreate) {
+      return await prisma.$transaction(
+        async (tx) => {
+          for (const key of lockKeys) {
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+          }
+          const existingOwners = await tx.business.findMany({
+            where: { OR: ownerIdentities.map(businessOwnerWhere) },
+            include: { settings: true, staff: true, services: true },
+          });
+          if (input.provisioning && existingOwners.length > 0) {
+            if (input.provisioning.mustCreate) {
+              throw new BusinessIdentityConflictError();
+            }
+            const existing = existingOwners[0];
+            if (
+              existingOwners.length === 1 &&
+              existing.provisionedBy &&
+              normalizeEmail(existing.ownerEmail ?? '') === ownerEmail &&
+              existing.ownerPhoneIdentity === input.provisioning.phoneIdentity
+            )
+              return existing;
             throw new BusinessIdentityConflictError();
           }
-          const existing = existingOwners[0];
-          if (existingOwners.length === 1 && existing.provisionedBy &&
-              normalizeEmail(existing.ownerEmail ?? '') === ownerEmail &&
-              existing.ownerPhoneIdentity === input.provisioning.phoneIdentity) return existing;
-          throw new BusinessIdentityConflictError();
-        }
-        // A stale self-registration form must not duplicate a pre-created account.
-        const provisioned = existingOwners.find((business) => business.provisionedBy);
-        if (provisioned) return provisioned;
-        const restorable = await findRestorableBusinessForOwner(ownerEmail, input.phone ?? null, tx);
-        if (restorable) return restoreBusiness(restorable.id, tx);
-        const count = await tx.business.count({
-          where: { ownerEmail: { equals: ownerEmail, mode: 'insensitive' } },
-        });
-        if (count >= MAX_BUSINESSES_PER_OWNER) throw new BusinessCreationLimitError();
+          // A stale self-registration form must not duplicate a pre-created account.
+          const provisioned = existingOwners.find((business) => business.provisionedBy);
+          if (provisioned) return provisioned;
+          const restorable = await findRestorableBusinessForOwner(
+            ownerEmail,
+            input.phone ?? null,
+            tx,
+          );
+          if (restorable) return restoreBusiness(restorable.id, tx);
+          const count = await tx.business.count({
+            where: { ownerEmail: { equals: ownerEmail, mode: 'insensitive' } },
+          });
+          if (count >= MAX_BUSINESSES_PER_OWNER) throw new BusinessCreationLimitError();
 
-        const now = new Date();
-        const existingTrial = await tx.trialLedger.findFirst({
-          where: { OR: fingerprintOr }, orderBy: { originalTrialEndsAt: 'asc' },
-        });
-        const decision = resolveTrialDecision(existingTrial?.originalTrialEndsAt ?? null, now);
-        if (existingTrial) {
-          await tx.trialLedger.update({
-            where: { id: existingTrial.id }, data: { registrationCount: { increment: 1 } },
+          const now = new Date();
+          const existingTrial = await tx.trialLedger.findFirst({
+            where: { OR: fingerprintOr },
+            orderBy: { originalTrialEndsAt: 'asc' },
           });
-        } else {
-          await tx.trialLedger.create({
-            data: { ...hashes, originalTrialEndsAt: decision.trialEndsAt, firstTrialStartedAt: now },
+          const decision = resolveTrialDecision(
+            existingTrial?.originalTrialEndsAt ?? null,
+            now,
+          );
+          if (existingTrial) {
+            await tx.trialLedger.update({
+              where: { id: existingTrial.id },
+              data: { registrationCount: { increment: 1 } },
+            });
+          } else {
+            await tx.trialLedger.create({
+              data: {
+                ...hashes,
+                originalTrialEndsAt: decision.trialEndsAt,
+                firstTrialStartedAt: now,
+              },
+            });
+          }
+          const owner = await tx.user.upsert({
+            where: { email: ownerEmail },
+            update: {},
+            create: { email: ownerEmail, role: 'OWNER' },
           });
-        }
-        const owner = await tx.user.upsert({
-          where: { email: ownerEmail }, update: {}, create: { email: ownerEmail, role: 'OWNER' },
-        });
-        const business = await tx.business.create({
-          data: {
-            name: input.name, type: input.type ?? undefined, phone: input.phone ?? null,
-            address: input.address ?? null, slug: await generateUniqueSlug(input.name, tx),
-            timezone: process.env.BUSINESS_TIMEZONE || 'Asia/Jerusalem', ownerEmail,
-            ownerPhoneIdentity: input.provisioning?.phoneIdentity,
-            provisionedBy: input.provisioning?.adminEmail,
-            plan: 'basic', subscriptionStatus: decision.subscriptionStatus,
-            trialEndsAt: decision.trialEndsAt,
-            priorCalendar: input.priorCalendar ?? null, referralSource: input.referralSource ?? null,
-            settings: { create: {} },
-            workingHours: { create: defaultBusinessHours().map((row) => ({ ...row, scope: 'BUSINESS' })) },
-            staff: { create: {
-              userId: owner.id, permissionLevel: 'MANAGER', active: true,
-              displayName: resolveOwnerDisplayName({
-                ownerName: input.ownerName, ownerUserName: owner.name,
-                businessName: input.name, ownerEmail,
-              }),
-            } },
-            services: { create: getServiceTemplate(input.type).map((service, sortOrder) => ({
-              name: service.name, durationMin: service.durationMin,
-              priceAgorot: service.priceAgorot, sortOrder,
-            })) },
-          },
-          include: { settings: true, staff: true, services: true },
-        });
-        await tx.serviceStaff.createMany({
-          data: business.services.map((service) => ({ serviceId: service.id, staffId: business.staff[0].id })),
-        });
-        if (input.provisioning?.mustCreate) {
-          return {
-            ...business,
-            importChildBaseline: await readBusinessImportChildBaseline(tx, business.id),
-          };
-        }
-        return business;
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 20000 });
+          const business = await tx.business.create({
+            data: {
+              name: input.name,
+              type: input.type ?? undefined,
+              phone: input.phone ?? null,
+              address: input.address ?? null,
+              slug: await generateUniqueSlug(input.name, tx),
+              timezone: process.env.BUSINESS_TIMEZONE || 'Asia/Jerusalem',
+              ownerEmail,
+              ownerPhoneIdentity: input.provisioning?.phoneIdentity,
+              provisionedBy: input.provisioning?.adminEmail,
+              plan: 'basic',
+              subscriptionStatus: decision.subscriptionStatus,
+              trialEndsAt: decision.trialEndsAt,
+              priorCalendar: input.priorCalendar ?? null,
+              referralSource: input.referralSource ?? null,
+              settings: { create: {} },
+              workingHours: {
+                create: defaultBusinessHours().map((row) => ({
+                  ...row,
+                  scope: 'BUSINESS',
+                })),
+              },
+              staff: {
+                create: {
+                  userId: owner.id,
+                  permissionLevel: 'MANAGER',
+                  active: true,
+                  displayName: resolveOwnerDisplayName({
+                    ownerName: input.ownerName,
+                    ownerUserName: owner.name,
+                    businessName: input.name,
+                    ownerEmail,
+                  }),
+                },
+              },
+              services: {
+                create: getServiceTemplate(input.type).map((service, sortOrder) => ({
+                  name: service.name,
+                  durationMin: service.durationMin,
+                  priceAgorot: service.priceAgorot,
+                  sortOrder,
+                })),
+              },
+            },
+            include: { settings: true, staff: true, services: true },
+          });
+          await tx.serviceStaff.createMany({
+            data: business.services.map((service) => ({
+              serviceId: service.id,
+              staffId: business.staff[0].id,
+            })),
+          });
+          if (input.provisioning?.mustCreate) {
+            return {
+              ...business,
+              importChildBaseline: await readBusinessImportChildBaseline(tx, business.id),
+            };
+          }
+          return business;
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+          maxWait: 10000,
+          timeout: 20000,
+        },
+      );
     } catch (error) {
       if (
-        attempt < 2 && error instanceof Prisma.PrismaClientKnownRequestError &&
+        attempt < 2 &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
         (error.code === 'P2002' || error.code === 'P2034')
-      ) continue;
+      )
+        continue;
       throw error;
     }
   }
@@ -455,7 +538,10 @@ export async function requestBusinessDeletion(businessId: string) {
  * שחזור מנוי: מחזיר עסק שהיה PENDING_DELETION למצב ACTIVE ומנקה את מועדי המחיקה.
  * כל נתוני העסק נשמרים במלואם עד למחיקה הסופית, ולכן שחזור מחזיר הכול לקדמותו.
  */
-export async function restoreBusiness(businessId: string, db: Prisma.TransactionClient = prisma) {
+export async function restoreBusiness(
+  businessId: string,
+  db: Prisma.TransactionClient = prisma,
+) {
   return db.business.update({
     where: { id: businessId },
     data: {
@@ -474,7 +560,9 @@ export async function restoreBusiness(businessId: string, db: Prisma.Transaction
  * מספיקה לשחזור, שכן המייל כבר עבר אימות בהתחברות. מחזיר null כשאין התאמה.
  */
 export async function findRestorableBusinessForOwner(
-  ownerEmail: string, phone: string | null, db: Prisma.TransactionClient = prisma,
+  ownerEmail: string,
+  phone: string | null,
+  db: Prisma.TransactionClient = prisma,
 ) {
   const pending = await db.business.findFirst({
     where: {
@@ -526,7 +614,9 @@ export async function purgeExpiredBusinesses(
     purgedBusinessIds.push(b.id);
     if (b.ownerEmail) {
       try {
-        const otherOwned = await prisma.business.count({ where: { ownerEmail: b.ownerEmail } });
+        const otherOwned = await prisma.business.count({
+          where: { ownerEmail: b.ownerEmail },
+        });
         if (otherOwned === 0) {
           await prisma.user.deleteMany({ where: { email: b.ownerEmail } });
         }

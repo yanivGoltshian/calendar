@@ -2,7 +2,15 @@ import { formatMinutes } from '@/lib/time';
 import { mapEmbedUrl, googleMapsSearchUrl, wazeUrl } from '@/lib/mapLinks';
 import { formatIsraeliPhoneDisplay } from '@/lib/phoneDisplay';
 import { socialHref } from '@/lib/socialLinks';
-import { MapPinIcon, PhoneIcon, NavigationIcon, ClockIcon, WhatsappIcon } from './icons';
+import {
+  MapPinIcon,
+  PhoneIcon,
+  NavigationIcon,
+  ClockIcon,
+  WhatsappIcon,
+  MailIcon,
+  GlobeIcon,
+} from './icons';
 import SectionHeading from './SectionHeading';
 
 type WorkingHour = { weekday: number; startMinute: number; endMinute: number };
@@ -14,6 +22,9 @@ type Props = {
   closedLabel: string;
   address?: string | null;
   phone?: string | null;
+  email?: string | null;
+  websiteUrl?: string | null;
+  sourceMapUrl?: string | null;
   directionsCta: string;
   callCta: string;
   eyebrow?: string;
@@ -38,6 +49,9 @@ export default function LandingLocation({
   closedLabel,
   address,
   phone,
+  email,
+  websiteUrl,
+  sourceMapUrl,
   directionsCta,
   callCta,
   eyebrow,
@@ -50,14 +64,16 @@ export default function LandingLocation({
   mapTitle,
 }: Props) {
   const hasHours = workingHours.length > 0;
-  if (!hasHours && !address && !phone) return null;
+  if (!hasHours && !address && !phone && !email && !websiteUrl && !sourceMapUrl) {
+    return null;
+  }
 
   const byDay = new Map<number, WorkingHour>();
   for (const wh of workingHours) byDay.set(wh.weekday, wh);
 
   const premium = Boolean(mapsCta && wazeCta);
   const embedUrl = mapEmbedUrl(address);
-  const gmapsUrl = googleMapsSearchUrl(address);
+  const gmapsUrl = sourceMapUrl ?? googleMapsSearchUrl(address);
   const wazeHref = wazeUrl(address);
   const phoneDisplay = formatIsraeliPhoneDisplay(phone);
   const whatsappTrimmed = whatsapp?.trim();
@@ -86,7 +102,9 @@ export default function LandingLocation({
             {eyebrow ? (
               <p className="text-sm font-extrabold tracking-wide text-[color:var(--c-gold,#c6a86a)]">{eyebrow}</p>
             ) : null}
-            <h2 className="mt-1 font-display text-3xl font-black leading-tight sm:text-4xl">{title}</h2>
+            <h2 className="mt-1 font-display text-3xl font-black leading-tight sm:text-4xl">
+              {title}
+            </h2>
             <span
               aria-hidden
               className="mt-3 block h-[3px] w-20 rounded-full"
@@ -109,6 +127,30 @@ export default function LandingLocation({
                   >
                     <PhoneIcon className="h-4 w-4 shrink-0 text-[color:var(--c-gold,#c6a86a)]" />
                     <span dir="ltr" className="tabular-nums">{phoneDisplay}</span>
+                  </a>
+                </li>
+              ) : null}
+              {email ? (
+                <li>
+                  <a
+                    href={`mailto:${email}`}
+                    className="flex items-center gap-2 break-all transition hover:text-white"
+                  >
+                    <MailIcon className="h-4 w-4 shrink-0 text-[color:var(--c-gold,#c6a86a)]" />
+                    <span dir="ltr">{email}</span>
+                  </a>
+                </li>
+              ) : null}
+              {websiteUrl ? (
+                <li>
+                  <a
+                    href={websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 break-all transition hover:text-white"
+                  >
+                    <GlobeIcon className="h-4 w-4 shrink-0 text-[color:var(--c-gold,#c6a86a)]" />
+                    <span dir="ltr">{new URL(websiteUrl).hostname}</span>
                   </a>
                 </li>
               ) : null}
@@ -230,20 +272,22 @@ export default function LandingLocation({
           </ul>
         ) : null}
 
-        {address || phone ? (
+        {address || phone || email || websiteUrl || mapHref ? (
           <div className="flex flex-col gap-4">
-            {address ? (
+            {address || mapHref ? (
               <div className="rounded-3xl border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-5 shadow-soft">
-                <p className="flex items-start gap-2 text-sm text-[color:var(--c-muted,#334155)]">
-                  <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--biz-text,#334155)]" />
-                  {address}
-                </p>
+                {address ? (
+                  <p className="flex items-start gap-2 text-sm text-[color:var(--c-muted,#334155)]">
+                    <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--biz-text,#334155)]" />
+                    {address}
+                  </p>
+                ) : null}
                 {mapHref ? (
                   <a
                     href={mapHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--biz-soft)] px-4 py-2.5 text-sm font-semibold text-[color:var(--biz-text,#334155)] transition hover:bg-[var(--biz)] hover:text-[color:var(--biz-ink)]"
+                    className={`${address ? 'mt-4 ' : ''}inline-flex items-center gap-1.5 rounded-xl bg-[var(--biz-soft)] px-4 py-2.5 text-sm font-semibold text-[color:var(--biz-text,#334155)] transition hover:bg-[var(--biz)] hover:text-[color:var(--biz-ink)]`}
                   >
                     <NavigationIcon className="h-4 w-4" />
                     {directionsCta}
@@ -259,6 +303,30 @@ export default function LandingLocation({
                 <PhoneIcon className="h-4 w-4 shrink-0 text-[color:var(--biz-text,#334155)]" />
                 <span dir="ltr" className="tabular-nums">{phone}</span>
                 <span className="ms-auto text-[color:var(--biz-text,#334155)]">{callCta}</span>
+              </a>
+            ) : null}
+            {email ? (
+              <a
+                href={`mailto:${email}`}
+                className="flex items-center gap-2 rounded-3xl border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-5 text-sm font-semibold text-[color:var(--c-muted,#334155)] shadow-soft transition hover:border-[color:var(--biz)]"
+              >
+                <MailIcon className="h-4 w-4 shrink-0 text-[color:var(--biz-text,#334155)]" />
+                <span dir="ltr" className="break-all">
+                  {email}
+                </span>
+              </a>
+            ) : null}
+            {websiteUrl ? (
+              <a
+                href={websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-3xl border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-5 text-sm font-semibold text-[color:var(--c-muted,#334155)] shadow-soft transition hover:border-[color:var(--biz)]"
+              >
+                <GlobeIcon className="h-4 w-4 shrink-0 text-[color:var(--biz-text,#334155)]" />
+                <span dir="ltr" className="break-all">
+                  {new URL(websiteUrl).hostname}
+                </span>
               </a>
             ) : null}
           </div>

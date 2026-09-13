@@ -32,6 +32,7 @@ type Props = {
   type: string | null;
   services: LandingService[];
   staff: { id: string; displayName: string }[];
+  businessName: string;
   slug: string;
   workingHours: WorkingHour[];
   address?: string | null;
@@ -51,6 +52,7 @@ export default function LandingSections({
   type,
   services,
   staff,
+  businessName,
   slug,
   workingHours,
   address,
@@ -75,7 +77,14 @@ export default function LandingSections({
       {/* ווידג'ט קביעת תור אינליין — חלון ראווה יוקרתי במרכז העמוד, מוצג רק בפרימיום.
           הבחירה מודגמת כאן והאישור הסופי מתבצע באשף קביעת התור המאובטח. */}
       {isClinicPremium && services.length > 0 ? (
-        <LandingBooking timeZone={timeZone} slug={slug} services={services} staff={staff} bookHref={bookHref} labels={clinic.booking} />
+        <LandingBooking
+          timeZone={timeZone}
+          slug={slug}
+          services={services}
+          staff={staff}
+          bookHref={bookHref}
+          labels={clinic.booking}
+        />
       ) : null}
       {/* מקטע "שלום .." ללקוח מזוהה — בין ווידג'ט קביעת התור למבצעים (סדר המוקאפ). */}
       {isClinicPremium ? returning : null}
@@ -95,7 +104,12 @@ export default function LandingSections({
         switch (section) {
           case 'highlights':
             return (
-              <LandingHighlights key={section} eyebrow={eyebrows.highlights} title={l.highlightsTitle} benefits={benefits} />
+              <LandingHighlights
+                key={section}
+                eyebrow={eyebrows.highlights}
+                title={l.highlightsTitle}
+                benefits={benefits}
+              />
             );
           case 'services':
             if (services.length === 0) return null;
@@ -145,9 +159,23 @@ export default function LandingSections({
               />
             );
           case 'faq':
-            return <LandingFaq key={section} eyebrow={eyebrows.faq} title={l.faqTitle} items={content?.faq ?? []} />;
+            return (
+              <LandingFaq
+                key={section}
+                eyebrow={eyebrows.faq}
+                title={l.faqTitle}
+                items={content?.faq ?? []}
+              />
+            );
           case 'about':
-            return <LandingAbout key={section} eyebrow={eyebrows.about} title={l.aboutTitle} text={content?.about ?? ''} />;
+            return (
+              <LandingAbout
+                key={section}
+                eyebrow={eyebrows.about}
+                title={l.aboutTitle}
+                text={content?.about ?? ''}
+              />
+            );
           case 'location':
             return (
               <LandingLocation
@@ -159,6 +187,9 @@ export default function LandingSections({
                 closedLabel={t.publicPage.hoursClosed}
                 address={address}
                 phone={phone}
+                email={content?.contact?.email}
+                websiteUrl={content?.contact?.websiteUrl}
+                sourceMapUrl={content?.contact?.mapUrl}
                 directionsCta={l.directionsCta}
                 callCta={l.callCta}
                 {...(isClinicPremium
@@ -169,7 +200,7 @@ export default function LandingSections({
                       whatsapp: content?.socialLinks?.whatsapp ?? null,
                       contactCta: clinic.location.contactCta,
                       navTitle: clinic.location.navTitle,
-                      mapTitle: clinic.location.mapTitle,
+                      mapTitle: `מפת הגעה אל ${businessName}`,
                     }
                   : {})}
               />
@@ -184,7 +215,12 @@ export default function LandingSections({
                 bookHref={bookHref}
                 socialTitle={l.socialTitle}
                 socialLinks={content?.socialLinks ?? {}}
-                labels={{ whatsapp: l.whatsapp, instagram: l.instagram, facebook: l.facebook, tiktok: l.tiktok }}
+                labels={{
+                  whatsapp: l.whatsapp,
+                  instagram: l.instagram,
+                  facebook: l.facebook,
+                  tiktok: l.tiktok,
+                }}
               />
             );
           default:
@@ -215,7 +251,10 @@ export default function LandingSections({
         />
       ) : null}
       {whatsapp ? (
-        <WhatsAppFab href={socialHref('whatsapp', whatsapp)} ariaLabel={t.premiumLanding.whatsappAria} />
+        <WhatsAppFab
+          href={socialHref('whatsapp', whatsapp)}
+          ariaLabel={t.premiumLanding.whatsappAria}
+        />
       ) : null}
     </>
   );
