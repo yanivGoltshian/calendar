@@ -198,6 +198,7 @@ test('paid provider uncertainty and post-send DB failure retain reservations and
     assert.equal(sends, 1);
     assert.equal((await prisma.messageLog.aggregate({ where: { businessId: business.id }, _sum: { costAgorot: true } }))._sum.costAgorot, 10);
     assert.deepEqual(await getCostGuardStatus(business.id, { config }), {
+      countable: true,
       usedMessages: 1,
       allowanceMessages: 450,
       alertAtMessages: 400,

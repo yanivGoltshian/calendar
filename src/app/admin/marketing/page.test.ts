@@ -34,6 +34,7 @@ test('תצוגת המכסה מציגה ספירת הודעות בלבד', () => 
   const html = renderToStaticMarkup(
     React.createElement(CostGuardPanel, {
       status: {
+        countable: true,
         usedMessages: 120,
         remainingMessages: 330,
         allowanceMessages: 450,
@@ -48,4 +49,23 @@ test('תצוגת המכסה מציגה ספירת הודעות בלבד', () => 
   assert.match(html, /נותרו.*330.*הודעות/);
   assert.match(html, /סף התראה.*400.*הודעות/);
   assert.doesNotMatch(html, /₪|ש&quot;ח|אגור|עלות/);
+});
+
+test('תצוגת המכסה מציגה מצב לא ניתן לחישוב בלי להמציא מכסת הודעות', () => {
+  const html = renderToStaticMarkup(
+    React.createElement(CostGuardPanel, {
+      status: {
+        countable: false,
+        usedMessages: null,
+        remainingMessages: null,
+        allowanceMessages: null,
+        alertAtMessages: null,
+        usagePercent: null,
+        atAlert: false,
+        blocked: false,
+      },
+    }),
+  );
+  assert.match(html, /לא ניתן לחשב כרגע מכסה במספר הודעות/);
+  assert.doesNotMatch(html, /4500|45\.00|₪|ש&quot;ח|אגור|עלות/);
 });

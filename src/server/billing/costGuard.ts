@@ -139,34 +139,61 @@ export function evaluateGuard(
 
 // ---------- מצב לתצוגה בממשק ----------
 
-export type CostGuardStatus = {
-  usedMessages: number;
-  allowanceMessages: number;
-  alertAtMessages: number;
-  remainingMessages: number;
-  usagePercent: number;
-  atAlert: boolean;
-  blocked: boolean;
-};
+export type CostGuardStatus =
+  | {
+      countable: true;
+      usedMessages: number;
+      allowanceMessages: number;
+      alertAtMessages: number;
+      remainingMessages: number;
+      usagePercent: number;
+      atAlert: boolean;
+      blocked: boolean;
+    }
+  | {
+      countable: false;
+      usedMessages: null;
+      allowanceMessages: null;
+      alertAtMessages: null;
+      remainingMessages: null;
+      usagePercent: null;
+      atAlert: boolean;
+      blocked: boolean;
+    };
 
 export function messageQuotaStatus(
   usedAgorot: number,
   config: CostGuardConfig,
 ): CostGuardStatus {
-  const unitCostAgorot = Math.max(1, config.unitCostAgorot);
+  if (config.unitCostAgorot <= 0) {
+    return {
+      countable: false,
+      usedMessages: null,
+      allowanceMessages: null,
+      alertAtMessages: null,
+      remainingMessages: null,
+      usagePercent: null,
+      atAlert: usedAgorot >= config.alertAgorot,
+      blocked: evaluateGuard(usedAgorot, config.unitCostAgorot, config).blocked,
+    };
+  }
+  const allowanceMessages = Math.floor(config.capAgorot / config.unitCostAgorot);
+  const remainingMessages = Math.floor(
+    Math.max(0, config.capAgorot - usedAgorot) / config.unitCostAgorot,
+  );
+  const usedMessages = Math.max(0, allowanceMessages - remainingMessages);
   return {
-    usedMessages: Math.ceil(Math.max(0, usedAgorot) / unitCostAgorot),
-    allowanceMessages: Math.floor(config.capAgorot / unitCostAgorot),
-    alertAtMessages: Math.ceil(config.alertAgorot / unitCostAgorot),
-    remainingMessages: Math.floor(
-      Math.max(0, config.capAgorot - usedAgorot) / unitCostAgorot,
-    ),
+    countable: true,
+    usedMessages,
+    allowanceMessages,
+    alertAtMessages: Math.ceil(config.alertAgorot / config.unitCostAgorot),
+    remainingMessages,
     usagePercent:
-      config.capAgorot > 0
-        ? Math.min(100, Math.round((usedAgorot / config.capAgorot) * 100))
+      allowanceMessages > 0
+        ? Math.min(100, Math.round((usedMessages / allowanceMessages) * 100))
         : 0,
     atAlert: usedAgorot >= config.alertAgorot,
-    blocked: usedAgorot >= config.capAgorot,
+    blocked: evaluateGuard(usedAgorot, config.unitCostAgorot, config).blocked,
   };
 }
 
@@ -216,6 +243,14 @@ export function messageQuotaAlert(
   businessName: string,
   status: CostGuardStatus,
 ): { subject: string; text: string } {
+  if (!status.countable) {
+    return {
+      subject: 'התראת מכסת מסרונים חודשית',
+      text:
+        `שלום,\n\nמכסת המסרונים של העסק ${businessName} דורשת בדיקת תצורה.\n` +
+        `שליחת מסרונים תמשיך לפעול לפי מנגנון ההגנה הקיים עד לעדכון התצורה.\n`,
+    };
+  }
   return {
     subject: 'התראת מכסת מסרונים חודשית',
     text:

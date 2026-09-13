@@ -20,7 +20,7 @@ export default function CostGuardPanel({ status }: Props) {
   return (
     <div className="mt-6">
       <SettingsSection title={labels.title} description={labels.description}>
-        <div>
+        {status.countable ? <div>
           <div className="flex items-baseline justify-between text-sm">
             <span className="text-slate-600">{labels.usageLabel}</span>
             <span className="font-medium text-slate-900">
@@ -42,7 +42,11 @@ export default function CostGuardPanel({ status }: Props) {
               {labels.remainingLabel}: {status.remainingMessages} {labels.messagesLabel}
             </span>
           </div>
-        </div>
+        </div> : (
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            {labels.countUnavailable}
+          </p>
+        )}
         {status.blocked ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {labels.blockedNotice}
