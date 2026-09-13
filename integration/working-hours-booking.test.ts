@@ -218,55 +218,6 @@ test('dated waitlist offers require a real slot outside every business break and
     await prisma.workingHours.deleteMany({
       where: { businessId: f.business.id, scope: 'BUSINESS' },
     });
-
-    test('dated waitlist windows compare actual slot endings across a spring-forward transition', async () => {
-      const f = await bookingFixture();
-      try {
-        const date = '2027-03-14';
-        await prisma.business.update({
-          where: { id: f.business.id },
-          data: { timezone: 'America/New_York' },
-        });
-        await prisma.businessSettings.update({
-          where: { businessId: f.business.id },
-          data: { maxAdvanceBookingDays: 365 },
-        });
-        await prisma.service.update({
-          where: { id: f.service.id },
-          data: { durationMin: 90 },
-        });
-        await prisma.workingHours.deleteMany({
-          where: { businessId: f.business.id, scope: 'BUSINESS' },
-        });
-        await prisma.workingHours.create({
-          data: {
-            businessId: f.business.id,
-            scope: 'BUSINESS',
-            weekday: 0,
-            startMinute: 60,
-            endMinute: 300,
-            breaks: [],
-          },
-        });
-        const entry = {
-          businessId: f.business.id,
-          staffId: f.staff.id,
-          serviceId: f.service.id,
-          desiredDate: date,
-          earliestMinute: 60,
-        };
-        assert.equal(await exceptionsAllowWaitlistOffer({
-          ...entry,
-          latestMinute: 180,
-        }), false);
-        assert.equal(await exceptionsAllowWaitlistOffer({
-          ...entry,
-          latestMinute: 210,
-        }), true);
-      } finally {
-        await cleanupFixture(f);
-      }
-    });
     await prisma.workingHours.create({
       data: {
         businessId: f.business.id,
@@ -301,6 +252,105 @@ test('dated waitlist offers require a real slot outside every business break and
   } finally {
     await cleanupFixture(f);
     await cleanupFixture(other);
+  }
+});
+
+test('dated waitlist windows compare actual slot endings across a spring-forward transition', async () => {
+  const f = await bookingFixture();
+  try {
+    const date = '2027-03-14';
+    await prisma.business.update({
+      where: { id: f.business.id },
+      data: { timezone: 'America/New_York' },
+    });
+    await prisma.businessSettings.update({
+      where: { businessId: f.business.id },
+      data: { maxAdvanceBookingDays: 365 },
+    });
+    await prisma.service.update({
+      where: { id: f.service.id },
+      data: { durationMin: 90 },
+    });
+    await prisma.workingHours.deleteMany({
+      where: { businessId: f.business.id, scope: 'BUSINESS' },
+    });
+    await prisma.workingHours.create({
+      data: {
+        businessId: f.business.id,
+        scope: 'BUSINESS',
+        weekday: 0,
+        startMinute: 60,
+        endMinute: 300,
+        breaks: [],
+      },
+    });
+    const entry = {
+      businessId: f.business.id,
+      staffId: f.staff.id,
+      serviceId: f.service.id,
+      desiredDate: date,
+      earliestMinute: 60,
+    };
+    assert.equal(await exceptionsAllowWaitlistOffer({
+      ...entry,
+      latestMinute: 180,
+    }), false);
+    assert.equal(await exceptionsAllowWaitlistOffer({
+      ...entry,
+      latestMinute: 210,
+    }), true);
+  } finally {
+    await cleanupFixture(f);
+  }
+});
+
+test('dated waitlist windows include a valid second-occurrence slot during fall-back', async () => {
+  const f = await bookingFixture();
+  try {
+    const date = '2026-11-01';
+    await prisma.business.update({
+      where: { id: f.business.id },
+      data: { timezone: 'America/New_York' },
+    });
+    await prisma.businessSettings.update({
+      where: { businessId: f.business.id },
+      data: { maxAdvanceBookingDays: 365 },
+    });
+    await prisma.workingHours.deleteMany({
+      where: { businessId: f.business.id, scope: 'BUSINESS' },
+    });
+    await prisma.workingHours.create({
+      data: {
+        businessId: f.business.id,
+        scope: 'BUSINESS',
+        weekday: 0,
+        startMinute: 60,
+        endMinute: 120,
+        breaks: [],
+      },
+    });
+    await createAppointment({
+      ...f.input,
+      startAt: new Date('2026-11-01T05:00:00.000Z'),
+      endAt: new Date('2026-11-01T05:30:00.000Z'),
+    });
+    const entry = {
+      businessId: f.business.id,
+      staffId: f.staff.id,
+      serviceId: f.service.id,
+      desiredDate: date,
+      earliestMinute: 60,
+    };
+    assert.equal(await exceptionsAllowWaitlistOffer({
+      ...entry,
+      latestMinute: 60,
+    }), false);
+    assert.equal(await exceptionsAllowWaitlistOffer({
+      ...entry,
+      latestMinute: 90,
+    }), true);
+  } finally {
+    await cleanupFixture(f);
   }
 });
 
