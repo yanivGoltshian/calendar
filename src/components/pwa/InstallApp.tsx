@@ -46,7 +46,7 @@ const claimedNativePromptEvents = new WeakSet<BeforeInstallPromptEvent>();
 function hasVisibleModalDialog() {
   return Array.from(
     document.querySelectorAll<HTMLElement>(
-      '[role="dialog"][aria-modal="true"], dialog[open]',
+      '[role="dialog"], dialog[open], [popover]',
     ),
   ).some((dialog) => {
     const style = getComputedStyle(dialog);

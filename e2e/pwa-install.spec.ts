@@ -299,7 +299,7 @@ for (const width of [390, 1366]) {
     }
   });
 
-  test(`hidden admin dialogs do not suppress invitations at ${width}px`, async ({
+  test(`visible admin dialogs defer while hidden dialogs do not at ${width}px`, async ({
     page,
     context,
   }) => {
@@ -319,18 +319,22 @@ for (const width of [390, 1366]) {
     await expect(triggers).toHaveCount(2);
     const invitation = page.getByTestId('install-invitation');
 
-    if (width === 390) {
-      await page.getByRole('button', { name: 'עוד', exact: true }).evaluate((button) => {
-        (button as HTMLButtonElement).click();
-      });
-      await page.clock.fastForward(9000);
-      await expect(invitation).toHaveCount(0);
-      expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey), key)).toBeNull();
-      await page.getByRole('button', { name: 'סגירה', exact: true }).click();
-      await page.clock.fastForward(2000);
-    } else {
-      await page.clock.fastForward(9000);
-    }
+    await page.getByRole('button', {
+      name: t.admin.notifications.bellAria,
+      exact: true,
+    }).click();
+    await expect(page.getByRole('dialog', {
+      name: t.admin.notifications.title,
+      exact: true,
+    })).toBeVisible();
+    await page.clock.fastForward(9000);
+    await expect(invitation).toHaveCount(0);
+    expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey), key)).toBeNull();
+    await page.getByRole('button', {
+      name: t.admin.notifications.close,
+      exact: true,
+    }).click();
+    await page.clock.fastForward(2000);
 
     await expect(invitation).toBeVisible();
     expect(
