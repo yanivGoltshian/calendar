@@ -93,6 +93,9 @@ const initialSaveState: SaveState = { ok: false };
 function errorText(state: SaveState): string | null {
   if (!state.error) return null;
   if (state.error === 'no_business') return t.admin.onboarding.errorNoBusiness;
+  if (state.error === 'google_reviews_url') {
+    return t.admin.settings.pageStyle.googleReviewsError;
+  }
   return t.admin.onboarding.errorGeneric;
 }
 
@@ -1378,9 +1381,20 @@ export default function OnboardingWizard({
                         value={premiumDraft.googleReviewsUrl ?? ''}
                         placeholder={wz.social.googlePlaceholder}
                         onChange={(e) => patchDraft({ googleReviewsUrl: e.target.value })}
+                        aria-invalid={premiumState.error === 'google_reviews_url'}
+                        aria-describedby={
+                          premiumState.error === 'google_reviews_url'
+                            ? 'premium-google-reviews-error'
+                            : undefined
+                        }
                       />
                     </div>
                     <div className="pw-hint">{wz.social.googleHint}</div>
+                    {premiumState.error === 'google_reviews_url' ? (
+                      <div id="premium-google-reviews-error" role="alert" className="pw-err">
+                        {t.admin.settings.pageStyle.googleReviewsError}
+                      </div>
+                    ) : null}
                   </div>
 
                   {pwField({

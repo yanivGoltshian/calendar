@@ -36,12 +36,12 @@ test('concurrent partial branding edits preserve the latest other landing conten
       updateBusinessProfile(f.business.id, profile, { theme }),
       updateBusinessProfile(f.business.id, profile, { heroImages: ['/icons/icon-192.png'] }),
       updateBusinessProfile(f.business.id, profile, { announcement: 'Holiday hours' }),
-      updateBusinessProfile(f.business.id, profile, { googleReviewsUrl: 'https://maps.app.goo.gl/example' }),
+      updateBusinessProfile(f.business.id, profile, { googleReviewsUrl: 'https://share.google/RJsPMrkBplt5Zjx4K' }),
     ]);
     const saved = await prisma.business.findUniqueOrThrow({ where: { id: f.business.id } });
     assert.deepEqual(saved.landingContent, {
       ...original, theme, heroImages: ['/icons/icon-192.png'],
-      announcement: 'Holiday hours', googleReviewsUrl: 'https://maps.app.goo.gl/example',
+      announcement: 'Holiday hours', googleReviewsUrl: 'https://share.google/RJsPMrkBplt5Zjx4K',
     });
     await updateBusinessProfile(f.business.id, profile, { theme: undefined });
     assert.deepEqual((await prisma.business.findUniqueOrThrow({ where: { id: f.business.id } })).landingContent,

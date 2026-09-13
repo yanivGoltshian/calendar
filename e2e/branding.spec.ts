@@ -51,7 +51,7 @@ for (const width of [390, 1366]) {
       expect(saved.brandColor).toBe(first.theme.brand);
       const second = BRAND_PRESETS.find(preset => preset.id === 'royal-purple')!;
       const announcement = 'Synthetic holiday opening hours';
-      const googleReviewsUrl = 'https://maps.app.goo.gl/synthetic-reviews';
+      const googleReviewsUrl = 'https://share.google/RJsPMrkBplt5Zjx4K';
       const updates = { announcement, googleReviewsUrl };
       await page.getByLabel(t.admin.settings.pageStyle.announcementLabel, { exact: true }).fill(announcement);
       await page.getByLabel(t.admin.settings.pageStyle.googleReviewsLabel, { exact: true }).fill(googleReviewsUrl);
@@ -115,3 +115,87 @@ for (const width of [390, 1366]) {
     }
   });
 }
+
+test('unchanged legacy Google metadata survives an unrelated mobile settings save', async ({ page, context }) => {
+  const f = await bookingFixture();
+  const legacyUrl = 'https://legacy.example.invalid/google-profile';
+  const original = {
+    presentation: 'premium',
+    theme: BRAND_PRESETS[0].theme,
+    heroHeadline: 'Preserved legacy business',
+    heroVideoUrl: '/images/retained-video.mp4',
+    googleReviewsUrl: legacyUrl,
+  };
+  try {
+    await prisma.business.update({
+      where: { id: f.business.id },
+      data: { publicPageStyle: 'LANDING', landingContent: original },
+    });
+    const token = await encode({
+      token: { email: f.business.ownerEmail },
+      secret: process.env.AUTH_SECRET!,
+      salt: 'authjs.session-token',
+    });
+    await context.addCookies([{ name: 'authjs.session-token', value: token, url: BASE_URL }]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/admin/settings');
+    await expect(page.getByLabel(t.admin.settings.pageStyle.googleReviewsLabel, { exact: true }))
+      .toHaveValue(legacyUrl);
+
+    const announcement = 'Only this field changed';
+    await page.getByLabel(t.admin.settings.pageStyle.announcementLabel, { exact: true })
+      .fill(announcement);
+    await page.getByRole('button', { name: t.admin.settings.saveAll, exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: t.admin.settings.savedShort }))
+      .toHaveClass(/opacity-100/);
+    await page.reload();
+    await expect(page.getByLabel(t.admin.settings.pageStyle.googleReviewsLabel, { exact: true }))
+      .toHaveValue(legacyUrl);
+    expect((await prisma.business.findUniqueOrThrow({
+      where: { id: f.business.id },
+    })).landingContent).toEqual({ ...original, announcement });
+  } finally {
+    await cleanupFixture(f);
+  }
+});
+
+test('unsafe Google lookalikes show a field-specific error and do not mutate settings', async ({ page, context }) => {
+  const f = await bookingFixture();
+  try {
+    const original = {
+      presentation: 'premium',
+      theme: BRAND_PRESETS[0].theme,
+      heroHeadline: 'Preserved invalid submission fixture',
+    };
+    await prisma.business.update({
+      where: { id: f.business.id },
+      data: { publicPageStyle: 'LANDING', landingContent: original },
+    });
+    const token = await encode({
+      token: { email: f.business.ownerEmail },
+      secret: process.env.AUTH_SECRET!,
+      salt: 'authjs.session-token',
+    });
+    await context.addCookies([{ name: 'authjs.session-token', value: token, url: BASE_URL }]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/admin/settings');
+    const field = page.getByLabel(t.admin.settings.pageStyle.googleReviewsLabel, { exact: true });
+    await field.fill('https://share.google.evil.invalid/RJsPMrkBplt5Zjx4K');
+    const responsePromise = page.waitForResponse(response =>
+      response.url().endsWith('/api/admin/settings'),
+    );
+    await page.getByRole('button', { name: t.admin.settings.saveAll, exact: true }).click();
+    const response = await responsePromise;
+    expect(response.status()).toBe(400);
+    expect(await response.json()).toEqual({ ok: false, error: 'google_reviews_url' });
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#google-reviews-error')).toHaveText(
+      t.admin.settings.pageStyle.googleReviewsError,
+    );
+    expect((await prisma.business.findUniqueOrThrow({
+      where: { id: f.business.id },
+    })).landingContent).toEqual(original);
+  } finally {
+    await cleanupFixture(f);
+  }
+});

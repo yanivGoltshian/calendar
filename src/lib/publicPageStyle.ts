@@ -351,6 +351,14 @@ function cleanString(value: unknown, max: number): string {
   return value.trim().slice(0, max);
 }
 
+export function storedGoogleBusinessUrl(value: unknown): string {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+  return cleanString(
+    (value as Record<string, unknown>).googleReviewsUrl,
+    LIMITS.googleReviewsUrl,
+  );
+}
+
 function isGoogleCountryDomain(hostname: string): boolean {
   return /^google\.(?:[a-z]{2,3}|(?:com|co)\.[a-z]{2})$/.test(hostname);
 }
@@ -375,6 +383,7 @@ export function normalizeGoogleBusinessUrl(value: unknown): string {
 
   const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
   const path = url.pathname.replace(/\/{2,}/g, '/');
+  if (hostname === 'share.google') return path.length > 1 ? url.toString() : '';
   if (hostname === 'g.page') return path.length > 1 ? url.toString() : '';
   if (hostname === 'maps.app.goo.gl') return path.length > 1 ? url.toString() : '';
   if (hostname === 'goo.gl') return path.startsWith('/maps/') && path.length > 6 ? url.toString() : '';

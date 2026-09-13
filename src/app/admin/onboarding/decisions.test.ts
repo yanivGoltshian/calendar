@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decidePremiumStep, parsePremiumDraft, publishPremiumDraft } from './premium';
+import {
+  decidePremiumStep,
+  parsePremiumDraft,
+  premiumDraftError,
+  publishPremiumDraft,
+} from './premium';
 import { landingDefaults, type LandingContent } from '@/lib/publicPageStyle';
 import { publicPagePresentation } from '@/server/publicPagePresentation';
 
@@ -75,7 +80,7 @@ test('skipping social content preserves explicitly entered WhatsApp contact thro
 });
 
 test('premium publication preserves a Google business profile and omits unusable provider metadata', () => {
-  const valid = 'https://g.page/r/synthetic-business/review';
+  const valid = 'https://share.google/RJsPMrkBplt5Zjx4K';
   assert.equal(
     parsePremiumDraft(JSON.stringify(publishPremiumDraft({ googleReviewsUrl: valid })))
       ?.googleReviewsUrl,
@@ -86,6 +91,13 @@ test('premium publication preserves a Google business profile and omits unusable
       googleReviewsUrl: 'https://www.google.com/maps/search/?api=1&query=wrong+business',
     })))?.googleReviewsUrl,
     undefined,
+  );
+  assert.equal(premiumDraftError(JSON.stringify({ googleReviewsUrl: valid })), null);
+  assert.equal(
+    premiumDraftError(JSON.stringify({
+      googleReviewsUrl: 'https://share.google.evil.invalid/RJsPMrkBplt5Zjx4K',
+    })),
+    'google_reviews_url',
   );
 });
 

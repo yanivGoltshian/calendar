@@ -3,7 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { getActiveBusiness } from '@/server/repos/business';
 import { canSendPaidClientSms } from '@/server/subscription';
-import { normalizeLandingContent, type LandingContent } from '@/lib/publicPageStyle';
+import {
+  normalizeLandingContent,
+  storedGoogleBusinessUrl,
+  type LandingContent,
+} from '@/lib/publicPageStyle';
 import type { LandingBrandingPatch } from '@/lib/branding';
 import {
   updateBusinessProfile,
@@ -50,15 +54,14 @@ export async function saveAllSettingsAction(
   if (!profile.ok) return { ok: false, error: profile.error };
   const theme = parseBrandingTheme(fd);
   if (!theme.ok) return { ok: false, error: theme.error };
-  const updates = parseLandingUpdates(fd);
-  if (!updates.ok) return { ok: false, error: updates.error };
-  const brandingPatch: LandingBrandingPatch = { theme: theme.data, ...updates.data };
-
   const policy = parsePolicy(fd);
   if (!policy.ok) return { ok: false, error: policy.error };
 
   const business = await getActiveBusiness();
   if (!business) return { ok: false, error: 'no_business' };
+  const updates = parseLandingUpdates(fd, storedGoogleBusinessUrl(business.landingContent));
+  if (!updates.ok) return { ok: false, error: updates.error };
+  const brandingPatch: LandingBrandingPatch = { theme: theme.data, ...updates.data };
 
   // אכיפת התוכנית על ערוץ התזכורות: רק אקסקלוסיב רשאי לבחור מסרון/יחד.
   const reminders = parseReminders(fd, canSendPaidClientSms(business));
@@ -77,17 +80,22 @@ export async function saveAllSettingsAction(
       !Array.isArray(business.landingContent) ? business.landingContent : {};
     const displayed = normalizeLandingContent(existing)?.heroImages ?? [];
     const stored = Array.isArray(existing.heroImages) ? existing.heroImages : [];
+    const submittedHeroImages = parseLandingHeroImages(fd).map((image, index) => {
+      const original = stored[index];
+      // The legacy editor truncated embedded URLs; an unchanged displayed value
+      // preserves its original bytes rather than rewriting a broken image.
+      return typeof original === 'string' && /^data:/i.test(original) &&
+        image === displayed[index] ? original : image;
+    });
     profileData.landingContent = {
       ...existing,
-      heroImages: parseLandingHeroImages(fd).map((image, index) => {
-        const original = stored[index];
-        // The legacy editor truncated embedded URLs; an unchanged displayed value
-        // preserves its original bytes rather than rewriting a broken image.
-        return typeof original === 'string' && /^data:/i.test(original) &&
-          image === displayed[index] ? original : image;
-      }),
+      ...(stored.length > 0 || submittedHeroImages.length > 0
+        ? { heroImages: submittedHeroImages }
+        : {}),
     } as LandingContent;
-    brandingPatch.heroImages = profileData.landingContent.heroImages;
+    if (stored.length > 0 || submittedHeroImages.length > 0) {
+      brandingPatch.heroImages = submittedHeroImages;
+    }
   }
   if (!isSafeBusinessMediaWrite(profileData, business)) return { ok: false, error: 'bad_request' };
 
