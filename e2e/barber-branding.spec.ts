@@ -7,6 +7,8 @@ import { HERO_VIDEO } from './visualFixtures';
 import { t } from '../src/i18n';
 import { canAcceptPublicBookings } from '../src/server/subscription';
 import { publicLandingThemeVars } from '../src/server/publicPagePresentation';
+import { contrastRatio } from '../src/lib/brandColor';
+import { formatAgorot } from '../src/lib/money';
 
 const blue = BRAND_PRESETS.find((preset) => preset.id === 'clinical-blue')!.theme;
 const bronze = BRAND_PRESETS.find((preset) => preset.id === 'skin-bronze')!.theme;
@@ -147,6 +149,43 @@ for (const width of [390, 1366]) {
       }
     });
   }
+
+  test(`brand-only booking keeps light custom colors readable at ${width}px`, async ({ page }) => {
+    const f = await bookingFixture();
+    const staffTitle = 'Synthetic light-brand title';
+    try {
+      await Promise.all([
+        prisma.business.update({
+          where: { id: f.business.id },
+          data: {
+            brandColor: '#ffffff',
+            publicPageStyle: 'BOOKING',
+          },
+        }),
+        prisma.staffMember.update({
+          where: { id: f.staff.id },
+          data: { title: staffTitle },
+        }),
+      ]);
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(`/b/${f.business.slug}`);
+
+      const main = page.locator('main');
+      const colors = await main.evaluate((element) => {
+        const styles = getComputedStyle(element);
+        return {
+          text: styles.getPropertyValue('--biz-ink-strong').trim(),
+          surface: styles.getPropertyValue('--c-surface').trim(),
+        };
+      });
+      expect(contrastRatio(colors.text, colors.surface)).toBeGreaterThanOrEqual(4.5);
+      await expect(page.getByText(formatAgorot(f.service.priceAgorot), { exact: true }))
+        .toHaveCSS('color', rgb(colors.text));
+      await expect(page.getByText(staffTitle, { exact: true })).toHaveCSS('color', rgb(colors.text));
+    } finally {
+      await cleanupFixture(f);
+    }
+  });
 
   test(`premium sections use the saved pink palette at ${width}px`, async ({ page }, info) => {
     const f = await bookingFixture();

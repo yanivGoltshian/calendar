@@ -144,7 +144,11 @@ export default async function BusinessPublicPage({ params }: Props) {
     business.slug === CLINIC_IDENTITY.slug ? clinicLabels.heroTagline : null;
   const rootStyle = isClinicPremium || landing?.theme
     ? ({ ...themeVars, ...landingThemeVars } as CSSProperties)
-    : ({ ...brandThemeVars, ...themeVars } as CSSProperties);
+    : ({
+        ...brandThemeVars,
+        ...themeVars,
+        '--biz-ink-strong': brandThemeVars['--biz-ink-strong'],
+      } as CSSProperties);
 
   const jsonLd = localBusinessJsonLd({
     name: business.name,
