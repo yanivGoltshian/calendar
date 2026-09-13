@@ -8,6 +8,9 @@ import {
   monthStartUtc,
   evaluateGuard,
   getMonthlyPaidUsageAgorot,
+  getCostGuardStatus,
+  messageQuotaAlert,
+  messageQuotaStatus,
   sendGuardedSms,
   type CostGuardConfig,
   type GuardedSmsDeps,
@@ -125,6 +128,113 @@ test('getMonthlyPaidUsageAgorot: סכום ריק מוחזר כאפס', async () 
   } as any;
   const used = await getMonthlyPaidUsageAgorot('biz-1', { prismaClient });
   assert.equal(used, 0);
+});
+
+test('message quota derives allowance, used and remaining counts from the enforced cost units', () => {
+  assert.deepEqual(messageQuotaStatus(1200, CONFIG), {
+    countable: true,
+    usedMessages: 120,
+    allowanceMessages: 450,
+    alertAtMessages: 400,
+    remainingMessages: 330,
+    usagePercent: 27,
+    atAlert: false,
+    blocked: false,
+  });
+  assert.deepEqual(messageQuotaStatus(4005, CONFIG), {
+    countable: true,
+    usedMessages: 401,
+    allowanceMessages: 450,
+    alertAtMessages: 400,
+    remainingMessages: 49,
+    usagePercent: 89,
+    atAlert: true,
+    blocked: false,
+  });
+  assert.deepEqual(messageQuotaStatus(1250, {
+    capAgorot: 9000,
+    alertAgorot: 8000,
+    unitCostAgorot: 25,
+  }), {
+    countable: true,
+    usedMessages: 50,
+    allowanceMessages: 360,
+    alertAtMessages: 320,
+    remainingMessages: 310,
+    usagePercent: 14,
+    atAlert: false,
+    blocked: false,
+  });
+});
+
+test('message quota remains coherent at non-divisible boundaries and matches next-send blocking', () => {
+  const config = { capAgorot: 4500, alertAgorot: 4000, unitCostAgorot: 7 };
+  const nearlyExhausted = messageQuotaStatus(4494, config);
+  assert.equal(nearlyExhausted.allowanceMessages, 642);
+  assert.equal(nearlyExhausted.usedMessages, 642);
+  assert.equal(nearlyExhausted.remainingMessages, 0);
+  assert.equal(nearlyExhausted.blocked, evaluateGuard(4494, 7, config).blocked);
+  assert.equal(nearlyExhausted.blocked, true);
+
+  const priorPriceUsage = messageQuotaStatus(8, config);
+  assert.equal(priorPriceUsage.allowanceMessages, 642);
+  assert.equal(priorPriceUsage.usedMessages, 1);
+  assert.equal(priorPriceUsage.remainingMessages, 641);
+  assert.equal(
+    priorPriceUsage.usedMessages! + priorPriceUsage.remainingMessages!,
+    priorPriceUsage.allowanceMessages,
+  );
+});
+
+test('zero unit cost exposes a truthful non-computable count state', () => {
+  const config = { capAgorot: 4500, alertAgorot: 4000, unitCostAgorot: 0 };
+  assert.deepEqual(messageQuotaStatus(0, config), {
+    countable: false,
+    usedMessages: null,
+    allowanceMessages: null,
+    alertAtMessages: null,
+    remainingMessages: null,
+    usagePercent: null,
+    atAlert: false,
+    blocked: evaluateGuard(0, 0, config).blocked,
+  });
+});
+
+test('owner quota alerts contain message counts without monetary values', () => {
+  const content = messageQuotaAlert('Synthetic business', messageQuotaStatus(4005, CONFIG));
+  assert.match(content.subject, /מכסת מסרונים/);
+  assert.match(content.text, /401 הודעות/);
+  assert.match(content.text, /מכסה של 450/);
+  assert.match(content.text, /נותרו 49 הודעות/);
+  assert.doesNotMatch(`${content.subject}\n${content.text}`, /₪|ש"ח|אגור|עלות/);
+  const unavailable = messageQuotaAlert('Synthetic business', messageQuotaStatus(0, {
+    capAgorot: 4500,
+    alertAgorot: 4000,
+    unitCostAgorot: 0,
+  }));
+  assert.match(unavailable.text, /דורשת בדיקת תצורה/);
+  assert.doesNotMatch(`${unavailable.subject}\n${unavailable.text}`, /₪|ש"ח|אגור|עלות/);
+});
+
+test('getCostGuardStatus exposes count-only owner data', async () => {
+  const status = await getCostGuardStatus('biz-1', {
+    now: new Date('2026-05-10T00:00:00.000Z'),
+    config: CONFIG,
+    prismaClient: {
+      messageLog: { aggregate: async () => ({ _sum: { costAgorot: 1200 } }) },
+    } as any,
+  });
+  assert.deepEqual(status, messageQuotaStatus(1200, CONFIG));
+  assert.deepEqual(Object.keys(status).sort(), [
+    'alertAtMessages',
+    'allowanceMessages',
+    'atAlert',
+    'blocked',
+    'countable',
+    'remainingMessages',
+    'usagePercent',
+    'usedMessages',
+  ]);
 });
 
 // ---------- sendGuardedSms ----------

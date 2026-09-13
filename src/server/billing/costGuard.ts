@@ -139,14 +139,63 @@ export function evaluateGuard(
 
 // ---------- מצב לתצוגה בממשק ----------
 
-export type CostGuardStatus = {
-  usedAgorot: number;
-  capAgorot: number;
-  alertAgorot: number;
-  remainingAgorot: number;
-  atAlert: boolean;
-  blocked: boolean;
-};
+export type CostGuardStatus =
+  | {
+      countable: true;
+      usedMessages: number;
+      allowanceMessages: number;
+      alertAtMessages: number;
+      remainingMessages: number;
+      usagePercent: number;
+      atAlert: boolean;
+      blocked: boolean;
+    }
+  | {
+      countable: false;
+      usedMessages: null;
+      allowanceMessages: null;
+      alertAtMessages: null;
+      remainingMessages: null;
+      usagePercent: null;
+      atAlert: boolean;
+      blocked: boolean;
+    };
+
+export function messageQuotaStatus(
+  usedAgorot: number,
+  config: CostGuardConfig,
+): CostGuardStatus {
+  if (config.unitCostAgorot <= 0) {
+    return {
+      countable: false,
+      usedMessages: null,
+      allowanceMessages: null,
+      alertAtMessages: null,
+      remainingMessages: null,
+      usagePercent: null,
+      atAlert: usedAgorot >= config.alertAgorot,
+      blocked: evaluateGuard(usedAgorot, config.unitCostAgorot, config).blocked,
+    };
+  }
+  const allowanceMessages = Math.floor(config.capAgorot / config.unitCostAgorot);
+  const remainingMessages = Math.floor(
+    Math.max(0, config.capAgorot - usedAgorot) / config.unitCostAgorot,
+  );
+  const usedMessages = Math.max(0, allowanceMessages - remainingMessages);
+  return {
+    countable: true,
+    usedMessages,
+    allowanceMessages,
+    alertAtMessages: Math.ceil(config.alertAgorot / config.unitCostAgorot),
+    remainingMessages,
+    usagePercent:
+      allowanceMessages > 0
+        ? Math.min(100, Math.round((usedMessages / allowanceMessages) * 100))
+        : 0,
+    atAlert: usedAgorot >= config.alertAgorot,
+    blocked: evaluateGuard(usedAgorot, config.unitCostAgorot, config).blocked,
+  };
+}
 
 /** מצב שער העלות של עסק לחודש הנוכחי — לצריכת הממשק (אזור ההגדרות). */
 export async function getCostGuardStatus(
@@ -155,14 +204,7 @@ export async function getCostGuardStatus(
 ): Promise<CostGuardStatus> {
   const config = deps.config ?? resolveCostGuardConfig();
   const usedAgorot = await getMonthlyPaidUsageAgorot(businessId, deps);
-  return {
-    usedAgorot,
-    capAgorot: config.capAgorot,
-    alertAgorot: config.alertAgorot,
-    remainingAgorot: Math.max(0, config.capAgorot - usedAgorot),
-    atAlert: usedAgorot >= config.alertAgorot,
-    blocked: usedAgorot >= config.capAgorot,
-  };
+  return messageQuotaStatus(usedAgorot, config);
 }
 
 // ---------- שליחה מוגנת ----------
@@ -197,7 +239,29 @@ export type GuardedSmsDeps = {
   onAlert?: (businessId: string, status: CostGuardStatus) => Promise<void>;
 };
 
-/** התראת עלות מיטבית לבעל העסק במייל — לעולם אינה זורקת ואינה חוסמת שליחה. */
+export function messageQuotaAlert(
+  businessName: string,
+  status: CostGuardStatus,
+): { subject: string; text: string } {
+  if (!status.countable) {
+    return {
+      subject: 'התראת מכסת מסרונים חודשית',
+      text:
+        `שלום,\n\nמכסת המסרונים של העסק ${businessName} דורשת בדיקת תצורה.\n` +
+        `שליחת מסרונים תמשיך לפעול לפי מנגנון ההגנה הקיים עד לעדכון התצורה.\n`,
+    };
+  }
+  return {
+    subject: 'התראת מכסת מסרונים חודשית',
+    text:
+      `שלום,\n\nהעסק ${businessName} עבר את סף ההתראה של מכסת המסרונים בחודש הנוכחי.\n` +
+      `נוצלו ${status.usedMessages} הודעות מתוך מכסה של ${status.allowanceMessages}. ` +
+      `נותרו ${status.remainingMessages} הודעות.\n` +
+      `כשהמכסה תסתיים, שליחת מסרונים בתשלום תושהה עד תחילת החודש הבא.\n`,
+  };
+}
+
+/** התראת מכסה מיטבית לבעל העסק במייל — לעולם אינה זורקת ואינה חוסמת שליחה. */
 async function defaultOnAlert(
   businessId: string,
   status: CostGuardStatus,
@@ -209,13 +273,7 @@ async function defaultOnAlert(
     });
     const to = business?.ownerEmail;
     if (!to) return;
-    const usedShekel = (status.usedAgorot / 100).toFixed(2);
-    const capShekel = (status.capAgorot / 100).toFixed(2);
-    const subject = 'התראת עלות מסרונים חודשית';
-    const text =
-      `שלום,\n\nהעסק ${business?.name ?? ''} עבר את סף ההתראה לעלות מסרונים בחודש הנוכחי.\n` +
-      `נצברו ${usedShekel} ש"ח מתוך תקרה של ${capShekel} ש"ח.\n` +
-      `בהגעה לתקרה שליחת המסרונים בתשלום תיחסם עד תחילת החודש הבא.\n`;
+    const { subject, text } = messageQuotaAlert(business?.name ?? '', status);
     await sendEmail(to, subject, text);
   } catch (err) {
     console.warn('[costGuard] owner alert failed', err);
@@ -360,11 +418,8 @@ export async function sendGuardedSms(
   const crossedAlert = reservation.decision.crossesAlert;
   if (crossedAlert) {
     const usedAfter = reservation.decision.projectedAgorot;
-    await onAlert(req.businessId, {
-      usedAgorot: usedAfter, capAgorot: config.capAgorot, alertAgorot: config.alertAgorot,
-      remainingAgorot: Math.max(0, config.capAgorot - usedAfter), atAlert: true,
-      blocked: usedAfter >= config.capAgorot,
-    }).catch(() => undefined);
+    await onAlert(req.businessId, messageQuotaStatus(usedAfter, config))
+      .catch(() => undefined);
   }
   return { status: 'sent', costAgorot: unitCostAgorot, crossedAlert };
 }

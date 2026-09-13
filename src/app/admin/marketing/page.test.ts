@@ -30,19 +30,42 @@ test('פעולת היצירה אוכפת את הרשאות הערוצים בצד
   assert.match(actions, /canSendPaidClientSms\(business\)/);
 });
 
-test('תצוגת התקציב מציגה שימוש ויתרה מתוך תקרה של 45 ש״ח', () => {
+test('תצוגת המכסה מציגה ספירת הודעות בלבד', () => {
   const html = renderToStaticMarkup(
     React.createElement(CostGuardPanel, {
       status: {
-        usedAgorot: 1200,
-        remainingAgorot: 3300,
-        capAgorot: 4500,
-        alertAgorot: 4000,
+        countable: true,
+        usedMessages: 120,
+        remainingMessages: 330,
+        allowanceMessages: 450,
+        alertAtMessages: 400,
+        usagePercent: 27,
         atAlert: false,
         blocked: false,
       },
     }),
   );
-  assert.match(html, /12.*מתוך.*45/);
-  assert.match(html, /נותר עד לתקרה.*33/);
+  assert.match(html, /120.*מתוך.*450.*הודעות/);
+  assert.match(html, /נותרו.*330.*הודעות/);
+  assert.match(html, /סף התראה.*400.*הודעות/);
+  assert.doesNotMatch(html, /₪|ש&quot;ח|אגור|עלות/);
+});
+
+test('תצוגת המכסה מציגה מצב לא ניתן לחישוב בלי להמציא מכסת הודעות', () => {
+  const html = renderToStaticMarkup(
+    React.createElement(CostGuardPanel, {
+      status: {
+        countable: false,
+        usedMessages: null,
+        remainingMessages: null,
+        allowanceMessages: null,
+        alertAtMessages: null,
+        usagePercent: null,
+        atAlert: false,
+        blocked: false,
+      },
+    }),
+  );
+  assert.match(html, /לא ניתן לחשב כרגע מכסה במספר הודעות/);
+  assert.doesNotMatch(html, /4500|45\.00|₪|ש&quot;ח|אגור|עלות/);
 });

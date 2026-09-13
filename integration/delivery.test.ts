@@ -16,7 +16,7 @@ delete process.env.EMAIL_FROM;
 delete process.env.GOOGLE_CALENDAR_SYNC_ENABLED;
 
 const { prisma } = require('../src/lib/db') as { prisma: PrismaClient };
-const { sendGuardedSms } = require('../src/server/billing/costGuard') as typeof import('../src/server/billing/costGuard');
+const { getCostGuardStatus, sendGuardedSms } = require('../src/server/billing/costGuard') as typeof import('../src/server/billing/costGuard');
 const { deliverEmailOnce } = require('../src/server/billing/emailDelivery') as typeof import('../src/server/billing/emailDelivery');
 const { canDeliverClientEmail } = require('../src/server/billing/deliveryPolicy') as typeof import('../src/server/billing/deliveryPolicy');
 const { notifyClientOfBooking } = require('../src/server/notifications/bookingConfirmation') as typeof import('../src/server/notifications/bookingConfirmation');
@@ -197,6 +197,16 @@ test('paid provider uncertainty and post-send DB failure retain reservations and
     assert.equal((await sendGuardedSms(req, { config, sendSms: async () => { sends++; } })).status, 'blocked');
     assert.equal(sends, 1);
     assert.equal((await prisma.messageLog.aggregate({ where: { businessId: business.id }, _sum: { costAgorot: true } }))._sum.costAgorot, 10);
+    assert.deepEqual(await getCostGuardStatus(business.id, { config }), {
+      countable: true,
+      usedMessages: 1,
+      allowanceMessages: 450,
+      alertAtMessages: 400,
+      remainingMessages: 449,
+      usagePercent: 0,
+      atAlert: false,
+      blocked: false,
+    });
   }
 });
 
