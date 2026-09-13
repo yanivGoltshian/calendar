@@ -136,25 +136,53 @@ export async function sendCampaign(
     return { ok: false, reason: 'already_sent' };
   }
 
+  const rejectCampaign = async (
+    reason: 'business_inactive' | 'no_recipients',
+  ): Promise<SendCampaignResult> => {
+    if (campaign.status === 'DRAFT' && reason === 'no_recipients') {
+      return { ok: false, reason };
+    }
+
+    return prisma.$transaction(async (tx): Promise<SendCampaignResult> => {
+      if (campaign.status === 'SCHEDULED') {
+        const rejected = await tx.campaign.updateMany({
+          where: { id: campaign.id, businessId, status: 'SCHEDULED' },
+          data: { status: 'FAILED' },
+        });
+        if (rejected.count === 0) return { ok: false, reason: 'already_sent' };
+      }
+
+      await tx.messageLog.create({
+        data: {
+          businessId,
+          campaignId: id,
+          channel: 'campaign',
+          body: campaign.body,
+          status: 'BLOCKED',
+          countsToCap: false,
+          error: reason,
+        },
+      });
+      return { ok: false, reason };
+    });
+  };
+
   // דרגת החבילה קובעת אילו ערוצים מותרים: SMS בתשלום רק באקסקלוסיב, וואטסאפ מסונן תמיד.
   const business = await prisma.business.findUnique({
     where: { id: businessId },
     select: { plan: true, subscriptionStatus: true, trialEndsAt: true, paidUntil: true, accountStatus: true },
   });
   if (!business || business.accountStatus !== 'ACTIVE' || !getBusinessAccess(business).active) {
-    await prisma.messageLog.create({ data: {
-      businessId, campaignId: id, channel: 'campaign', body: campaign.body,
-      status: 'BLOCKED', countsToCap: false, error: 'business_inactive',
-    } });
-    return { ok: false, reason: 'business_inactive' };
+    return rejectCampaign('business_inactive');
   }
   const isExclusive = business != null && canSendPaidClientSms(business);
 
   const segment = normalizeSegment(campaign.segment);
   const clients = await resolveSegmentClients(businessId, segment);
   const channels = allowedCampaignChannels(campaign.channels, { isExclusive });
+  if (channels.length === 0) return rejectCampaign('no_recipients');
   const { messages, recipientCount } = resolveCampaignRecipients(clients, channels);
-  if (messages.length === 0) return { ok: false, reason: 'no_recipients' };
+  if (messages.length === 0) return rejectCampaign('no_recipients');
 
   // תפיסה אטומית: רק מעבר יחיד ממצב שליח => SENDING מצליח (מגן מפני שליחה כפולה
   // כאשר שני cron מקבילים מרימים את אותו קמפיין מתוזמן).

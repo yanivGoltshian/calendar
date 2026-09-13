@@ -18,6 +18,7 @@ type Props = {
   url: string;
   qrSvg: string;
   businessName: string;
+  businessSlug: string;
   bookingPath: string;
   businessId: string;
 };
@@ -26,6 +27,7 @@ export default function GoLivePanel({
   url,
   qrSvg,
   businessName,
+  businessSlug,
   bookingPath,
   businessId,
 }: Props) {
@@ -96,7 +98,7 @@ export default function GoLivePanel({
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <InstallApp variant="admin" />
+        <InstallApp variant="admin" invitationSlug={businessSlug} />
 
         <div className="rounded-2xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
           <h3 className="text-base font-bold text-[#1b1715]">

@@ -36,6 +36,7 @@ import {
 import './home.css';
 
 type AdminChromeProps = {
+  businessSlug: string;
   logoLetter: string;
   logoUrl?: string | null;
   bizName: string;
@@ -106,6 +107,7 @@ function moreIcon(id: string) {
  * לעמודים הפנימיים, ומקור אמת יחיד לניווט (adminNav) מונע חזרה של נתיבים שהוסרו.
  */
 export default function AdminChrome({
+  businessSlug,
   logoLetter,
   logoUrl,
   bizName,
@@ -222,6 +224,7 @@ export default function AdminChrome({
                 <InstallApp
                   key={item.id}
                   variant="admin"
+                  invitationSlug={businessSlug}
                   compact
                   persistTrigger
                   triggerClassName="side-link"
@@ -340,6 +343,7 @@ export default function AdminChrome({
                 <InstallApp
                   key={item.id}
                   variant="admin"
+                  invitationSlug={businessSlug}
                   compact
                   persistTrigger
                   triggerClassName="more-row"

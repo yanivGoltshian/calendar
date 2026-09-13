@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { usePathname } from 'next/navigation';
 import { t } from '@/i18n';
 import { BRAND } from '@/config/brand';
 import { resolveBrandColor, readableText } from '@/lib/brandColor';
-import { canInviteInstall, readInstallInvitation } from '@/lib/pwa/installInvitations';
+import { readInstallInvitation } from '@/lib/pwa/installInvitations';
+import {
+  INSTALL_INVITATION_DELAY,
+  INSTALL_INVITATION_RETRY_DELAY,
+  installInvitationKey,
+  nextInstallInvitation,
+} from '@/lib/pwa/installInvitationVisit';
 import {
   detectInstallEnv,
   installGuideFor,
@@ -33,8 +40,25 @@ type BeforeInstallPromptEvent = Event & {
 
 type Variant = 'platform' | 'business' | 'admin' | 'superadmin';
 
+const handledInvitationKeys = new Set<string>();
+const claimedNativePromptEvents = new WeakSet<BeforeInstallPromptEvent>();
+
+function hasVisibleModalDialog() {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>(
+      '[role="dialog"][aria-modal="true"], dialog[open]',
+    ),
+  ).some((dialog) => {
+    const style = getComputedStyle(dialog);
+    return style.display !== 'none' &&
+      style.visibility !== 'hidden' &&
+      dialog.getClientRects().length > 0;
+  });
+}
+
 type Props = {
   variant: Variant;
+  invitationSlug?: string;
   appName?: string;
   logoUrl?: string | null;
   brandColor?: string | null;
@@ -345,6 +369,7 @@ function InstallSheet({
 
 export default function InstallApp({
   variant,
+  invitationSlug,
   appName,
   logoUrl,
   brandColor,
@@ -354,6 +379,7 @@ export default function InstallApp({
   triggerChildren,
   persistTrigger = false,
 }: Props) {
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [env, setEnv] = useState<InstallEnv | null>(null);
@@ -362,15 +388,18 @@ export default function InstallApp({
   const [invitationOpen, setInvitationOpen] = useState(false);
   const invitationKey = useRef<string | null>(null);
   const invitationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const manualInstallStarted = useRef(false);
+  const installedRef = useRef(false);
+  const nativePromptPending = useRef(false);
   const resolveInvitationKey = useCallback(() => {
-    if (variant !== 'business' && variant !== 'admin') return null;
     const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.href;
-    const slug = variant === 'business'
-      ? decodeURIComponent(location.pathname.match(/^\/b\/([^/]+)/)?.[1] ?? '')
-      : manifest ? new URL(manifest).searchParams.get('slug') : null;
-    return slug ? `torchick:install-invite:v1:${variant}:${slug}` : null;
-  }, [variant]);
+    return installInvitationKey(variant, pathname, manifest, invitationSlug);
+  }, [variant, pathname, invitationSlug]);
+  const stopInvitationTimer = useCallback(() => {
+    if (invitationTimer.current !== null) {
+      clearTimeout(invitationTimer.current);
+      invitationTimer.current = null;
+    }
+  }, []);
   const dismissInvitation = useCallback((permanent: boolean) => {
     setInvitationOpen(false);
     if (!permanent) return;
@@ -385,35 +414,49 @@ export default function InstallApp({
 
   useEffect(() => {
     if (!mounted || installed || (variant !== 'business' && variant !== 'admin')) return;
-    const timer = setTimeout(() => {
-      if (manualInstallStarted.current) return;
-      if (document.activeElement?.matches('input, textarea, select, button:disabled')) return;
+    const key = resolveInvitationKey();
+    invitationKey.current = key;
+    setInvitationOpen(false);
+    if (!key) return;
+    const attemptInvitation = () => {
+      invitationTimer.current = null;
       try {
-        const key = resolveInvitationKey();
-        if (!key) return;
         const state = readInstallInvitation(localStorage.getItem(key));
         if (!state) { console.warn('install_invitation_invalid_state'); return; }
-        const now = Date.now();
-        if (!canInviteInstall(state, now)) return;
-        localStorage.setItem(key, JSON.stringify({ ...state, shown: state.shown + 1, lastShownAt: now }));
-        invitationKey.current = key;
+        const active = document.activeElement;
+        const decision = nextInstallInvitation(state, {
+          now: Date.now(),
+          handledThisVisit: handledInvitationKeys.has(key),
+          installed: installedRef.current,
+          visible: document.visibilityState === 'visible',
+          interacting:
+            !!active?.matches('input, textarea, select, button:disabled') ||
+            (active instanceof HTMLElement && active.isContentEditable) ||
+            hasVisibleModalDialog(),
+        });
+        if (decision.action === 'wait') {
+          invitationTimer.current = setTimeout(
+            attemptInvitation,
+            INSTALL_INVITATION_RETRY_DELAY,
+          );
+          return;
+        }
+        if (decision.action !== 'show') return;
+        localStorage.setItem(key, JSON.stringify(decision.state));
+        handledInvitationKeys.add(key);
         setInvitationOpen(true);
       } catch { console.warn('install_invitation_storage_unavailable'); }
-    }, 8000);
-    invitationTimer.current = timer;
-    return () => clearTimeout(timer);
-  }, [mounted, installed, variant, resolveInvitationKey]);
+    };
+    invitationTimer.current = setTimeout(attemptInvitation, INSTALL_INVITATION_DELAY);
+    return stopInvitationTimer;
+  }, [mounted, installed, variant, resolveInvitationKey, stopInvitationTimer]);
 
   useEffect(() => {
     setMounted(true);
 
     const nav = window.navigator as Navigator & { standalone?: boolean };
-    const standalone =
-      window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
-    if (standalone) {
-      setInstalled(true);
-      dismissInvitation(true);
-    }
+    const displayMode = window.matchMedia('(display-mode: standalone)');
+    const standalone = displayMode.matches || nav.standalone === true;
 
     setEnv(
       detectInstallEnv(nav.userAgent, {
@@ -424,32 +467,57 @@ export default function InstallApp({
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      if (!installedRef.current && !claimedNativePromptEvents.has(promptEvent)) {
+        setDeferred(promptEvent);
+      }
     };
     const onInstalled = () => {
+      installedRef.current = true;
+      stopInvitationTimer();
       setInstalled(true);
       setDeferred(null);
       setSheetOpen(false);
       dismissInvitation(true);
     };
+    const checkStandalone = () => {
+      if (displayMode.matches || nav.standalone === true) onInstalled();
+    };
     const onInstallStart = (event: Event) => {
       if (!(event instanceof CustomEvent) || event.detail !== resolveInvitationKey()) return;
-      manualInstallStarted.current = true;
-      if (invitationTimer.current !== null) clearTimeout(invitationTimer.current);
+      const key = resolveInvitationKey();
+      if (key) handledInvitationKeys.add(key);
+      stopInvitationTimer();
       setInvitationOpen(false);
     };
+    checkStandalone();
 
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     window.addEventListener('torchick:install-start', onInstallStart);
+    window.addEventListener('pageshow', checkStandalone);
+    displayMode.addEventListener?.('change', checkStandalone);
     return () => {
       window.removeEventListener('beforeinstallprompt', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
       window.removeEventListener('torchick:install-start', onInstallStart);
+      window.removeEventListener('pageshow', checkStandalone);
+      displayMode.removeEventListener?.('change', checkStandalone);
     };
-  }, [dismissInvitation, resolveInvitationKey]);
+  }, [dismissInvitation, resolveInvitationKey, stopInvitationTimer]);
 
   const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const startManualInstall = () => {
+    const key = resolveInvitationKey();
+    if (key) handledInvitationKeys.add(key);
+    stopInvitationTimer();
+    setInvitationOpen(false);
+    window.dispatchEvent(new CustomEvent('torchick:install-start', { detail: key }));
+  };
+  const showInstallHelp = () => {
+    startManualInstall();
+    setSheetOpen(true);
+  };
 
   if (!mounted) return null;
   if (installed && !persistTrigger) return null;
@@ -475,17 +543,30 @@ export default function InstallApp({
    * מיד את חלון ההתקנה של הדפדפן (התקנה בהקשה אחת). אחרת פותחים את חלון ההנחיה.
    */
   async function handlePrimary() {
-    manualInstallStarted.current = true;
-    if (invitationTimer.current !== null) clearTimeout(invitationTimer.current);
-    setInvitationOpen(false);
-    window.dispatchEvent(new CustomEvent('torchick:install-start', { detail: resolveInvitationKey() }));
-    if (deferred) {
-      await deferred.prompt();
-      const choice = await deferred.userChoice;
+    if (nativePromptPending.current) return;
+    startManualInstall();
+    if (deferred && !installedRef.current) {
+      if (claimedNativePromptEvents.has(deferred)) {
+        setDeferred(null);
+        setSheetOpen(true);
+        return;
+      }
+
+      claimedNativePromptEvents.add(deferred);
+      nativePromptPending.current = true;
       setDeferred(null);
-      if (choice.outcome === 'accepted') {
-        setInstalled(true);
-        dismissInvitation(true);
+      try {
+        await deferred.prompt();
+        const choice = await deferred.userChoice;
+        if (choice.outcome === 'accepted') {
+          installedRef.current = true;
+          setInstalled(true);
+          dismissInvitation(true);
+        }
+      } catch {
+        if (!installedRef.current) setSheetOpen(true);
+      } finally {
+        nativePromptPending.current = false;
       }
       return;
     }
@@ -612,7 +693,7 @@ export default function InstallApp({
         </button>
         <button
           type="button"
-          onClick={() => setSheetOpen(true)}
+          onClick={showInstallHelp}
           aria-haspopup="dialog"
           className="text-sm font-medium text-slate-500 underline-offset-4 hover:underline"
         >
