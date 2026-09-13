@@ -66,7 +66,7 @@ test('complete real rich content still enables rich header with the saved palett
     assert.equal(result.landingThemeVars['--biz-strong'], theme.brandDark);
     assert.equal(result.landingThemeVars['--c-ink'], theme.ink);
     assert.equal(result.landingThemeVars['--c-accent'], theme.accent);
-    assert.equal(result.landingThemeVars['--c-hero-cta-strong'], theme.brandDark);
+    assert.equal(result.landingThemeVars['--c-hero-cta'], theme.brand);
   }
 });
 
@@ -77,18 +77,19 @@ test('existing clinic keeps rich presentation, warm colors and original rose CTA
   assert.equal(result.landingThemeVars['--biz'], '#b0855f');
   assert.equal(result.landingThemeVars['--biz-strong'], '#8c6748');
   assert.equal(result.landingThemeVars['--c-hero-cta'], '#c08f86');
-  assert.equal(result.landingThemeVars['--c-hero-cta-strong'], '#a06c63');
 });
 
 test('palette variables cover every public surface role without retaining legacy bronze values', () => {
   const pink = BRAND_PRESETS.find((preset) => preset.id === 'soft-rose')!.theme;
   const variables = publicLandingThemeVars(pink);
   for (const key of [
-    '--biz', '--biz-strong', '--biz-dark', '--biz-light', '--biz-ink', '--biz-soft',
+    '--biz', '--biz-strong', '--biz-dark', '--biz-light', '--biz-ink', '--biz-text', '--biz-soft',
     '--biz-softer', '--biz-border', '--c-gold', '--c-gold-strong', '--c-gold-text',
-    '--c-gold-soft', '--c-gold-glow', '--c-cream', '--c-surface', '--c-surface-muted',
+    '--c-gold-soft', '--c-gold-glow', '--c-gold-action', '--c-gold-action-strong',
+    '--c-on-gold-action', '--c-cream', '--c-surface', '--c-surface-muted',
     '--c-border', '--c-ink', '--c-muted', '--c-brand', '--c-brand-strong', '--c-brand-soft',
-    '--c-accent', '--c-accent-strong', '--c-accent-soft', '--c-dark-surface',
+    '--c-brand-action', '--c-brand-action-strong', '--c-on-brand-action',
+    '--c-accent', '--c-accent-strong', '--c-accent-soft', '--c-accent-text', '--c-dark-surface',
     '--c-dark-surface-soft', '--c-dark-glow-primary', '--c-dark-glow-secondary',
     '--c-on-brand', '--c-on-gold', '--c-on-accent', '--c-on-dark', '--c-shadow',
     '--c-hero-overlay-soft', '--c-hero-overlay-medium', '--c-hero-overlay-strong',
@@ -118,13 +119,27 @@ test('every curated palette keeps button and dark-surface text at WCAG AA contra
       ['--c-on-brand', '--c-brand'],
       ['--c-on-gold', '--c-gold'],
       ['--c-on-accent', '--c-accent'],
-      ['--c-on-dark', '--c-ink'],
-      ['--c-hero-cta-ink', '--c-hero-cta'],
     ] as const) {
       assert.ok(
         contrastRatio(variables[foreground], variables[background]) >= 4.5,
         `${id}: ${foreground} must remain readable on ${background}`,
       );
+    }
+    for (const [foreground, backgrounds] of [
+      ['--biz-text', ['--c-surface', '--c-surface-muted']],
+      ['--c-muted', ['--c-surface', '--c-surface-muted']],
+      ['--c-accent-text', ['--c-surface', '--c-surface-muted']],
+      ['--c-on-dark', ['--c-dark-surface', '--c-dark-surface-soft']],
+      ['--c-on-brand-action', ['--c-brand-action', '--c-brand-action-strong']],
+      ['--c-on-gold-action', ['--c-gold-action', '--c-gold-action-strong']],
+      ['--c-hero-cta-ink', ['--c-hero-cta', '--c-hero-cta-strong']],
+    ] as const) {
+      for (const background of backgrounds) {
+        assert.ok(
+          contrastRatio(variables[foreground], variables[background]) >= 4.5,
+          `${id}: ${foreground} must remain readable on ${background}`,
+        );
+      }
     }
   }
 });

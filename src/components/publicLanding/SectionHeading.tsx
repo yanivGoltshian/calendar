@@ -15,7 +15,7 @@ export default function SectionHeading({ eyebrow, title, lede, icon, align = 'ce
   return (
     <div className={centered ? 'text-center' : 'text-start'}>
       {eyebrow ? (
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--biz-strong)]">
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--biz-text,#334155)]">
           {icon}
           {eyebrow}
         </span>

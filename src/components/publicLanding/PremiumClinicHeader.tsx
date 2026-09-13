@@ -228,7 +228,7 @@ export default function PremiumClinicHeader({
                 // eslint-disable-next-line @next/next/no-img-element
                 <MediaImage src={logoUrl} alt={name} sizes="64px" className="h-full w-full object-cover" />
               ) : (
-                <span className="text-lg font-bold text-[color:var(--biz-strong)]">{name.charAt(0)}</span>
+                <span className="text-lg font-bold text-[color:var(--biz-text,#334155)]">{name.charAt(0)}</span>
               )}
             </span>
             <span className="truncate font-display text-sm font-bold text-[color:var(--c-ink,#1b1715)] sm:text-xl">
@@ -238,25 +238,25 @@ export default function PremiumClinicHeader({
           <nav className="flex items-center gap-1 sm:gap-2">
             <a
               href="#lp-services"
-              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-strong)] sm:inline-block"
+              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-text,#334155)] sm:inline-block"
             >
               {labels.navServices}
             </a>
             {showOffers ? <a
               href="#lp-offers"
-              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-strong)] sm:inline-block"
+              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-text,#334155)] sm:inline-block"
             >
               {labels.navOffers}
             </a> : null}
             {showLocation ? <a
               href="#lp-location"
-              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-strong)] sm:inline-block"
+              className="hidden rounded-full px-3 py-2 text-sm font-medium text-[color:var(--c-ink,#1b1715)]/80 transition hover:text-[color:var(--biz-text,#334155)] sm:inline-block"
             >
               {labels.navLocation}
             </a> : null}
             <Link
               href={bookHref}
-              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] px-3 py-1.5 text-[11px] font-bold text-[color:var(--c-on-gold,#1b1715)] shadow-soft transition hover:-translate-y-0.5 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
+              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-l from-[color:var(--c-gold-action,#c6a86a)] to-[color:var(--c-gold-action-strong,#a6863f)] px-3 py-1.5 text-[11px] font-bold text-[color:var(--c-on-gold-action,#1b1715)] shadow-soft transition hover:-translate-y-0.5 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
             >
               {labels.bookCta}
               <ArrowLeftIcon className="h-4 w-4" />
@@ -279,7 +279,7 @@ export default function PremiumClinicHeader({
                     aria-haspopup="menu"
                     className="inline-flex items-center gap-2 rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 py-1.5 pe-3 ps-1.5 text-sm font-semibold text-[color:var(--c-ink,#1b1715)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
                   >
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-on-gold,#1b1715)]">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold-action,#c6a86a)] to-[color:var(--c-gold-action-strong,#a6863f)] text-sm font-bold text-[color:var(--c-on-gold-action,#1b1715)]">
                       {accountInitial}
                     </span>
                     {accountFirstName ? (
@@ -311,10 +311,10 @@ export default function PremiumClinicHeader({
                       />
                       <div
                         role="menu"
-                        className="absolute end-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white p-2 shadow-elevated"
+                        className="absolute end-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-[color:var(--c-surface,#ffffff)] p-2 shadow-elevated"
                       >
                         <div className="flex items-center gap-2.5 px-2 py-2">
-                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-sm font-bold text-[color:var(--c-on-gold,#1b1715)]">
+                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold-action,#c6a86a)] to-[color:var(--c-gold-action-strong,#a6863f)] text-sm font-bold text-[color:var(--c-on-gold-action,#1b1715)]">
                             {accountInitial}
                           </span>
                           <span className="flex min-w-0 flex-col">
@@ -337,7 +337,7 @@ export default function PremiumClinicHeader({
                           href={accountHref}
                           role="menuitem"
                           onClick={() => setAccountOpen(false)}
-                          className="mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/12"
+                          className="mt-1 block rounded-xl px-3 py-2.5 text-sm font-semibold text-[color:var(--biz-text,#334155)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/12"
                         >
                           {labels.menu.account}
                         </Link>
@@ -357,7 +357,7 @@ export default function PremiumClinicHeader({
               ) : (
                 <Link
                   href={loginHref}
-                  className="inline-flex items-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 px-4 py-2 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
+                  className="inline-flex items-center rounded-full border border-[color:var(--c-gold,#c6a86a)]/40 px-4 py-2 text-sm font-semibold text-[color:var(--biz-text,#334155)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/10"
                 >
                   {labels.menu.login}
                 </Link>
@@ -412,15 +412,15 @@ export default function PremiumClinicHeader({
                 </a> : null}
               </nav>
 
-              <div className="mt-3 rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-white/60 p-3">
+              <div className="mt-3 rounded-2xl border border-[color:var(--c-gold,#c6a86a)]/25 bg-[color:var(--c-surface-muted,#ffffff)] p-3">
                 {effectiveAccount ? (
                   <>
                     <div className="flex items-center gap-2.5 px-1 pb-2">
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold,#c6a86a)] to-[color:var(--c-gold-strong,#a6863f)] text-base font-bold text-[color:var(--c-on-gold,#1b1715)]">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-l from-[color:var(--c-gold-action,#c6a86a)] to-[color:var(--c-gold-action-strong,#a6863f)] text-base font-bold text-[color:var(--c-on-gold-action,#1b1715)]">
                         {accountInitial}
                       </span>
                       <span className="flex min-w-0 flex-col">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--biz-strong)]">
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--biz-text,#334155)]">
                           {labels.menu.connectedLabel}
                         </span>
                         {effectiveAccount.name ? (
@@ -438,7 +438,7 @@ export default function PremiumClinicHeader({
                     <Link
                       href={accountHref}
                       onClick={() => setMenuOpen(false)}
-                      className="mt-1 block rounded-xl bg-[color:var(--c-gold,#c6a86a)]/15 px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/25"
+                      className="mt-1 block rounded-xl bg-[color:var(--c-gold,#c6a86a)]/15 px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-text,#334155)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/25"
                     >
                       {labels.menu.account}
                     </Link>
@@ -455,7 +455,7 @@ export default function PremiumClinicHeader({
                   <Link
                     href={loginHref}
                     onClick={() => setMenuOpen(false)}
-                    className="block rounded-xl bg-[color:var(--c-gold,#c6a86a)]/15 px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-strong)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/25"
+                    className="block rounded-xl bg-[color:var(--c-gold,#c6a86a)]/15 px-3 py-2.5 text-center text-sm font-bold text-[color:var(--biz-text,#334155)] transition hover:bg-[color:var(--c-gold,#c6a86a)]/25"
                   >
                     {labels.menu.login}
                   </Link>

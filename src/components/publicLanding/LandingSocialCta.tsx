@@ -32,7 +32,7 @@ export default function LandingSocialCta({ ctaTitle, ctaText, ctaLabel, bookHref
       <p className="mx-auto mt-3 max-w-md leading-relaxed text-[color:var(--c-muted,#475569)] sm:text-lg">{ctaText}</p>
       <Link
         href={bookHref}
-        className="group mt-8 inline-flex items-center gap-2 rounded-full bg-[var(--biz)] px-9 py-4 text-base font-bold text-[color:var(--biz-ink)] shadow-elevated transition hover:-translate-y-0.5 hover:bg-[var(--biz-strong)]"
+        className="group mt-8 inline-flex items-center gap-2 rounded-full bg-[var(--c-brand-action)] px-9 py-4 text-base font-bold text-[color:var(--c-on-brand-action)] shadow-elevated transition hover:-translate-y-0.5 hover:bg-[var(--c-brand-action-strong)]"
       >
         {ctaLabel}
         <ArrowLeftIcon className="h-4 w-4 transition group-hover:-translate-x-1" />
@@ -49,7 +49,7 @@ export default function LandingSocialCta({ ctaTitle, ctaText, ctaLabel, bookHref
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] text-[color:var(--biz-strong)] shadow-soft transition hover:-translate-y-0.5 hover:bg-[var(--biz)] hover:text-[color:var(--biz-ink)]"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] text-[color:var(--biz-text,#334155)] shadow-soft transition hover:-translate-y-0.5 hover:bg-[var(--c-brand-action)] hover:text-[color:var(--c-on-brand-action)]"
               >
                 <Icon className="h-5 w-5" />
               </a>

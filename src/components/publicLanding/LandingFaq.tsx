@@ -18,7 +18,7 @@ export default function LandingFaq({ title, items, eyebrow }: Props) {
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-display text-base font-bold text-[color:var(--c-ink,#0f172a)]">
               {item.question}
-              <PlusIcon className="h-5 w-5 shrink-0 text-[color:var(--biz-strong)] transition group-open:rotate-45" />
+              <PlusIcon className="h-5 w-5 shrink-0 text-[color:var(--biz-text,#334155)] transition group-open:rotate-45" />
             </summary>
             <p className="mt-3 text-sm leading-relaxed text-[color:var(--c-muted,#475569)]">{item.answer}</p>
           </details>

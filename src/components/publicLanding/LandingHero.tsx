@@ -31,7 +31,7 @@ export default function LandingHero({ eyebrow, headline, subtext, ctaLabel, book
       <div className="mt-7 flex flex-wrap items-center gap-3">
         <Link
           href={bookHref}
-          className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-base font-bold text-[color:var(--biz-ink-strong)] shadow-elevated transition hover:-translate-y-0.5 hover:bg-white/95"
+          className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-base font-bold text-[color:var(--biz-text,#334155)] shadow-elevated transition hover:-translate-y-0.5 hover:bg-white/95"
         >
           {ctaLabel}
           <ArrowLeftIcon className="h-4 w-4 transition group-hover:-translate-x-1" />

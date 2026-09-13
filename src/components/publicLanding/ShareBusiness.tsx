@@ -135,7 +135,7 @@ export default function ShareBusiness({ shareUrl, businessName }: ShareBusinessP
       className="rounded-[22px] border border-[color:var(--c-border,#e7ddcd)] bg-[color:var(--c-cream,#faf6ef)] px-5 py-8 text-center sm:px-8"
       style={{ boxShadow: '0 18px 40px -30px var(--c-shadow, rgba(40,28,18,0.5))' }}
     >
-      <div className="text-[0.85rem] font-extrabold text-[color:var(--c-gold-text,#c6a86a)]">{s.eyebrow}</div>
+      <div className="text-[0.85rem] font-extrabold text-[color:var(--biz-text,#334155)]">{s.eyebrow}</div>
       <h2 className="mt-1 text-2xl font-extrabold text-[color:var(--c-ink,#211c1a)]">{s.title}</h2>
       <div
         className="mx-auto mt-3 h-[3px] w-20 rounded-full"
@@ -158,7 +158,7 @@ export default function ShareBusiness({ shareUrl, businessName }: ShareBusinessP
             type="button"
             onClick={handleCopy}
             aria-label={s.copyLink}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[color:var(--c-brand,#b0855f)] px-4 py-2.5 text-sm font-bold text-[color:var(--c-on-brand,#ffffff)] transition hover:bg-[color:var(--c-brand-strong,#8c6748)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--c-brand,#b0855f)]/50"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[color:var(--c-brand-action,#b0855f)] px-4 py-2.5 text-sm font-bold text-[color:var(--c-on-brand-action,#ffffff)] transition hover:bg-[color:var(--c-brand-action-strong,#8c6748)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--c-brand,#b0855f)]/50"
           >
             {copied ? (
               <CheckIcon className="h-4 w-4" />

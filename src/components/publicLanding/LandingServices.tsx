@@ -29,7 +29,7 @@ type Props = {
 export default function LandingServices({ title, services, bookHref, iconKey, bookLabel, eyebrow }: Props) {
   if (services.length === 0) return null;
   return (
-    <section id="lp-services" className="mt-16 scroll-mt-24 sm:mt-24">
+    <section id="lp-services" data-palette-surface="services" className="mt-16 scroll-mt-24 sm:mt-24">
       <SectionHeading
         eyebrow={eyebrow}
         title={title}
@@ -57,11 +57,11 @@ export default function LandingServices({ title, services, bookHref, iconKey, bo
               </span>
             ) : null}
             {!s.hidePrice ? (
-              <span className="min-w-[76px] text-center font-display text-lg font-black text-[color:var(--biz-ink-strong)]">
+              <span className="min-w-[76px] text-center font-display text-lg font-black text-[color:var(--biz-text,#334155)]">
                 {formatAgorot(s.priceAgorot)}
               </span>
             ) : null}
-            <span className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[color:var(--biz-border)] bg-[var(--biz-soft)] px-5 py-2.5 text-sm font-extrabold text-[color:var(--biz-strong)] transition group-hover:bg-[var(--biz)] group-hover:text-[color:var(--biz-ink)] max-[560px]:w-full">
+            <span className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[color:var(--biz-border)] bg-[var(--biz-soft)] px-5 py-2.5 text-sm font-extrabold text-[color:var(--biz-text,#334155)] transition group-hover:bg-[var(--biz)] group-hover:text-[color:var(--biz-ink)] max-[560px]:w-full">
               {bookLabel}
               <ArrowLeftIcon className="h-3.5 w-3.5 transition group-hover:-translate-x-0.5" />
             </span>

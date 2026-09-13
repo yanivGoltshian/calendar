@@ -35,7 +35,7 @@ export default function LandingTestimonials({ title, items, eyebrow, googleRevie
         <div className="mx-auto mt-6 flex w-fit items-center gap-3 rounded-full border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] px-5 py-2.5 shadow-soft">
           <GoogleGlyph className="h-5 w-5" />
           {googleLabel ? (
-            <span className="text-sm font-semibold text-[color:var(--biz-ink-strong)]">{googleLabel}</span>
+            <span className="text-sm font-semibold text-[color:var(--biz-text,#334155)]">{googleLabel}</span>
           ) : null}
         </div>
       ) : null}
@@ -56,13 +56,13 @@ export default function LandingTestimonials({ title, items, eyebrow, googleRevie
               <figcaption className="mt-4 flex items-center gap-3">
                 <span
                   aria-hidden
-                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full font-display text-base font-extrabold text-white"
-                  style={{ background: 'linear-gradient(160deg, var(--biz), var(--biz-strong))' }}
+                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full font-display text-base font-extrabold text-[color:var(--c-on-brand-action,#ffffff)]"
+                  style={{ background: 'linear-gradient(160deg, var(--c-brand-action), var(--c-brand-action-strong))' }}
                 >
                   {tm.name.trim().charAt(0)}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[0.95rem] font-extrabold text-[color:var(--biz-ink-strong)]">{tm.name}</span>
+                  <span className="block text-[0.95rem] font-extrabold text-[color:var(--biz-text,#334155)]">{tm.name}</span>
                 </span>
               </figcaption>
             ) : null}
@@ -76,7 +76,10 @@ export default function LandingTestimonials({ title, items, eyebrow, googleRevie
             target="_blank"
             rel="noopener noreferrer nofollow"
             className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold shadow-soft transition hover:opacity-95"
-            style={{ background: 'linear-gradient(90deg, var(--biz), var(--biz-strong))', color: 'var(--biz-ink)' }}
+            style={{
+              background: 'linear-gradient(90deg, var(--c-brand-action), var(--c-brand-action-strong))',
+              color: 'var(--c-on-brand-action)',
+            }}
           >
             <GoogleGlyph className="h-4 w-4" />
             {googleCta}

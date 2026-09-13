@@ -47,7 +47,7 @@ function AppointmentRow({
       <p className="mt-0.5 text-sm font-semibold text-[color:var(--c-muted,#6e655f)]">
         {appt.staffLabel}
       </p>
-      <p className="mt-2 text-sm font-bold tabular-nums text-[color:var(--c-accent-strong,#a06c63)]">{appt.whenLabel}</p>
+      <p className="mt-2 text-sm font-bold tabular-nums text-[color:var(--c-accent-text,#7f4f48)]">{appt.whenLabel}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <a
@@ -55,7 +55,7 @@ function AppointmentRow({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={addToCalendarAria}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--c-brand,#b0855f)] bg-[color:var(--c-surface,#ffffff)] px-3.5 py-2 text-sm font-bold text-[color:var(--c-brand,#b0855f)] transition hover:bg-[color:var(--c-brand,#b0855f)] hover:text-[color:var(--c-on-brand,#ffffff)]"
+          className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--c-brand,#b0855f)] bg-[color:var(--c-surface,#ffffff)] px-3.5 py-2 text-sm font-bold text-[color:var(--biz-text,#334155)] transition hover:bg-[color:var(--c-brand,#b0855f)] hover:text-[color:var(--c-on-brand,#ffffff)]"
         >
           <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -138,7 +138,7 @@ export default function ReturningCustomer({ name, slug, appointments, heading }:
           <h2 className="font-display text-2xl font-black text-[color:var(--c-ink,#1b1715)]">
             {heading ?? (name ? `${r.greeting} ${name}` : r.greeting)}
           </h2>
-          <span className="inline-flex items-center rounded-full bg-[color:var(--c-accent-soft,rgba(192,143,134,0.15))] px-3.5 py-1.5 text-xs font-extrabold text-[color:var(--c-accent-strong,#a06c63)]">
+          <span className="inline-flex items-center rounded-full bg-[color:var(--c-accent-soft,rgba(192,143,134,0.15))] px-3.5 py-1.5 text-xs font-extrabold text-[color:var(--c-accent-text,#7f4f48)]">
             {r.subtitle}
           </span>
         </div>

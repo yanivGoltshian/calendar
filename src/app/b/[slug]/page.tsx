@@ -34,7 +34,7 @@ import ReturningCustomerLoader from '@/components/publicLanding/ReturningCustome
 import TodayHoursHighlight from '@/components/publicLanding/TodayHoursHighlight';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
 import { visualLevelForPublicPage } from '@/server/onboardingProgress';
-import { publicPagePresentation } from '@/server/publicPagePresentation';
+import { publicLandingThemeVars, publicPagePresentation } from '@/server/publicPagePresentation';
 import ShareBusiness from '@/components/publicLanding/ShareBusiness';
 import BackButton from '@/components/publicLanding/BackButton';
 import AnnouncementBar from '@/components/publicLanding/AnnouncementBar';
@@ -97,6 +97,16 @@ export default async function BusinessPublicPage({ params }: Props) {
     '--biz-softer': withAlpha(brand, 0.05),
     '--biz-border': withAlpha(brand, 0.22),
   } as unknown as CSSProperties;
+  const brandThemeVars = publicLandingThemeVars({
+    brand,
+    brandDark: darken(brand, 0.18),
+    gold: brand,
+    goldStrong: darken(brand, 0.18),
+    goldText: darken(brand, 0.34),
+    cream: '#f8fafc',
+    ink: '#0f172a',
+    accent: lighten(brand, 0.16),
+  });
 
   // מצב העמוד (באג 3): הזמנת תורים ממוקדת מול עמוד נחיתה עשיר, נשלט מהניהול.
   // הוסרה עקיפת ?style= (תצוגה מקדימה לאורח) כדי לאפשר שלד ISR ללא קריאת searchParams
@@ -134,7 +144,7 @@ export default async function BusinessPublicPage({ params }: Props) {
     business.slug === CLINIC_IDENTITY.slug ? clinicLabels.heroTagline : null;
   const rootStyle = isClinicPremium || landing?.theme
     ? ({ ...themeVars, ...landingThemeVars } as CSSProperties)
-    : themeVars;
+    : ({ ...brandThemeVars, ...themeVars } as CSSProperties);
 
   const jsonLd = localBusinessJsonLd({
     name: business.name,
@@ -186,7 +196,7 @@ export default async function BusinessPublicPage({ params }: Props) {
         // eslint-disable-next-line @next/next/no-img-element
         <MediaImage src={business.logoUrl} alt={business.name} sizes="80px" className="h-full w-full object-contain p-1.5" />
       ) : (
-        <span className="text-3xl font-bold text-[color:var(--biz-strong)] sm:text-4xl">{business.name.charAt(0)}</span>
+        <span className="text-3xl font-bold text-[color:var(--biz-text,#334155)] sm:text-4xl">{business.name.charAt(0)}</span>
       )}
     </div>
   );
@@ -194,11 +204,11 @@ export default async function BusinessPublicPage({ params }: Props) {
   const servicesSection = (
     <section className="mt-10">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[color:var(--c-ink,#0f172a)]">
-        <SectionIcon iconKey={iconKey} className="h-5 w-5 text-[color:var(--biz-strong)]" />
+        <SectionIcon iconKey={iconKey} className="h-5 w-5 text-[color:var(--biz-text,#334155)]" />
         {t.publicPage.servicesTitle}
       </h2>
       {services.length === 0 ? (
-        <p className="text-slate-500">{t.publicPage.noServices}</p>
+        <p className="text-[color:var(--c-muted,#64748b)]">{t.publicPage.noServices}</p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {services.map((s) => (
@@ -230,7 +240,7 @@ export default async function BusinessPublicPage({ params }: Props) {
   const staffSection = staff.length > 0 ? (
     <section className="mt-10">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[color:var(--c-ink,#0f172a)]">
-        <UsersIcon className="h-5 w-5 text-[color:var(--biz-strong)]" />
+        <UsersIcon className="h-5 w-5 text-[color:var(--biz-text,#334155)]" />
         {t.publicPage.teamTitle}
       </h2>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -244,7 +254,7 @@ export default async function BusinessPublicPage({ params }: Props) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <MediaImage src={m.avatarUrl} alt={m.displayName} sizes="64px" className="h-full w-full object-cover" />
               ) : (
-                <span className="text-xl font-bold text-[color:var(--biz-strong)]">{m.displayName.charAt(0)}</span>
+                <span className="text-xl font-bold text-[color:var(--biz-text,#334155)]">{m.displayName.charAt(0)}</span>
               )}
             </div>
             <div className="min-w-0">
@@ -261,7 +271,7 @@ export default async function BusinessPublicPage({ params }: Props) {
   const hoursSection = business.workingHours.length > 0 ? (
     <section className="mt-10">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[color:var(--c-ink,#0f172a)]">
-        <ClockIcon className="h-5 w-5 text-[color:var(--biz-strong)]" />
+        <ClockIcon className="h-5 w-5 text-[color:var(--biz-text,#334155)]" />
         {t.publicPage.hoursTitle}
       </h2>
       <ul className="overflow-hidden rounded-2xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] shadow-sm">
@@ -272,7 +282,7 @@ export default async function BusinessPublicPage({ params }: Props) {
               key={d}
               data-hours-day={d}
               data-today-class="bg-[var(--biz-soft)] font-semibold"
-              className={`flex items-center justify-between px-4 py-2.5 text-sm ${d > 0 ? 'border-t border-slate-100' : ''}`}
+              className={`flex items-center justify-between px-4 py-2.5 text-sm ${d > 0 ? 'border-t border-[color:var(--c-border,#e2e8f0)]' : ''}`}
             >
               <span className="text-[color:var(--c-ink,#0f172a)]">{t.publicPage.weekdays[d]}</span>
               {wh ? (
@@ -280,7 +290,7 @@ export default async function BusinessPublicPage({ params }: Props) {
                   {formatMinutes(wh.startMinute)}–{formatMinutes(wh.endMinute)}
                 </span>
               ) : (
-                <span className="text-slate-400">{t.publicPage.hoursClosed}</span>
+                <span className="text-[color:var(--c-muted,#64748b)]">{t.publicPage.hoursClosed}</span>
               )}
             </li>
           );
@@ -361,7 +371,10 @@ export default async function BusinessPublicPage({ params }: Props) {
         <header className="relative overflow-hidden">
           <div
             className="relative"
-            style={{ backgroundImage: 'linear-gradient(135deg, var(--biz-dark) 0%, var(--biz) 58%, var(--biz-light) 130%)' }}
+            style={{
+              backgroundImage:
+                'linear-gradient(135deg, var(--c-brand-action-strong) 0%, var(--c-brand-action) 58%, var(--c-brand-action-strong) 130%)',
+            }}
           >
             {business.coverImageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -373,7 +386,7 @@ export default async function BusinessPublicPage({ params }: Props) {
             ) : null}
             <div
               className={`relative mx-auto px-5 pb-9 pt-10 sm:pb-12 sm:pt-16 ${isLanding ? 'max-w-[1120px]' : 'max-w-3xl'}`}
-              style={{ color: 'var(--biz-ink)' }}
+              style={{ color: 'var(--c-on-brand-action)' }}
             >
               {logoTile}
               <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{business.name}</h1>
@@ -479,7 +492,11 @@ export default async function BusinessPublicPage({ params }: Props) {
         <div className={`mx-auto ${isLanding ? 'max-w-[1120px]' : 'max-w-3xl'}`}>
           <Link
             href={bookHref}
-            style={{ backgroundImage: 'linear-gradient(90deg, var(--biz) 0%, var(--biz-strong) 100%)', color: 'var(--biz-ink)' }}
+            style={{
+              backgroundImage:
+                'linear-gradient(90deg, var(--c-brand-action) 0%, var(--c-brand-action-strong) 100%)',
+              color: 'var(--c-on-brand-action)',
+            }}
             data-palette-surface="sticky-booking"
             className="block w-full rounded-xl py-3.5 text-center text-base font-bold shadow-md transition hover:opacity-95"
           >

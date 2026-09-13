@@ -144,8 +144,8 @@ export default function LandingLocation({
                     href={gmapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-[color:var(--c-on-gold,#241d10)] shadow-soft transition hover:-translate-y-0.5"
-                    style={{ background: 'linear-gradient(90deg, var(--c-gold-strong), var(--c-gold))' }}
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-[color:var(--c-on-gold-action,#241d10)] shadow-soft transition hover:-translate-y-0.5"
+                    style={{ background: 'linear-gradient(90deg, var(--c-gold-action-strong), var(--c-gold-action))' }}
                   >
                     <NavigationIcon className="h-4 w-4" />
                     {mapsCta}
@@ -202,11 +202,11 @@ export default function LandingLocation({
   // ── מצב רגיל (עסקים אחרים): הפריסה הקיימת, ללא שינוי חזותי ──
   const mapHref = gmapsUrl;
   return (
-    <section id="lp-location" className="mt-16 scroll-mt-24 sm:mt-24">
+    <section id="lp-location" data-palette-surface="location" className="mt-16 scroll-mt-24 sm:mt-24">
       <SectionHeading eyebrow={eyebrow} title={title} icon={<MapPinIcon className="h-4 w-4" />} />
       <div className="mt-10 grid gap-4 sm:grid-cols-2">
         {hasHours ? (
-          <ul className="overflow-hidden rounded-3xl border border-[color:var(--biz-border)] bg-white shadow-soft">
+          <ul className="overflow-hidden rounded-3xl border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] shadow-soft">
             {[0, 1, 2, 3, 4, 5, 6].map((d) => {
               const wh = byDay.get(d);
               return (
@@ -214,15 +214,15 @@ export default function LandingLocation({
                   key={d}
                   data-hours-day={d}
                   data-today-class="bg-[var(--biz-soft)] font-semibold"
-                  className={`flex items-center justify-between px-5 py-3 text-sm ${d > 0 ? 'border-t border-slate-100' : ''}`}
+                  className={`flex items-center justify-between px-5 py-3 text-sm ${d > 0 ? 'border-t border-[color:var(--c-border,#e2e8f0)]' : ''}`}
                 >
-                  <span className="text-slate-900">{weekdays[d]}</span>
+                  <span className="text-[color:var(--c-ink,#0f172a)]">{weekdays[d]}</span>
                   {wh ? (
-                    <span dir="ltr" className="tabular-nums text-slate-700">
+                    <span dir="ltr" className="tabular-nums text-[color:var(--c-muted,#334155)]">
                       {formatMinutes(wh.startMinute)}–{formatMinutes(wh.endMinute)}
                     </span>
                   ) : (
-                    <span className="text-slate-400">{closedLabel}</span>
+                    <span className="text-[color:var(--c-muted,#64748b)]">{closedLabel}</span>
                   )}
                 </li>
               );
@@ -233,9 +233,9 @@ export default function LandingLocation({
         {address || phone ? (
           <div className="flex flex-col gap-4">
             {address ? (
-              <div className="rounded-3xl border border-[color:var(--biz-border)] bg-white p-5 shadow-soft">
-                <p className="flex items-start gap-2 text-sm text-slate-700">
-                  <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--biz-strong)]" />
+              <div className="rounded-3xl border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-5 shadow-soft">
+                <p className="flex items-start gap-2 text-sm text-[color:var(--c-muted,#334155)]">
+                  <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--biz-text,#334155)]" />
                   {address}
                 </p>
                 {mapHref ? (
@@ -243,7 +243,7 @@ export default function LandingLocation({
                     href={mapHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--biz-soft)] px-4 py-2.5 text-sm font-semibold text-[color:var(--biz-strong)] transition hover:bg-[var(--biz)] hover:text-[color:var(--biz-ink)]"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--biz-soft)] px-4 py-2.5 text-sm font-semibold text-[color:var(--biz-text,#334155)] transition hover:bg-[var(--biz)] hover:text-[color:var(--biz-ink)]"
                   >
                     <NavigationIcon className="h-4 w-4" />
                     {directionsCta}
@@ -254,11 +254,11 @@ export default function LandingLocation({
             {phone ? (
               <a
                 href={`tel:${phone}`}
-                className="flex items-center gap-2 rounded-3xl border border-[color:var(--biz-border)] bg-white p-5 text-sm font-semibold text-slate-700 shadow-soft transition hover:border-[color:var(--biz)]"
+                className="flex items-center gap-2 rounded-3xl border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-5 text-sm font-semibold text-[color:var(--c-muted,#334155)] shadow-soft transition hover:border-[color:var(--biz)]"
               >
-                <PhoneIcon className="h-4 w-4 shrink-0 text-[color:var(--biz-strong)]" />
+                <PhoneIcon className="h-4 w-4 shrink-0 text-[color:var(--biz-text,#334155)]" />
                 <span dir="ltr" className="tabular-nums">{phone}</span>
-                <span className="ms-auto text-[color:var(--biz-strong)]">{callCta}</span>
+                <span className="ms-auto text-[color:var(--biz-text,#334155)]">{callCta}</span>
               </a>
             ) : null}
           </div>

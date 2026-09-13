@@ -48,7 +48,7 @@ function relativeLuminance(hex: string): number {
   return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
 }
 
-function contrastRatio(foreground: string, background: string): number {
+export function contrastRatio(foreground: string, background: string): number {
   const lighter = Math.max(relativeLuminance(foreground), relativeLuminance(background));
   const darker = Math.min(relativeLuminance(foreground), relativeLuminance(background));
   return (lighter + 0.05) / (darker + 0.05);
@@ -64,4 +64,18 @@ export function readableText(hex: string): string {
   if (darkContrast >= 4.5 && darkContrast >= lightContrast) return dark;
   if (lightContrast >= 4.5) return light;
   return '#000000';
+}
+
+/** בוחר צבע טקסט שעומד ב-AA מול כל הרקעים שסופקו, תוך העדפת גווני מותג תקינים. */
+export function readableTextAcross(
+  backgrounds: readonly string[],
+  preferred: readonly string[] = [],
+): string {
+  const candidates = [...new Set([...preferred, '#0A182D', '#ffffff', '#000000'])];
+  const scored = candidates.map((candidate) => ({
+    candidate,
+    minimum: Math.min(...backgrounds.map((background) => contrastRatio(candidate, background))),
+  }));
+  return scored.find(({ minimum }) => minimum >= 4.5)?.candidate ??
+    scored.reduce((best, current) => current.minimum > best.minimum ? current : best).candidate;
 }

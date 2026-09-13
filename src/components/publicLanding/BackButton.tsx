@@ -42,7 +42,7 @@ export default function BackButton() {
       type="button"
       onClick={handleBack}
       aria-label={t.publicPage.backAria}
-      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/90 px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-slate-900"
+      className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] px-3.5 py-2 text-sm font-semibold text-[color:var(--c-muted,#334155)] shadow-sm backdrop-blur transition hover:bg-[color:var(--c-surface-muted,#f8fafc)] hover:text-[color:var(--c-ink,#0f172a)]"
     >
       {/* חץ המצביע ימינה — כיוון ה"חזרה" הטבעי בממשק ימין־לשמאל */}
       <svg

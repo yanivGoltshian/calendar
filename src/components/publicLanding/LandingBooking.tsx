@@ -203,7 +203,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
         />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-2xl font-black text-[color:var(--c-ink,#1b1715)]">{labels.title}</h2>
-          <span className="inline-flex items-center rounded-full bg-[color:var(--c-accent-soft,rgba(192,143,134,0.15))] px-3.5 py-1.5 text-xs font-extrabold text-[color:var(--c-accent-strong,#a06c63)]">
+          <span className="inline-flex items-center rounded-full bg-[color:var(--c-accent-soft,rgba(192,143,134,0.15))] px-3.5 py-1.5 text-xs font-extrabold text-[color:var(--c-accent-text,#7f4f48)]">
             {labels.pill}
           </span>
         </div>

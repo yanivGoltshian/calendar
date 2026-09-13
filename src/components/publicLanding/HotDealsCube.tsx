@@ -233,8 +233,8 @@ export default function HotDealsCube({ eyebrow, title, text, ctaLabel, ctaHref, 
           {text ? <p className="mx-auto mt-4 max-w-xl text-[color:var(--c-on-dark,#ffffff)]/80 lg:mx-0">{text}</p> : null}
           <a
             href={ctaHref}
-            className="group mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-base font-bold text-[color:var(--c-on-gold,#241d10)] shadow-elevated transition hover:-translate-y-0.5"
-            style={{ background: 'linear-gradient(90deg, var(--c-gold-strong), var(--c-gold))' }}
+            className="group mt-6 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-base font-bold text-[color:var(--c-on-gold-action,#241d10)] shadow-elevated transition hover:-translate-y-0.5"
+            style={{ background: 'linear-gradient(90deg, var(--c-gold-action-strong), var(--c-gold-action))' }}
           >
             {ctaLabel}
             <ArrowLeftIcon className="h-4 w-4 transition group-hover:-translate-x-1" />

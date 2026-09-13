@@ -46,11 +46,11 @@ export default function AnnouncementBar({ text, dismissAria }: Props) {
     <div
       dir="rtl"
       role="status"
-      className="mt-4 flex items-start gap-3 rounded-2xl border border-[color:var(--biz-border,#e7ddcf)] bg-[color:var(--biz-soft,#fbf6ee)] px-4 py-3 text-[color:var(--biz-ink-strong,#3a3226)] shadow-soft"
+      className="mt-4 flex items-start gap-3 rounded-2xl border border-[color:var(--biz-border,#e7ddcf)] bg-[color:var(--biz-soft,#fbf6ee)] px-4 py-3 text-[color:var(--biz-text,#3a3226)] shadow-soft"
     >
       <svg
         viewBox="0 0 24 24"
-        className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--biz-strong,#b6894e)]"
+        className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--biz-text,#b6894e)]"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.8"

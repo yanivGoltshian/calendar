@@ -11,7 +11,7 @@ const HL_ICONS = [UsersIcon, SparkleIcon, CalendarIcon];
 export default function LandingHighlights({ title, benefits, eyebrow }: Props) {
   if (benefits.length === 0) return null;
   return (
-    <section className="mt-16 sm:mt-24">
+    <section data-palette-surface="highlights" className="mt-16 sm:mt-24">
       <SectionHeading eyebrow={eyebrow} title={title} />
       <div className="mt-10 grid gap-5 sm:grid-cols-3">
         {benefits.map((b, i) => {
@@ -23,13 +23,13 @@ export default function LandingHighlights({ title, benefits, eyebrow }: Props) {
             >
               <span
                 aria-hidden
-                className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-[color:var(--c-gold-text,#9a7343)]"
+                className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-[color:var(--biz-text,#3a3226)]"
                 style={{ background: 'linear-gradient(160deg, var(--c-gold-soft), var(--c-brand-soft))' }}
               >
                 <Icon className="h-7 w-7" />
               </span>
-              <p className="font-display text-lg font-bold text-slate-900">{b.title}</p>
-              {b.text ? <p className="mt-2 text-sm leading-relaxed text-slate-600">{b.text}</p> : null}
+              <p className="font-display text-lg font-bold text-[color:var(--c-ink,#0f172a)]">{b.title}</p>
+              {b.text ? <p className="mt-2 text-sm leading-relaxed text-[color:var(--c-muted,#475569)]">{b.text}</p> : null}
             </div>
           );
         })}

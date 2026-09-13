@@ -6,10 +6,13 @@ import { BRAND_PRESETS } from '../src/app/admin/onboarding/premium';
 import { HERO_VIDEO } from './visualFixtures';
 import { t } from '../src/i18n';
 import { canAcceptPublicBookings } from '../src/server/subscription';
+import { publicLandingThemeVars } from '../src/server/publicPagePresentation';
 
 const blue = BRAND_PRESETS.find((preset) => preset.id === 'clinical-blue')!.theme;
 const bronze = BRAND_PRESETS.find((preset) => preset.id === 'skin-bronze')!.theme;
 const pink = BRAND_PRESETS.find((preset) => preset.id === 'soft-rose')!.theme;
+const blueVars = publicLandingThemeVars(blue);
+const pinkVars = publicLandingThemeVars(pink);
 const profiles = ['persisted-barber', 'explicit-booking', 'rich-blue', 'partial-new'] as const;
 test.afterAll(() => prisma.$disconnect());
 
@@ -93,6 +96,19 @@ for (const width of [390, 1366]) {
         if (!partial) {
           expect(await main.evaluate((el) => getComputedStyle(el).getPropertyValue('--biz-strong').trim())).toBe(blue.brandDark);
           expect(await main.evaluate((el) => getComputedStyle(el).getPropertyValue('--c-gold').trim())).toBe(blue.gold);
+        }
+        if (themeOnly) {
+          expect(await main.evaluate((el) => getComputedStyle(el).getPropertyValue('--biz-text').trim()))
+            .toBe(blueVars['--biz-text']);
+          for (const [section, surface] of [
+            ['services', 'a'],
+            ['highlights', ':scope > div > div'],
+            ['location', 'ul'],
+          ] as const) {
+            const rendered = page.locator(`[data-palette-surface="${section}"]`).locator(surface).first();
+            await expect(rendered).toBeVisible();
+            await expect(rendered).toHaveCSS('background-color', rgb(blueVars['--c-surface']));
+          }
         }
         expect(evidence.richHeader).toBe(rich);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -239,7 +255,7 @@ for (const width of [390, 1366]) {
 
       await expect(location).toBeVisible();
       expect(await headerCta.evaluate((element) => getComputedStyle(element).backgroundImage))
-        .toContain(rgb(pink.gold));
+        .toContain(rgb(pinkVars['--c-gold-action']));
       const heroOverlayGradient = await heroOverlay.evaluate((element) => getComputedStyle(element).backgroundImage);
       expect(heroOverlayGradient).toContain('36, 26, 30');
       expect(heroOverlayGradient).not.toContain('44, 37, 34');
@@ -254,8 +270,8 @@ for (const width of [390, 1366]) {
       }
       await expect(share).toHaveCSS('background-color', rgb(pink.cream));
       const stickyGradient = await stickyCta.evaluate((element) => getComputedStyle(element).backgroundImage);
-      expect(stickyGradient).toContain(rgb(pink.brand));
-      expect(stickyGradient).toContain(rgb(pink.brandDark));
+      expect(stickyGradient).toContain(rgb(pinkVars['--c-brand-action']));
+      expect(stickyGradient).toContain(rgb(pinkVars['--c-brand-action-strong']));
       expect(stickyGradient).not.toContain(rgb(bronze.brandDark));
 
       await info.attach(`pink-header-${width}.png`, {
