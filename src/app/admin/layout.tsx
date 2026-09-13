@@ -178,6 +178,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <AdminChrome
+      businessSlug={business.slug}
       logoLetter={logoLetter}
       logoUrl={publicMediaContent({ logoUrl: business.logoUrl }, business.slug).logoUrl}
       bizName={business.name}
