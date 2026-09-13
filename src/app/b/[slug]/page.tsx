@@ -134,6 +134,10 @@ export default async function BusinessPublicPage({ params }: Props) {
   const bookingStaff = importedLanding
     ? staff.filter((member) => member.serviceLinks.length > 0)
     : staff;
+  const publicStaff =
+    importedLanding && business.ownerEmail
+      ? staff.filter((member) => member.user?.email !== business.ownerEmail)
+      : staff;
   const heroHeadline =
     landing?.sections?.hero === false
       ? business.name
@@ -299,14 +303,14 @@ export default async function BusinessPublicPage({ params }: Props) {
     </section>
   );
 
-  const staffSection = staff.length > 0 ? (
+  const staffSection = publicStaff.length > 0 ? (
     <section className="mt-10">
       <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-[color:var(--c-ink,#0f172a)]">
         <UsersIcon className="h-5 w-5 text-[color:var(--biz-text,#334155)]" />
         {t.publicPage.teamTitle}
       </h2>
       <div className="grid gap-3 sm:grid-cols-2">
-        {staff.map((m) => (
+        {publicStaff.map((m) => (
           <div
             key={m.id}
             className="flex items-center gap-4 rounded-2xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] p-4 shadow-sm"

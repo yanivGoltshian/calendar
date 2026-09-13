@@ -83,7 +83,13 @@ test('superadmin imports one business and lands on its review screen', async ({
         page.locator('a[href="mailto:hello@example.com"]').first(),
       ).toBeVisible();
       await expect(page.locator('a[href="https://example.com/"]').first()).toBeVisible();
-      await expect(page.getByText('דנה לוי', { exact: true }).first()).toBeVisible();
+      const teamSection = page
+        .getByRole('heading', { name: t.publicPage.teamTitle, exact: true })
+        .locator('..');
+      await expect(teamSection.getByText('דנה לוי', { exact: true })).toBeVisible();
+      await expect(
+        teamSection.getByText('קליניקת אור', { exact: true }),
+      ).toHaveCount(0);
       await expect(page.getByText('צוות מנוסה', { exact: true })).toHaveCount(0);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),

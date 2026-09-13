@@ -36,6 +36,7 @@ export async function getBusinessBySlug(slug: string) {
         where: { active: true },
         orderBy: { createdAt: 'asc' },
         include: {
+          user: { select: { email: true } },
           serviceLinks: {
             where: { service: { hidden: false } },
             select: { serviceId: true },
