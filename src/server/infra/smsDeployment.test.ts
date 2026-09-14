@@ -372,7 +372,7 @@ test('SMS deployment: CLI rejects incomplete configuration without invoking Azur
       '/unused-messaging-output.json',
     ],
     {
-      env: { PATH: '', MESSAGING_PROVIDER: 'sms4free' },
+      env: { PATH: '', NODE_ENV: 'test', MESSAGING_PROVIDER: 'sms4free' },
       encoding: 'utf8',
     },
   );
