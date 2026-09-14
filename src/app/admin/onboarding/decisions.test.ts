@@ -5,8 +5,9 @@ import {
   parsePremiumDraft,
   premiumDraftError,
   publishPremiumDraft,
+  serializePremiumDraft,
 } from './premium';
-import { landingDefaults, type LandingContent } from '@/lib/publicPageStyle';
+import { landingDefaults, normalizeLandingContent, type LandingContent } from '@/lib/publicPageStyle';
 import { publicPagePresentation } from '@/server/publicPagePresentation';
 
 test('skipping highlights persists explicit exclusion rather than fallback benefits', () => {
@@ -47,7 +48,7 @@ test('empty benefit fields cannot republish fallback content through continue or
 test('all optional groups can be skipped without downgrading an explicitly published premium page', () => {
   let draft: LandingContent = {
     galleryImageUrls: ['/gallery.png'], socialLinks: { instagram: 'https://instagram.com/example' },
-    googleReviewsUrl: 'https://example.com/reviews', instagramPostUrls: ['https://instagram.com/p/example'],
+    googleReviewsUrl: 'https://g.page/r/synthetic/review', instagramPostUrls: ['https://instagram.com/p/example'],
     socialVideoUrls: ['https://youtube.com/example'], facebookFeedUrl: 'https://facebook.com/example',
     heroImages: ['/hero.png'], heroVideoUrl: '/hero.mp4', heroPosterUrl: '/poster.png',
     hotDeals: { images: ['/deal.png'] }, launchOffer: { text: 'Deal', endsAt: '2030-01-01' },
@@ -58,7 +59,8 @@ test('all optional groups can be skipped without downgrading an explicitly publi
   const result = parsePremiumDraft(JSON.stringify(publishPremiumDraft(draft)))!;
   assert.equal(result.presentation, 'premium');
   assert.equal(result.sections?.hero, false);
-  for (const key of ['galleryImageUrls', 'socialLinks', 'googleReviewsUrl', 'instagramPostUrls',
+  assert.equal(result.googleReviewsUrl, 'https://g.page/r/synthetic/review');
+  for (const key of ['galleryImageUrls', 'socialLinks', 'instagramPostUrls',
     'socialVideoUrls', 'facebookFeedUrl', 'heroImages', 'heroVideoUrl', 'heroPosterUrl',
     'hotDeals', 'launchOffer', 'benefits']) {
     assert.equal(Object.hasOwn(result, key), false, key);
@@ -70,12 +72,12 @@ test('all optional groups can be skipped without downgrading an explicitly publi
 test('skipping social content preserves explicitly entered WhatsApp contact through publication', () => {
   const draft: LandingContent = {
     socialLinks: { whatsapp: '050-123-4567', instagram: 'https://instagram.com/example' },
-    googleReviewsUrl: 'https://example.com/reviews',
+    googleReviewsUrl: 'https://g.page/r/synthetic/review',
   };
   const result = parsePremiumDraft(JSON.stringify(publishPremiumDraft(decidePremiumStep(draft, 'social', 'skip'))))!;
   assert.equal(result.sections?.socialCta, false);
   assert.deepEqual(result.socialLinks, { whatsapp: '050-123-4567' });
-  assert.equal(result.googleReviewsUrl, undefined);
+  assert.equal(result.googleReviewsUrl, draft.googleReviewsUrl);
   assert.equal(draft.socialLinks?.instagram, 'https://instagram.com/example');
 });
 
@@ -99,6 +101,83 @@ test('premium publication preserves a Google business profile and omits unusable
     })),
     'google_reviews_url',
   );
+});
+
+test('premium saves preserve omitted or unchanged stored reviews and legacy URL bytes', () => {
+  const existing = {
+    googleReviewsUrl: 'https://legacy.example.invalid/profile',
+    testimonials: [{
+      name: '  Existing author  ',
+      quote: '  Existing factual testimonial  ',
+      source: { provider: 'google', reviewId: 'synthetic', mode: 'stored' },
+      rating: 4,
+    }],
+  };
+  const original = structuredClone(existing);
+  for (const draft of [
+    { heroHeadline: 'Edited headline' },
+    { ...normalizeLandingContent(existing), heroHeadline: 'Edited headline' },
+    decidePremiumStep(normalizeLandingContent(existing) ?? {}, 'social', 'skip'),
+  ]) {
+    const saved = parsePremiumDraft(JSON.stringify(publishPremiumDraft(draft)), existing)!;
+    assert.equal(saved.googleReviewsUrl, existing.googleReviewsUrl);
+    assert.deepEqual(saved.testimonials, existing.testimonials);
+  }
+  assert.deepEqual(existing, original);
+});
+
+test('supported explicit review edits and clears still use validation and normalization', () => {
+  const existing = {
+    googleReviewsUrl: 'https://g.page/r/old/review',
+    testimonials: [{ name: 'Old author', quote: 'Old quote' }],
+  };
+  const saved = parsePremiumDraft(JSON.stringify({
+    googleReviewsUrl: 'https://g.page/r/new/review',
+    testimonials: [{ name: ' New author ', quote: ' New manual quote ', rating: 5 }],
+    unvalidatedClientKey: 'discard',
+  }), existing);
+  assert.deepEqual(saved, {
+    googleReviewsUrl: 'https://g.page/r/new/review',
+    testimonials: [{ name: 'New author', quote: 'New manual quote' }],
+  });
+  assert.equal(parsePremiumDraft(JSON.stringify({ googleReviewsUrl: '', testimonials: [] }), existing), null);
+});
+
+test('stale editor serialization preserves fresh server reviews while saving editable content', () => {
+  const staleEditor: LandingContent = {
+    googleReviewsUrl: 'https://g.page/r/old/review',
+    testimonials: [{ name: 'Old author', quote: 'Old quote' }],
+    heroHeadline: 'Edited headline',
+    socialLinks: { instagram: 'https://instagram.com/edited' },
+  };
+  const preview = structuredClone(staleEditor);
+  const freshServer = {
+    googleReviewsUrl: 'https://g.page/r/new/review',
+    testimonials: [{
+      name: 'New author',
+      quote: 'New quote',
+      source: { provider: 'google', reviewId: 'synthetic-new' },
+    }],
+  };
+  const serialized = serializePremiumDraft(staleEditor);
+  const payload = JSON.parse(serialized);
+  assert.equal(Object.hasOwn(payload, 'googleReviewsUrl'), false);
+  assert.equal(Object.hasOwn(payload, 'testimonials'), false);
+  for (const current of [freshServer, {}]) {
+    const saved = parsePremiumDraft(serialized, current)!;
+    assert.equal(saved.heroHeadline, staleEditor.heroHeadline);
+    assert.deepEqual(saved.socialLinks, staleEditor.socialLinks);
+    assert.equal(saved.googleReviewsUrl, 'googleReviewsUrl' in current ? current.googleReviewsUrl : undefined);
+    assert.deepEqual(saved.testimonials, 'testimonials' in current ? current.testimonials : undefined);
+  }
+  assert.deepEqual(staleEditor, preview);
+});
+
+test('new premium businesses do not acquire review links, modes or sample testimonials', () => {
+  const saved = parsePremiumDraft(JSON.stringify(publishPremiumDraft({})), null)!;
+  assert.equal(Object.hasOwn(saved, 'googleReviewsUrl'), false);
+  assert.equal(Object.hasOwn(saved, 'testimonials'), false);
+  assert.equal(Object.hasOwn(saved, 'reviewsMode'), false);
 });
 
 test('continuing with WhatsApp alone does not publish a follow section', () => {
