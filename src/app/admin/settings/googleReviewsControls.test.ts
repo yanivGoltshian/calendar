@@ -27,6 +27,8 @@ test('settings exposes an ordinary external Google profile link with its existin
 test('onboarding source has no Google review input, connection badge or import help', () => {
   const source = readFileSync(new URL('../onboarding/OnboardingWizard.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /premium-google-reviews|googleHelpOpen|social\.google|i-google/);
+  assert.match(source, /name="premiumDraft" value=\{serializePremiumDraft\(premiumDraft\)\}/);
+  assert.doesNotMatch(source, /JSON\.stringify\(publishPremiumDraft\(premiumDraft\)\)/);
   const actions = readFileSync(new URL('../onboarding/actions.ts', import.meta.url), 'utf8');
   assert.match(actions, /parsePremiumDraft\(premiumDraft, business\.landingContent\)/);
 });

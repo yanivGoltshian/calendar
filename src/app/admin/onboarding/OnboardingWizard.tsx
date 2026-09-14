@@ -15,6 +15,7 @@ import {
   seedPremiumDraft,
   decidePremiumStep,
   publishPremiumDraft,
+  serializePremiumDraft,
   nextPremiumStep,
   prevPremiumStep,
   premiumPipStatus,
@@ -1837,8 +1838,8 @@ export default function OnboardingWizard({
               )}
             </div>
 
-            {/* שדה JSON יחיד שנושא את כל הטיוטה לפעולת השרת */}
-            <input type="hidden" name="premiumDraft" value={JSON.stringify(publishPremiumDraft(premiumDraft))} />
+            {/* שדה JSON יחיד לשמירת הטיוטה, ללא נתוני ביקורות שאינם נערכים כאן */}
+            <input type="hidden" name="premiumDraft" value={serializePremiumDraft(premiumDraft)} />
             <input type="hidden" name="logoUrl" value={logo} />
             {/* כתובת העסק נשמרת לפרופיל (business.address), נפרד מטיוטת ה-landing (באג 5) */}
             <input type="hidden" name="address" value={address} />

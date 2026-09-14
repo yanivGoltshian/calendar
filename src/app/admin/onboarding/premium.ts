@@ -374,6 +374,14 @@ export function decidePremiumStep(
   return next;
 }
 
+export function serializePremiumDraft(draft: LandingContent): string {
+  const payload = publishPremiumDraft(draft);
+  // Preview-only review state must not overwrite newer server values on save.
+  delete payload.googleReviewsUrl;
+  delete payload.testimonials;
+  return JSON.stringify(payload);
+}
+
 export function publishPremiumDraft(draft: LandingContent): LandingContent {
   const benefits = normalizeLandingContent({ benefits: draft.benefits })?.benefits;
   const next: LandingContent = {

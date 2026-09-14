@@ -5,6 +5,7 @@ import {
   parsePremiumDraft,
   premiumDraftError,
   publishPremiumDraft,
+  serializePremiumDraft,
 } from './premium';
 import { landingDefaults, normalizeLandingContent, type LandingContent } from '@/lib/publicPageStyle';
 import { publicPagePresentation } from '@/server/publicPagePresentation';
@@ -140,6 +141,36 @@ test('supported explicit review edits and clears still use validation and normal
     testimonials: [{ name: 'New author', quote: 'New manual quote' }],
   });
   assert.equal(parsePremiumDraft(JSON.stringify({ googleReviewsUrl: '', testimonials: [] }), existing), null);
+});
+
+test('stale editor serialization preserves fresh server reviews while saving editable content', () => {
+  const staleEditor: LandingContent = {
+    googleReviewsUrl: 'https://g.page/r/old/review',
+    testimonials: [{ name: 'Old author', quote: 'Old quote' }],
+    heroHeadline: 'Edited headline',
+    socialLinks: { instagram: 'https://instagram.com/edited' },
+  };
+  const preview = structuredClone(staleEditor);
+  const freshServer = {
+    googleReviewsUrl: 'https://g.page/r/new/review',
+    testimonials: [{
+      name: 'New author',
+      quote: 'New quote',
+      source: { provider: 'google', reviewId: 'synthetic-new' },
+    }],
+  };
+  const serialized = serializePremiumDraft(staleEditor);
+  const payload = JSON.parse(serialized);
+  assert.equal(Object.hasOwn(payload, 'googleReviewsUrl'), false);
+  assert.equal(Object.hasOwn(payload, 'testimonials'), false);
+  for (const current of [freshServer, {}]) {
+    const saved = parsePremiumDraft(serialized, current)!;
+    assert.equal(saved.heroHeadline, staleEditor.heroHeadline);
+    assert.deepEqual(saved.socialLinks, staleEditor.socialLinks);
+    assert.equal(saved.googleReviewsUrl, 'googleReviewsUrl' in current ? current.googleReviewsUrl : undefined);
+    assert.deepEqual(saved.testimonials, 'testimonials' in current ? current.testimonials : undefined);
+  }
+  assert.deepEqual(staleEditor, preview);
 });
 
 test('new premium businesses do not acquire review links, modes or sample testimonials', () => {
