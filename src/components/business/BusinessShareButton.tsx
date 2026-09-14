@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { t } from '@/i18n';
+import { businessShareUrl } from '@/lib/booking-link';
 
 /**
  * BusinessShareButton — כרטיס שיתוף בסגנון "לינק בביו" (בהשראת Calmark) לעמוד
@@ -14,8 +15,6 @@ import { t } from '@/i18n';
  * שימוש (המיקום בעמוד מתואם בנפרד):
  *   <BusinessShareButton name="מספרת דנה" slug="demo-barbershop" logoUrl="/uploads/logo.png" />
  */
-
-const PROD_HOST = 'https://torchick.duckdns.org';
 
 type Props = {
   /** שם העסק כפי שיוצג ובטקסט השיתוף */
@@ -32,7 +31,7 @@ export default function BusinessShareButton({ name, slug, logoUrl, className = '
   const [copyFailed, setCopyFailed] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
 
-  const shareUrl = `${PROD_HOST}/b/${slug}`;
+  const shareUrl = businessShareUrl(slug, logoUrl);
   const displayUrl = `torchick.duckdns.org/b/${slug}`;
   const shareText = t.publicPage.share.shareText.replace('{name}', name);
   const shareTitle = t.publicPage.share.shareTitle.replace('{name}', name);

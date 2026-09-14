@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { t } from '@/i18n';
+import { businessSharePath } from '@/lib/booking-link';
 
 const s = t.billing.superadmin.publicSite;
 
@@ -15,8 +16,14 @@ const TEXT_MUTED = '#9AA7BD';
  * עם כפתור העתקת הקישור המלא. רכיב לקוח (navigator.clipboard) קטן ומבודד,
  * כדי שדף ניהול-העל יישאר רכיב שרת. יעדי הקשה >=44px, ידידותי למובייל ו-RTL.
  */
-export default function PublicSiteLink({ slug }: { slug: string }) {
-  const href = `/b/${slug}`;
+export default function PublicSiteLink({
+  slug,
+  logoUrl,
+}: {
+  slug: string;
+  logoUrl?: string | null;
+}) {
+  const href = businessSharePath(slug, logoUrl);
   const [copied, setCopied] = useState(false);
 
   async function copy() {

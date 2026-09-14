@@ -5,7 +5,7 @@ import { t } from '@/i18n';
 import { WhatsappIcon, FacebookIcon, InstagramIcon, CheckIcon } from './icons';
 
 type ShareBusinessProps = {
-  /** הכתובת הקנונית של עמוד העסק, למשל https://torchick.duckdns.org/b/demo */
+  /** כתובת שיתוף יציבה עם מפתח מטמון שנגזר מהלוגו השמור. */
   shareUrl: string;
   /** שם העסק, לשילוב בטקסט השיתוף */
   businessName: string;

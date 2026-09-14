@@ -30,7 +30,11 @@ import CalendarBoard from './CalendarBoard';
 import HomeShell, { type ToolStep } from './home/HomeShell';
 import { computeSetupState, SETUP_STEP_HREFS } from './onboarding/setup';
 import { isPremiumContentCreated } from './onboarding/premium';
-import { bookingUrl, bookingPath, isBusinessLive } from '@/lib/booking-link';
+import {
+  bookingPath,
+  businessShareUrl,
+  isBusinessLive,
+} from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
 import './home/home.css';
 import type {
@@ -296,7 +300,7 @@ export default async function AdminCalendarPage({ searchParams }: Props) {
     serviceCount: serviceRows.length,
     workingHoursCount: businessHours.length,
   });
-  const bookingLink = bookingUrl(business.slug);
+  const bookingLink = businessShareUrl(business.slug, business.logoUrl);
   const bookingPagePath = bookingPath(business.slug);
   const bookingQr = isLive
     ? bookingQrSvg(bookingLink, {
