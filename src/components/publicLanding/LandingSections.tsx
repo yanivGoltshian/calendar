@@ -149,7 +149,6 @@ export default function LandingSections({
             return (
               <LandingTestimonials
                 key={section}
-                eyebrow={eyebrows.testimonials}
                 title={l.testimonialsTitle}
                 items={content?.testimonials ?? []}
                 googleReviewsUrl={content?.googleReviewsUrl}

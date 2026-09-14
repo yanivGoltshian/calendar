@@ -42,3 +42,27 @@ test('branding patches preserve publication, omitted sections and full legacy me
     { ...existing, heroImages: ['/icons/icon-192.png'] });
   assert.deepEqual(patchLandingBranding(null, { theme }), { theme });
 });
+
+test('unrelated settings patches preserve every review including hidden records and stored metadata', () => {
+  const existing = {
+    testimonials: [
+      { name: 'First author', quote: 'Visible review', rating: 5 },
+      {
+        name: 'Second author', quote: 'Hidden review', hidden: true, rating: 4,
+        source: { provider: 'google', input: 'user_supplied_screenshot', evidence: 'server-only' },
+      },
+      { name: 'Third author', quote: 'Another visible review' },
+    ],
+  };
+  const original = structuredClone(existing);
+  for (const patch of [
+    { announcement: 'Updated hours' },
+    { heroImages: ['/synthetic.png'] },
+    { theme: BRAND_PRESETS[0].theme },
+    { googleReviewsUrl: 'https://g.page/r/synthetic/review' },
+    { googleReviewsUrl: null },
+  ]) {
+    assert.deepEqual(patchLandingBranding(existing, patch).testimonials, existing.testimonials);
+  }
+  assert.deepEqual(existing, original);
+});

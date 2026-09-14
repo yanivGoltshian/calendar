@@ -1,89 +1,90 @@
-import SectionHeading from './SectionHeading';
+import { t } from '@/i18n';
+import {
+  normalizeTestimonialRating,
+  visibleLandingTestimonials,
+  type LandingTestimonial,
+} from '@/lib/publicPageStyle';
 
-type Testimonial = { name?: string; quote: string };
 type Props = {
   title: string;
-  items: Testimonial[];
-  eyebrow?: string;
-  // כשקיים קישור לעסק בגוגל — המקטע מוצג כביקורות גוגל (סמל, כותרת וקריאה לצפייה בכולן).
+  items: (Omit<LandingTestimonial, 'name'> & { name?: string })[];
   googleReviewsUrl?: string;
   googleLabel?: string;
   googleCta?: string;
   googleEmptyText?: string;
 };
 
-// סמל גוגל בארבעת הצבעים — לזיהוי מיידי של מקור הביקורות.
-function GoogleGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden>
-      <path fill="#4285F4" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z" />
-      <path fill="#34A853" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" opacity=".9" />
-      <path fill="#FBBC05" d="M24 44c5.5 0 10.5-2.1 14.3-5.6l-6.6-5.6C29.6 34.6 26.9 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.6 39.6 16.2 44 24 44z" opacity=".9" />
-      <path fill="#EA4335" d="M12.7 28.1 6.2 33C9.6 39.4 16.2 44 24 44V36c-5.2 0-9.6-3.3-11.3-7.9z" opacity=".9" />
-    </svg>
-  );
-}
-
-// A Google link does not verify the provenance or rating of owner-authored testimonials.
 export default function LandingTestimonials({
   title,
   items,
-  eyebrow,
   googleReviewsUrl,
   googleLabel,
   googleCta,
   googleEmptyText,
 }: Props) {
-  if (items.length === 0 && !googleReviewsUrl) return null;
-  const isGoogle = Boolean(googleReviewsUrl);
+  const visible = visibleLandingTestimonials(items);
+  if (visible.length === 0 && !googleReviewsUrl) return null;
+  const labels = t.publicPage.landing;
+
   return (
-    <section className="mt-16 sm:mt-24">
-      <SectionHeading eyebrow={eyebrow} title={items.length ? title : googleLabel ?? title} />
-      {items.length === 0 && googleEmptyText ? (
-        <p className="mx-auto mt-5 max-w-xl text-center text-sm leading-relaxed text-[color:var(--c-muted,#665d57)]">
-          {googleEmptyText}
-        </p>
-      ) : null}
-      {items.length > 0 ? <div className="mt-10 grid gap-5 min-[821px]:grid-cols-3">
-        {items.map((tm, i) => (
-          <figure
-            key={i}
-            className="rounded-[20px] border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] p-6"
-            style={{ boxShadow: '0 18px 40px -30px var(--c-shadow, rgba(40,28,18,0.5))' }}
-          >
-            <blockquote className="font-display text-[0.98rem] leading-relaxed text-[color:var(--c-ink,#463f3a)]">{tm.quote}</blockquote>
-            {tm.name ? (
-              <figcaption className="mt-4 flex items-center gap-3">
-                <span
-                  aria-hidden
-                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full font-display text-base font-extrabold text-[color:var(--c-on-brand-action,#ffffff)]"
-                  style={{ background: 'linear-gradient(160deg, var(--c-brand-action), var(--c-brand-action-strong))' }}
-                >
-                  {tm.name.trim().charAt(0)}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[0.95rem] font-extrabold text-[color:var(--biz-text,#334155)]">{tm.name}</span>
-                </span>
-              </figcaption>
-            ) : null}
-          </figure>
-        ))}
-      </div> : null}
-      {isGoogle && googleCta ? (
-        <div className="mt-9 text-center">
+    <section className="mx-auto mt-12 max-w-4xl sm:mt-16">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <h2 className="text-base font-bold text-[color:var(--c-ink,#1b1715)] sm:text-lg">
+          {visible.length ? title : googleLabel ?? title}
+        </h2>
+        {googleReviewsUrl && googleCta ? (
           <a
             href={googleReviewsUrl}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold shadow-soft transition hover:opacity-95"
-            style={{
-              background: 'linear-gradient(90deg, var(--c-brand-action), var(--c-brand-action-strong))',
-              color: 'var(--c-on-brand-action)',
-            }}
+            className="inline-flex min-h-11 items-center rounded-sm text-xs font-semibold text-[color:var(--biz-text,#334155)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 sm:text-sm"
           >
-            <GoogleGlyph className="h-4 w-4" />
             {googleCta}
           </a>
+        ) : null}
+      </div>
+      {visible.length === 0 && googleEmptyText ? (
+        <p className="text-sm leading-relaxed text-[color:var(--c-muted,#665d57)]">
+          {googleEmptyText}
+        </p>
+      ) : null}
+      {visible.length > 0 ? (
+        <div className={`grid gap-3 sm:grid-cols-2 ${visible.length > 2 ? 'lg:grid-cols-3' : ''}`}>
+          {visible.map((review, index) => {
+            const rating = normalizeTestimonialRating(review.rating);
+            const isGoogle = review.source?.provider === 'google';
+            return (
+              <figure
+                key={index}
+                className="m-0 flex min-w-0 flex-col rounded-lg border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-4"
+              >
+                {rating !== undefined ? (
+                  <p
+                    role="img"
+                    aria-label={labels.testimonialRating.replace('{rating}', String(rating))}
+                    className="mb-2 text-sm leading-none tracking-wider text-accent-600"
+                  >
+                    <span aria-hidden="true">{'★'.repeat(rating)}</span>
+                  </p>
+                ) : null}
+                <blockquote className="whitespace-pre-line break-words text-sm leading-relaxed text-[color:var(--c-ink,#463f3a)]">
+                  {review.quote}
+                </blockquote>
+                {review.name || isGoogle ? (
+                  <figcaption className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-3 text-xs leading-relaxed">
+                    {review.name ? (
+                      <bdi className="min-w-0 break-words font-bold text-[color:var(--c-ink,#1b1715)]">
+                        {review.name}
+                      </bdi>
+                    ) : null}
+                    {isGoogle ? (
+                      <span className="text-[color:var(--c-muted,#665d57)]">{labels.googleReviewSource}</span>
+                    ) : null}
+                  </figcaption>
+                ) : null}
+              </figure>
+            );
+          })}
         </div>
       ) : null}
     </section>
