@@ -7,7 +7,7 @@ import { getBusinessBySlug, getAllBusinessSlugs } from '@/server/repos/business'
 import { t } from '@/i18n';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration, formatMinutes } from '@/lib/time';
-import { localBusinessJsonLd, absoluteUrl } from '@/lib/seo';
+import { localBusinessJsonLd } from '@/lib/seo';
 import { buildBusinessPageMetadata } from './metadata';
 import { JsonLd } from '@/components/JsonLd';
 import InstallApp from '@/components/pwa/InstallApp';
@@ -42,6 +42,7 @@ import BackButton from '@/components/publicLanding/BackButton';
 import AnnouncementBar from '@/components/publicLanding/AnnouncementBar';
 import MediaImage from '@/components/publicLanding/MediaImage';
 import { publicMediaContent } from '@/server/media/publicContent';
+import { businessShareUrl } from '@/lib/booking-link';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -71,7 +72,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BusinessPublicPage({ params }: Props) {
   const { slug } = await params;
-  const business = publicMediaContent(await getBusinessBySlug(slug), slug);
+  const storedBusiness = await getBusinessBySlug(slug);
+  const business = publicMediaContent(storedBusiness, slug);
   if (!business) notFound();
 
   // קישור התחברות (לא תלוי משתמש) לכותרת הפרימיום — מוצג לאורחים שאינם מזוהים.
@@ -154,8 +156,7 @@ export default async function BusinessPublicPage({ params }: Props) {
   const heroCtaLabel = landing?.ctaLabel || t.publicPage.bookCta;
 
   const bookHref = `/b/${business.slug}/book`;
-  // Sharing uses the canonical business URL and its saved logo.
-  const shareUrl = absoluteUrl(`/b/${business.slug}`);
+  const shareUrl = businessShareUrl(business.slug, storedBusiness?.logoUrl);
 
   const clinicLabels = t.premiumLanding.clinic;
   const usesClinicIdentity = business.slug === CLINIC_IDENTITY.slug;

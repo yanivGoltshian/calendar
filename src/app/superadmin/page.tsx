@@ -297,7 +297,7 @@ export default async function SuperadminPage() {
                       <span className="font-mono text-xs" style={{ color: TEXT_MUTED }} dir="ltr">
                         {b.slug}
                       </span>
-                      <PublicSiteLink slug={b.slug} />
+                      <PublicSiteLink slug={b.slug} logoUrl={b.logoUrl} />
                     </div>
                   </div>
 

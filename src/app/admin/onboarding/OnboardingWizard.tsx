@@ -67,6 +67,7 @@ type Props = {
   services: WizardService[];
   serviceExample: string;
   bookingUrl: string;
+  bookingBookUrl: string;
   bookingQr: string;
   /** QR מוכן של קישור ההזמנות `/b/<slug>/book` למסך «רגע ההשקה». */
   bookingBookQr?: string;
@@ -616,6 +617,7 @@ export default function OnboardingWizard({
   services,
   serviceExample,
   bookingUrl,
+  bookingBookUrl,
   bookingQr,
   bookingBookQr,
   businessType,
@@ -913,7 +915,7 @@ export default function OnboardingWizard({
           businessName={businessName}
           slug={slug}
           pageUrl={bookingUrl}
-          bookingShareUrl={`${bookingUrl}/book`}
+          bookingShareUrl={bookingBookUrl}
           bookingShareQr={bookingBookQr ?? bookingQr}
         />
       );

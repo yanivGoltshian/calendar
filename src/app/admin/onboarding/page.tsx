@@ -7,7 +7,7 @@ import { getOrCreateSettings } from '@/server/repos/settings';
 import { listServices } from '@/server/repos/services';
 import { getBusinessHours } from '@/server/repos/workingHours';
 import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
-import { bookingUrl } from '@/lib/booking-link';
+import { businessShareUrl } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
 import { normalizeLandingContent } from '@/lib/publicPageStyle';
 import { resolveOnboardingEntry } from './premium';
@@ -68,12 +68,13 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
         basicSetupComplete,
       });
 
-  const link = bookingUrl(business.slug);
+  const link = businessShareUrl(business.slug, business.logoUrl);
+  const bookLink = businessShareUrl(business.slug, business.logoUrl, 'booking');
   const qr = bookingQrSvg(link, {
     label: t.admin.onboarding.goLive.share.qrAlt.replace('{name}', business.name),
   });
   // QR נפרד לקישור ההזמנות `/b/<slug>/book` (שונה מ-QR של עמוד העסק).
-  const bookQr = bookingQrSvg(`${link}/book`, {
+  const bookQr = bookingQrSvg(bookLink, {
     label: t.admin.onboarding.goLive.share.qrAlt.replace('{name}', business.name),
   });
 
@@ -106,6 +107,7 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
         services={wizardServices}
         serviceExample={serviceExample}
         bookingUrl={link}
+        bookingBookUrl={bookLink}
         bookingQr={qr}
         bookingBookQr={bookQr}
         businessType={business.type ?? ''}
