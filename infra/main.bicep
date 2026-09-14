@@ -72,8 +72,17 @@ param otpPepper string
 @description('אזור זמן עסקי (IANA)')
 param businessTimezone string = 'Asia/Jerusalem'
 
-@description('ספק הודעות (console כברירת מחדל; whatsapp-cloud לפרודקשן)')
+@description('Messaging provider. Defaults to console; SMS4Free activation requires separate approval.')
 param messagingProvider string = 'console'
+
+@description('Existing Container App secret names only. Null keeps SMS4Free unconfigured. Never pass credential values.')
+@sealed()
+param sms4freeSecretNames {
+  SMS4FREE_API_KEY: 'sms4free-api-key'
+  SMS4FREE_USER: 'sms4free-user'
+  SMS4FREE_PASS: 'sms4free-pass'
+  SMS4FREE_SENDER: 'sms4free-sender'
+}?
 
 @description('WhatsApp Cloud API access token (סוד; ריק אם לא בשימוש)')
 @secure()
@@ -172,6 +181,13 @@ var appName = '${namePrefix}-app-${environmentName}'
 var swaName = '${namePrefix}-swa-${environmentName}'
 var pgName = '${namePrefix}-pg-${environmentName}'
 
+// Values remain inside ARM and cross the module boundary only as a secure object.
+// The explicit four-name contract is validated before deployment by the preflight.
+resource currentApp 'Microsoft.App/containerApps@2024-03-01' existing = {
+  name: appName
+}
+var currentSecrets = empty(sms4freeSecretNames) ? [] : currentApp.listSecrets().value
+
 // ---------- מודולים ----------
 module logAnalytics 'modules/logAnalytics.bicep' = {
   name: 'logAnalytics'
@@ -213,6 +229,10 @@ module containerApp 'modules/containerApp.bicep' = {
     otpPepper: otpPepper
     businessTimezone: businessTimezone
     messagingProvider: messagingProvider
+    sms4freeSecrets: toObject(items(sms4freeSecretNames ?? {}), binding => binding.key, binding => {
+      name: binding.value
+      value: filter(currentSecrets, secret => secret.name == binding.value)[0].value
+    })
     whatsAppAccessToken: whatsAppAccessToken
     messagingConfig: messagingConfig
     appPublicUrl: appPublicUrl

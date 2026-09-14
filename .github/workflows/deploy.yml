@@ -121,6 +121,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Validate messaging inputs and retain existing runtime bindings
+        if: ${{ github.event.inputs.deployInfra == 'true' }}
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_CONTAINER_APP: torchick-app-prod
+          MESSAGING_PROVIDER: ${{ vars.MESSAGING_PROVIDER || 'console' }}
+          SMS4FREE_SECRET_NAMES: ${{ vars.SMS4FREE_SECRET_NAMES }}
+          MESSAGING_CONFIG: ${{ vars.MESSAGING_CONFIG }}
+        run: node scripts/prepare-messaging-deployment.mjs --output "$RUNNER_TEMP/messaging.parameters.json"
+
       - name: Deploy Bicep (infrastructure)
         if: ${{ github.event.inputs.deployInfra == 'true' }}
         uses: azure/arm-deploy@v2
@@ -130,6 +140,7 @@ jobs:
           template: infra/main.bicep
           parameters: >-
             infra/main.parameters.example.json
+            ${{ runner.temp }}/messaging.parameters.json
             containerImage=${{ needs.build-and-push.outputs.image }}
             appPublicUrl=${{ secrets.APP_PUBLIC_URL }}
             databaseUrl=${{ secrets.DATABASE_URL }}
