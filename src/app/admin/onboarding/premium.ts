@@ -17,6 +17,7 @@ import {
   type LandingSectionToggles,
   type LandingTheme,
 } from '@/lib/publicPageStyle';
+import { patchLandingBranding } from '@/lib/branding';
 
 /** כרטיס פלטת מותג אצור: מזהה יציב, שם עברי, וסט שמונה גווני theme מתואמים. */
 export type BrandPreset = {
@@ -210,7 +211,7 @@ export const BRAND_PRESETS: readonly BrandPreset[] = [
  *
  * מחזיר LandingContent מנורמל, או null כשאין תוכן ממשי — כך ש-null ישמור NULL במסד.
  */
-export function parsePremiumDraft(raw: unknown): LandingContent | null {
+export function parsePremiumDraft(raw: unknown, existing?: unknown): LandingContent | null {
   if (typeof raw !== 'string') return null;
   const trimmed = raw.trim();
   if (trimmed === '') return null;
@@ -222,7 +223,25 @@ export function parsePremiumDraft(raw: unknown): LandingContent | null {
     return null;
   }
 
-  return normalizeLandingContent(parsed);
+  const normalized = normalizeLandingContent(parsed);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return normalized;
+  const submitted = parsed as Record<string, unknown>;
+  const stored = patchLandingBranding(existing, {});
+  const displayed = normalizeLandingContent(existing);
+  const retained: Pick<LandingContent, 'googleReviewsUrl' | 'testimonials'> = {};
+  // These fields have no editor controls. Preserve their stored bytes when the
+  // normalized draft omits them or echoes the unchanged displayed value.
+  if (
+    stored.googleReviewsUrl !== undefined &&
+    (!Object.hasOwn(submitted, 'googleReviewsUrl') ||
+      submitted.googleReviewsUrl === displayed?.googleReviewsUrl)
+  ) retained.googleReviewsUrl = stored.googleReviewsUrl;
+  if (
+    stored.testimonials !== undefined &&
+    (!Object.hasOwn(submitted, 'testimonials') ||
+      JSON.stringify(submitted.testimonials) === JSON.stringify(displayed?.testimonials))
+  ) retained.testimonials = stored.testimonials;
+  return Object.keys(retained).length ? { ...normalized, ...retained } : normalized;
 }
 
 export function premiumDraftError(raw: unknown): string | null {
@@ -312,7 +331,6 @@ export function decidePremiumStep(
         // Direct contact is independent of the optional social-content section.
         if (next.socialLinks?.whatsapp?.trim()) next.socialLinks = { whatsapp: next.socialLinks.whatsapp };
         else delete next.socialLinks;
-        delete next.googleReviewsUrl;
         delete next.instagramPostUrls;
         delete next.socialVideoUrls;
         delete next.facebookFeedUrl;

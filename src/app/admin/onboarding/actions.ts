@@ -229,7 +229,7 @@ export async function savePremiumLanding(_prev: SaveState, fd: FormData): Promis
   const draftError = premiumDraftError(premiumDraft);
   if (draftError) return { ok: false, error: draftError };
   // ניתוח בטוח של טיוטת הפרימיום: null כשאין תוכן ממשי (ישמור NULL במסד).
-  const landingContent = parsePremiumDraft(premiumDraft);
+  const landingContent = parsePremiumDraft(premiumDraft, business.landingContent);
 
   // כתובת העסק ניתנת לעריכה בעורך הפרימיום ומגיעה כשדה מוסתר. שומרים את הערך
   // החדש (לאחר trim); כשהשדה חסר לגמרי (לקוח ישן) נשמר הערך הקיים כדי לא לאבד

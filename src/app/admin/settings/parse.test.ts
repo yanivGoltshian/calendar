@@ -13,6 +13,7 @@ import {
 import { resolveTemplateSave } from '@/server/messages/save';
 import { getChannelDefault } from '@/server/messages/registry';
 import { BRAND_PRESETS } from '../onboarding/premium';
+import { patchLandingBranding } from '@/lib/branding';
 
 /** בונה FormData מאובייקט פשוט. */
 function form(entries: Record<string, string>): FormData {
@@ -20,6 +21,30 @@ function form(entries: Record<string, string>): FormData {
   for (const [k, v] of Object.entries(entries)) fd.set(k, v);
   return fd;
 }
+
+test('settings saves preserve omitted review URLs, legacy state and manual testimonials', () => {
+  const existing = {
+    googleReviewsUrl: 'https://legacy.example.invalid/profile',
+    testimonials: [{ name: 'Manual author', quote: 'Owner supplied quote', source: 'manual' }],
+    googleReviews: { mode: 'stored', reviews: [{ id: 'synthetic', rating: 4 }] },
+    reviewsMode: 'google',
+    sections: { testimonials: true, socialCta: false },
+  };
+  const submissions: Record<string, string>[] = [{}, { announcement: 'Updated opening hours' }];
+  for (const fields of submissions) {
+    const parsed = parseLandingUpdates(form(fields), existing.googleReviewsUrl);
+    assert.ok(parsed.ok);
+    assert.deepEqual(patchLandingBranding(existing, parsed.data), { ...existing, ...fields });
+  }
+  const cleared = parseLandingUpdates(form({ googleReviewsUrl: '' }), existing.googleReviewsUrl);
+  assert.ok(cleared.ok);
+  const { googleReviewsUrl: removed, ...retained } = existing;
+  assert.ok(removed);
+  assert.deepEqual(patchLandingBranding(existing, cleared.data), retained);
+  const defaults = parseLandingUpdates(form({}));
+  assert.ok(defaults.ok);
+  assert.deepEqual(patchLandingBranding(null, defaults.data), {});
+});
 
 test('landing updates preserve absent fields, clear empty fields and reject unsafe or oversized input', () => {
   assert.deepEqual(parseLandingUpdates(form({})), { ok: true, data: {} });

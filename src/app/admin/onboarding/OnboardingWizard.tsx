@@ -394,9 +394,6 @@ const PW_CSS = `
 .pw-label-ic svg{width:20px;height:20px;}
 .pw-badge{display:inline-flex;align-items:center;gap:4px;background:var(--emerald-50);color:#0b7a52;border:1px solid var(--emerald-100);font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;}
 .pw-badge-star{width:12px;height:12px;color:var(--gold-600);}
-.pw-info{margin-inline-start:auto;width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:800;line-height:1;cursor:pointer;font-style:italic;}
-.pw-info-open{background:var(--navy);color:#fff;border-color:var(--navy);}
-.pw-help{margin-bottom:8px;background:var(--navy-50);border:1px solid var(--navy-100);color:var(--navy-strong);font-size:12px;line-height:1.55;padding:9px 11px;border-radius:11px;}
 .pw-choice{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 .pw-ci{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:11.5px;font-weight:700;cursor:pointer;transition:all .15s;}
 .pw-ci-ic{width:22px;height:22px;}
@@ -537,12 +534,6 @@ function PwSprite() {
           <stop offset="1" stopColor="#962fbf" />
         </linearGradient>
       </defs>
-      <symbol id="i-google" viewBox="0 0 24 24">
-        <path fill="#FFC107" d="M21.35 11.1H12v3.83h5.4A5.4 5.4 0 0 1 6.6 12 5.4 5.4 0 0 1 12 6.6c1.38 0 2.63.53 3.57 1.4l2.7-2.7A9 9 0 1 0 12 21a8.7 8.7 0 0 0 9-9c0-.6-.06-1.2-.16-1.9Z" />
-        <path fill="#FF3D00" d="m3.15 7.35 3.15 2.31A5.4 5.4 0 0 1 12 6.6c1.38 0 2.63.53 3.57 1.4l2.7-2.7A9 9 0 0 0 3.15 7.35Z" />
-        <path fill="#4CAF50" d="M12 21a9 9 0 0 0 6.07-2.35l-2.8-2.37A5.36 5.36 0 0 1 6.62 13.5l-3.13 2.41A9 9 0 0 0 12 21Z" />
-        <path fill="#1976D2" d="M21.35 11.1H12v3.83h5.4a5.43 5.43 0 0 1-1.87 2.55l2.8 2.37A8.86 8.86 0 0 0 21 12c0-.6-.06-1.2-.16-1.9Z" />
-      </symbol>
       <symbol id="i-instagram" viewBox="0 0 24 24">
         <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#ig-grad)" />
         <circle cx="12" cy="12" r="4.4" fill="none" stroke="#fff" strokeWidth="1.8" />
@@ -657,7 +648,7 @@ export default function OnboardingWizard({
   const nextTargetRef = useRef<PremiumPhase>('editor');
 
   // ── אשף הפרימיום (פורט המוקאפ המאושר): 5 שלבים בתוך מסגרת טלפון, שכבת UI מעל אותו state ──
-  // premiumStep: 1..5 שלבי עריכה, 6 מסך הסיום. heroBg: מקור רקע ראש-העמוד. googleHelpOpen: אקורדיון עזרה.
+  // premiumStep: 1..5 שלבי עריכה, 6 מסך הסיום. heroBg: מקור רקע ראש-העמוד.
   const [premiumStep, setPremiumStep] = useState<PremiumWizardStep>(1);
   // winToolOpen: מזהה הבלוק שכליו נחשפים בלחיצה בתצוגת הסיום (tap במובייל); null = אין.
   const [winToolOpen, setWinToolOpen] = useState<string | null>(null);
@@ -666,7 +657,6 @@ export default function OnboardingWizard({
     if ((premiumDraft.heroImages ?? []).some(Boolean)) return 'image';
     return 'color';
   });
-  const [googleHelpOpen, setGoogleHelpOpen] = useState(false);
 
   // מצב מקומי לכתובת העסק — ניתנת לעריכה בעורך הפרימיום ונשמרת לפרופיל העסק
   // (business.address). נזרעת מהערך הקיים ונשלחת כשדה מוסתר בטופס הפרימיום (באג 5).
@@ -1346,58 +1336,6 @@ export default function OnboardingWizard({
                   <h2 className="pw-h2">{wz.social.title}</h2>
                   <p className="pw-lede">{wz.social.lede}</p>
                   <span className="pw-chip-note pw-navy">{wz.social.chipNote}</span>
-
-                  {/* גוגל · עם תג ביקורות ואקורדיון עזרה */}
-                  <div className="pw-field">
-                    <div className="pw-label-row">
-                      <span className="pw-label-ic" aria-hidden>
-                        <svg viewBox="0 0 24 24">
-                          <use href="#i-google" />
-                        </svg>
-                      </span>
-                      <label htmlFor="premium-google-reviews" className="pw-label">{wz.social.googleLabel}</label>
-                      <span className="pw-badge">
-                        <svg className="pw-badge-star" aria-hidden>
-                          <use href="#i-star" />
-                        </svg>
-                        {wz.social.googleBadge}
-                      </span>
-                      <button
-                        type="button"
-                        className={`pw-info${googleHelpOpen ? ' pw-info-open' : ''}`}
-                        aria-expanded={googleHelpOpen}
-                        aria-label={wz.social.helpToggle}
-                        onClick={() => setGoogleHelpOpen((v) => !v)}
-                      >
-                        i
-                      </button>
-                    </div>
-                    {googleHelpOpen ? <div className="pw-help">{wz.social.googleHelp}</div> : null}
-                    <div className="pw-inp">
-                      <input
-                        id="premium-google-reviews"
-                        type="url"
-                        maxLength={2048}
-                        className="pw-ltr"
-                        dir="ltr"
-                        value={premiumDraft.googleReviewsUrl ?? ''}
-                        placeholder={wz.social.googlePlaceholder}
-                        onChange={(e) => patchDraft({ googleReviewsUrl: e.target.value })}
-                        aria-invalid={premiumState.error === 'google_reviews_url'}
-                        aria-describedby={
-                          premiumState.error === 'google_reviews_url'
-                            ? 'premium-google-reviews-error'
-                            : undefined
-                        }
-                      />
-                    </div>
-                    <div className="pw-hint">{wz.social.googleHint}</div>
-                    {premiumState.error === 'google_reviews_url' ? (
-                      <div id="premium-google-reviews-error" role="alert" className="pw-err">
-                        {t.admin.settings.pageStyle.googleReviewsError}
-                      </div>
-                    ) : null}
-                  </div>
 
                   {pwField({
                     label: wz.social.instagramLabel,
