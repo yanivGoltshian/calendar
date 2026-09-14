@@ -1,11 +1,12 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "1178989620700008731"
+      "templateHash": "13277892432867378171"
     }
   },
   "parameters": {
@@ -133,7 +134,41 @@
       "type": "string",
       "defaultValue": "console",
       "metadata": {
-        "description": "ספק הודעות (console כברירת מחדל; whatsapp-cloud לפרודקשן)"
+        "description": "Messaging provider. Defaults to console; SMS4Free activation requires separate approval."
+      }
+    },
+    "sms4freeSecretNames": {
+      "type": "object",
+      "properties": {
+        "SMS4FREE_API_KEY": {
+          "type": "string",
+          "allowedValues": [
+            "sms4free-api-key"
+          ]
+        },
+        "SMS4FREE_USER": {
+          "type": "string",
+          "allowedValues": [
+            "sms4free-user"
+          ]
+        },
+        "SMS4FREE_PASS": {
+          "type": "string",
+          "allowedValues": [
+            "sms4free-pass"
+          ]
+        },
+        "SMS4FREE_SENDER": {
+          "type": "string",
+          "allowedValues": [
+            "sms4free-sender"
+          ]
+        }
+      },
+      "nullable": true,
+      "additionalProperties": false,
+      "metadata": {
+        "description": "Existing Container App secret names only. Null keeps SMS4Free unconfigured. Never pass credential values."
       }
     },
     "whatsAppAccessToken": {
@@ -332,8 +367,14 @@
     "swaName": "[format('{0}-swa-{1}', parameters('namePrefix'), parameters('environmentName'))]",
     "pgName": "[format('{0}-pg-{1}', parameters('namePrefix'), parameters('environmentName'))]"
   },
-  "resources": [
-    {
+  "resources": {
+    "currentApp": {
+      "existing": true,
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('appName')]"
+    },
+    "logAnalytics": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "logAnalytics",
@@ -435,7 +476,7 @@
         }
       }
     },
-    {
+    "containerEnv": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "containerAppsEnvironment",
@@ -452,7 +493,7 @@
             "value": "[parameters('location')]"
           },
           "logAnalyticsWorkspaceName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'logAnalytics'), '2025-04-01').outputs.name.value]"
+            "value": "[reference('logAnalytics').outputs.name.value]"
           },
           "tags": {
             "value": "[parameters('tags')]"
@@ -530,10 +571,10 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'logAnalytics')]"
+        "logAnalytics"
       ]
     },
-    {
+    "containerApp": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "containerApp",
@@ -550,7 +591,7 @@
             "value": "[parameters('location')]"
           },
           "environmentId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppsEnvironment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('containerEnv').outputs.id.value]"
           },
           "image": {
             "value": "[parameters('containerImage')]"
@@ -593,6 +634,9 @@
           },
           "messagingProvider": {
             "value": "[parameters('messagingProvider')]"
+          },
+          "sms4freeSecrets": {
+            "value": "[toObject(items(coalesce(parameters('sms4freeSecretNames'), createObject())), lambda('binding', lambdaVariables('binding').key), lambda('binding', createObject('name', lambdaVariables('binding').value, 'value', filter(if(empty(parameters('sms4freeSecretNames')), createArray(), listSecrets('currentApp', '2024-03-01').value), lambda('secret', equals(lambdaVariables('secret').name, lambdaVariables('binding').value)))[0].value)))]"
           },
           "whatsAppAccessToken": {
             "value": "[parameters('whatsAppAccessToken')]"
@@ -656,7 +700,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "4504733608189025059"
+              "templateHash": "13361942289796869473"
             }
           },
           "parameters": {
@@ -765,6 +809,13 @@
               "defaultValue": "",
               "metadata": {
                 "description": "WhatsApp Cloud API access token (סוד; ריק אם לא בשימוש)"
+              }
+            },
+            "sms4freeSecrets": {
+              "type": "secureObject",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Explicit SMS4Free bindings resolved inside ARM from existing runtime secrets. Never supplied by GitHub."
               }
             },
             "messagingConfig": {
@@ -903,6 +954,19 @@
           "variables": {
             "copy": [
               {
+                "name": "sms4freeSecretValues",
+                "count": "[length(items(parameters('sms4freeSecrets')))]",
+                "input": "[items(parameters('sms4freeSecrets'))[copyIndex('sms4freeSecretValues')].value]"
+              },
+              {
+                "name": "sms4freeSecretEnv",
+                "count": "[length(items(parameters('sms4freeSecrets')))]",
+                "input": {
+                  "name": "[items(parameters('sms4freeSecrets'))[copyIndex('sms4freeSecretEnv')].key]",
+                  "secretRef": "[items(parameters('sms4freeSecrets'))[copyIndex('sms4freeSecretEnv')].value.name]"
+                }
+              },
+              {
                 "name": "messagingConfigEnv",
                 "count": "[length(items(parameters('messagingConfig')))]",
                 "input": {
@@ -926,8 +990,8 @@
                 "value": "[parameters('otpPepper')]"
               }
             ],
-            "messagingSecrets": "[concat(if(empty(parameters('whatsAppAccessToken')), createArray(), createArray(createObject('name', 'whatsapp-access-token', 'value', parameters('whatsAppAccessToken')))))]",
-            "messagingSecretEnv": "[concat(if(empty(parameters('whatsAppAccessToken')), createArray(), createArray(createObject('name', 'WHATSAPP_ACCESS_TOKEN', 'secretRef', 'whatsapp-access-token'))))]",
+            "messagingSecrets": "[concat(if(empty(parameters('whatsAppAccessToken')), createArray(), createArray(createObject('name', 'whatsapp-access-token', 'value', parameters('whatsAppAccessToken')))), variables('sms4freeSecretValues'))]",
+            "messagingSecretEnv": "[concat(if(empty(parameters('whatsAppAccessToken')), createArray(), createArray(createObject('name', 'WHATSAPP_ACCESS_TOKEN', 'secretRef', 'whatsapp-access-token'))), variables('sms4freeSecretEnv'))]",
             "registrySecret": [
               {
                 "name": "registry-token",
@@ -1018,10 +1082,10 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'containerAppsEnvironment')]"
+        "containerEnv"
       ]
     },
-    {
+    "staticWebApp": {
       "condition": "[parameters('deployStaticWebApp')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -1118,7 +1182,7 @@
         }
       }
     },
-    {
+    "postgres": {
       "condition": "[parameters('deployPostgres')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -1326,39 +1390,39 @@
         }
       }
     }
-  ],
+  },
   "outputs": {
     "containerAppFqdn": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerApp'), '2025-04-01').outputs.fqdn.value]"
+      "value": "[reference('containerApp').outputs.fqdn.value]"
     },
     "containerAppName": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerApp'), '2025-04-01').outputs.name.value]"
+      "value": "[reference('containerApp').outputs.name.value]"
     },
     "containerAppsEnvironmentId": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppsEnvironment'), '2025-04-01').outputs.id.value]"
+      "value": "[reference('containerEnv').outputs.id.value]"
     },
     "logAnalyticsWorkspaceName": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'logAnalytics'), '2025-04-01').outputs.name.value]"
+      "value": "[reference('logAnalytics').outputs.name.value]"
     },
     "staticWebAppDefaultHostname": {
       "type": "string",
-      "value": "[coalesce(tryGet(if(parameters('deployStaticWebApp'), reference(resourceId('Microsoft.Resources/deployments', 'staticWebApp'), '2025-04-01'), null()), 'outputs', 'defaultHostname', 'value'), '')]"
+      "value": "[coalesce(tryGet(if(parameters('deployStaticWebApp'), reference('staticWebApp'), null()), 'outputs', 'defaultHostname', 'value'), '')]"
     },
     "staticWebAppName": {
       "type": "string",
-      "value": "[coalesce(tryGet(if(parameters('deployStaticWebApp'), reference(resourceId('Microsoft.Resources/deployments', 'staticWebApp'), '2025-04-01'), null()), 'outputs', 'name', 'value'), '')]"
+      "value": "[coalesce(tryGet(if(parameters('deployStaticWebApp'), reference('staticWebApp'), null()), 'outputs', 'name', 'value'), '')]"
     },
     "postgresFqdn": {
       "type": "string",
-      "value": "[coalesce(tryGet(if(parameters('deployPostgres'), reference(resourceId('Microsoft.Resources/deployments', 'postgresFlexible'), '2025-04-01'), null()), 'outputs', 'fqdn', 'value'), '')]"
+      "value": "[coalesce(tryGet(if(parameters('deployPostgres'), reference('postgres'), null()), 'outputs', 'fqdn', 'value'), '')]"
     },
     "postgresServerName": {
       "type": "string",
-      "value": "[coalesce(tryGet(if(parameters('deployPostgres'), reference(resourceId('Microsoft.Resources/deployments', 'postgresFlexible'), '2025-04-01'), null()), 'outputs', 'serverName', 'value'), '')]"
+      "value": "[coalesce(tryGet(if(parameters('deployPostgres'), reference('postgres'), null()), 'outputs', 'serverName', 'value'), '')]"
     }
   }
 }

@@ -194,6 +194,11 @@ openssl rand -hex 32
 
 ### סודות שליחת הודעות (רק כאשר עולים מ-console לספק אמיתי)
 
+SMS4Free uses a separate existing-runtime secret-name contract and a mandatory
+retention preflight. Follow [the secure SMS4Free deployment procedure](./sms4free-deployment.md)
+before any infrastructure deployment of an existing app. Credential values stay
+out of GitHub secrets and local parameter files.
+
 מוזרקים כ-secrets ב-Container App (`secretRef`) ומחווטים ב-`infra/modules/containerApp.bicep` באופן מותנה: כל עוד הערך ריק, לא נוצר סוד ולא מתווסף משתנה env, כך שפריסת `console` נשארת ללא שינוי.
 
 מתאם WhatsApp Cloud API (`MESSAGING_PROVIDER=whatsapp-cloud`):
@@ -285,7 +290,7 @@ az group create --name torchick-prod-rg --location westeurope
 az deployment group what-if \
   --resource-group torchick-prod-rg \
   --template-file infra/main.bicep \
-  --parameters infra/main.parameters.prod.json
+  --parameters infra/main.parameters.prod.json "$MESSAGING_PARAMETERS"
 ```
 
 `what-if` מציג מה ייווצר מבלי להקצות דבר.
@@ -307,7 +312,7 @@ docker push ghcr.io/yanivgoltshian/calendar:latest
 az deployment group create \
   --resource-group torchick-prod-rg \
   --template-file infra/main.bicep \
-  --parameters infra/main.parameters.prod.json
+  --parameters infra/main.parameters.prod.json "$MESSAGING_PARAMETERS"
 ```
 
 ### שלב 6: הרצת מיגרציות מסד הנתונים

@@ -53,6 +53,9 @@
     "messagingProvider": {
       "value": "console"
     },
+    "sms4freeSecretNames": {
+      "value": null
+    },
     "whatsAppAccessToken": {
       "value": ""
     },

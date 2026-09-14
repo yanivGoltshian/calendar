@@ -58,6 +58,10 @@ param otpPepper string
 @secure()
 param whatsAppAccessToken string = ''
 
+@description('Explicit SMS4Free bindings resolved inside ARM from existing runtime secrets. Never supplied by GitHub.')
+@secure()
+param sms4freeSecrets object = {}
+
 @description('תצורת הודעות לא-סודית (זוגות שם/ערך של משתני סביבה, למשל WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_OTP_TEMPLATE). ריק כברירת מחדל.')
 param messagingConfig object = {}
 
@@ -138,13 +142,21 @@ var baseSecrets = [
 
 // סוד ההודעות מתווסף רק כאשר סופק ערך, כדי לשמור על אפס שינוי כאשר
 // MESSAGING_PROVIDER=console (כל הערכים ריקים → אין סודות ואין env חדשים).
+var sms4freeSecretValues = [for binding in items(sms4freeSecrets): binding.value]
+var sms4freeSecretEnv = [for binding in items(sms4freeSecrets): {
+  name: binding.key
+  secretRef: binding.value.name
+}]
+
 var messagingSecrets = concat(
-  empty(whatsAppAccessToken) ? [] : [ { name: 'whatsapp-access-token', value: whatsAppAccessToken } ]
+  empty(whatsAppAccessToken) ? [] : [ { name: 'whatsapp-access-token', value: whatsAppAccessToken } ],
+  sms4freeSecretValues
 )
 
 // כניסות env של הסודות (secretRef), מותנות באותו אופן.
 var messagingSecretEnv = concat(
-  empty(whatsAppAccessToken) ? [] : [ { name: 'WHATSAPP_ACCESS_TOKEN', secretRef: 'whatsapp-access-token' } ]
+  empty(whatsAppAccessToken) ? [] : [ { name: 'WHATSAPP_ACCESS_TOKEN', secretRef: 'whatsapp-access-token' } ],
+  sms4freeSecretEnv
 )
 
 // תצורת הודעות לא-סודית → env רגיל. מתועד ב-.env.example ו-docs.
