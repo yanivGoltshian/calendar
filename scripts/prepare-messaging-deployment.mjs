@@ -89,7 +89,9 @@ export function parseInputs(env) {
 
 // This query never asks Azure for secret values or inline SMS credentials.
 export const CURRENT_QUERY =
-  "{name:name,secretNames:properties.configuration.secrets[].name,externalSecretNames:properties.configuration.secrets[?keyVaultUrl!=`null`].name,containers:properties.template.containers[].{name:name,selectors:env[?name=='MESSAGING_PROVIDER' || name=='SMS_PROVIDER'].{name:name,value:value},bindings:env[?starts_with(name,'SMS4FREE_') || name=='SMS_DEFAULT_COUNTRY_CODE'].{name:name,secretRef:secretRef,hasValue:value!=`null`},settings:env[?name=='SMS4FREE_BASE_URL' || name=='SMS4FREE_SEND_PATH' || name=='SMS_DEFAULT_COUNTRY_CODE'].{name:name,value:value}}}";
+  "{name:name,secretNames:properties.configuration.secrets[].name,externalSecretNames:properties.configuration.secrets[?keyVaultUrl!=`null`].name,containers:properties.template.containers[].{name:name,selectors:env[?name=='MESSAGING_PROVIDER' || name=='SMS_PROVIDER'].{name:name,value:value},bindings:env[?starts_with(name,'SMS4FREE_') || name=='SMS_DEFAULT_COUNTRY_CODE'].{name:name,secretRef:secretRef,hasValue:value!=`null`},settings:env[?" +
+  [...PUBLIC_ENV].map((name) => `name=='${name}'`).join(' || ') +
+  '].{name:name,value:value}}}';
 
 export function validateRetention(input, current) {
   if (
@@ -170,11 +172,11 @@ export function validateRetention(input, current) {
       );
     }
   }
-  for (const key of SMS_PUBLIC_ENV) {
+  for (const key of PUBLIC_ENV) {
     const existing = container.settings.find((item) => item.name === key);
     if (existing?.value !== input.config[key]) {
       fail(
-        'Deployment would change an SMS4Free public setting. Reconcile the explicit configuration first.',
+        'Deployment would change a public setting for messaging. Reconcile the explicit configuration first.',
       );
     }
   }

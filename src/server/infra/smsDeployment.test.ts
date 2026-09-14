@@ -208,7 +208,7 @@ test('SMS deployment: optional SMS endpoint configuration is retained explicitly
     name,
     value,
   }));
-  assert.throws(() => prepare(enabled, () => state), /change an SMS4Free public setting/);
+  assert.throws(() => prepare(enabled, () => state), /change a public setting/);
   assert.deepEqual(
     prepare({ ...enabled, MESSAGING_CONFIG: JSON.stringify(config) }, () => state)
       .parameters.messagingConfig.value,
@@ -220,6 +220,89 @@ test('SMS deployment: optional SMS endpoint configuration is retained explicitly
       /public messaging settings/,
     );
   }
+});
+
+const whatsAppConfig = {
+  WHATSAPP_PHONE_NUMBER_ID: 'synthetic-phone-id',
+  WHATSAPP_OTP_TEMPLATE: 'synthetic-template',
+  WHATSAPP_BUSINESS_ACCOUNT_ID: 'synthetic-account-id',
+  WHATSAPP_OTP_TEMPLATE_LANG: 'he',
+  WHATSAPP_OTP_BUTTON_SUBTYPE: 'url',
+  WHATSAPP_GRAPH_VERSION: 'v21.0',
+  WHATSAPP_GRAPH_BASE_URL: 'https://graph.example.invalid',
+  WHATSAPP_DEFAULT_COUNTRY_CODE: '972',
+};
+
+function configuredWhatsApp() {
+  const state = current('whatsapp-cloud');
+  state.containers[0].settings = Object.entries(whatsAppConfig).map(([name, value]) => ({
+    name,
+    value,
+  }));
+  return state;
+}
+
+test('Messaging deployment: omitted WhatsApp public settings cannot be erased by the overlay', () => {
+  assert.throws(
+    () => prepare({ MESSAGING_PROVIDER: 'whatsapp-cloud' }, configuredWhatsApp),
+    /public setting/,
+  );
+  for (const omitted of Object.keys(whatsAppConfig)) {
+    const config = Object.fromEntries(
+      Object.entries(whatsAppConfig).filter(([name]) => name !== omitted),
+    );
+    assert.throws(
+      () =>
+        prepare(
+          {
+            MESSAGING_PROVIDER: 'whatsapp-cloud',
+            MESSAGING_CONFIG: JSON.stringify(config),
+          },
+          configuredWhatsApp,
+        ),
+      /public setting/,
+    );
+  }
+});
+
+test('Messaging deployment: changed WhatsApp public settings fail retention', () => {
+  for (const changed of Object.keys(whatsAppConfig)) {
+    assert.throws(
+      () =>
+        prepare(
+          {
+            MESSAGING_PROVIDER: 'whatsapp-cloud',
+            MESSAGING_CONFIG: JSON.stringify({ ...whatsAppConfig, [changed]: 'changed' }),
+          },
+          configuredWhatsApp,
+        ),
+      /public setting/,
+    );
+  }
+});
+
+test('Messaging deployment: unchanged complete WhatsApp public settings survive the overlay', () => {
+  const result = prepare(
+    {
+      MESSAGING_PROVIDER: 'whatsapp-cloud',
+      MESSAGING_CONFIG: JSON.stringify(whatsAppConfig),
+    },
+    configuredWhatsApp,
+  );
+  assert.deepEqual(result.parameters.messagingConfig.value, whatsAppConfig);
+  assert.equal(result.parameters.messagingProvider.value, 'whatsapp-cloud');
+  assert.equal(result.parameters.sms4freeSecretNames.value, null);
+});
+
+test('Messaging deployment: the actual metadata projection includes every documented public setting', () => {
+  const settingsFilter = CURRENT_QUERY.split('settings:env[?')[1].split('].{')[0];
+  const projectedNames = [...settingsFilter.matchAll(/name=='([^']+)'/g)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(
+    projectedNames.sort(),
+    [...SMS_PUBLIC_ENV, ...Object.keys(whatsAppConfig)].sort(),
+  );
 });
 
 test('SMS deployment: CLI rejects incomplete configuration without invoking Azure or writing output', () => {

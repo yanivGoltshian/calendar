@@ -32,13 +32,21 @@ nonsecret deployment variables in the existing production environment:
   as keys and the corresponding dedicated secret names as values. Both the local
   preflight and ARM parameter schema reject arbitrary source-secret names.
   Leave unset until configured.
-* `MESSAGING_CONFIG`: optional JSON object for public settings. Leave unset when
-  using defaults. Any existing `SMS4FREE_BASE_URL`, `SMS4FREE_SEND_PATH` and
-  `SMS_DEFAULT_COUNTRY_CODE` overrides must be supplied unchanged.
+* `MESSAGING_CONFIG`: JSON object containing the complete current public messaging
+  configuration, unchanged. Leave unset only when none of the supported public
+  settings exists in the runtime. The generated overlay overrides `messagingConfig`
+  from the normal parameter file, so existing values there must also be supplied
+  through this input. Omission or change blocks deployment for either provider.
+
+Supported public keys are `SMS4FREE_BASE_URL`, `SMS4FREE_SEND_PATH`,
+`SMS_DEFAULT_COUNTRY_CODE`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_OTP_TEMPLATE`,
+`WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_OTP_TEMPLATE_LANG`,
+`WHATSAPP_OTP_BUTTON_SUBTYPE`, `WHATSAPP_GRAPH_VERSION`,
+`WHATSAPP_GRAPH_BASE_URL` and `WHATSAPP_DEFAULT_COUNTRY_CODE`.
 
 The deployment workflow runs `scripts/prepare-messaging-deployment.mjs` before
 Bicep. It validates complete input locally, then reads only current secret names,
-provider selectors, binding metadata and the three public SMS settings.
+provider selectors, binding metadata and every supported public messaging setting.
 It never calls `listSecrets` or reads credential values from the operator machine.
 Missing access, partial configuration, inline credentials, omitted bindings,
 changed secret names, external secret references, changed provider or lost public
