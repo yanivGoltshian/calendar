@@ -37,6 +37,9 @@ nonsecret deployment variables in the existing production environment:
   settings exists in the runtime. The generated overlay overrides `messagingConfig`
   from the normal parameter file, so existing values there must also be supplied
   through this input. Omission or change blocks deployment for either provider.
+  Preserve empty strings exactly where the runtime accepts them, including
+  `WHATSAPP_OTP_BUTTON_SUBTYPE=""` for an OTP template without a button. An empty
+  string remains distinct from an omitted setting; values must still be strings.
 
 Supported public keys are `SMS4FREE_BASE_URL`, `SMS4FREE_SEND_PATH`,
 `SMS_DEFAULT_COUNTRY_CODE`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_OTP_TEMPLATE`,

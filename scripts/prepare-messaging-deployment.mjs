@@ -78,11 +78,12 @@ export function parseInputs(env) {
   const config = objectJson(env.MESSAGING_CONFIG || '{}', 'MESSAGING_CONFIG');
   if (
     Object.entries(config).some(
-      ([key, value]) =>
-        !PUBLIC_ENV.has(key) || typeof value !== 'string' || !value.trim(),
+      ([key, value]) => !PUBLIC_ENV.has(key) || typeof value !== 'string',
     )
   ) {
-    fail('MESSAGING_CONFIG accepts only documented nonempty public messaging settings.');
+    fail(
+      'MESSAGING_CONFIG accepts only documented public messaging settings with string values.',
+    );
   }
   return { provider, names, config };
 }

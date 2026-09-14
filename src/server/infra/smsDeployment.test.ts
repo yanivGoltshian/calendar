@@ -233,9 +233,9 @@ const whatsAppConfig = {
   WHATSAPP_DEFAULT_COUNTRY_CODE: '972',
 };
 
-function configuredWhatsApp() {
+function configuredWhatsApp(config = whatsAppConfig) {
   const state = current('whatsapp-cloud');
-  state.containers[0].settings = Object.entries(whatsAppConfig).map(([name, value]) => ({
+  state.containers[0].settings = Object.entries(config).map(([name, value]) => ({
     name,
     value,
   }));
@@ -292,6 +292,64 @@ test('Messaging deployment: unchanged complete WhatsApp public settings survive 
   assert.deepEqual(result.parameters.messagingConfig.value, whatsAppConfig);
   assert.equal(result.parameters.messagingProvider.value, 'whatsapp-cloud');
   assert.equal(result.parameters.sms4freeSecretNames.value, null);
+});
+
+const noButtonConfig = { ...whatsAppConfig, WHATSAPP_OTP_BUTTON_SUBTYPE: '' };
+
+test('Messaging deployment: unchanged empty no-button setting is retained', () => {
+  const result = prepare(
+    {
+      MESSAGING_PROVIDER: 'whatsapp-cloud',
+      MESSAGING_CONFIG: JSON.stringify(noButtonConfig),
+    },
+    () => configuredWhatsApp(noButtonConfig),
+  );
+  assert.deepEqual(result.parameters.messagingConfig.value, noButtonConfig);
+});
+
+test('Messaging deployment: omitted empty no-button setting fails retention', () => {
+  const config = Object.fromEntries(
+    Object.entries(noButtonConfig).filter(
+      ([name]) => name !== 'WHATSAPP_OTP_BUTTON_SUBTYPE',
+    ),
+  );
+  assert.throws(
+    () =>
+      prepare(
+        {
+          MESSAGING_PROVIDER: 'whatsapp-cloud',
+          MESSAGING_CONFIG: JSON.stringify(config),
+        },
+        () => configuredWhatsApp(noButtonConfig),
+      ),
+    /public setting/,
+  );
+});
+
+test('Messaging deployment: changed empty no-button setting fails retention', () => {
+  assert.throws(
+    () =>
+      prepare(
+        {
+          MESSAGING_PROVIDER: 'whatsapp-cloud',
+          MESSAGING_CONFIG: JSON.stringify(whatsAppConfig),
+        },
+        () => configuredWhatsApp(noButtonConfig),
+      ),
+    /public setting/,
+  );
+});
+
+test('Messaging deployment: public settings still require string values', () => {
+  for (const value of [null, 0, false, [], {}]) {
+    assert.throws(
+      () =>
+        parseInputs({
+          MESSAGING_CONFIG: JSON.stringify({ WHATSAPP_OTP_BUTTON_SUBTYPE: value }),
+        }),
+      /public messaging settings/,
+    );
+  }
 });
 
 test('Messaging deployment: the actual metadata projection includes every documented public setting', () => {
