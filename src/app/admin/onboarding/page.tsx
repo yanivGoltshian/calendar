@@ -9,7 +9,7 @@ import { getBusinessHours } from '@/server/repos/workingHours';
 import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
 import { businessShareUrl } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
-import { normalizeLandingContent } from '@/lib/publicPageStyle';
+import { normalizeStoredLandingContent } from '@/lib/publicPageStyle';
 import { resolveOnboardingEntry } from './premium';
 import OnboardingWizard, { type WizardService } from './OnboardingWizard';
 
@@ -90,7 +90,7 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
   const serviceExample = getServiceTemplate(business.type)[0]?.name ?? '';
 
   // תוכן פרימיום קיים (אם כבר מולא) — מנורמל לזריעת האשף בכניסה חוזרת.
-  const premiumInitial = normalizeLandingContent(business.landingContent);
+  const premiumInitial = normalizeStoredLandingContent(business.landingContent);
 
   return (
     <main className="mx-auto max-w-2xl px-4 pb-16 pt-6 lg:max-w-5xl xl:max-w-6xl">

@@ -10,6 +10,7 @@
 import {
   normalizeGoogleBusinessUrl,
   normalizeLandingContent,
+  normalizeStoredLandingContent,
   landingDefaults,
   landingSectionEnabledByDefault,
   TOGGLEABLE_LANDING_SECTIONS,
@@ -228,6 +229,7 @@ export function parsePremiumDraft(raw: unknown, existing?: unknown): LandingCont
   const submitted = parsed as Record<string, unknown>;
   const stored = patchLandingBranding(existing, {});
   const displayed = normalizeLandingContent(existing);
+  const storedDisplay = normalizeStoredLandingContent(existing);
   const retained: Pick<LandingContent, 'googleReviewsUrl' | 'testimonials'> = {};
   // These fields have no editor controls. Preserve their stored bytes when the
   // normalized draft omits them or echoes the unchanged displayed value.
@@ -239,7 +241,8 @@ export function parsePremiumDraft(raw: unknown, existing?: unknown): LandingCont
   if (
     stored.testimonials !== undefined &&
     (!Object.hasOwn(submitted, 'testimonials') ||
-      JSON.stringify(submitted.testimonials) === JSON.stringify(displayed?.testimonials))
+      JSON.stringify(submitted.testimonials) === JSON.stringify(displayed?.testimonials) ||
+      JSON.stringify(submitted.testimonials) === JSON.stringify(storedDisplay?.testimonials))
   ) retained.testimonials = stored.testimonials;
   return Object.keys(retained).length ? { ...normalized, ...retained } : normalized;
 }

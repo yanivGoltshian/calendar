@@ -16,7 +16,7 @@ import { darken, lighten, withAlpha } from '@/lib/hexColor';
 import {
   sectionIconKey,
   landingDefaults,
-  normalizeLandingContent,
+  normalizeStoredLandingContent,
 } from '@/lib/publicPageStyle';
 import { CLINIC_IDENTITY } from '@/data/clinicDemo';
 import {
@@ -117,7 +117,7 @@ export default async function BusinessPublicPage({ params }: Props) {
   // בשרת. מצב העמוד נגזר כעת אך ורק מ-business.publicPageStyle (הגדרת הבעלים).
   const iconKey = sectionIconKey(business.type);
 
-  const landing = normalizeLandingContent(business.landingContent);
+  const landing = normalizeStoredLandingContent(business.landingContent);
   // רמת העיטור נגזרת מהתקדמות האונבורדינג (0..3), לא מהחבילה. עסק סטנדרט שהשלים
   // את כל האונבורדינג מגיע לרמה 3 — המראה הפרימיום המלא. דילוג ⇐ עמוד פשוט יותר.
   const onboarding = visualLevelForPublicPage({

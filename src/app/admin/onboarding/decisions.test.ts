@@ -7,7 +7,7 @@ import {
   publishPremiumDraft,
   serializePremiumDraft,
 } from './premium';
-import { landingDefaults, normalizeLandingContent, type LandingContent } from '@/lib/publicPageStyle';
+import { landingDefaults, normalizeLandingContent, normalizeStoredLandingContent, type LandingContent } from '@/lib/publicPageStyle';
 import { publicPagePresentation } from '@/server/publicPagePresentation';
 
 test('skipping highlights persists explicit exclusion rather than fallback benefits', () => {
@@ -133,7 +133,10 @@ test('supported explicit review edits and clears still use validation and normal
   };
   const saved = parsePremiumDraft(JSON.stringify({
     googleReviewsUrl: 'https://g.page/r/new/review',
-    testimonials: [{ name: ' New author ', quote: ' New manual quote ', rating: 5 }],
+    testimonials: [{
+      name: ' New author ', quote: ' New manual quote ', rating: 5, hidden: true,
+      source: { provider: 'google', input: 'user_supplied_screenshot', importedManually: true },
+    }],
     unvalidatedClientKey: 'discard',
   }), existing);
   assert.deepEqual(saved, {
@@ -141,6 +144,32 @@ test('supported explicit review edits and clears still use validation and normal
     testimonials: [{ name: 'New author', quote: 'New manual quote' }],
   });
   assert.equal(parsePremiumDraft(JSON.stringify({ googleReviewsUrl: '', testimonials: [] }), existing), null);
+});
+
+test('unrelated premium saves retain all hidden review bytes in both current and legacy preview echoes', () => {
+  const existing = {
+    testimonials: [
+      { name: ' First ', quote: ' First review ', rating: 5 },
+      {
+        name: ' Hidden ', quote: ' Hidden review ', hidden: true, rating: 4,
+        source: {
+          provider: 'google', input: 'user_supplied_screenshot', importedManually: true,
+          visibleExcerpt: true, operatorReference: 'retained-only-on-server',
+        },
+      },
+      { name: 'Last', quote: 'Last review', hidden: false },
+    ],
+  };
+  const original = structuredClone(existing);
+  for (const preview of [normalizeLandingContent(existing), normalizeStoredLandingContent(existing)]) {
+    const draft = { ...preview, heroHeadline: 'Changed headline' };
+    for (const payload of [serializePremiumDraft(draft), JSON.stringify(draft)]) {
+      const saved = parsePremiumDraft(payload, existing)!;
+      assert.equal(saved.heroHeadline, 'Changed headline');
+      assert.deepEqual(saved.testimonials, existing.testimonials);
+    }
+  }
+  assert.deepEqual(existing, original);
 });
 
 test('stale editor serialization preserves fresh server reviews while saving editable content', () => {
@@ -157,6 +186,8 @@ test('stale editor serialization preserves fresh server reviews while saving edi
       name: 'New author',
       quote: 'New quote',
       source: { provider: 'google', reviewId: 'synthetic-new' },
+      rating: 3,
+      hidden: true,
     }],
   };
   const serialized = serializePremiumDraft(staleEditor);

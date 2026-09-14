@@ -104,6 +104,22 @@ export interface LandingBenefit {
 export interface LandingTestimonial {
   name: string;
   quote: string;
+  rating?: number;
+  /** Only an explicit true hides a stored review; normalization retains it. */
+  hidden?: boolean;
+  source?: LandingTestimonialSource;
+}
+
+export interface LandingTestimonialSource {
+  provider: 'google';
+  input?: string;
+  reviewId?: string;
+  mode?: string;
+  importedManually?: boolean;
+  visibleExcerpt?: boolean;
+  language?: string;
+  translation?: string;
+  originalLanguageShownInScreenshot?: string;
 }
 
 /** שאלה ותשובה בודדת במקטע השאלות הנפוצות. */
@@ -426,6 +442,38 @@ function toRecordArray(value: unknown): Record<string, unknown>[] {
   );
 }
 
+export function normalizeTestimonialRating(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5
+    ? value
+    : undefined;
+}
+
+export function visibleLandingTestimonials<T extends { hidden?: boolean }>(items: T[]): T[] {
+  return items.filter((item) => item.hidden !== true);
+}
+
+function normalizeTestimonialSource(value: unknown): LandingTestimonialSource | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
+  if (source.provider !== 'google') return undefined;
+  const result: LandingTestimonialSource = { provider: 'google' };
+  for (const key of [
+    'input', 'reviewId', 'mode', 'language', 'translation', 'originalLanguageShownInScreenshot',
+  ] as const) {
+    const text = cleanString(source[key], 200);
+    if (text) result[key] = text;
+  }
+  for (const key of ['importedManually', 'visibleExcerpt'] as const) {
+    if (typeof source[key] === 'boolean') result[key] = source[key];
+  }
+  return result;
+}
+
+/** Stored provenance is read separately from untrusted manual/editor input. */
+export function normalizeStoredLandingContent(raw: unknown): LandingContent | null {
+  return normalizeContent(raw, true);
+}
+
 /**
  * מנרמל תוכן עמוד נחיתה מקלט חופשי (JSON ממסד הנתונים או אובייקט מהטופס):
  *  - חותך רווחים ומגביל אורך.
@@ -434,6 +482,10 @@ function toRecordArray(value: unknown): Record<string, unknown>[] {
  * מחזיר null כשאין תוכן ממשי, כדי שנשמור NULL במסד הנתונים.
  */
 export function normalizeLandingContent(raw: unknown): LandingContent | null {
+  return normalizeContent(raw, false);
+}
+
+function normalizeContent(raw: unknown, stored: boolean): LandingContent | null {
   if (!raw || typeof raw !== 'object') return null;
   const source = raw as Record<string, unknown>;
 
@@ -520,7 +572,15 @@ export function normalizeLandingContent(raw: unknown): LandingContent | null {
     const quote = cleanString(item.quote, LIMITS.testimonialQuote);
     const name = cleanString(item.name, LIMITS.testimonialName);
     if (!quote) continue; // המלצה חייבת ציטוט; שם אופציונלי
-    testimonials.push({ name, quote });
+    const testimonial: LandingTestimonial = { name, quote };
+    if (stored) {
+      const rating = normalizeTestimonialRating(item.rating);
+      const reviewSource = normalizeTestimonialSource(item.source);
+      if (rating !== undefined) testimonial.rating = rating;
+      if (typeof item.hidden === 'boolean') testimonial.hidden = item.hidden;
+      if (reviewSource) testimonial.source = reviewSource;
+    }
+    testimonials.push(testimonial);
     if (testimonials.length >= MAX_TESTIMONIALS) break;
   }
 
@@ -767,7 +827,7 @@ function sectionHasContent(
     case 'beforeAfter':
       return Boolean(content.beforeAfter?.length);
     case 'testimonials':
-      return Boolean(content.testimonials?.length || content.googleReviewsUrl);
+      return Boolean(visibleLandingTestimonials(content.testimonials ?? []).length || content.googleReviewsUrl);
     case 'faq':
       return Boolean(content.faq?.length);
     case 'about':

@@ -5,6 +5,9 @@ import {
   landingDefaults,
   normalizeGoogleBusinessUrl,
   normalizeLandingContent,
+  normalizeStoredLandingContent,
+  normalizeTestimonialRating,
+  visibleLandingTestimonials,
   storedGoogleBusinessUrl,
   normalizePublicPageStyle,
   isLandingContentEmpty,
@@ -168,6 +171,79 @@ test('normalizeLandingContent: invalid Google metadata is omitted while factual 
   assert.deepEqual(content, {
     testimonials: [{ name: 'David', quote: 'Stored factual review' }],
   });
+});
+
+test('stored review ratings accept only actual integers from one to five', () => {
+  for (const rating of [1, 2, 3, 4, 5]) {
+    assert.equal(normalizeTestimonialRating(rating), rating);
+    assert.equal(
+      normalizeStoredLandingContent({ testimonials: [{ quote: 'Factual review', rating }] })
+        ?.testimonials?.[0].rating,
+      rating,
+    );
+  }
+  for (const rating of [undefined, null, '5', true, 0, -1, 6, 4.5, NaN, Infinity, {}]) {
+    assert.equal(normalizeTestimonialRating(rating), undefined);
+    assert.deepEqual(
+      normalizeStoredLandingContent({ testimonials: [{ name: 'Author', quote: 'Factual review', rating }] }),
+      { testimonials: [{ name: 'Author', quote: 'Factual review' }] },
+    );
+  }
+});
+
+test('stored normalization retains hidden records and source fields without changing default visibility or limits', () => {
+  const source = {
+    provider: 'google',
+    input: 'user_supplied_screenshot',
+    importedManually: true,
+    visibleExcerpt: false,
+    language: 'he',
+    translation: 'Google',
+    originalLanguageShownInScreenshot: 'en',
+  };
+  const testimonials = [
+    { name: 'First', quote: 'First review', rating: 5, source },
+    { name: 'Hidden', quote: 'Hidden review', rating: 4, source, hidden: true },
+    { name: 'Third', quote: 'Third review', hidden: false },
+  ];
+  const original = structuredClone(testimonials);
+  const stored = normalizeStoredLandingContent({ testimonials });
+  assert.deepEqual(stored?.testimonials, testimonials);
+  assert.deepEqual(normalizeStoredLandingContent(stored), stored);
+  assert.deepEqual(testimonials, original);
+  assert.deepEqual(visibleLandingTestimonials(stored!.testimonials!), [testimonials[0], testimonials[2]]);
+  assert.equal(normalizeStoredLandingContent({
+    testimonials: [...testimonials, { quote: 'Beyond the existing limit' }],
+  })?.testimonials?.length, MAX_TESTIMONIALS);
+  assert.equal(visibleLandingTestimonials(testimonials.map((review) => ({ ...review, hidden: false }))).length, 3);
+});
+
+test('manual normalization still rejects client provenance, ratings and visibility fields', () => {
+  assert.deepEqual(normalizeLandingContent({
+    testimonials: [{
+      name: ' Manual author ', quote: ' Manual quote ', rating: 5, hidden: true,
+      source: { provider: 'google', input: 'user_supplied_screenshot', importedManually: true },
+    }],
+  }), { testimonials: [{ name: 'Manual author', quote: 'Manual quote' }] });
+  for (const source of ['google', null, [], { provider: 'unknown' }]) {
+    assert.equal(normalizeStoredLandingContent({
+      testimonials: [{ quote: 'Manual review', source, hidden: 'true' }],
+    })?.testimonials?.[0].source, undefined);
+    assert.equal(normalizeStoredLandingContent({
+      testimonials: [{ quote: 'Manual review', source, hidden: 'true' }],
+    })?.testimonials?.[0].hidden, undefined);
+  }
+});
+
+test('section resolution counts only visible reviews while preserving an independent profile link', () => {
+  const content = { testimonials: [{ name: 'Author', quote: 'Stored hidden review', hidden: true }] };
+  assert.equal(resolveLandingSections({ content }).includes('testimonials'), false);
+  assert.equal(resolveLandingSections({
+    content: { ...content, googleReviewsUrl: 'https://g.page/r/synthetic/review' },
+  }).includes('testimonials'), true);
+  assert.equal(resolveLandingSections({
+    content: { testimonials: [{ ...content.testimonials[0], hidden: false }] },
+  }).includes('testimonials'), true);
 });
 
 test('normalizeLandingContent: מסנן שורות ריקות ומגביל כמויות', () => {

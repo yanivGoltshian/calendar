@@ -78,6 +78,8 @@ const he = {
       afterLabel: 'אחרי',
       beforeAfterHint: 'החליקו להשוואה',
       testimonialsTitle: 'לקוחות מספרים',
+      testimonialRating: 'דירוג {rating} מתוך 5',
+      googleReviewSource: 'ביקורת בגוגל',
       googleReviewsLabel: 'ביקורות על העסק בגוגל',
       googleReviewsCta: 'לכל הביקורות בגוגל',
       googleReviewsEmpty: 'אין ביקורות שמורות להצגה באתר. אפשר לעבור לפרופיל העסק בגוגל.',
