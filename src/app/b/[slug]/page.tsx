@@ -5,8 +5,8 @@ import type { CSSProperties } from 'react';
 import type { Metadata } from 'next';
 import { getBusinessBySlug, getAllBusinessSlugs } from '@/server/repos/business';
 import { t } from '@/i18n';
-import { formatAgorot } from '@/lib/money';
-import { formatDuration, formatMinutes } from '@/lib/time';
+import { formatMinutes } from '@/lib/time';
+import { publicServiceCategories, readServiceCategories } from '@/lib/serviceCategories';
 import { localBusinessJsonLd } from '@/lib/seo';
 import { buildBusinessPageMetadata } from './metadata';
 import { JsonLd } from '@/components/JsonLd';
@@ -31,6 +31,7 @@ import {
 } from '@/components/publicLanding/icons';
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
+import BookingServices from '@/components/publicLanding/BookingServices';
 import LandingTestimonials from '@/components/publicLanding/LandingTestimonials';
 import ReturningCustomerLoader from '@/components/publicLanding/ReturningCustomerLoader';
 import TodayHoursHighlight from '@/components/publicLanding/TodayHoursHighlight';
@@ -83,6 +84,7 @@ export default async function BusinessPublicPage({ params }: Props) {
   const loginHref = `/login?redirect=${encodeURIComponent(`/b/${slug}`)}`;
 
   const services = business.services;
+  const categories = publicServiceCategories(readServiceCategories(business.serviceCategories), services);
   const staff = business.staff;
   const hoursByDay = new Map<number, (typeof business.workingHours)[number]>();
   for (const wh of business.workingHours) hoursByDay.set(wh.weekday, wh);
@@ -275,31 +277,7 @@ export default async function BusinessPublicPage({ params }: Props) {
       {services.length === 0 ? (
         <p className="text-[color:var(--c-muted,#64748b)]">{t.publicPage.noServices}</p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {services.map((s) => (
-            <li key={s.id}>
-              <Link
-                href={`${bookHref}?service=${s.id}`}
-                className="flex items-center justify-between rounded-2xl border border-[color:var(--biz-border)] bg-[color:var(--c-surface,#ffffff)] px-4 py-3.5 shadow-sm transition hover:border-[color:var(--biz)] hover:shadow-md"
-              >
-                <div className="min-w-0">
-                  <p className="font-semibold text-[color:var(--c-ink,#0f172a)]">{s.name}</p>
-                  {!s.hideDuration ? (
-                    <p className="mt-0.5 flex items-center gap-1 text-sm text-[color:var(--c-muted,#64748b)]">
-                      <ClockIcon className="h-3.5 w-3.5 shrink-0" />
-                      {formatDuration(s.durationMin)}
-                    </p>
-                  ) : null}
-                </div>
-                {!s.hidePrice ? (
-                  <span className="shrink-0 ps-3 font-bold text-[color:var(--biz-ink-strong)]">
-                    {formatAgorot(s.priceAgorot)}
-                  </span>
-                ) : null}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <BookingServices services={services} categories={categories} bookHref={bookHref} />
       )}
     </section>
   );
@@ -505,6 +483,7 @@ export default async function BusinessPublicPage({ params }: Props) {
         {isLanding ? (
           <>
             <LandingSections
+              categories={categories}
               premium={isClinicPremium}
               timeZone={business.timezone}
               content={landing}

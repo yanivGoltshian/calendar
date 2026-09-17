@@ -22,6 +22,7 @@ import LandingFacebookFeed from './LandingFacebookFeed';
 import HotDealsCube from './HotDealsCube';
 import LandingBooking from './LandingBooking';
 import WhatsAppFab from './WhatsAppFab';
+import type { ServiceCategory } from '@/lib/serviceCategories';
 
 type WorkingHour = { weekday: number; startMinute: number; endMinute: number };
 
@@ -31,6 +32,7 @@ type Props = {
   content: LandingContent | null;
   type: string | null;
   services: LandingService[];
+  categories?: ServiceCategory[];
   staff: { id: string; displayName: string }[];
   businessName: string;
   slug: string;
@@ -51,6 +53,7 @@ export default function LandingSections({
   content,
   type,
   services,
+  categories,
   staff,
   businessName,
   slug,
@@ -81,6 +84,7 @@ export default function LandingSections({
           timeZone={timeZone}
           slug={slug}
           services={services}
+          categories={categories}
           staff={staff}
           bookHref={bookHref}
           labels={clinic.booking}
@@ -119,6 +123,7 @@ export default function LandingSections({
                 eyebrow={eyebrows.services}
                 title={t.publicPage.servicesTitle}
                 services={services}
+                categories={categories}
                 bookHref={bookHref}
                 iconKey={iconKey}
                 bookLabel={l.bookService}

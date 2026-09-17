@@ -1,9 +1,14 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { formatAgorot } from '@/lib/money';
 import { formatDuration } from '@/lib/time';
 import type { SectionIconKey } from '@/lib/publicPageStyle';
 import { SectionIcon, ClockIcon, ArrowLeftIcon } from './icons';
 import SectionHeading from './SectionHeading';
+import ServiceCategoryTabs, { EmptyServiceCategory } from '@/components/ServiceCategoryTabs';
+import { filterCategoryServices, type ServiceCategory } from '@/lib/serviceCategories';
 
 export type LandingService = {
   id: string;
@@ -18,6 +23,7 @@ export type LandingService = {
 type Props = {
   title: string;
   services: LandingService[];
+  categories?: ServiceCategory[];
   bookHref: string;
   iconKey: SectionIconKey;
   bookLabel: string;
@@ -26,7 +32,9 @@ type Props = {
 
 // מקטע השירותים — קלפים אלגנטיים; כל קלף מקשר ישירות לזרימת קביעת התור הקיימת.
 // עוגן lp-services מאפשר גלילה חלקה מכפתור המשני שבהירו.
-export default function LandingServices({ title, services, bookHref, iconKey, bookLabel, eyebrow }: Props) {
+export default function LandingServices({ title, services, categories = [], bookHref, iconKey, bookLabel, eyebrow }: Props) {
+  const [categoryId, setCategoryId] = useState('all');
+  const visibleServices = filterCategoryServices(services, categories, categoryId);
   if (services.length === 0) return null;
   return (
     <section id="lp-services" data-palette-surface="services" className="mt-16 scroll-mt-24 sm:mt-24">
@@ -36,7 +44,9 @@ export default function LandingServices({ title, services, bookHref, iconKey, bo
         icon={<SectionIcon iconKey={iconKey} className="h-4 w-4" />}
       />
       <div className="mx-auto mt-10 flex max-w-[940px] flex-col gap-3.5">
-        {services.map((s) => (
+        <ServiceCategoryTabs categories={categories} services={services} selected={categoryId} onSelect={setCategoryId} />
+        {visibleServices.length === 0 ? <EmptyServiceCategory onReset={() => setCategoryId('all')} /> : null}
+        {visibleServices.map((s) => (
           <Link
             key={s.id}
             href={`${bookHref}?service=${s.id}`}
