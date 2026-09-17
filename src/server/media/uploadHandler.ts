@@ -2,6 +2,7 @@ import { getBusinessAccess, type BusinessAccessInput } from '@/server/subscripti
 import { validateMediaFile, MAX_VIDEO_BYTES } from '@/app/api/upload/media/validate';
 import { boundedFormData, MediaError, validVideoSignature } from './uploadPolicy';
 import { optimizeUploadImage } from './image';
+import { claimHeroVideoUpload, prepareHeroVideo } from './video';
 
 type UploadBusiness = BusinessAccessInput & { id: string; accountStatus: string };
 type UploadDependencies = {
@@ -21,6 +22,7 @@ const activeUploads = new Set<string>();
 export function createUploadHandler(dependencies: UploadDependencies) {
   return async (request: Request, videoOnly = false): Promise<Response> => {
     let activeId: string | undefined;
+    let releaseVideo: (() => void) | undefined;
     try {
       const email = await dependencies.email();
       if (!email) throw new MediaError('נדרשת התחברות.', 401);
@@ -37,6 +39,7 @@ export function createUploadHandler(dependencies: UploadDependencies) {
       if (activeUploads.has(business.id) || activeUploads.size >= 4) {
         throw new MediaError('מתבצעות העלאות נוספות. יש לנסות שוב בעוד רגע.', 429);
       }
+      if (videoOnly) releaseVideo = claimHeroVideoUpload();
       activeId = business.id;
       activeUploads.add(activeId);
       const form = await boundedFormData(request, MAX_VIDEO_BYTES + 64 * 1024);
@@ -59,6 +62,13 @@ export function createUploadHandler(dependencies: UploadDependencies) {
         ext = 'webp';
       } else if (!validVideoSignature(input, type)) {
         throw new MediaError('תוכן הסרטון אינו תואם לפורמט.', 415);
+      } else if (videoOnly) {
+        const ready = await prepareHeroVideo(input, { signal: request.signal });
+        await dependencies.store(business.id, email, input, type, ext);
+        if (request.signal.aborted) throw new MediaError('הכנת הסרטון הופסקה.', 408);
+        input = ready;
+        type = 'video/mp4';
+        ext = 'mp4';
       }
       const url = await dependencies.store(business.id, email, input, type, ext);
       return Response.json({ url });
@@ -80,6 +90,7 @@ export function createUploadHandler(dependencies: UploadDependencies) {
         { status: error instanceof MediaError ? error.status : 500 },
       );
     } finally {
+      releaseVideo?.();
       if (activeId) activeUploads.delete(activeId);
     }
   };

@@ -23,11 +23,35 @@ Auth.js upgrade, not a peer-dependency override.
 - Compressed source images: at most 8 MiB / 20 million pixels, raster JPEG/PNG/WebP only.
   Every accepted image is decoded, orientation-corrected, stripped of metadata and
   encoded as WebP, at most 1600 pixels and 250 KiB. SVG/animation are rejected.
-- Videos retain the existing 30 MiB upload limit and require a matching container
-  signature. This is **not** a full video codec validation/transcoding service.
-  File hero videos no longer autoplay and use `preload=none`; YouTube/Vimeo players
-  are click-to-load, with controls enabled and autoplay disabled. Video transfer
-  is outside the hero image budget and requires user action.
+- Videos retain the existing 30 MiB upload limit and matching container signature.
+  The authenticated hero upload awaits one completed H.264 MP4, yuv420p BT.709 SDR,
+  at most 1280 pixels on the long edge and 30 fps, preserving orientation/aspect
+  without upscaling. PQ/HLG BT.2020 video is resized before linear-light Hable tone
+  mapping. Untagged conventional SDR assumes BT.709; unsupported color fails explicitly.
+  Only decorative hero uploads remove audio. Generic media/image uploads are unchanged.
+  Originals and derivatives have separate content hashes in existing storage. Both
+  count toward quota; an error can leave an original but never returns a ready URL.
+  Existing published URLs are preserved. No deletion/backfill is performed.
+- A process-wide hero admission slot covers parsing through storage, with no queue.
+  The standalone image runs one Node server per replica. FFmpeg/ffprobe use fixed
+  argv, local container demuxers/file protocol only, one thread, a shared 90-second
+  preparation deadline, a 12 MiB output ceiling, and Linux child-only address-space
+  (256 MiB) and CPU (75 seconds) limits through `prlimit`. Oversized resource needs
+  fail the upload without a new product duration/resolution cap. Temp files are
+  removed after process exit, including timeout/abort; encoded input remains bounded
+  by the existing upload cap. FFmpeg's successful size-limited exits are rejected;
+  final codec/color/dimensions/duration and moov-before-mdat are checked before storage.
+- The editor displays preparation and blocks publication until the request succeeds.
+  Public playback uses the existing immutable blob URL, poster, muted autoplay,
+  visibility/reduced-motion/save-data policy and manual fallback. There is no playback
+  conversion, proxy, quality ladder, worker or new service.
+- Local development needs FFmpeg with libx264, libx265 (synthetic tests), zscale and
+  tonemap; Linux additionally needs `prlimit`. The runtime image packages Alpine
+  FFmpeg/util-linux. CI additionally qualifies two synthetic HDR inputs using the
+  same packages at 0.25 CPU/512 MiB with 192 MiB resident application headroom reserved.
+  This reservation is distinct from a concurrent live-application load test.
+  macOS timing and Chromium mobile emulation are neither Azure timing nor Safari/iPhone
+  validation. Output size is measured per clip, without a universal 2-3 MB promise.
 - Tenant object/byte limits: basic 30 / 30 MiB; premium 100 / 150 MiB;
   exclusive 200 / 300 MiB. These are conservative implementation defaults requiring
   product approval, not a claim about a previously sold storage entitlement.
