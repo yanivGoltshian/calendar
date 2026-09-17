@@ -39,3 +39,13 @@ test('public page shells do not include the sensitive watermark', () => {
     assert.equal(readFileSync(path, 'utf8').includes('SensitiveWatermark'), false);
   }
 });
+
+test('admin and superadmin shells do not mount the repeated visible watermark', () => {
+  const src = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+  for (const path of [
+    join(src, 'app', 'admin', 'layout.tsx'),
+    join(src, 'app', 'superadmin', 'page.tsx'),
+  ]) {
+    assert.equal(readFileSync(path, 'utf8').includes('SensitiveWatermark'), false);
+  }
+});

@@ -1,18 +1,16 @@
 'use server';
 
 import { z } from 'zod';
-import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
-import { getActiveBusiness } from '@/server/repos/business';
 import { bookingUrl } from '@/lib/booking-link';
 import { notifyOwnerOfInquiry } from '@/server/notifications/ownerInquiry';
-import { isBusinessOwnerIdentity } from '@/lib/businessOwnerIdentity';
+import { getAuthorizedUpgradeContext } from '@/server/upgradeAuthorization';
 
 /**
  * שרת-אקשן לשליחת בקשת הצעת מחיר לשדרוג חבילה (D4).
  *
  * סדר פעולות מכוון:
- *  1. אימות בעל העסק והבאת העסק הפעיל (מתוך ה-session, לא מהטופס).
+ *  1. אימות בעל העסק או התחזות מנהל-על תקפה, והבאת העסק מהקשר השרת בלבד.
  *  2. אימות קלט (חבילה, שם, מייל, טלפון).
  *  3. *התמדה תחילה* — יצירת PlanInquiry במסד, כדי ששום בקשה לא תאבד גם אם
  *     ההתראה תיכשל.
@@ -37,15 +35,9 @@ export async function submitQuoteRequest(
   _prev: QuoteRequestState,
   formData: FormData,
 ): Promise<QuoteRequestState> {
-  const session = await auth();
-  const sessionEmail = session?.user?.email;
-  if (!sessionEmail) return { ok: false, error: 'auth' };
-
-  // Requesting billing assistance remains available after a subscription expires.
-  const business = await getActiveBusiness({ allowInactive: true });
-  if (!business || !isBusinessOwnerIdentity(sessionEmail, business)) {
-    return { ok: false, error: 'auth' };
-  }
+  const context = await getAuthorizedUpgradeContext();
+  if (!context) return { ok: false, error: 'auth' };
+  const { business } = context;
 
   const parsed = schema.safeParse({
     plan: formData.get('plan'),
