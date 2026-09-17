@@ -7,7 +7,7 @@ import { getBusinessBySlug } from '@/server/repos/business';
 import { submitCustomerReview } from '@/server/repos/businessReviews';
 import { notifyOwnerOfReview } from '@/server/notifications/ownerReview';
 import {
-  revalidateBusinessReviews,
+  revalidateAdminBusinessReviews,
   reviewActionFailure,
 } from '@/server/reviews/actionResult';
 
@@ -48,6 +48,6 @@ export async function submitBusinessReviewAction(
     reviewId: review.id,
     pushEnabled: business.settings?.pushEnabled ?? false,
   });
-  revalidateBusinessReviews(business.slug);
+  revalidateAdminBusinessReviews();
   return { ok: true, id: review.id };
 }
