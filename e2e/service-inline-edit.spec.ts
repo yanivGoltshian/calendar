@@ -4,6 +4,7 @@ import { test, expect } from './fixtures';
 import { BASE_URL } from './helpers';
 import { prisma } from '../src/lib/db';
 import { bookingFixture, cleanupFixture } from '../integration/fixtures';
+import { installInvitationKey } from '../src/lib/pwa/installInvitationVisit';
 import { t } from '../src/i18n';
 
 const text = t.admin.services;
@@ -67,6 +68,23 @@ for (const width of [1366, 390]) {
       await context.addCookies([
         { name: 'authjs.session-token', value: token, url: BASE_URL },
       ]);
+      const invitationKey = installInvitationKey(
+        'admin',
+        '/admin/services',
+        undefined,
+        fixture.business.slug,
+      );
+      if (!invitationKey) throw new Error('Synthetic admin invitation key is required');
+      await page.addInitScript((key) => {
+        localStorage.setItem(
+          key,
+          JSON.stringify({
+            shown: 1,
+            lastShownAt: Date.now(),
+            disabled: true,
+          }),
+        );
+      }, invitationKey);
       await page.setViewportSize({ width, height: 900 });
       let documentLoads = 0;
       page.on('request', (request) => {
