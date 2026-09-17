@@ -1,8 +1,11 @@
+import { adminServiceSnapshotSchema, type AdminServiceSnapshot } from './adminServiceSnapshot';
+
 export type AdminFormState = {
   ok: boolean;
   error?: string;
   mode?: 'add' | 'edit';
   scheduled?: boolean;
+  service?: AdminServiceSnapshot;
 };
 
 export function parseAdminFormState(value: unknown): AdminFormState {
@@ -22,5 +25,16 @@ export function parseAdminFormState(value: unknown): AdminFormState {
     if (typeof value.scheduled !== 'boolean') throw new Error('Invalid admin form schedule');
     result.scheduled = value.scheduled;
   }
+  if ('service' in value && value.service !== undefined) {
+    if (!result.ok || result.mode !== 'edit') throw new Error('Unexpected service confirmation');
+    result.service = adminServiceSnapshotSchema.parse(value.service);
+  }
   return result;
+}
+
+export function requireSavedService(state: AdminFormState, expectedId: string): AdminServiceSnapshot {
+  if (!state.ok || state.mode !== 'edit' || state.service?.id !== expectedId) {
+    throw new Error('Missing or mismatched saved service confirmation');
+  }
+  return state.service;
 }
