@@ -42,7 +42,6 @@ export async function GET(
       { userId: session.userId },
       business.id,
     );
-    if (upcoming.length === 0) return NextResponse.json(none, noStore);
     const nowMs = Date.now();
     const appointments: ReturningAppointmentView[] = upcoming.map((appt) => {
       const title =
