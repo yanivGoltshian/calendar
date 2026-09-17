@@ -10,6 +10,8 @@ import {
   type BusinessProfileInput,
 } from '@/server/repos/settings';
 import { createService, deleteService, setServiceHidden, listServices } from '@/server/repos/services';
+import { createCategorizedService } from '@/server/repos/serviceCategories';
+import { readServiceCategories } from '@/lib/serviceCategories';
 import { parseOnboardingSteps } from '@/server/onboardingProgress';
 import { listStaff } from '@/server/repos/staff';
 import {
@@ -52,7 +54,7 @@ function shekelToAgorot(raw: string): number {
 
 const HOURS_PRESET_KEYS: readonly HoursPresetKey[] = ['sun-thu', 'every-day', 'custom'];
 
-type PendingService = { name: string; durationMin: number; priceAgorot: number };
+type PendingService = { name: string; durationMin: number; priceAgorot: number; categoryId?: string };
 
 /** מנתח את רשימת השירותים החדשים שנשלחה כ-JSON מהאשף, עם הגנה מלאה מפני קלט פגום. */
 function parsePendingServices(raw: FormDataEntryValue | null): PendingService[] {
@@ -78,7 +80,8 @@ function parsePendingServices(raw: FormDataEntryValue | null): PendingService[] 
       typeof rec.priceAgorot === 'number' && Number.isFinite(rec.priceAgorot) && rec.priceAgorot >= 0
         ? Math.round(rec.priceAgorot)
         : 0;
-    out.push({ name, durationMin, priceAgorot });
+    out.push({ name, durationMin, priceAgorot,
+      categoryId: typeof rec.categoryId === 'string' ? rec.categoryId : undefined });
   }
   return out;
 }
@@ -118,11 +121,17 @@ export async function saveServices(_prev: SaveState, fd: FormData): Promise<Save
       name: draftName,
       durationMin: Number.isFinite(draftDuration) && draftDuration > 0 ? draftDuration : 30,
       priceAgorot: shekelToAgorot((fd.get('newPrice') as string | null) ?? ''),
+      categoryId: String(fd.get('newCategoryId') ?? '') || undefined,
     });
   }
 
   if (activeCount === 0 && pending.length === 0) return { ok: false, error: 'generic' };
 
+  const categories = readServiceCategories(business.serviceCategories);
+  if (pending.some(service => service.categoryId && (!categories.enabled ||
+    !categories.categories.some(category => category.id === service.categoryId)))) {
+    return { ok: false, error: 'invalid_category' };
+  }
   const serviceIds = new Set((await listServices(business.id)).map(service => service.id));
   if (toggles.some(toggle => !serviceIds.has(toggle.id))) return { ok: false, error: 'generic' };
   const firstSelection = !business.settings?.onboardingCompleted &&
@@ -140,7 +149,7 @@ export async function saveServices(_prev: SaveState, fd: FormData): Promise<Save
   }
 
   for (const svc of pending) {
-    await createService(business.id, {
+    const input = {
       name: svc.name,
       description: null,
       durationMin: svc.durationMin,
@@ -148,7 +157,13 @@ export async function saveServices(_prev: SaveState, fd: FormData): Promise<Save
       hidePrice: false,
       hideDuration: false,
       hidden: false,
-    });
+    };
+    if (svc.categoryId) {
+      const created = await createCategorizedService(business.id, input, svc.categoryId);
+      if (!created.ok) return { ok: false, error: created.error };
+    } else {
+      await createService(business.id, input);
+    }
   }
 
   await markOnboardingStep(business.id, 'services');

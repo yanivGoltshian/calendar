@@ -12,6 +12,7 @@ import LandingServices, { type LandingService } from './LandingServices';
 import LandingGallery from './LandingGallery';
 import LandingBeforeAfter from './LandingBeforeAfter';
 import LandingTestimonials from './LandingTestimonials';
+import type { PublicBusinessReview } from '@/lib/businessReviews';
 import LandingFaq from './LandingFaq';
 import LandingAbout from './LandingAbout';
 import LandingLocation from './LandingLocation';
@@ -22,6 +23,7 @@ import LandingFacebookFeed from './LandingFacebookFeed';
 import HotDealsCube from './HotDealsCube';
 import LandingBooking from './LandingBooking';
 import WhatsAppFab from './WhatsAppFab';
+import type { ServiceCategory } from '@/lib/serviceCategories';
 
 type WorkingHour = { weekday: number; startMinute: number; endMinute: number };
 
@@ -31,6 +33,7 @@ type Props = {
   content: LandingContent | null;
   type: string | null;
   services: LandingService[];
+  categories?: ServiceCategory[];
   staff: { id: string; displayName: string }[];
   businessName: string;
   slug: string;
@@ -41,6 +44,8 @@ type Props = {
   iconKey: SectionIconKey;
   // מקטע "שלום .." ללקוח מזוהה — מוזרק בין ווידג'ט קביעת התור למקטע המבצעים.
   returning?: ReactNode;
+  platformReviews?: PublicBusinessReview[];
+  reviewSubmitHref?: string;
 };
 
 // מנצח המקטעים של עמוד הנחיתה — מרנדר את המקטעים (מלבד ההירו) בסדר שנפתר
@@ -51,6 +56,7 @@ export default function LandingSections({
   content,
   type,
   services,
+  categories,
   staff,
   businessName,
   slug,
@@ -60,8 +66,10 @@ export default function LandingSections({
   bookHref,
   iconKey,
   returning,
+  platformReviews = [],
+  reviewSubmitHref,
 }: Props) {
-  const sections = resolveLandingSections({ content, type }).filter((s) => s !== 'hero');
+  const sections = resolveLandingSections({ content, type, reviewSubmissionAvailable: Boolean(reviewSubmitHref) }).filter((s) => s !== 'hero');
   const defaults = landingDefaults(type);
   const l = t.publicPage.landing;
   const eyebrows = t.premiumLanding.sectionEyebrow;
@@ -81,6 +89,7 @@ export default function LandingSections({
           timeZone={timeZone}
           slug={slug}
           services={services}
+          categories={categories}
           staff={staff}
           bookHref={bookHref}
           labels={clinic.booking}
@@ -119,6 +128,7 @@ export default function LandingSections({
                 eyebrow={eyebrows.services}
                 title={t.publicPage.servicesTitle}
                 services={services}
+                categories={categories}
                 bookHref={bookHref}
                 iconKey={iconKey}
                 bookLabel={l.bookService}
@@ -151,6 +161,8 @@ export default function LandingSections({
                 key={section}
                 title={l.testimonialsTitle}
                 items={content?.testimonials ?? []}
+                platformReviews={platformReviews}
+                submitHref={reviewSubmitHref}
                 googleReviewsUrl={content?.googleReviewsUrl}
                 googleLabel={l.googleReviewsLabel}
                 googleCta={l.googleReviewsCta}

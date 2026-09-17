@@ -841,6 +841,7 @@ function sectionHasContent(
 export interface ResolveLandingSectionsInput {
   content?: LandingContent | null;
   type?: string | null;
+  reviewSubmissionAvailable?: boolean;
 }
 
 /**
@@ -864,6 +865,7 @@ export function resolveLandingSections(
     const enabled =
       typeof override === 'boolean' ? override : defaultSectionEnabled(section, type);
     if (!enabled) return false;
+    if (section === 'testimonials' && input.reviewSubmissionAvailable) return true;
     if (CONTENT_REQUIRED_SECTIONS.has(section))
       return sectionHasContent(section, content);
     return true;

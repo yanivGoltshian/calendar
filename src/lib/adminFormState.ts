@@ -1,4 +1,5 @@
 import { adminServiceSnapshotSchema, type AdminServiceSnapshot } from './adminServiceSnapshot';
+import { serviceCategoriesSchema, type ServiceCategories } from './serviceCategories';
 
 export type AdminFormState = {
   ok: boolean;
@@ -6,6 +7,7 @@ export type AdminFormState = {
   mode?: 'add' | 'edit';
   scheduled?: boolean;
   service?: AdminServiceSnapshot;
+  categories?: ServiceCategories;
 };
 
 export function parseAdminFormState(value: unknown): AdminFormState {
@@ -28,6 +30,10 @@ export function parseAdminFormState(value: unknown): AdminFormState {
   if ('service' in value && value.service !== undefined) {
     if (!result.ok || result.mode !== 'edit') throw new Error('Unexpected service confirmation');
     result.service = adminServiceSnapshotSchema.parse(value.service);
+  }
+  if ('categories' in value && value.categories !== undefined) {
+    if (!result.ok) throw new Error('Unexpected category confirmation');
+    result.categories = serviceCategoriesSchema.parse(value.categories);
   }
   return result;
 }

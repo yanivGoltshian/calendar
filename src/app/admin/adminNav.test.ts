@@ -14,17 +14,17 @@ import {
 
 /**
  * טסטי נעילה לניווט האדמין המאוחד (באגים 1/2/3/4/5/7).
- * נועלים את ה-whitelist בן 15 הפריטים כמקור אמת יחיד, ואוסרים על זליגה
+ * נועלים את ה-whitelist בן 16 הפריטים כמקור אמת יחיד, ואוסרים על זליגה
  * חוזרת של נתיבים שהוסרו לכל משטח ניווט. אלה טסטים טהורים (ללא DOM).
  */
 
 const adminDir = dirname(fileURLToPath(import.meta.url));
 
-// ── נעילה 1: בדיוק 15 פריטי ניווט, ואף אחד מהנתיבים שהוסרו לא מופיע ──
-test('nav: בדיוק 15 פריטי ניווט מותרים (4 תחתון + 11 עוד)', () => {
+// ── נעילה 1: בדיוק 16 פריטי ניווט, ואף אחד מהנתיבים שהוסרו לא מופיע ──
+test('nav: בדיוק 16 פריטי ניווט מותרים (4 תחתון + 12 עוד)', () => {
   assert.equal(ADMIN_BOTTOM_NAV.length, 4);
-  assert.equal(ADMIN_MORE_ROWS.length, 11);
-  assert.equal(ADMIN_NAV_ITEMS.length, 15);
+  assert.equal(ADMIN_MORE_ROWS.length, 12);
+  assert.equal(ADMIN_NAV_ITEMS.length, 16);
 });
 
 test('nav: הודעות ללקוחות מופיע אחרי לקוחות ושירותים ראשון בגיליון עוד', () => {
@@ -36,8 +36,8 @@ test('nav: הודעות ללקוחות מופיע אחרי לקוחות ושיר
 
 test('nav: כל פריט קישור מצביע על נתיב whitelist, אין נתיבים כפולים', () => {
   const paths = ADMIN_WHITELIST_PATHS;
-  // 12 נתיבי קישור מובחנים (3 הנותרים הם bell/install/logout ללא נתיב)
-  assert.equal(paths.length, 12);
+  // 13 נתיבי קישור מובחנים (3 הנותרים הם bell/install/logout ללא נתיב)
+  assert.equal(paths.length, 13);
   assert.equal(new Set(paths).size, paths.length, 'אין נתיבים כפולים');
   const expected = [
     '/admin',
@@ -45,6 +45,7 @@ test('nav: כל פריט קישור מצביע על נתיב whitelist, אין �
     '/admin/clients',
     '/admin/marketing',
     '/admin/services',
+    '/admin/reviews',
     '/admin/team',
     '/admin/working-hours',
     '/admin/stats',
@@ -108,7 +109,7 @@ test('nav: isAdminNavActive מבחין נכון בין הבית לנתיב מק�
 });
 
 // ── smoke (באג 5): כל עמוד whitelist קיים ומרנדר תוכן אמיתי, לא גוף ריק ──
-test('pages: כל 12 עמודי ה-whitelist קיימים, עם export default ותוכן ממשי', () => {
+test('pages: כל 13 עמודי ה-whitelist קיימים, עם export default ותוכן ממשי', () => {
   for (const path of ADMIN_WHITELIST_PATHS) {
     const rel = path === '/admin' ? '' : path.replace('/admin/', '');
     const file = rel ? join(adminDir, rel, 'page.tsx') : join(adminDir, 'page.tsx');

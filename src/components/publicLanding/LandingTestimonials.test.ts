@@ -52,7 +52,8 @@ test('stored reviews render as cards with one heading and at most one Google act
   assert.equal((html.match(/<figure\b/g) ?? []).length, 3);
   assert.equal((html.match(/<svg\b/g) ?? []).length, 0);
   assert.equal((html.match(/<a\b/g) ?? []).length, 1);
-  assert.doesNotMatch(html, /★|role="img"/);
+  assert.doesNotMatch(html, /★/);
+  assert.equal(html.split(t.reviews.missingRating).length - 1, 3);
   assert.ok(!html.includes(t.publicPage.landing.googleReviewSource));
 });
 
@@ -73,14 +74,63 @@ test('rated cards show the actual rating and stored source independently of a bu
   assert.doesNotMatch(html, /box-shadow|rounded-full/);
 });
 
-test('missing and invalid ratings never acquire stars in direct rendering', () => {
+test('legacy missing and invalid ratings show an unrated indicator without invented filled stars', () => {
   for (const rating of [undefined, 0, -1, 6, 4.5, NaN, Infinity]) {
     const html = render({
       items: [{ quote: 'Review without a usable rating', rating }],
       googleReviewsUrl: 'https://g.page/r/synthetic/review',
     });
-    assert.doesNotMatch(html, /★|role="img"/);
+    assert.doesNotMatch(html, /★/);
+    assert.ok(html.includes(t.reviews.missingRating));
+    assert.ok(html.includes(t.reviews.sourceUnknown));
   }
+});
+
+test('platform rating-only cards have the real source logo and no empty quotation', () => {
+  const html = render({
+    platformReviews: [{ id: 'synthetic-review', name: 'Synthetic', rating: 5, quote: '', editedByBusiness: false }],
+    submitHref: '/b/synthetic/reviews/new',
+  });
+  assert.equal((html.match(/<figure\b/g) ?? []).length, 1);
+  assert.equal((html.match(/★/g) ?? []).length, 5);
+  assert.doesNotMatch(html, /<blockquote\b/);
+  assert.match(html, /torchick-emblem-mark/);
+  assert.match(html, /data-review-source="torchick"/);
+  assert.ok(html.includes(t.reviews.sourcePlatform));
+  assert.doesNotMatch(html, /data-review-source="google"|items-baseline/);
+  assert.match(html, /items-center/);
+});
+
+test('Google cards require explicit stored provenance and do not inherit a business Google link', () => {
+  const html = render({
+    items: [
+      { name: 'Google fixture', quote: 'Explicit provenance', rating: 4, source: { provider: 'google', input: 'PRIVATE SOURCE METADATA' } },
+      { name: 'Unattributed fixture', quote: 'No provenance', rating: 3 },
+    ],
+    googleReviewsUrl: 'https://g.page/r/synthetic/review',
+  });
+  assert.equal((html.match(/data-review-source="google"/g) ?? []).length, 1);
+  assert.equal((html.match(/<svg\b/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /PRIVATE SOURCE METADATA/);
+  assert.equal((html.match(/data-review-source="unknown"/g) ?? []).length, 1);
+});
+
+test('published business edits disclose and safely render the retained original', () => {
+  const html = render({
+    platformReviews: [{ id: 'edited', name: 'Synthetic', rating: 3, quote: 'Edited text', editedByBusiness: true, originalQuote: '<script>original</script>' }],
+  });
+  assert.ok(html.includes(t.reviews.edited));
+  assert.ok(html.includes(t.reviews.original));
+  assert.match(html, /&lt;script&gt;original&lt;\/script&gt;/);
+  assert.doesNotMatch(html, /<script>/);
+  assert.equal((html.match(/★/g) ?? []).length, 3);
+});
+
+test('empty review submission state does not claim a Google profile or invent reviews', () => {
+  const html = render({ submitHref: '/b/synthetic/reviews/new' });
+  assert.match(html, /\/b\/synthetic\/reviews\/new/);
+  assert.ok(html.includes(t.reviews.emptyPublic));
+  assert.doesNotMatch(html, /<figure\b|No reviews are stored on this site/);
 });
 
 test('visibility is explicit and reversible rather than a positional two-review cap', () => {

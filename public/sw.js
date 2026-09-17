@@ -9,7 +9,8 @@ const PRIVATE_PATHS = ['/admin', '/superadmin', '/account'];
 
 function isPrivateNavigation(request) {
   const { pathname } = new URL(request.url);
-  return PRIVATE_PATHS.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return PRIVATE_PATHS.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ||
+    /^\/b\/[^/]+\/reviews(?:\/|$)/.test(pathname);
 }
 
 function isCacheableNavigation(request, response) {
@@ -107,7 +108,17 @@ self.addEventListener('push', (event) => {
     data: { url: data.url || '/admin' },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(title, options),
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        const path = new URL(client.url).pathname;
+        if (path === '/admin' || path.startsWith('/admin/')) {
+          client.postMessage({ type: 'torchick:admin-notifications-changed' });
+        }
+      }
+    }),
+  ]));
 });
 
 /**

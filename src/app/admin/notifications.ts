@@ -1,7 +1,7 @@
 import { t } from '@/i18n';
 import type { AccessState } from '@/server/subscription';
 
-export type AdminNotificationKind = 'approval' | 'booking' | 'renewal' | 'cancellation';
+export type AdminNotificationKind = 'approval' | 'booking' | 'renewal' | 'cancellation' | 'review';
 
 export type AdminNotification = {
   id: string;
@@ -32,6 +32,7 @@ function renewalTitle(state: AccessState, daysLeft: number): string {
  */
 export function buildAdminNotifications(input: {
   pendingCount: number;
+  pendingReviews?: number;
   recentBookings?: number;
   recentCancellations?: number;
   access: Pick<import('@/server/subscription').BusinessAccess, 'state' | 'daysLeft'>;
@@ -40,6 +41,14 @@ export function buildAdminNotifications(input: {
   const recentCancellations = input.recentCancellations ?? 0;
   const recentBookings = input.recentBookings ?? 0;
   const items: AdminNotification[] = [];
+  if (input.pendingReviews && input.pendingReviews > 0) {
+    items.push({
+      id: 'pending-reviews',
+      kind: 'review',
+      title: input.pendingReviews === 1 ? t.admin.notifications.reviewOne : t.admin.notifications.reviewMany.replace('{count}', String(input.pendingReviews)),
+      href: '/admin/reviews?status=pending',
+    });
+  }
 
   if (pendingCount > 0) {
     const n = t.admin.notifications;

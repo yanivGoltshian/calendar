@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import InstallApp from '@/components/pwa/InstallApp';
 import { ownerLogout } from '../actions';
 import NotificationsBell from '../NotificationsBell';
@@ -87,6 +87,7 @@ function moreIcon(id: string) {
     case 'notifications':
       return <BellRowIcon />;
     case 'upgrade':
+    case 'reviews':
       return <UpgradeStarIcon className="ic" />;
     case 'settings':
       return <SettingsIcon className="ic" />;
@@ -116,6 +117,19 @@ export default function AdminChrome({
   children,
 }: AdminChromeProps) {
   const pathname = usePathname() ?? '/admin';
+  const router = useRouter();
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') router.refresh(); };
+    const onPush = (event: MessageEvent) => {
+      if (event.data?.type === 'torchick:admin-notifications-changed') router.refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    navigator.serviceWorker?.addEventListener('message', onPush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      navigator.serviceWorker?.removeEventListener('message', onPush);
+    };
+  }, [router]);
   // כותרת העמוד הפעיל לסרגל העליון בדסקטופ, נגזרת מקונפיגורציית הניווט לפי הנתיב.
   const pageTitle =
     [...ADMIN_BOTTOM_NAV, ...ADMIN_MORE_ROWS].find(

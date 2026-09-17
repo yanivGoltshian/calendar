@@ -71,7 +71,7 @@ test('a valid profile link without stored reviews renders one honest empty state
     await page.goto(`/b/${business.slug}`);
     await expect(
       page.getByRole('heading', {
-        name: t.publicPage.landing.googleReviewsLabel,
+        name: t.publicPage.landing.testimonialsTitle,
         exact: true,
       }),
     ).toHaveCount(1);
@@ -85,10 +85,14 @@ test('a valid profile link without stored reviews renders one honest empty state
     ).toHaveCount(1);
     await expect(page.locator('section').filter({
       has: page.getByRole('heading', {
-        name: t.publicPage.landing.googleReviewsLabel,
+        name: t.publicPage.landing.testimonialsTitle,
         exact: true,
       }),
     }).locator('figure')).toHaveCount(0);
+    await expect(page.getByRole('link', {
+      name: t.reviews.write,
+      exact: true,
+    })).toHaveCount(1);
   } finally {
     await cleanupFixture(f);
   }
@@ -122,7 +126,7 @@ test('invalid provider metadata never creates a wrong CTA and does not hide stor
   }
 });
 
-test('zero factual reviews and unusable provider metadata hide the reviews section', async ({ page }) => {
+test('zero factual reviews and unusable provider metadata show only the honest review invitation', async ({ page }) => {
   const f = await bookingFixture();
   try {
     const business = await prisma.business.update({
@@ -143,6 +147,15 @@ test('zero factual reviews and unusable provider metadata hide the reviews secti
     })).toHaveCount(0);
     await expect(page.getByRole('heading', {
       name: t.publicPage.landing.testimonialsTitle,
+      exact: true,
+    })).toHaveCount(1);
+    await expect(page.getByText(t.reviews.emptyPublic, { exact: true })).toHaveCount(1);
+    await expect(page.getByRole('link', {
+      name: t.reviews.write,
+      exact: true,
+    })).toHaveCount(1);
+    await expect(page.getByRole('link', {
+      name: t.publicPage.landing.googleReviewsCta,
       exact: true,
     })).toHaveCount(0);
   } finally {

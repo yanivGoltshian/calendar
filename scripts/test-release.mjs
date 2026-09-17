@@ -298,7 +298,7 @@ try {
     .map((table) => {
       const row =
         table === 'Business'
-          ? `to_jsonb(t) - ARRAY['businessImportSourceUrl','businessImportDraft','businessImportedAt']`
+          ? `to_jsonb(t) - ARRAY['businessImportSourceUrl','businessImportDraft','businessImportedAt','serviceCategories']`
           : 'to_jsonb(t)';
       return `'${table}', (SELECT jsonb_agg(${row} ORDER BY id) FROM "${table}" t)`;
     })
@@ -340,7 +340,7 @@ try {
   run(process.execPath, ['scripts/migrate-safe.mjs'], releaseEnv);
   releaseSql(`
     DO $$ BEGIN
-      IF (SELECT count(*) FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) <> 42
+      IF (SELECT count(*) FROM "_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) <> 44
         OR EXISTS (SELECT to_jsonb(m) FROM test_release_migrations m EXCEPT SELECT to_jsonb(m) FROM "_prisma_migrations" m)
         OR EXISTS (SELECT to_jsonb(m) FROM test_release_post_upgrade_migrations m EXCEPT SELECT to_jsonb(m) FROM "_prisma_migrations" m)
         OR EXISTS (SELECT to_jsonb(m) FROM "_prisma_migrations" m EXCEPT SELECT to_jsonb(m) FROM test_release_post_upgrade_migrations m)
@@ -364,7 +364,7 @@ try {
     END $$;
     DELETE FROM "StaffMember" WHERE id='release-imported-staff';
   `);
-  const latestMigration = '20260913110000_allow_unclaimed_imported_staff';
+  const latestMigration = '20260917233000_business_reviews';
   const latestMigrationChecksum = createHash('sha256')
     .update(readFileSync(join('prisma/migrations', latestMigration, 'migration.sql')))
     .digest('hex');
@@ -399,7 +399,7 @@ try {
     JSON.stringify(
       {
         from: 39,
-        to: 42,
+        to: 44,
         preservedTables: releaseTables,
         historicalLedgerUnchanged: true,
         recordsUnchanged: true,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { t } from '@/i18n';
 import type { AdminNotification } from './notifications';
 import { BellIcon } from './home/icons';
@@ -33,10 +34,14 @@ export default function NotificationsBell({
   openSignal?: number;
 }) {
   const n = t.admin.notifications;
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const count = notifications.length;
+  useEffect(() => {
+    if (open) router.refresh();
+  }, [open, router]);
 
   useEffect(() => {
     if (openSignal > 0) setOpen(true);
@@ -165,7 +170,7 @@ export default function NotificationsBell({
                         aria-hidden="true"
                         className={[
                           'mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full',
-                          item.kind === 'approval'
+                          item.kind === 'approval' || item.kind === 'review'
                             ? 'bg-amber-400'
                             : item.kind === 'cancellation'
                               ? 'bg-rose-400'

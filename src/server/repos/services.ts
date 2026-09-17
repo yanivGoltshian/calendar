@@ -1,4 +1,4 @@
-import type { BusinessType } from '@prisma/client';
+import type { BusinessType, Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/db';
 import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
@@ -107,14 +107,19 @@ export type ServiceInput = {
 };
 
 /** יצירת שירות חדש עם מיקום מיון בסוף הרשימה. */
-export async function createService(businessId: string, data: ServiceInput, staffIds?: string[]) {
-  const last = await prisma.service.findFirst({
+export async function createService(
+  businessId: string,
+  data: ServiceInput,
+  staffIds?: string[],
+  db: Pick<Prisma.TransactionClient, 'service' | 'staffMember'> = prisma,
+) {
+  const last = await db.service.findFirst({
     where: { businessId },
     orderBy: { sortOrder: 'desc' },
     select: { sortOrder: true },
   });
   const sortOrder = (last?.sortOrder ?? -1) + 1;
-  const staff = await prisma.staffMember.findMany({
+  const staff = await db.staffMember.findMany({
     where: { businessId, active: true, ...(staffIds === undefined ? {} : { id: { in: staffIds } }) },
     select: { id: true },
     ...(staffIds === undefined ? { take: 2 } : {}),
@@ -123,7 +128,7 @@ export async function createService(businessId: string, data: ServiceInput, staf
     throw new Error('invalid_service_staff');
   }
   const assigned = staffIds !== undefined || staff.length === 1 ? staff : [];
-  return prisma.service.create({
+  return db.service.create({
     data: { businessId, sortOrder, ...data, staffLinks: { create: assigned.map(member => ({ staffId: member.id })) } },
   });
 }
