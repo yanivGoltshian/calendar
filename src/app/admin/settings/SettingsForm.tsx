@@ -22,7 +22,7 @@ const initialSaveState: SaveState = { ok: false };
 
 /**
  * טופס הגדרות מאוחד: כל הסעיפים נשמרים יחד בכפתור 'שמירת הכול' אחד.
- * מוצגת רצועת שמירה נדבקת בתחתית שמופיעה רק כשיש שינויים שלא נשמרו,
+ * רצועת השמירה בתחתית זמינה תמיד ומבהירה שהשמירה ידנית,
  * ואחרי שמירה מוצג כרטיס 'מה הלאה' שמכוון לשלב הבא.
  */
 export default function SettingsForm({
@@ -81,8 +81,6 @@ export default function SettingsForm({
         : state.error
           ? s.errorGeneric
           : null;
-
-  const showBar = dirty || pending;
 
   return (
     <>
@@ -165,24 +163,24 @@ export default function SettingsForm({
           </div>
         ) : null}
 
-        {/* רצועת שמירה נדבקת: מופיעה רק כשיש שינויים שלא נשמרו. */}
+        {/* השמירה הידנית נשארת נגישה גם לפני שינוי ואחרי אישור מהשרת. */}
         <div
-          className={`fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 border-t border-[#e7ddcd] bg-white/90 backdrop-blur transition-transform duration-300 lg:bottom-0 ${
-            showBar ? 'translate-y-0' : 'invisible translate-y-full pointer-events-none'
-          }`}
+          className="fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 border-t border-[#e7ddcd] bg-white/90 backdrop-blur lg:bottom-0"
         >
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             <div className="min-w-0 text-sm">
               {errorText ? (
-                <span className="font-medium text-red-600">{errorText}</span>
+                <span role="alert" className="font-medium text-red-600">{errorText}</span>
               ) : (
-                <span className="text-[#8f8478]">{s.unsavedHint}</span>
+                <span role="status" className="text-[#8f8478]">
+                  {pending ? s.saving : dirty ? s.unsavedHint : justSaved ? s.savedShort : s.manualSaveHint}
+                </span>
               )}
             </div>
             <button
               type="submit"
               disabled={pending}
-              className="shrink-0 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+              className="min-h-11 shrink-0 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
             >
               {pending ? s.saving : s.saveAll}
             </button>
