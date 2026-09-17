@@ -104,7 +104,7 @@ for (const width of [1366, 390]) {
       await expect(inlineForm.getByLabel(t.admin.services.nameLabel, { exact: true })).toHaveValue('Preserved inline draft');
       await page.goto('/admin/onboarding?step=services');
       const onboarding = await openManager(page);
-      await expect(onboarding.getByText('Face care', { exact: true })).toBeVisible();
+      await expect(onboarding.locator('li').filter({ hasText: 'Face care' })).toBeVisible();
       await expect(onboarding.getByLabel(text.enable)).toBeChecked();
       await page.getByRole('button', { name: t.admin.onboarding.services.addOwn, exact: false }).click();
       await page.locator('[name="newName"]').fill('New onboarding service');
