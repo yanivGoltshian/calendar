@@ -1,11 +1,12 @@
-import { test } from 'node:test';
+import { before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  prepareHeroVideo,
+  prepareHeroVideo as prepareHeroVideoWithoutDiagnostics,
   hasFastStart,
   videoEncodingPlan,
   videoProcessError,
@@ -13,6 +14,29 @@ import {
 } from './video';
 import { createUploadHandler } from './uploadHandler';
 import { MediaError } from './uploadPolicy';
+
+before(() => {
+  for (const binary of ['ffmpeg', 'ffprobe']) {
+    const path = execFileSync('which', [binary], { encoding: 'utf8' }).trim();
+    const version = execFileSync(binary, ['-version'], { encoding: 'utf8' })
+      .split('\n')[0]
+      .slice(0, 1024);
+    console.log(JSON.stringify({ binary, path: realpathSync(path), version }));
+  }
+});
+
+async function prepareHeroVideo(
+  ...args: Parameters<typeof prepareHeroVideoWithoutDiagnostics>
+) {
+  try {
+    return await prepareHeroVideoWithoutDiagnostics(...args);
+  } catch (error) {
+    console.error('Synthetic video preparation failed:', {
+      cause: error instanceof Error ? error.cause : undefined,
+    });
+    throw error;
+  }
+}
 
 test('confirmed decoder ENOMEM is an actionable resource error without reclassifying invalid input', () => {
   const failure = videoProcessError(
