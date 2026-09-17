@@ -43,8 +43,10 @@ advancement at 360/390/768/1366px, reduced motion, save-data, rejected autoplay,
 missing media, controlled YouTube/Vimeo frames, image crop cancellation and
 upload retry, editor playback, published playback, waitlist retry and PWA icons.
 Service-card coverage at desktop and mobile widths exercises inline containment,
-confirmed save and updated display, pending and failed saves, draft preservation,
-cancel, switching service identity, separate creation and foreign/invalid edit IDs.
+confirmed canonical POST responses and updated display, held responses after real
+database saves, unchanged-value saves, malformed/mismatched confirmation, draft
+preservation, late responses, local cancel/switch/history without selection RSC,
+separate creation and foreign/invalid edit IDs.
 Run the focused selection with `--e2e=service-inline-edit` using the same isolated
 runner described below.
 Email/SMS delivery and cloud uploads use explicit browser stubs; OTP verification,

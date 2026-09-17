@@ -5,6 +5,9 @@ import { BASE_URL } from './helpers';
 import { prisma } from '../src/lib/db';
 import { bookingFixture, cleanupFixture } from '../integration/fixtures';
 import { installInvitationKey } from '../src/lib/pwa/installInvitationVisit';
+import { parseAdminFormState, requireSavedService } from '../src/lib/adminFormState';
+import { toAdminServiceSnapshot, type AdminServiceSnapshot } from '../src/lib/adminServiceSnapshot';
+import { listServicesWithUsage } from '../src/server/repos/services';
 import { t } from '../src/i18n';
 
 const text = t.admin.services;
@@ -97,6 +100,16 @@ for (const width of [1366, 390]) {
       const edit = page.getByRole('form', { name: text.editTitle, exact: true });
       const add = page.getByRole('form', { name: text.addTitle, exact: true });
       await ready(add);
+      let selectionRequests = 0;
+      const blockSelectionNavigation = async (route: Route) => {
+        if (new URL(route.request().url()).pathname === '/admin/services') {
+          selectionRequests++;
+          await route.abort('failed');
+        } else {
+          await route.fallback();
+        }
+      };
+      await page.route('**/admin/services*', blockSelectionNavigation);
       await add.getByLabel(text.nameLabel, { exact: true }).fill('Separate add draft');
       await card
         .getByRole('link', { name: text.edit, exact: true })
@@ -149,22 +162,10 @@ for (const width of [1366, 390]) {
       });
 
       await edit.getByLabel(text.nameLabel, { exact: true }).fill('Cancelled draft');
-      let cancelRequests = 0;
-      const blockCancelNavigation = async (route: Route) => {
-        const url = new URL(route.request().url());
-        if (url.pathname === '/admin/services' && !url.searchParams.has('edit')) {
-          cancelRequests++;
-          await route.abort('failed');
-        } else {
-          await route.fallback();
-        }
-      };
-      await page.route('**/admin/services*', blockCancelNavigation);
       await card.getByRole('button', { name: text.cancelEdit, exact: true }).click();
       await expect(edit).toHaveCount(0);
       await expect(page).toHaveURL(/\/admin\/services$/);
-      expect(cancelRequests).toBe(0);
-      await page.unroute('**/admin/services*', blockCancelNavigation);
+      expect(selectionRequests).toBe(0);
       await expect(
         card.getByRole('link', { name: text.edit, exact: true }),
       ).toBeFocused();
@@ -242,9 +243,30 @@ for (const width of [1366, 390]) {
         'Draft retained on failure',
       );
 
+      const originalSnapshot = toAdminServiceSnapshot(
+        (await listServicesWithUsage(fixture.business.id)).find(service => service.id === selected.id)!,
+      );
+      for (const confirmation of [
+        { ok: true, mode: 'edit' },
+        { ok: true, mode: 'edit', service: { ...originalSnapshot, priceAgorot: '12345' } },
+        { ok: true, mode: 'edit', service: { ...originalSnapshot, id: foreign.service.id } },
+      ]) {
+        await page.route('**/api/admin/services', route => route.fulfill({
+          status: 200, contentType: 'application/json', body: JSON.stringify(confirmation),
+        }), { times: 1 });
+        await save(page, edit);
+        await expect(edit).toHaveCount(1);
+        await expect(edit.locator('input[name=id]')).toHaveValue(selected.id);
+        await expect(edit.getByRole('alert')).toHaveText(t.common.saveUnconfirmed);
+        await expect(edit.getByLabel(text.nameLabel, { exact: true })).toHaveValue(
+          'Draft retained on failure',
+        );
+      }
+
       await first.getByRole('link', { name: text.edit, exact: true }).click();
       await ready(edit);
       await expect(edit.locator('input[name=id]')).toHaveValue(fixture.service.id);
+      await expect(edit).toHaveCount(1);
       await expect(edit.getByLabel(text.nameLabel, { exact: true })).toHaveValue(
         fixture.service.name,
       );
@@ -252,13 +274,15 @@ for (const width of [1366, 390]) {
       await card.getByRole('link', { name: text.edit, exact: true }).click();
       await ready(edit);
       await expect(edit.locator('input[name=id]')).toHaveValue(selected.id);
+      await expect(edit).toHaveCount(1);
+      expect(selectionRequests).toBe(0);
       await expect(edit.getByLabel(text.nameLabel, { exact: true })).toHaveValue(
         selected.name,
       );
 
       await edit
         .getByLabel(text.nameLabel, { exact: true })
-        .fill('Updated synthetic service');
+        .fill('  Updated synthetic service  ');
       await edit
         .getByLabel(text.descriptionLabel, { exact: true })
         .fill('Updated description');
@@ -277,11 +301,14 @@ for (const width of [1366, 390]) {
       const heldSave = new Promise<void>((resolve) => {
         releaseSave = resolve;
       });
+      let savedRecord: AdminServiceSnapshot | undefined;
       await page.route(
         '**/api/admin/services',
         async (route) => {
+          const response = await route.fetch({ timeout: 7_000 });
+          savedRecord = requireSavedService(parseAdminFormState(await response.json()), selected.id);
           await heldSave;
-          await route.continue();
+          await route.fulfill({ response });
         },
         { times: 1 },
       );
@@ -291,6 +318,17 @@ for (const width of [1366, 390]) {
         edit.getByRole('button', { name: t.common.loading, exact: true }),
       ).toBeDisabled();
       await expect(edit).toBeVisible();
+      await expect.poll(() => savedRecord?.id).toBe(selected.id);
+      expect(savedRecord).toMatchObject({
+        name: 'Updated synthetic service', priceAgorot: 9876, hidden: false, inUse: false,
+        staff: [{ id: staff.id, displayName: staff.displayName, active: true }],
+      });
+      expect(
+        (await prisma.service.findUniqueOrThrow({ where: { id: selected.id } })).name,
+      ).toBe('Updated synthetic service');
+      await expect(edit).toHaveCount(1);
+      await expect(edit).toHaveAttribute('aria-busy', 'true');
+      await expect(card.getByRole('button', { name: text.cancelEdit, exact: true })).toBeDisabled();
       releaseSave();
       expect((await saved).ok()).toBe(true);
       await expect(edit).toHaveCount(0);
@@ -301,6 +339,9 @@ for (const width of [1366, 390]) {
       await expect(card).not.toContainText(text.priceHidden);
       await expect(card).not.toContainText(text.durationHidden);
       await expect(card).not.toContainText(text.hiddenBadge);
+      await expect(card.getByRole('button', { name: text.hide, exact: true })).toBeVisible();
+      await expect(card.locator('input[name=hidden]')).toHaveValue('1');
+      await expect(card.getByRole('button', { name: text.delete, exact: true })).toBeVisible();
       await expect(
         card.getByRole('link', { name: text.edit, exact: true }),
       ).toBeFocused();
@@ -347,6 +388,49 @@ for (const width of [1366, 390]) {
         body: await page.screenshot({ fullPage: true }),
         contentType: 'image/png',
       });
+
+      await card.getByRole('link', { name: text.edit, exact: true }).click();
+      await ready(edit);
+      await expect(edit.locator('input[name=id]')).toHaveValue(selected.id);
+      await expect(edit.getByLabel(text.nameLabel, { exact: true })).toHaveValue('Updated synthetic service');
+      const unchanged = requireSavedService(parseAdminFormState(await (await save(page, edit)).json()), selected.id);
+      expect(unchanged).toMatchObject({ ...savedRecord, updatedAt: expect.any(String) });
+      await expect(edit).toHaveCount(0);
+      await expect(card).toContainText('Updated synthetic service');
+
+      await card.getByRole('link', { name: text.edit, exact: true }).click();
+      await ready(edit);
+      await edit.getByLabel(text.nameLabel, { exact: true }).fill('Late canonical service');
+      let releaseLate!: () => void;
+      const heldLate = new Promise<void>(resolve => { releaseLate = resolve; });
+      let lateRecord: AdminServiceSnapshot | undefined;
+      await page.route('**/api/admin/services', async route => {
+        const response = await route.fetch({ timeout: 7_000 });
+        lateRecord = requireSavedService(parseAdminFormState(await response.json()), selected.id);
+        await heldLate;
+        await route.fulfill({ response });
+      }, { times: 1 });
+      const lateSave = save(page, edit);
+      await expect.poll(() => lateRecord?.name).toBe('Late canonical service');
+      await first.getByRole('link', { name: text.edit, exact: true }).click();
+      await ready(edit);
+      await expect(edit.locator('input[name=id]')).toHaveValue(fixture.service.id);
+      await card.getByRole('link', { name: text.edit, exact: true }).click();
+      await ready(edit);
+      await edit.getByLabel(text.nameLabel, { exact: true }).fill('Newest unsaved draft');
+      releaseLate();
+      expect((await lateSave).ok()).toBe(true);
+      await expect(edit).toHaveCount(1);
+      await expect(edit.locator('input[name=id]')).toHaveValue(selected.id);
+      await expect(edit.getByLabel(text.nameLabel, { exact: true })).toHaveValue('Newest unsaved draft');
+      await card.getByRole('button', { name: text.cancelEdit, exact: true }).click();
+      await expect(edit).toHaveCount(0);
+      await expect(card).toContainText('Late canonical service');
+      expect((await prisma.service.findUniqueOrThrow({ where: { id: selected.id } })).name)
+        .toBe('Late canonical service');
+      expect(selectionRequests).toBe(0);
+      expect(documentLoads).toBe(1);
+      await page.unroute('**/admin/services*', blockSelectionNavigation);
 
       await add.getByLabel(text.durationLabel, { exact: true }).fill('25');
       await add.getByLabel(text.priceLabel, { exact: true }).fill('44.55');

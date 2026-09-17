@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useAdminForm } from '@/components/useAdminForm';
+import { requireSavedService } from '@/lib/adminFormState';
+import type { AdminServiceSnapshot } from '@/lib/adminServiceSnapshot';
 import { t } from '@/i18n';
 import type { SaveServiceState } from './actions';
 
@@ -17,13 +18,14 @@ export type ServiceFormValues = {
   hidden: boolean;
 };
 
-type Props = {
+export type ServiceFormProps = {
   /** ערכים התחלתיים במצב עריכה. כשלא מועבר — מצב הוספה. */
   initial?: ServiceFormValues;
   /** אנשי צוות פעילים לבחירה כמעניקי השירות. */
   staffOptions?: { id: string; displayName: string }[];
   /** מזהי אנשי הצוות המשויכים כרגע לשירות (במצב עריכה). */
   selectedStaffIds?: string[];
+  onSaved?: (service: AdminServiceSnapshot, closeEditor: boolean) => void;
 };
 
 const emptyState: SaveServiceState = { ok: false, mode: 'add' };
@@ -33,15 +35,16 @@ const inputClass =
   'w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
 export default function ServiceForm({
-  initial,
+  initial: initialValues,
   staffOptions = [],
-  selectedStaffIds = [],
-}: Props) {
+  selectedStaffIds: initialStaffIds = [],
+  onSaved,
+}: ServiceFormProps) {
+  const [initial] = useState(initialValues);
+  const [selectedStaffIds] = useState(initialStaffIds);
   const isEdit = Boolean(initial);
-  const router = useRouter();
   const active = useRef(true);
   const [hydrated, setHydrated] = useState(false);
-  const [refreshing, startTransition] = useTransition();
   const {
     state,
     onSubmit,
@@ -49,17 +52,14 @@ export default function ServiceForm({
   } = useAdminForm(
     'services',
     isEdit ? editState : emptyState,
-    isEdit
-      ? () => {
-          if (!active.current) return;
-          startTransition(() => {
-            router.replace('/admin/services', { scroll: false });
-            router.refresh();
-          });
+    initial && onSaved
+      ? (result) => {
+          const service = requireSavedService(result, initial.id);
+          onSaved(service, active.current);
         }
       : undefined,
   );
-  const pending = saving || refreshing;
+  const pending = saving;
   const formRef = useRef<HTMLFormElement>(null);
   const formId = useId();
 

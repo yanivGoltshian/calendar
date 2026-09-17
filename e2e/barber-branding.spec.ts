@@ -119,12 +119,31 @@ for (const width of [390, 1366]) {
         if (!partial) {
           const image = header.locator(`img[alt="${business.name}"]`).first();
           await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
-          const response = await request.get(await image.evaluate((el: HTMLImageElement) => el.currentSrc));
+          const selectedImage = new URL(await image.evaluate((el: HTMLImageElement) => el.currentSrc));
+          expect(selectedImage.origin).toBe(new URL(page.url()).origin);
+          expect(selectedImage.pathname).toBe('/api/public/image');
+          expect([logo, `https://bundled-assets.example.invalid${logo}`])
+            .toContain(selectedImage.searchParams.get('src'));
+          const selectedWidth = Number(selectedImage.searchParams.get('w'));
+          expect([320, 640, 960, 1600]).toContain(selectedWidth);
+          const original = await request.get(logo);
+          expect(original.ok()).toBe(true);
+          const source = await sharp(await original.body()).metadata();
+          if (!source.width || !source.height) throw new Error('Owned logo dimensions are required');
+          const scale = Math.min(1, selectedWidth / source.width);
+          const response = await request.get(selectedImage.href);
           expect(response.ok()).toBe(true);
           const bytes = await response.body();
           expect((await sharp(bytes).metadata()).format).toBe('webp');
           const decoded = await sharp(bytes).raw().toBuffer({ resolveWithObject: true });
-          expect([decoded.info.width, decoded.info.height]).toEqual([320, 320]);
+          expect([decoded.info.width, decoded.info.height])
+            .toEqual([Math.round(source.width * scale), Math.round(source.height * scale)]);
+          selectedImage.searchParams.set('w', '320');
+          const resized = await request.get(selectedImage.href);
+          expect(resized.ok()).toBe(true);
+          const exactResize = await sharp(await resized.body()).metadata();
+          expect([exactResize.width, exactResize.height, exactResize.format])
+            .toEqual([320, 320, 'webp']);
         }
         if (rich) {
           const topCta = header.locator(`a[href="/b/${business.slug}/book"]`).first();

@@ -14,7 +14,7 @@ type FormKind =
 export function useAdminForm(
   kind: FormKind,
   initial: AdminFormState,
-  onSuccess?: () => void,
+  onSuccess?: (state: AdminFormState) => void,
 ) {
   const [state, setState] = useState(initial);
   const [pending, setPending] = useState(false);
@@ -57,7 +57,7 @@ export function useAdminForm(
       }
       setState(result);
       if (result.ok && onSuccess) {
-        onSuccess();
+        onSuccess(result);
       } else if (result.ok && kind !== 'settings') {
         const url = new URL(window.location.href);
         url.searchParams.set('_saved', kind === 'services' ? `service-${result.mode}` :
