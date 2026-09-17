@@ -64,6 +64,18 @@ export type AdminBusinessReview = {
   createdAt: string;
 };
 
+export const reviewSubmissionContextSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('guest') }),
+  z.object({
+    mode: z.literal('customer'),
+    name: z.string(),
+    appointments: z.array(z.object({ id: z.string(), label: z.string() })),
+    submitted: z.array(z.object({ id: z.string(), status: z.enum(['PENDING', 'PUBLISHED', 'HIDDEN']) })),
+  }),
+]);
+
+export type ReviewSubmissionContext = z.infer<typeof reviewSubmissionContextSchema>;
+
 export class BusinessReviewError extends Error {
   constructor(public readonly code: ReviewErrorCode) {
     super(code);
