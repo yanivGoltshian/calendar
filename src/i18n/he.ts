@@ -1,8 +1,11 @@
+import { reviewsHe } from './reviews';
+
 /**
  * מילון עברית — ברירת המחדל והשפה הפעילה היחידה כרגע.
  * המבנה מוכן להרחבה לשפות נוספות (ראו src/i18n/index.ts).
  */
 const he = {
+  reviews: reviewsHe,
   common: {
     saveUnconfirmed: 'מצב השמירה אינו ידוע. רעננו ובדקו את הנתונים לפני ניסיון נוסף.',
     moreInfo: 'מידע נוסף',
@@ -108,7 +111,7 @@ const he = {
       beforeAfterHint: 'החליקו להשוואה',
       testimonialsTitle: 'לקוחות מספרים',
       testimonialRating: 'דירוג {rating} מתוך 5',
-      googleReviewSource: 'ביקורת בגוגל',
+      googleReviewSource: 'מקור: גוגל',
       googleReviewsLabel: 'ביקורות על העסק בגוגל',
       googleReviewsCta: 'לכל הביקורות בגוגל',
       googleReviewsEmpty: 'אין ביקורות שמורות להצגה באתר. אפשר לעבור לפרופיל העסק בגוגל.',
@@ -673,6 +676,8 @@ const he = {
       close: 'סגירת ההתראות',
       approvalOne: 'תור אחד ממתין לאישור',
       approvalMany: '{count} תורים ממתינים לאישור',
+      reviewOne: 'המלצה חדשה ממתינה לאישור',
+      reviewMany: '{count} המלצות ממתינות לאישור',
       bookingOne: 'תור חדש נקבע',
       bookingMany: '{count} תורים חדשים נקבעו',
       cancellationOne: 'לקוח ביטל תור, המשבצת התפנתה',

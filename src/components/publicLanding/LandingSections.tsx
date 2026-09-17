@@ -12,6 +12,7 @@ import LandingServices, { type LandingService } from './LandingServices';
 import LandingGallery from './LandingGallery';
 import LandingBeforeAfter from './LandingBeforeAfter';
 import LandingTestimonials from './LandingTestimonials';
+import type { PublicBusinessReview } from '@/lib/businessReviews';
 import LandingFaq from './LandingFaq';
 import LandingAbout from './LandingAbout';
 import LandingLocation from './LandingLocation';
@@ -43,6 +44,8 @@ type Props = {
   iconKey: SectionIconKey;
   // מקטע "שלום .." ללקוח מזוהה — מוזרק בין ווידג'ט קביעת התור למקטע המבצעים.
   returning?: ReactNode;
+  platformReviews?: PublicBusinessReview[];
+  reviewSubmitHref?: string;
 };
 
 // מנצח המקטעים של עמוד הנחיתה — מרנדר את המקטעים (מלבד ההירו) בסדר שנפתר
@@ -63,8 +66,10 @@ export default function LandingSections({
   bookHref,
   iconKey,
   returning,
+  platformReviews = [],
+  reviewSubmitHref,
 }: Props) {
-  const sections = resolveLandingSections({ content, type }).filter((s) => s !== 'hero');
+  const sections = resolveLandingSections({ content, type, reviewSubmissionAvailable: Boolean(reviewSubmitHref) }).filter((s) => s !== 'hero');
   const defaults = landingDefaults(type);
   const l = t.publicPage.landing;
   const eyebrows = t.premiumLanding.sectionEyebrow;
@@ -156,6 +161,8 @@ export default function LandingSections({
                 key={section}
                 title={l.testimonialsTitle}
                 items={content?.testimonials ?? []}
+                platformReviews={platformReviews}
+                submitHref={reviewSubmitHref}
                 googleReviewsUrl={content?.googleReviewsUrl}
                 googleLabel={l.googleReviewsLabel}
                 googleCta={l.googleReviewsCta}

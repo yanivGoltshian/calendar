@@ -205,6 +205,42 @@ enum StockMovementType {
 
 // ---------- Core ----------
 
+enum BusinessReviewOrigin {
+  CUSTOMER
+  OWNER
+}
+
+enum BusinessReviewStatus {
+  PENDING
+  PUBLISHED
+  HIDDEN
+}
+
+model BusinessReview {
+  id            String               @id @default(cuid())
+  businessId    String
+  business      Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointmentId String?              @unique
+  appointment   Appointment?         @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  authorUserId  String?
+  author        User?                @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  origin        BusinessReviewOrigin
+  status        BusinessReviewStatus @default(PENDING)
+  name          String
+  rating        Int
+  originalText  String               @default("")
+  text          String               @default("")
+  requestKey    String?
+  requestHash   String?
+  version       Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@unique([businessId, requestKey])
+  @@index([businessId, status, createdAt])
+  @@index([authorUserId])
+}
+
 model Business {
   listed          Boolean         @default(false)
   id              String          @id @default(cuid())
@@ -283,6 +319,7 @@ model Business {
   punchCards      PunchCard[]
   campaigns       Campaign[]
   messageLogs     MessageLog[]
+  reviews         BusinessReview[]
 
   // מודול קופה ומסמכים (אפוסים J+K) — קשרים אדיטיביים
   products  Product[]
@@ -417,6 +454,7 @@ model User {
   ownedBusinesses  Business[]    @relation("BusinessOwner")
   staffMemberships StaffMember[]
   clientProfiles   Client[]
+  reviews          BusinessReview[]
 }
 
 model StaffMember {
@@ -633,6 +671,7 @@ model Appointment {
   services      AppointmentService[]
   reminders     Reminder[]
   confirmations ReminderConfirmation[]
+  review        BusinessReview?
 
   sales Sale[] // מודול קופה — קשר אדיטיבי
 
