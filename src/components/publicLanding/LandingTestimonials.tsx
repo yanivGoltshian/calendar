@@ -1,7 +1,10 @@
 import { t } from '@/i18n';
 import ReviewSubmissionDialog from '@/components/reviews/ReviewSubmissionDialog';
 import ReviewCard, { type ReviewCardContent } from '@/components/reviews/ReviewCard';
-import type { PublicBusinessReview } from '@/lib/businessReviews';
+import type {
+  PublicBusinessReview,
+  ReviewSubmitAction,
+} from '@/lib/businessReviews';
 import {
   visibleLandingTestimonials,
   type LandingTestimonial,
@@ -16,6 +19,7 @@ type Props = {
   googleEmptyText?: string;
   platformReviews?: PublicBusinessReview[];
   submitHref?: string;
+  reviewSubmitAction?: ReviewSubmitAction;
 };
 
 export default function LandingTestimonials({
@@ -27,6 +31,7 @@ export default function LandingTestimonials({
   googleEmptyText,
   platformReviews = [],
   submitHref,
+  reviewSubmitAction,
 }: Props) {
   const visible: ReviewCardContent[] = [
     ...visibleLandingTestimonials(items).map(review => ({
@@ -44,7 +49,7 @@ export default function LandingTestimonials({
           {visible.length || submitHref ? title : googleLabel ?? title}
         </h2>
         {submitHref ? (
-          <ReviewSubmissionDialog href={submitHref} />
+          <ReviewSubmissionDialog href={submitHref} action={reviewSubmitAction} />
         ) : null}
         {googleReviewsUrl && googleCta ? (
           <a

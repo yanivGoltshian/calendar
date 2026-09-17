@@ -7,9 +7,9 @@ import {
   REVIEW_NAME_LIMIT,
   REVIEW_TEXT_LIMIT,
   type ReviewActionState,
+  type ReviewSubmitAction,
 } from '@/lib/businessReviews';
 import RatingInput from '@/components/reviews/RatingInput';
-import { submitBusinessReviewAction } from '../actions';
 
 const initial: ReviewActionState = { ok: false };
 const inputClass =
@@ -19,14 +19,16 @@ export default function ReviewSubmissionForm({
   slug,
   name,
   appointments,
+  action,
   onClose,
 }: {
   slug: string;
   name: string;
   appointments: { id: string; label: string }[];
+  action: ReviewSubmitAction;
   onClose?: () => void;
 }) {
-  const [state, action, pending] = useActionState(submitBusinessReviewAction, initial);
+  const [state, formAction, pending] = useActionState(action, initial);
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [hydrated, setHydrated] = useState(false);
@@ -53,7 +55,7 @@ export default function ReviewSubmissionForm({
   }
   return (
     <form
-      action={action}
+      action={formAction}
       aria-busy={pending}
       data-hydrated={hydrated}
       className="space-y-5"

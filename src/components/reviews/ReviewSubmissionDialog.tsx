@@ -6,10 +6,17 @@ import Modal from '@/components/ui/admin/Modal';
 import {
   reviewSubmissionContextSchema,
   type ReviewSubmissionContext,
+  type ReviewSubmitAction,
 } from '@/lib/businessReviews';
 import ReviewSubmissionContent from './ReviewSubmissionContent';
 
-export default function ReviewSubmissionDialog({ href }: { href: string }) {
+export default function ReviewSubmissionDialog({
+  href,
+  action,
+}: {
+  href: string;
+  action?: ReviewSubmitAction;
+}) {
   const [open, setOpen] = useState(false);
   const [context, setContext] = useState<ReviewSubmissionContext | null>(null);
   const [error, setError] = useState(false);
@@ -98,8 +105,17 @@ export default function ReviewSubmissionDialog({ href }: { href: string }) {
               {t.reviews.retry}
             </button>
           </div>
+        ) : context && action ? (
+          <ReviewSubmissionContent
+            slug={slug}
+            context={context}
+            action={action}
+            onClose={close}
+          />
         ) : context ? (
-          <ReviewSubmissionContent slug={slug} context={context} onClose={close} />
+          <p role="alert" className="text-sm text-red-700">
+            {t.reviews.loadError}
+          </p>
         ) : (
           <p role="status">{t.common.loading}</p>
         )}

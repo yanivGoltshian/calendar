@@ -43,6 +43,11 @@ export type ReviewActionState = {
   id?: string;
 };
 
+export type ReviewSubmitAction = (
+  previous: ReviewActionState,
+  form: FormData,
+) => Promise<ReviewActionState>;
+
 export type PublicBusinessReview = {
   id: string;
   name: string;

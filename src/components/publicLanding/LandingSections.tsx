@@ -12,7 +12,10 @@ import LandingServices, { type LandingService } from './LandingServices';
 import LandingGallery from './LandingGallery';
 import LandingBeforeAfter from './LandingBeforeAfter';
 import LandingTestimonials from './LandingTestimonials';
-import type { PublicBusinessReview } from '@/lib/businessReviews';
+import type {
+  PublicBusinessReview,
+  ReviewSubmitAction,
+} from '@/lib/businessReviews';
 import LandingFaq from './LandingFaq';
 import LandingAbout from './LandingAbout';
 import LandingLocation from './LandingLocation';
@@ -46,6 +49,7 @@ type Props = {
   returning?: ReactNode;
   platformReviews?: PublicBusinessReview[];
   reviewSubmitHref?: string;
+  reviewSubmitAction?: ReviewSubmitAction;
 };
 
 // מנצח המקטעים של עמוד הנחיתה — מרנדר את המקטעים (מלבד ההירו) בסדר שנפתר
@@ -68,6 +72,7 @@ export default function LandingSections({
   returning,
   platformReviews = [],
   reviewSubmitHref,
+  reviewSubmitAction,
 }: Props) {
   const sections = resolveLandingSections({ content, type, reviewSubmissionAvailable: Boolean(reviewSubmitHref) }).filter((s) => s !== 'hero');
   const defaults = landingDefaults(type);
@@ -163,6 +168,7 @@ export default function LandingSections({
                 items={content?.testimonials ?? []}
                 platformReviews={platformReviews}
                 submitHref={reviewSubmitHref}
+                reviewSubmitAction={reviewSubmitAction}
                 googleReviewsUrl={content?.googleReviewsUrl}
                 googleLabel={l.googleReviewsLabel}
                 googleCta={l.googleReviewsCta}

@@ -5,6 +5,7 @@ import { getClientSession } from '@/lib/session';
 import { getBusinessBySlug } from '@/server/repos/business';
 import { getReviewSubmissionContext } from '@/server/reviews/submissionContext';
 import ReviewSubmissionContent from '@/components/reviews/ReviewSubmissionContent';
+import { submitBusinessReviewAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = {
@@ -37,7 +38,11 @@ export default async function NewBusinessReviewPage({
         <h1 className="mt-1 text-2xl font-bold">{labels.customerTitle}</h1>
         <p className="mt-2 text-sm text-slate-600">{labels.customerIntro}</p>
       </header>
-      <ReviewSubmissionContent slug={slug} context={context} />
+      <ReviewSubmissionContent
+        slug={slug}
+        context={context}
+        action={submitBusinessReviewAction}
+      />
     </main>
   );
 }

@@ -2,16 +2,21 @@
 
 import Link from 'next/link';
 import { t } from '@/i18n';
-import type { ReviewSubmissionContext } from '@/lib/businessReviews';
+import type {
+  ReviewSubmissionContext,
+  ReviewSubmitAction,
+} from '@/lib/businessReviews';
 import ReviewSubmissionForm from '@/app/b/[slug]/reviews/new/ReviewSubmissionForm';
 
 export default function ReviewSubmissionContent({
   slug,
   context,
+  action,
   onClose,
 }: {
   slug: string;
   context: ReviewSubmissionContext;
+  action: ReviewSubmitAction;
   onClose?: () => void;
 }) {
   const labels = t.reviews;
@@ -34,6 +39,7 @@ export default function ReviewSubmissionContent({
           slug={slug}
           name={context.name}
           appointments={context.appointments}
+          action={action}
           onClose={onClose}
         />
       ) : (
