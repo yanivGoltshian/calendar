@@ -63,6 +63,11 @@ Auth.js upgrade, not a peer-dependency override.
   This reservation is distinct from a concurrent live-application load test.
   macOS timing and Chromium mobile emulation are neither Azure timing nor Safari/iPhone
   validation. Output size is measured per clip, without a universal 2-3 MB promise.
+  The full CI gate uses FFmpeg/ffprobe and their musl libraries extracted from that
+  same qualification image, not Ubuntu's differently packaged FFmpeg. Fixed exec
+  wrappers on the inherited PATH cover fixtures and application subprocesses while
+  retaining the same child PID, `prlimit`, abort and deadline behavior. The image ID,
+  binary/loader hashes and effective versions are retained as diagnostic artifacts.
 - Tenant object/byte limits: basic 30 / 30 MiB; premium 100 / 150 MiB;
   exclusive 200 / 300 MiB. These are conservative implementation defaults requiring
   product approval, not a claim about a previously sold storage entitlement.
