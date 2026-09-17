@@ -1,8 +1,17 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { prepareHeroVideo, hasFastStart, VIDEO_LIMITS } from '../src/server/media/video';
+import { MediaError } from '../src/server/media/uploadPolicy';
 
 const directory = '.test-runtime/video-qualification';
 const samples = [
@@ -18,7 +27,12 @@ function availableMetric(name: string) {
 }
 function diagnostic(error: unknown) {
   return error instanceof Error
-    ? { name: error.name, message: error.message, cause: error.cause }
+    ? {
+        name: error.name,
+        message: error.message,
+        cause: error.cause,
+        ...(error instanceof MediaError ? { status: error.status } : {}),
+      }
     : { message: String(error) };
 }
 async function main() {
@@ -55,6 +69,7 @@ async function main() {
   } else {
     assert.equal(process.platform, 'linux');
     const reserve = Buffer.alloc(192 * 1024 * 1024, 1);
+    const tempRoot = mkdtempSync(join(tmpdir(), 'qualify-video-'));
     const evidence = {
       ffmpeg: execFileSync('ffmpeg', ['-version'], { encoding: 'utf8' })
         .split('\n')
@@ -76,26 +91,77 @@ async function main() {
         inputBytes?: number;
         outputBytes?: number;
         status: 'passed' | 'failed';
+        expectedOutcome?: 'complete' | 'resource-rejected';
+        noReadyOutput?: boolean;
+        tempCleaned?: boolean;
+        rejection?: ReturnType<typeof diagnostic>;
         failure?: ReturnType<typeof diagnostic>;
       }>,
       status: 'running',
     };
     try {
-      for (const sample of samples) {
+      const steps = [
+        ...samples.map((sample) => ({
+          ...sample,
+          sourceName: sample.name,
+          expectedOutcome:
+            sample.name === 'bounded-4k-hdr'
+              ? ('resource-rejected' as const)
+              : ('complete' as const),
+        })),
+        {
+          ...samples[0],
+          name: 'slot-recovery',
+          sourceName: samples[0].name,
+          expectedOutcome: 'complete' as const,
+        },
+      ];
+      for (const sample of steps) {
         const started = performance.now();
         try {
-          const input = readFileSync(join(directory, `${sample.name}.mov`));
-          const output = await prepareHeroVideo(input);
+          const input = readFileSync(join(directory, `${sample.sourceName}.mov`));
+          let output: Buffer | undefined;
+          let rejection: ReturnType<typeof diagnostic> | undefined;
+          if (sample.expectedOutcome === 'resource-rejected') {
+            await assert.rejects(
+              async () => {
+                output = await prepareHeroVideo(input, { tempRoot });
+              },
+              (error: unknown) => {
+                assert.ok(error instanceof MediaError);
+                assert.equal(error.status, 422);
+                assert.match(error.message, /משאבי ההכנה/);
+                const cause = error.cause;
+                assert.ok(cause && typeof cause === 'object');
+                assert.ok('stage' in cause && cause.stage === 'encode');
+                assert.ok('binary' in cause && cause.binary === 'ffmpeg');
+                assert.ok('wrapper' in cause && cause.wrapper === 'prlimit');
+                assert.ok('exitCode' in cause && cause.exitCode === 244);
+                assert.ok('signal' in cause && cause.signal === null);
+                assert.ok('stderr' in cause && typeof cause.stderr === 'string');
+                assert.match(cause.stderr, /Out of memory/);
+                rejection = diagnostic(error);
+                return true;
+              },
+            );
+            assert.equal(output, undefined);
+          } else {
+            output = await prepareHeroVideo(input, { tempRoot });
+            assert.ok(hasFastStart(output));
+          }
           const milliseconds = performance.now() - started;
           assert.ok(milliseconds < VIDEO_LIMITS.timeoutMs);
-          assert.ok(hasFastStart(output));
           assert.equal(reserve[reserve.length - 1], 1);
+          assert.deepEqual(readdirSync(tempRoot), []);
           evidence.results.push({
             ...sample,
             inputBytes: input.length,
-            outputBytes: output.length,
+            outputBytes: output?.length,
             milliseconds,
             status: 'passed',
+            noReadyOutput: output === undefined,
+            tempCleaned: true,
+            ...(rejection ? { rejection } : {}),
           });
         } catch (error) {
           evidence.results.push({
@@ -126,6 +192,7 @@ async function main() {
         JSON.stringify(evidence, null, 2),
       );
       console.log(JSON.stringify(evidence, null, 2));
+      rmSync(tempRoot, { recursive: true, force: true });
     }
   }
 }

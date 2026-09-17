@@ -37,8 +37,12 @@ Auth.js upgrade, not a peer-dependency override.
   argv, local container demuxers/file protocol only, one thread, a shared 90-second
   preparation deadline, a 12 MiB output ceiling, and Linux child-only address-space
   (320 MiB) and CPU (75 seconds) limits through `prlimit`. Decoder ENOMEM returns
-  an actionable resource error (422). Oversized resource needs
-  fail the upload without a new product duration/resolution cap. Temp files are
+  an actionable resource error (422). Resource-heavy files, including some valid
+  high-resolution videos, can be rejected by these bounds; accepted file type and
+  size do not guarantee successful conversion. The previous published media stays
+  unchanged, and no original or partial derivative is returned as ready.
+  This bounded-rejection behavior is the approved upload contract, without a new
+  product duration/resolution cap. Temp files are
   removed after process exit, including timeout/abort; encoded input remains bounded
   by the existing upload cap. FFmpeg's successful size-limited exits are rejected;
   final codec/color/dimensions/duration and moov-before-mdat are checked before storage.
@@ -50,8 +54,12 @@ Auth.js upgrade, not a peer-dependency override.
   tonemap; Linux additionally needs `prlimit`. The runtime image packages Alpine
   FFmpeg/util-linux. CI additionally qualifies two synthetic HDR inputs using the
   same packages at 0.25 CPU/512 MiB with 192 MiB resident application headroom reserved.
-  Both synthetic inputs must complete, peak cgroup memory must stay at or below
-  480 MiB, and max/oom/oom_kill events must remain zero.
+  The ordinary sample must complete. The fixed resource-heavy 4K sample must return
+  the observed explicit 422/ENOMEM error, with no ready output and an empty temp
+  directory; arbitrary errors do not pass. A subsequent ordinary conversion must
+  complete to prove slot recovery. Peak cgroup memory must stay at or below 480 MiB,
+  and max/oom/oom_kill events must remain zero. This qualifies safe resource rejection,
+  not successful 4K conversion.
   This reservation is distinct from a concurrent live-application load test.
   macOS timing and Chromium mobile emulation are neither Azure timing nor Safari/iPhone
   validation. Output size is measured per clip, without a universal 2-3 MB promise.
