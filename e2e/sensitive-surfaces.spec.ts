@@ -8,7 +8,7 @@ import { t } from '../src/i18n';
 test.afterAll(() => prisma.$disconnect());
 
 for (const width of [390, 1366]) {
-  test(`sensitive surfaces expose only scoped watermarks and permitted settings at ${width}px`, async ({ page, context }) => {
+  test(`sensitive surfaces hide visible watermarks and expose only permitted settings at ${width}px`, async ({ page, context }) => {
     const f = await bookingFixture();
     const privateNotes = `private-plan-${f.business.id}`;
     const privateImport = `private-import-${f.business.id}`;
@@ -38,13 +38,9 @@ for (const width of [390, 1366]) {
         expect(html).not.toContain(privateValue);
       }
       const watermark = page.locator('[data-sensitive-watermark]');
-      await expect(watermark).toHaveCount(1);
-      const ownerId = await watermark.getAttribute('data-sensitive-watermark');
-      expect(ownerId).toMatch(/^[A-F0-9]{10}$/);
-      await expect(watermark).toHaveAttribute('aria-hidden', 'true');
-      expect(await watermark.evaluate(element => getComputedStyle(element).pointerEvents)).toBe('none');
+      await expect(watermark).toHaveCount(0);
       await page.goto('/admin/marketing');
-      await expect(watermark).toHaveAttribute('data-sensitive-watermark', ownerId!);
+      await expect(watermark).toHaveCount(0);
       const denied = await page.goto('/superadmin');
       await expect(page.getByRole('heading', { name: t.brand.states.notFoundTitle, exact: true })).toBeVisible();
       await expect(page.locator('[aria-controls="new-customer-form"]')).toHaveCount(0);
@@ -57,10 +53,7 @@ for (const width of [390, 1366]) {
       const adminResponse = await page.goto('/superadmin');
       expect(adminResponse!.ok()).toBe(true);
       expect(adminResponse!.headers()['cache-control']).toContain('no-store');
-      await expect(watermark).toHaveCount(1);
-      const platformId = await watermark.getAttribute('data-sensitive-watermark');
-      expect(platformId).toMatch(/^[A-F0-9]{10}$/);
-      expect(platformId).not.toBe(ownerId);
+      await expect(watermark).toHaveCount(0);
       await context.clearCookies();
       await page.goto(`/b/${f.business.slug}`);
       await expect(watermark).toHaveCount(0);
