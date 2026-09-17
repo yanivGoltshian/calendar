@@ -32,6 +32,7 @@ import {
 import LandingHero from '@/components/publicLanding/LandingHero';
 import LandingSections from '@/components/publicLanding/LandingSections';
 import LandingTestimonials from '@/components/publicLanding/LandingTestimonials';
+import { listPublicBusinessReviews } from '@/server/repos/businessReviews';
 import ReturningCustomerLoader from '@/components/publicLanding/ReturningCustomerLoader';
 import TodayHoursHighlight from '@/components/publicLanding/TodayHoursHighlight';
 import PremiumClinicHeader from '@/components/publicLanding/PremiumClinicHeader';
@@ -118,6 +119,8 @@ export default async function BusinessPublicPage({ params }: Props) {
   const iconKey = sectionIconKey(business.type);
 
   const landing = normalizeStoredLandingContent(business.landingContent);
+  const platformReviews = await listPublicBusinessReviews(business.id);
+  const reviewSubmitHref = `/b/${encodeURIComponent(slug)}/reviews/new`;
   // רמת העיטור נגזרת מהתקדמות האונבורדינג (0..3), לא מהחבילה. עסק סטנדרט שהשלים
   // את כל האונבורדינג מגיע לרמה 3 — המראה הפרימיום המלא. דילוג ⇐ עמוד פשוט יותר.
   const onboarding = visualLevelForPublicPage({
@@ -508,6 +511,8 @@ export default async function BusinessPublicPage({ params }: Props) {
               premium={isClinicPremium}
               timeZone={business.timezone}
               content={landing}
+              platformReviews={platformReviews}
+              reviewSubmitHref={reviewSubmitHref}
               type={business.type}
               services={services}
               staff={bookingStaff.map((m) => ({
@@ -542,12 +547,13 @@ export default async function BusinessPublicPage({ params }: Props) {
             {servicesSection}
             {staffSection}
             {hoursSection}
-            {(landing?.testimonials?.length || landing?.googleReviewsUrl) &&
-            landing.sections?.testimonials !== false ? (
+            {landing?.sections?.testimonials !== false ? (
               <LandingTestimonials
                 title={t.publicPage.landing.testimonialsTitle}
-                items={landing.testimonials ?? []}
-                googleReviewsUrl={landing.googleReviewsUrl}
+                items={landing?.testimonials ?? []}
+                platformReviews={platformReviews}
+                submitHref={reviewSubmitHref}
+                googleReviewsUrl={landing?.googleReviewsUrl}
                 googleLabel={t.publicPage.landing.googleReviewsLabel}
                 googleCta={t.publicPage.landing.googleReviewsCta}
                 googleEmptyText={t.publicPage.landing.googleReviewsEmpty}

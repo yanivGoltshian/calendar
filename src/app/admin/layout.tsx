@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getBusinessesOwnedByEmail, getBusinessById, getActiveBusiness } from '@/server/repos/business';
 import { countPendingAppointments, countRecentClientCancellations, countRecentBookings } from '@/server/repos/appointments';
+import { countPendingBusinessReviews } from '@/server/repos/businessReviews';
 import { getOrCreateSettings } from '@/server/repos/settings';
 import { resolveOwnerDisplayName } from '@/server/repos/staff';
 import { getBusinessAccess } from '@/server/subscription';
@@ -155,6 +156,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // מרכז ההתראות בפעמון: תורים הממתינים לאישור, הזמנות חדשות, ביטולי לקוח וחידוש מנוי.
   const notifications = buildAdminNotifications({
     pendingCount,
+    pendingReviews: await countPendingBusinessReviews(business.id),
     recentBookings,
     recentCancellations,
     access,

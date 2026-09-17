@@ -1,6 +1,8 @@
 import { t } from '@/i18n';
+import Link from 'next/link';
+import ReviewCard, { type ReviewCardContent } from '@/components/reviews/ReviewCard';
+import type { PublicBusinessReview } from '@/lib/businessReviews';
 import {
-  normalizeTestimonialRating,
   visibleLandingTestimonials,
   type LandingTestimonial,
 } from '@/lib/publicPageStyle';
@@ -12,6 +14,8 @@ type Props = {
   googleLabel?: string;
   googleCta?: string;
   googleEmptyText?: string;
+  platformReviews?: PublicBusinessReview[];
+  submitHref?: string;
 };
 
 export default function LandingTestimonials({
@@ -21,17 +25,29 @@ export default function LandingTestimonials({
   googleLabel,
   googleCta,
   googleEmptyText,
+  platformReviews = [],
+  submitHref,
 }: Props) {
-  const visible = visibleLandingTestimonials(items);
-  if (visible.length === 0 && !googleReviewsUrl) return null;
-  const labels = t.publicPage.landing;
+  const visible: ReviewCardContent[] = [
+    ...visibleLandingTestimonials(items).map(review => ({
+      name: review.name, quote: review.quote, rating: review.rating,
+      source: review.source?.provider === 'google' ? 'google' as const : 'unknown' as const,
+    })),
+    ...platformReviews.map(review => ({ ...review, source: 'torchick' as const })),
+  ];
+  if (visible.length === 0 && !googleReviewsUrl && !submitHref) return null;
 
   return (
-    <section className="mx-auto mt-12 max-w-4xl sm:mt-16">
+    <section id="reviews" className="mx-auto mt-12 max-w-4xl sm:mt-16">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className="text-base font-bold text-[color:var(--c-ink,#1b1715)] sm:text-lg">
-          {visible.length ? title : googleLabel ?? title}
+          {visible.length || submitHref ? title : googleLabel ?? title}
         </h2>
+        {submitHref ? (
+          <Link href={submitHref} className="inline-flex min-h-11 items-center rounded-lg border border-[color:var(--c-border,#e2e8f0)] px-3 text-xs font-semibold text-[color:var(--biz-text,#334155)]">
+            {t.reviews.write}
+          </Link>
+        ) : null}
         {googleReviewsUrl && googleCta ? (
           <a
             href={googleReviewsUrl}
@@ -43,48 +59,17 @@ export default function LandingTestimonials({
           </a>
         ) : null}
       </div>
-      {visible.length === 0 && googleEmptyText ? (
+      {visible.length === 0 && googleReviewsUrl && googleEmptyText ? (
         <p className="text-sm leading-relaxed text-[color:var(--c-muted,#665d57)]">
           {googleEmptyText}
         </p>
       ) : null}
+      {visible.length === 0 && submitHref && !googleReviewsUrl ? (
+        <p className="text-sm text-[color:var(--c-muted,#665d57)]">{t.reviews.emptyPublic}</p>
+      ) : null}
       {visible.length > 0 ? (
         <div className={`grid gap-3 sm:grid-cols-2 ${visible.length > 2 ? 'lg:grid-cols-3' : ''}`}>
-          {visible.map((review, index) => {
-            const rating = normalizeTestimonialRating(review.rating);
-            const isGoogle = review.source?.provider === 'google';
-            return (
-              <figure
-                key={index}
-                className="m-0 flex min-w-0 flex-col rounded-lg border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-4"
-              >
-                {rating !== undefined ? (
-                  <p
-                    role="img"
-                    aria-label={labels.testimonialRating.replace('{rating}', String(rating))}
-                    className="mb-2 text-sm leading-none tracking-wider text-accent-600"
-                  >
-                    <span aria-hidden="true">{'★'.repeat(rating)}</span>
-                  </p>
-                ) : null}
-                <blockquote className="whitespace-pre-line break-words text-sm leading-relaxed text-[color:var(--c-ink,#463f3a)]">
-                  {review.quote}
-                </blockquote>
-                {review.name || isGoogle ? (
-                  <figcaption className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 pt-3 text-xs leading-relaxed">
-                    {review.name ? (
-                      <bdi className="min-w-0 break-words font-bold text-[color:var(--c-ink,#1b1715)]">
-                        {review.name}
-                      </bdi>
-                    ) : null}
-                    {isGoogle ? (
-                      <span className="text-[color:var(--c-muted,#665d57)]">{labels.googleReviewSource}</span>
-                    ) : null}
-                  </figcaption>
-                ) : null}
-              </figure>
-            );
-          })}
+          {visible.map((review, index) => <ReviewCard key={review.id ?? `legacy-${index}`} review={review} />)}
         </div>
       ) : null}
     </section>

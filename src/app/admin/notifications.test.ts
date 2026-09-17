@@ -2,6 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildAdminNotifications, RENEWAL_REMINDER_DAYS } from './notifications';
 
+test('pending reviews have a separate owner moderation notification', () => {
+  for (const pendingReviews of [1, 3]) {
+    const notifications = buildAdminNotifications({
+      pendingCount: 0, pendingReviews, access: { state: 'active', daysLeft: 30 },
+    });
+    assert.equal(notifications.length, 1);
+    assert.equal(notifications[0].kind, 'review');
+    assert.equal(notifications[0].href, '/admin/reviews?status=pending');
+    if (pendingReviews > 1) assert.ok(notifications[0].title.includes(String(pendingReviews)));
+  }
+  assert.equal(buildAdminNotifications({ pendingCount: 0, pendingReviews: 0, access: { state: 'active', daysLeft: 30 } }).length, 0);
+});
+
 test('אין תורים ממתינים ופרימיום רחוק מסוף — אין התראות', () => {
   const items = buildAdminNotifications({
     pendingCount: 0,

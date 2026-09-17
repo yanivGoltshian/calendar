@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { PrismaClient, Business, Client, StaffMember } from '@prisma/client';
 import type { WorkStore } from 'next/dist/server/app-render/work-async-storage.external';
-import { requireIsolatedDatabase } from './fixtures';
+import { bookingFixture, cleanupFixture, requireIsolatedDatabase } from './fixtures';
 
 assert.ok(
   process.env.TEST_DATABASE_URL,
@@ -103,6 +103,10 @@ const { getBusinessesOwnedByEmail, BusinessIdentityConflictError } =
   require('../src/server/repos/business') as typeof import('../src/server/repos/business');
 const { ownerEmailForPhone } =
   require('../src/lib/ownerPhoneIdentity') as typeof import('../src/lib/ownerPhoneIdentity');
+const { saveBusinessReviewAction } =
+  require('../src/app/admin/reviews/actions') as typeof import('../src/app/admin/reviews/actions');
+const { submitBusinessReviewAction } =
+  require('../src/app/b/[slug]/reviews/actions') as typeof import('../src/app/b/[slug]/reviews/actions');
 
 const prefix = `tenant-${randomUUID()}`;
 const ownerEmail = `${prefix}-owner@example.test`;
@@ -285,6 +289,55 @@ after(async () => {
     },
   });
   await prisma.$disconnect();
+});
+
+test('review actions derive owner/client identity server-side and ignore forged business and source fields', async () => {
+  const f = await bookingFixture();
+  const other = await bookingFixture();
+  const buyer = await prisma.user.create({ data: { email: `${randomUUID()}@example.invalid` } });
+  try {
+    await prisma.businessSettings.update({ where: { businessId: f.business.id }, data: { pushEnabled: false } });
+    const manual = form({
+      mode: 'create', requestKey: randomUUID(), name: 'Synthetic owner review',
+      rating: '4', text: '', status: 'PENDING', businessId: other.business.id,
+      origin: 'CUSTOMER', authorUserId: buyer.id, source: 'google',
+    });
+    for (const cookie of ['', clientCookie(buyer.id), await ownerCookie(`${randomUUID()}@example.invalid`)]) {
+      assert.deepEqual(await inRequest(cookie, () => saveBusinessReviewAction({ ok: false }, manual)), { ok: false, error: 'unauthorized' });
+    }
+    const saved = await inRequest(await ownerCookie(f.business.ownerEmail!), () => saveBusinessReviewAction({ ok: false }, manual));
+    assert.ok(saved.ok && saved.id);
+    const row = await prisma.businessReview.findUniqueOrThrow({ where: { id: saved.id } });
+    assert.equal(row.businessId, f.business.id);
+    assert.equal(row.origin, 'OWNER');
+    assert.equal(row.authorUserId, null);
+    const foreignEdit = await inRequest(await ownerCookie(other.business.ownerEmail!), () =>
+      saveBusinessReviewAction({ ok: false }, form({ mode: 'edit', id: row.id, version: '0', rating: '4', text: 'Injected', status: 'PUBLISHED', businessId: f.business.id })),
+    );
+    assert.deepEqual(foreignEdit, { ok: false, error: 'not_found' });
+    await prisma.client.update({ where: { id: f.client.id }, data: { userId: buyer.id, identityVerifiedAt: new Date() } });
+    const appointment = await prisma.appointment.create({ data: {
+      businessId: f.business.id, staffId: f.staff.id, clientId: f.client.id,
+      startAt: new Date(Date.now() - 86_400_000), endAt: new Date(Date.now() - 85_000_000), status: 'DONE',
+    } });
+    const submission = form({
+      slug: f.business.slug, appointmentId: appointment.id, name: 'Synthetic customer',
+      rating: '5', text: '', status: 'PUBLISHED', authorUserId: buyer.id, origin: 'OWNER',
+    });
+    assert.deepEqual(await inRequest('', () => submitBusinessReviewAction({ ok: false }, submission)), { ok: false, error: 'unauthorized' });
+    assert.deepEqual(await inRequest(clientCookie(attackerUserId), () => submitBusinessReviewAction({ ok: false }, submission)), { ok: false, error: 'ineligible' });
+    const submitted = await inRequest(clientCookie(buyer.id), () => submitBusinessReviewAction({ ok: false }, submission));
+    assert.ok(submitted.ok && submitted.id);
+    const customerReview = await prisma.businessReview.findUniqueOrThrow({ where: { id: submitted.id } });
+    assert.equal(customerReview.status, 'PENDING');
+    assert.equal(customerReview.origin, 'CUSTOMER');
+    assert.equal(customerReview.authorUserId, buyer.id);
+    assert.equal(customerReview.text, '');
+  } finally {
+    await cleanupFixture(f);
+    await cleanupFixture(other);
+    await prisma.user.delete({ where: { id: buyer.id } });
+  }
 });
 
 test('anonymous, client-only and authenticated non-owner cannot resolve a tenant or change settings', async () => {

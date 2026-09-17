@@ -23,6 +23,16 @@ import {
   MAX_SOCIAL_VIDEOS,
 } from './publicPageStyle';
 
+test('review submission uses the existing section order and respects the owner visibility toggle', () => {
+  const enabled = resolveLandingSections({ type: 'CLINIC', reviewSubmissionAvailable: true });
+  assert.ok(enabled.includes('testimonials'));
+  const hidden = resolveLandingSections({
+    type: 'CLINIC', reviewSubmissionAvailable: true, content: { sections: { testimonials: false } },
+  });
+  assert.ok(!hidden.includes('testimonials'));
+  assert.deepEqual(hidden, enabled.filter(section => section !== 'testimonials'));
+});
+
 test('sectionIconKey: ממפה כל סוג עסק לאייקון הנכון', () => {
   assert.equal(sectionIconKey('FITNESS'), 'dumbbell');
   assert.equal(sectionIconKey('CLINIC'), 'stethoscope');
