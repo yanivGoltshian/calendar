@@ -1,5 +1,5 @@
 import { encode } from 'next-auth/jwt';
-import type { Locator, Page } from '@playwright/test';
+import type { Locator, Page, Route } from '@playwright/test';
 import { test, expect } from './fixtures';
 import { BASE_URL } from './helpers';
 import { prisma } from '../src/lib/db';
@@ -131,8 +131,22 @@ for (const width of [1366, 390]) {
       });
 
       await edit.getByLabel(text.nameLabel, { exact: true }).fill('Cancelled draft');
-      await card.getByRole('link', { name: text.cancelEdit, exact: true }).click();
+      let cancelRequests = 0;
+      const blockCancelNavigation = async (route: Route) => {
+        const url = new URL(route.request().url());
+        if (url.pathname === '/admin/services' && !url.searchParams.has('edit')) {
+          cancelRequests++;
+          await route.abort('failed');
+        } else {
+          await route.fallback();
+        }
+      };
+      await page.route('**/admin/services*', blockCancelNavigation);
+      await card.getByRole('button', { name: text.cancelEdit, exact: true }).click();
       await expect(edit).toHaveCount(0);
+      await expect(page).toHaveURL(/\/admin\/services$/);
+      expect(cancelRequests).toBe(0);
+      await page.unroute('**/admin/services*', blockCancelNavigation);
       await expect(
         card.getByRole('link', { name: text.edit, exact: true }),
       ).toBeFocused();
@@ -143,8 +157,21 @@ for (const width of [1366, 390]) {
         card.getByRole('link', { name: text.edit, exact: true }),
       ).toBeInViewport();
 
+      await page.goBack();
+      await ready(edit);
+      await expect(edit.locator('input[name=id]')).toHaveValue(selected.id);
+      await expect(edit.getByLabel(text.nameLabel, { exact: true })).toHaveValue(
+        selected.name,
+      );
+      await page.goForward();
+      await expect(edit).toHaveCount(0);
+      await expect(page).toHaveURL(/\/admin\/services$/);
+
       await card.getByRole('link', { name: text.edit, exact: true }).click();
       await ready(edit);
+      await expect(edit.getByLabel(text.nameLabel, { exact: true })).toHaveValue(
+        selected.name,
+      );
       await edit
         .getByLabel(text.nameLabel, { exact: true })
         .fill('Draft retained on failure');

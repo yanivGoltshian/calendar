@@ -3,7 +3,6 @@
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdminForm } from '@/components/useAdminForm';
-import Link from 'next/link';
 import { t } from '@/i18n';
 import type { SaveServiceState } from './actions';
 
@@ -111,14 +110,14 @@ export default function ServiceForm({
           {isEdit ? t.admin.services.editTitle : t.admin.services.addTitle}
         </h2>
         {isEdit ? (
-          <Link
-            href="/admin/services"
-            scroll={false}
-            prefetch={false}
-            className="text-sm font-medium text-[#8f8478] hover:text-[#4a4038] hover:underline"
+          <button
+            type="button"
+            disabled={pending || !hydrated}
+            onClick={() => window.history.pushState(null, '', '/admin/services')}
+            className="text-sm font-medium text-[#8f8478] hover:text-[#4a4038] hover:underline disabled:opacity-60"
           >
             {t.admin.services.cancelEdit}
-          </Link>
+          </button>
         ) : null}
       </div>
 

@@ -89,101 +89,104 @@ export default async function AdminServicesPage({ searchParams }: Props) {
             const inUse = s._count.appointmentServices > 0;
             const isEditing = editing?.id === s.id;
             return (
-              <ServiceCard key={s.id} id={s.id} editing={isEditing}>
-                {isEditing ? (
-                  <ServiceForm
-                    key={s.id}
-                    initial={initial}
-                    staffOptions={staffOptions}
-                    selectedStaffIds={selectedStaffIds}
-                  />
-                ) : (
-                  <>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="flex flex-wrap items-center gap-2 font-bold text-[#1b1715]">
-                          {s.name}
-                          {s.hidden ? (
-                            <span className="rounded-full bg-[#e7ddcd] px-2 py-0.5 text-xs font-medium text-[#6e655f]">
-                              {t.admin.services.hiddenBadge}
-                            </span>
-                          ) : null}
-                        </p>
-                        {s.description ? (
-                          <p className="mt-0.5 truncate text-sm text-[#8f8478]">
-                            {s.description}
-                          </p>
-                        ) : null}
-                        <p className="mt-1 text-sm text-[#6e655f]">
-                          {s.hideDuration
-                            ? t.admin.services.durationHidden
-                            : formatDuration(s.durationMin)}
-                          <span className="mx-1 text-[#d6c8b4]">·</span>
-                          {s.hidePrice
-                            ? t.admin.services.priceHidden
-                            : formatAgorot(s.priceAgorot)}
-                        </p>
-                        <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-[#8f8478]">
-                          <span>{t.admin.services.staffBadgePrefix}</span>
-                          {s.staffLinks.length === 0 ? (
-                            <span className="rounded-full bg-[#efe6d8] px-2 py-0.5 text-[#8f8478]">
-                              {t.admin.services.staffNoneBadge}
-                            </span>
-                          ) : (
-                            s.staffLinks.map((link) => (
-                              <span
-                                key={link.staff.id}
-                                className="rounded-full bg-brand-50 px-2 py-0.5 text-brand-700"
-                              >
-                                {link.staff.displayName}
-                              </span>
-                            ))
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* פעולות */}
-                    <div className="mt-3 flex flex-wrap gap-2 border-t border-[#efe6d8] pt-3">
-                      <Link
-                        href={`/admin/services?edit=${s.id}`}
-                        scroll={false}
-                        prefetch={false}
-                        data-service-edit
-                        className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
-                      >
-                        {t.admin.services.edit}
-                      </Link>
-
-                      <form action={toggleServiceHiddenAction}>
-                        <input type="hidden" name="id" value={s.id} />
-                        <input type="hidden" name="hidden" value={s.hidden ? '0' : '1'} />
-                        <button
-                          type="submit"
-                          className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
-                        >
-                          {s.hidden ? t.admin.services.show : t.admin.services.hide}
-                        </button>
-                      </form>
-
-                      {inUse ? (
-                        <span className="rounded-lg px-3 py-1.5 text-sm text-[#b3a690]">
-                          {t.admin.services.inUse}
+              <ServiceCard
+                key={s.id}
+                id={s.id}
+                editing={isEditing}
+                editor={
+                  isEditing ? (
+                    <ServiceForm
+                      key={s.id}
+                      initial={initial}
+                      staffOptions={staffOptions}
+                      selectedStaffIds={selectedStaffIds}
+                    />
+                  ) : null
+                }
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2 font-bold text-[#1b1715]">
+                      {s.name}
+                      {s.hidden ? (
+                        <span className="rounded-full bg-[#e7ddcd] px-2 py-0.5 text-xs font-medium text-[#6e655f]">
+                          {t.admin.services.hiddenBadge}
+                        </span>
+                      ) : null}
+                    </p>
+                    {s.description ? (
+                      <p className="mt-0.5 truncate text-sm text-[#8f8478]">
+                        {s.description}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-sm text-[#6e655f]">
+                      {s.hideDuration
+                        ? t.admin.services.durationHidden
+                        : formatDuration(s.durationMin)}
+                      <span className="mx-1 text-[#d6c8b4]">·</span>
+                      {s.hidePrice
+                        ? t.admin.services.priceHidden
+                        : formatAgorot(s.priceAgorot)}
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-[#8f8478]">
+                      <span>{t.admin.services.staffBadgePrefix}</span>
+                      {s.staffLinks.length === 0 ? (
+                        <span className="rounded-full bg-[#efe6d8] px-2 py-0.5 text-[#8f8478]">
+                          {t.admin.services.staffNoneBadge}
                         </span>
                       ) : (
-                        <form action={deleteServiceAction}>
-                          <input type="hidden" name="id" value={s.id} />
-                          <button
-                            type="submit"
-                            className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
+                        s.staffLinks.map((link) => (
+                          <span
+                            key={link.staff.id}
+                            className="rounded-full bg-brand-50 px-2 py-0.5 text-brand-700"
                           >
-                            {t.admin.services.delete}
-                          </button>
-                        </form>
+                            {link.staff.displayName}
+                          </span>
+                        ))
                       )}
-                    </div>
-                  </>
-                )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* פעולות */}
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-[#efe6d8] pt-3">
+                  <Link
+                    href={`/admin/services?edit=${s.id}`}
+                    scroll={false}
+                    prefetch={false}
+                    data-service-edit
+                    className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
+                  >
+                    {t.admin.services.edit}
+                  </Link>
+
+                  <form action={toggleServiceHiddenAction}>
+                    <input type="hidden" name="id" value={s.id} />
+                    <input type="hidden" name="hidden" value={s.hidden ? '0' : '1'} />
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-[#e7ddcd] px-3 py-1.5 text-sm font-medium text-[#4a4038] transition hover:bg-[#f7f2ea]"
+                    >
+                      {s.hidden ? t.admin.services.show : t.admin.services.hide}
+                    </button>
+                  </form>
+
+                  {inUse ? (
+                    <span className="rounded-lg px-3 py-1.5 text-sm text-[#b3a690]">
+                      {t.admin.services.inUse}
+                    </span>
+                  ) : (
+                    <form action={deleteServiceAction}>
+                      <input type="hidden" name="id" value={s.id} />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
+                      >
+                        {t.admin.services.delete}
+                      </button>
+                    </form>
+                  )}
+                </div>
               </ServiceCard>
             );
           })}

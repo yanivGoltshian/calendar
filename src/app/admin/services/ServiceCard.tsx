@@ -1,21 +1,26 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function ServiceCard({
   id,
   editing,
+  editor,
   children,
 }: {
   id: string;
   editing: boolean;
+  editor: ReactNode;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLLIElement>(null);
   const wasEditing = useRef(false);
+  const searchParams = useSearchParams();
+  const isEditing = editing && searchParams.get('edit') === id;
 
   useEffect(() => {
-    if (editing) {
+    if (isEditing) {
       ref.current
         ?.querySelector<HTMLInputElement>('input[name="name"]')
         ?.focus({ preventScroll: true });
@@ -28,8 +33,8 @@ export default function ServiceCard({
         ?.focus({ preventScroll: true });
       ref.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
     }
-    wasEditing.current = editing;
-  }, [editing]);
+    wasEditing.current = isEditing;
+  }, [isEditing]);
 
   return (
     <li
@@ -37,7 +42,7 @@ export default function ServiceCard({
       data-service-id={id}
       className="scroll-mb-24 scroll-mt-24 rounded-xl border border-[#e7ddcd] bg-white p-4 shadow-sm"
     >
-      {children}
+      {isEditing ? editor : children}
     </li>
   );
 }
