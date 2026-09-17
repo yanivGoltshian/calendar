@@ -93,7 +93,9 @@ for (const width of [1366, 390]) {
       const inlineForm = page.getByRole('form', { name: t.admin.services.editTitle, exact: true });
       await expect(inlineForm).toHaveAttribute('data-hydrated', 'true');
       await inlineForm.getByLabel(t.admin.services.nameLabel, { exact: true }).fill('Preserved inline draft');
-      await confirmedSave(page, () => manager.getByLabel(text.enable).check());
+      const enabled = await confirmedSave(page, () => manager.getByLabel(text.enable).click());
+      expect(enabled.enabled).toBe(true);
+      await expect(manager.getByLabel(text.enable)).toBeChecked();
       const editor = await choose(manager, 'Face care');
       await editor.getByLabel(second.name, { exact: true }).check();
       await confirmedSave(page, () => editor.getByRole('button', { name: text.save, exact: true }).click());
@@ -166,7 +168,9 @@ for (const width of [1366, 390]) {
       await expect(page.locator('#lp-book').getByRole('button', { name: second.name, exact: true })).toHaveCount(0);
       await page.goto('/admin/services');
       const lastManager = await openManager(page);
-      await confirmedSave(page, () => lastManager.getByLabel(text.enable).uncheck());
+      const disabled = await confirmedSave(page, () => lastManager.getByLabel(text.enable).click());
+      expect(disabled.enabled).toBe(false);
+      await expect(lastManager.getByLabel(text.enable)).not.toBeChecked();
       await page.goto(`/b/${f.business.slug}`);
       await expect(page.getByRole('group', { name: text.browse })).toHaveCount(0);
       expect(await page.locator('#lp-services').innerHTML()).toBe(originalListing);
