@@ -25,6 +25,7 @@ type VideoStream = {
   sample_aspect_ratio?: string;
   avg_frame_rate?: string;
   duration?: string;
+  tags?: { DURATION?: string };
   side_data_list?: { rotation?: number }[];
 };
 type Probe = { streams: VideoStream[]; format: { duration?: string } };
@@ -128,7 +129,7 @@ async function probe(path: string, signal: AbortSignal): Promise<Probe> {
     [
       ...inputOptions,
       '-show_entries',
-      'stream=codec_type,codec_name,width,height,pix_fmt,color_space,color_transfer,color_primaries,color_range,sample_aspect_ratio,avg_frame_rate,duration:stream_side_data=rotation:format=duration',
+      'stream=codec_type,codec_name,width,height,pix_fmt,color_space,color_transfer,color_primaries,color_range,sample_aspect_ratio,avg_frame_rate,duration:stream_tags=DURATION:stream_side_data=rotation:format=duration',
       '-of',
       'json',
       path,
@@ -147,7 +148,12 @@ function ratio(value: string | undefined, separator: string): number {
 
 export function videoEncodingPlan(source: Probe) {
   const video = source.streams.find((stream) => stream.codec_type === 'video');
-  const duration = Number(video?.duration ?? source.format.duration);
+  const durationTag = video?.tags?.DURATION;
+  const match = durationTag?.match(/^(\d{2,}):([0-5]\d):([0-5]\d(?:\.\d+)?)$/);
+  const taggedDuration = match
+    ? Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
+    : undefined;
+  const duration = Number(video?.duration ?? taggedDuration ?? source.format.duration);
   if (!video?.width || !video.height || !Number.isFinite(duration) || duration <= 0)
     throw invalid();
   const rotation =
@@ -181,7 +187,10 @@ export function videoEncodingPlan(source: Probe) {
     ].join(',');
   } else {
     // Untagged conventional SDR is assumed BT.709; unknown high-bit-depth color fails closed.
-    if (!video.color_transfer && /(?:10|12|16)/.test(video.pix_fmt ?? ''))
+    if (
+      (!video.color_transfer || video.color_transfer === 'unknown') &&
+      /(?:10|12|16)/.test(video.pix_fmt ?? '')
+    )
       throw invalid();
     const primaries =
       video.color_primaries && video.color_primaries !== 'unknown'

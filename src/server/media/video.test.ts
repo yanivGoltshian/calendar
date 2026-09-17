@@ -295,3 +295,88 @@ test('generic video upload retains its original bytes and single-store behavior'
   assert.equal(stores, 1);
   assert.deepEqual(await response.json(), { url: 'https://owned.example/original.mp4' });
 });
+
+test('WebM selected-video duration excludes a longer audio tail', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'video-webm-'));
+  try {
+    const source = join(root, 'audio-tail.webm');
+    execFileSync('ffmpeg', [
+      '-v',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      'testsrc2=size=320x180:rate=12:duration=1',
+      '-f',
+      'lavfi',
+      '-i',
+      'sine=frequency=440:duration=2',
+      '-c:v',
+      'libvpx-vp9',
+      '-threads',
+      '1',
+      '-c:a',
+      'libopus',
+      '-y',
+      source,
+    ]);
+    const probe = JSON.parse(
+      execFileSync('ffprobe', [
+        '-v',
+        'error',
+        '-show_streams',
+        '-show_format',
+        '-of',
+        'json',
+        source,
+      ]).toString(),
+    );
+    const stream = probe.streams.find(
+      (value: { codec_type: string }) => value.codec_type === 'video',
+    );
+    assert.equal(stream.duration, undefined);
+    assert.ok(Number(probe.format.duration) > 2);
+    assert.ok(videoEncodingPlan(probe).duration < 1.1);
+    const output = await prepareHeroVideo(await readFile(source), { tempRoot: root });
+    const target = join(root, 'ready.mp4');
+    await writeFile(target, output);
+    const ready = JSON.parse(
+      execFileSync('ffprobe', [
+        '-v',
+        'error',
+        '-show_streams',
+        '-show_format',
+        '-of',
+        'json',
+        target,
+      ]).toString(),
+    );
+    assert.equal(ready.streams.length, 1);
+    assert.equal(Number(ready.streams[0].nb_frames), 12);
+    assert.equal(Number(ready.format.duration), 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('missing and explicitly unknown high-bit-depth transfer cannot silently become SDR', () => {
+  for (const transfer of [undefined, 'unknown']) {
+    assert.throws(
+      () =>
+        videoEncodingPlan({
+          format: { duration: '1' },
+          streams: [
+            {
+              codec_type: 'video',
+              width: 320,
+              height: 180,
+              avg_frame_rate: '30/1',
+              pix_fmt: 'yuv420p10le',
+              color_transfer: transfer,
+            },
+          ],
+        }),
+      (error: unknown) => error instanceof MediaError && error.status === 415,
+    );
+  }
+});

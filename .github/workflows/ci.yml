@@ -30,6 +30,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Qualify synthetic hero encoding in the existing production resource envelope
         run: |
+          mkdir -p .test-runtime/video-qualification
           docker build -t hero-video-qualification - <<'DOCKERFILE'
           FROM node:22-alpine
           RUN apk add --no-cache openssl ffmpeg util-linux && command -v prlimit
