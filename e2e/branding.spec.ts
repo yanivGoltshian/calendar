@@ -78,7 +78,11 @@ for (const width of [390, 1366]) {
       expect(response.request().headers()['next-action']).toBeUndefined();
       expect(response.headers()['content-type']).toContain('application/json');
       expect(response.headers()['x-action-revalidated']).toBeUndefined();
-      await expect(page.getByRole('status').filter({ hasText: t.admin.settings.savedShort })).toHaveClass(/opacity-100/);
+      await expect(
+        page.locator('div[role="status"][aria-live="polite"]').filter({
+          hasText: t.admin.settings.savedShort,
+        }),
+      ).toHaveClass(/opacity-100/);
       expect(await response.json()).toEqual({ ok: true });
       await page.reload();
       await expect(picker.getByRole('button', { name: second.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -98,7 +102,11 @@ for (const width of [390, 1366]) {
       await page.getByLabel(t.admin.settings.pageStyle.googleReviewsLabel, { exact: true }).fill('');
       await picker.getByRole('button', { name: '#12b886', exact: true }).click();
       await page.getByRole('button', { name: t.admin.settings.saveAll, exact: true }).click();
-      await expect(page.getByRole('status').filter({ hasText: t.admin.settings.savedShort })).toHaveClass(/opacity-100/);
+      await expect(
+        page.locator('div[role="status"][aria-live="polite"]').filter({
+          hasText: t.admin.settings.savedShort,
+        }),
+      ).toHaveClass(/opacity-100/);
       await page.reload();
       saved = await prisma.business.findUniqueOrThrow({ where: { id: f.business.id } });
       expect(saved.landingContent).toEqual({ ...original, theme: themeFromBrandColor('#12b886') });
@@ -146,8 +154,11 @@ test('unchanged legacy Google metadata survives an unrelated mobile settings sav
     await page.getByLabel(t.admin.settings.pageStyle.announcementLabel, { exact: true })
       .fill(announcement);
     await page.getByRole('button', { name: t.admin.settings.saveAll, exact: true }).click();
-    await expect(page.getByRole('status').filter({ hasText: t.admin.settings.savedShort }))
-      .toHaveClass(/opacity-100/);
+    await expect(
+      page.locator('div[role="status"][aria-live="polite"]').filter({
+        hasText: t.admin.settings.savedShort,
+      }),
+    ).toHaveClass(/opacity-100/);
     await page.reload();
     await expect(page.getByLabel(t.admin.settings.pageStyle.googleReviewsLabel, { exact: true }))
       .toHaveValue(legacyUrl);

@@ -53,11 +53,37 @@ export function Modal({
       body.style.left = `-${scrollX}px`;
       body.style.width = `${bodyWidth}px`;
       dialog?.showModal();
+      dialog
+        ?.querySelector<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+        )
+        ?.focus({ preventScroll: true });
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (variant === 'public') e.preventDefault();
         onClose();
+      } else if (variant === 'public' && e.key === 'Tab' && dialog) {
+        const focusable = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        ).filter((element) => !element.hasAttribute('hidden'));
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (!first || !last) {
+          e.preventDefault();
+          dialog.focus({ preventScroll: true });
+        } else if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus({ preventScroll: true });
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus({ preventScroll: true });
+        } else if (!dialog.contains(document.activeElement)) {
+          e.preventDefault();
+          first.focus({ preventScroll: true });
+        }
       }
     };
     document.addEventListener('keydown', onKey);
@@ -137,6 +163,7 @@ export function Modal({
         ref={dialogRef}
         aria-labelledby={title ? titleId : undefined}
         aria-modal="true"
+        tabIndex={-1}
         dir="rtl"
         onCancel={(event) => {
           event.preventDefault();

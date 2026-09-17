@@ -140,7 +140,15 @@ for (const width of [1366, 390]) {
         name: t.reviews.starOption.replace('{rating}', '5'),
         exact: true,
       });
-      await dialog.locator('label').filter({ has: rating }).click();
+      await dialog
+        .locator('label')
+        .filter({
+          has: page.getByRole('radio', {
+            name: t.reviews.starOption.replace('{rating}', '5'),
+            exact: true,
+          }),
+        })
+        .click();
       await expect(rating).toBeChecked();
       await dialog.locator('textarea[name=text]').fill(width === 390 ? '' : text);
       await dialog.locator('form button[type=submit]').click();
