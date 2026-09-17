@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAdminForm } from '@/components/useAdminForm';
 import Link from 'next/link';
 import { t } from '@/i18n';
@@ -32,10 +33,44 @@ const editState: SaveServiceState = { ok: false, mode: 'edit' };
 const inputClass =
   'w-full rounded-lg border border-[#d6c8b4] px-3 py-2 text-[#1b1715] outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500';
 
-export default function ServiceForm({ initial, staffOptions = [], selectedStaffIds = [] }: Props) {
+export default function ServiceForm({
+  initial,
+  staffOptions = [],
+  selectedStaffIds = [],
+}: Props) {
   const isEdit = Boolean(initial);
-  const { state, onSubmit, pending } = useAdminForm('services', isEdit ? editState : emptyState);
+  const router = useRouter();
+  const active = useRef(true);
+  const [hydrated, setHydrated] = useState(false);
+  const [refreshing, startTransition] = useTransition();
+  const {
+    state,
+    onSubmit,
+    pending: saving,
+  } = useAdminForm(
+    'services',
+    isEdit ? editState : emptyState,
+    isEdit
+      ? () => {
+          if (!active.current) return;
+          startTransition(() => {
+            router.replace('/admin/services', { scroll: false });
+            router.refresh();
+          });
+        }
+      : undefined,
+  );
+  const pending = saving || refreshing;
   const formRef = useRef<HTMLFormElement>(null);
+  const formId = useId();
+
+  useEffect(() => {
+    active.current = true;
+    setHydrated(true);
+    return () => {
+      active.current = false;
+    };
+  }, []);
 
   // איפוס הטופס לאחר הוספה מוצלחת בלבד.
   useEffect(() => {
@@ -45,18 +80,19 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
   }, [state]);
 
   const errorText =
-    state.error === 'unconfirmed' ? t.common.saveUnconfirmed :
-    state.error === 'name'
-      ? t.admin.services.errorName
-      : state.error === 'duration'
-        ? t.admin.services.errorDuration
-        : state.error === 'price'
-          ? t.admin.services.errorPrice
-          : state.error === 'staff'
-            ? t.admin.services.errorStaff
-            : state.error
-              ? t.admin.services.errorGeneric
-              : null;
+    state.error === 'unconfirmed'
+      ? t.common.saveUnconfirmed
+      : state.error === 'name'
+        ? t.admin.services.errorName
+        : state.error === 'duration'
+          ? t.admin.services.errorDuration
+          : state.error === 'price'
+            ? t.admin.services.errorPrice
+            : state.error === 'staff'
+              ? t.admin.services.errorStaff
+              : state.error
+                ? t.admin.services.errorGeneric
+                : null;
 
   const successText = state.ok
     ? state.mode === 'edit'
@@ -65,14 +101,20 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
     : null;
 
   return (
-    <section className="mt-8 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm">
+    <section
+      className={
+        isEdit ? '' : 'mt-8 rounded-xl border border-[#e7ddcd] bg-white p-5 shadow-sm'
+      }
+    >
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-[#1b1715]">
+        <h2 id={`${formId}-title`} className="text-lg font-bold text-[#1b1715]">
           {isEdit ? t.admin.services.editTitle : t.admin.services.addTitle}
         </h2>
         {isEdit ? (
           <Link
             href="/admin/services"
+            scroll={false}
+            prefetch={false}
             className="text-sm font-medium text-[#8f8478] hover:text-[#4a4038] hover:underline"
           >
             {t.admin.services.cancelEdit}
@@ -80,14 +122,25 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
         ) : null}
       </div>
 
-      <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
+      <form
+        ref={formRef}
+        onSubmit={onSubmit}
+        aria-labelledby={`${formId}-title`}
+        aria-busy={pending}
+        data-hydrated={hydrated}
+        className="space-y-4"
+      >
         {isEdit ? <input type="hidden" name="id" value={initial!.id} /> : null}
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-[#4a4038]">
+          <label
+            htmlFor={`${formId}-name`}
+            className="mb-1 block text-sm font-medium text-[#4a4038]"
+          >
             {t.admin.services.nameLabel}
           </label>
           <input
+            id={`${formId}-name`}
             name="name"
             required
             defaultValue={initial?.name ?? ''}
@@ -97,10 +150,14 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-[#4a4038]">
+          <label
+            htmlFor={`${formId}-description`}
+            className="mb-1 block text-sm font-medium text-[#4a4038]"
+          >
             {t.admin.services.descriptionLabel}
           </label>
           <textarea
+            id={`${formId}-description`}
             name="description"
             rows={2}
             defaultValue={initial?.description ?? ''}
@@ -111,10 +168,14 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
 
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
+            <label
+              htmlFor={`${formId}-duration`}
+              className="mb-1 block text-sm font-medium text-[#4a4038]"
+            >
               {t.admin.services.durationLabel}
             </label>
             <input
+              id={`${formId}-duration`}
               name="durationMin"
               type="number"
               min={1}
@@ -126,10 +187,14 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
             />
           </div>
           <div className="flex-1">
-            <label className="mb-1 block text-sm font-medium text-[#4a4038]">
+            <label
+              htmlFor={`${formId}-price`}
+              className="mb-1 block text-sm font-medium text-[#4a4038]"
+            >
               {t.admin.services.priceLabel}
             </label>
             <input
+              id={`${formId}-price`}
               name="priceShekels"
               type="number"
               min={0}
@@ -172,15 +237,17 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
           </label>
         </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-[#4a4038]">
+        <fieldset>
+          <legend className="mb-1 block text-sm font-medium text-[#4a4038]">
             {t.admin.services.staffLinkLabel}
-          </label>
+          </legend>
           {staffOptions.length === 0 ? (
             <p className="text-sm text-[#8f8478]">{t.admin.services.staffLinkEmpty}</p>
           ) : (
             <>
-              <p className="mb-2 text-xs text-[#8f8478]">{t.admin.services.staffLinkHint}</p>
+              <p className="mb-2 text-xs text-[#8f8478]">
+                {t.admin.services.staffLinkHint}
+              </p>
               <div className="space-y-2 rounded-lg bg-[#f7f2ea] p-3">
                 {staffOptions.map((s) => (
                   <label
@@ -191,7 +258,10 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
                       type="checkbox"
                       name="staffIds"
                       value={s.id}
-                      defaultChecked={selectedStaffIds.includes(s.id) || (!isEdit && staffOptions.length === 1)}
+                      defaultChecked={
+                        selectedStaffIds.includes(s.id) ||
+                        (!isEdit && staffOptions.length === 1)
+                      }
                       className="h-4 w-4 rounded border-[#d6c8b4] text-brand-600 focus:ring-brand-500"
                     />
                     {s.displayName}
@@ -200,10 +270,18 @@ export default function ServiceForm({ initial, staffOptions = [], selectedStaffI
               </div>
             </>
           )}
-        </div>
+        </fieldset>
 
-        {errorText ? <p className="text-sm text-red-600">{errorText}</p> : null}
-        {successText ? <p className="text-sm text-green-600">{successText}</p> : null}
+        {errorText ? (
+          <p role="alert" className="text-sm text-red-600">
+            {errorText}
+          </p>
+        ) : null}
+        {successText ? (
+          <p role="status" className="text-sm text-green-600">
+            {successText}
+          </p>
+        ) : null}
 
         <button
           type="submit"

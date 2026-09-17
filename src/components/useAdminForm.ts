@@ -11,7 +11,11 @@ type FormKind =
   | 'hours-exceptions'
   | 'hours-exceptions/delete';
 
-export function useAdminForm(kind: FormKind, initial: AdminFormState) {
+export function useAdminForm(
+  kind: FormKind,
+  initial: AdminFormState,
+  onSuccess?: () => void,
+) {
   const [state, setState] = useState(initial);
   const [pending, setPending] = useState(false);
   const inFlight = useRef(false);
@@ -52,7 +56,9 @@ export function useAdminForm(kind: FormKind, initial: AdminFormState) {
         throw new Error('Inconsistent admin form response');
       }
       setState(result);
-      if (result.ok && kind !== 'settings') {
+      if (result.ok && onSuccess) {
+        onSuccess();
+      } else if (result.ok && kind !== 'settings') {
         const url = new URL(window.location.href);
         url.searchParams.set('_saved', kind === 'services' ? `service-${result.mode}` :
           kind === 'campaigns' ? result.scheduled ? 'campaign-scheduled' : 'campaign-draft' :
