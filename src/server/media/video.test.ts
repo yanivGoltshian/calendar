@@ -4,9 +4,28 @@ import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { prepareHeroVideo, hasFastStart, videoEncodingPlan, VIDEO_LIMITS } from './video';
+import {
+  prepareHeroVideo,
+  hasFastStart,
+  videoEncodingPlan,
+  videoProcessError,
+  VIDEO_LIMITS,
+} from './video';
 import { createUploadHandler } from './uploadHandler';
 import { MediaError } from './uploadPolicy';
+
+test('confirmed decoder ENOMEM is an actionable resource error without reclassifying invalid input', () => {
+  const failure = videoProcessError(
+    244,
+    null,
+    '[hevc] Error submitting packet to decoder: Out of memory',
+  );
+  assert.equal(failure.status, 422);
+  assert.match(failure.message, /משאבי/);
+  assert.equal(videoProcessError(244, null, 'Invalid data').status, 415);
+  assert.equal(videoProcessError(1, null, 'Invalid data').status, 415);
+  assert.equal(videoProcessError(null, 'SIGXCPU', '').status, 422);
+});
 
 export function syntheticVideo(path: string, hdr = false, seconds = 2) {
   execFileSync(

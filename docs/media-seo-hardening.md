@@ -36,7 +36,8 @@ Auth.js upgrade, not a peer-dependency override.
   The standalone image runs one Node server per replica. FFmpeg/ffprobe use fixed
   argv, local container demuxers/file protocol only, one thread, a shared 90-second
   preparation deadline, a 12 MiB output ceiling, and Linux child-only address-space
-  (256 MiB) and CPU (75 seconds) limits through `prlimit`. Oversized resource needs
+  (320 MiB) and CPU (75 seconds) limits through `prlimit`. Decoder ENOMEM returns
+  an actionable resource error (422). Oversized resource needs
   fail the upload without a new product duration/resolution cap. Temp files are
   removed after process exit, including timeout/abort; encoded input remains bounded
   by the existing upload cap. FFmpeg's successful size-limited exits are rejected;
@@ -49,6 +50,8 @@ Auth.js upgrade, not a peer-dependency override.
   tonemap; Linux additionally needs `prlimit`. The runtime image packages Alpine
   FFmpeg/util-linux. CI additionally qualifies two synthetic HDR inputs using the
   same packages at 0.25 CPU/512 MiB with 192 MiB resident application headroom reserved.
+  Both synthetic inputs must complete, peak cgroup memory must stay at or below
+  480 MiB, and max/oom/oom_kill events must remain zero.
   This reservation is distinct from a concurrent live-application load test.
   macOS timing and Chromium mobile emulation are neither Azure timing nor Safari/iPhone
   validation. Output size is measured per clip, without a universal 2-3 MB promise.

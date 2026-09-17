@@ -11,6 +11,7 @@ export const VIDEO_LIMITS = {
   longEdge: 1280,
   fps: 30,
   threads: 1,
+  childAddressSpaceBytes: 320 * 1024 * 1024,
 } as const;
 
 type VideoStream = {
@@ -56,6 +57,20 @@ function invalid() {
   return new MediaError('הסרטון אינו תקין או אינו נתמך להכנה. יש לבחור סרטון אחר.', 415);
 }
 
+export function videoProcessError(
+  exitCode: number | null,
+  signal: NodeJS.Signals | null,
+  stderr: string,
+): MediaError {
+  if (signal || (exitCode === 244 && /\bOut of memory\b/i.test(stderr))) {
+    return new MediaError(
+      'הסרטון חורג ממגבלת משאבי ההכנה. יש לבחור סרטון קטן יותר.',
+      422,
+    );
+  }
+  return invalid();
+}
+
 async function command(
   binary: string,
   args: string[],
@@ -67,7 +82,15 @@ async function command(
     const limited = process.platform === 'linux';
     const child = spawn(
       limited ? 'prlimit' : binary,
-      limited ? ['--as=268435456', '--cpu=75', '--', binary, ...args] : args,
+      limited
+        ? [
+            `--as=${VIDEO_LIMITS.childAddressSpaceBytes}`,
+            '--cpu=75',
+            '--',
+            binary,
+            ...args,
+          ]
+        : args,
       {
         stdio: ['ignore', 'pipe', 'pipe'],
         shell: false,
@@ -103,15 +126,8 @@ async function command(
     child.on('close', (code, childSignal) => {
       signal.removeEventListener('abort', abort);
       if (failure || childSignal || code !== 0) {
-        const error =
-          failure ??
-          (childSignal
-            ? new MediaError(
-                'הסרטון חורג ממגבלת משאבי ההכנה. יש לבחור סרטון קטן יותר.',
-                422,
-              )
-            : invalid());
         let detail = stripVTControlCharacters(Buffer.concat(stderr).toString('utf8'));
+        const error = failure ?? videoProcessError(code, childSignal, detail);
         for (const argument of args.filter(isAbsolute))
           detail = detail.replaceAll(argument, '[media-file]');
         detail = Array.from(detail)

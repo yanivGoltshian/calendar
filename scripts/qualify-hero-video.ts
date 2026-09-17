@@ -66,7 +66,8 @@ async function main() {
       appHeadroomReservedBytes: reserve.length,
       appHeadroomScope:
         'Resident synthetic reservation plus test Node process; not a live application load test.',
-      childAddressSpaceBytes: 268435456,
+      childAddressSpaceBytes: VIDEO_LIMITS.childAddressSpaceBytes,
+      peakAcceptanceBytes: 480 * 1024 * 1024,
       results: [] as Array<{
         name: string;
         dimensions: string;
@@ -108,7 +109,11 @@ async function main() {
       }
       assert.equal(evidence.memoryMax, '536870912');
       assert.equal(evidence.cpuMax, '25000 100000');
-      assert.match(availableMetric('memory.events'), /oom_kill 0/);
+      assert.ok(Number(availableMetric('memory.peak')) <= evidence.peakAcceptanceBytes);
+      const events = availableMetric('memory.events');
+      for (const event of ['max', 'oom', 'oom_kill']) {
+        assert.match(events, new RegExp(`^${event} 0$`, 'm'));
+      }
       evidence.status = 'passed';
     } catch (error) {
       evidence.status = 'failed';
