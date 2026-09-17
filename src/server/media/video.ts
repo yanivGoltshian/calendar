@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 import { MediaError } from './uploadPolicy';
 
 export const VIDEO_LIMITS = {
@@ -59,6 +60,7 @@ async function command(
   binary: string,
   args: string[],
   signal: AbortSignal,
+  stage: 'probe-source' | 'encode' | 'probe-output',
 ): Promise<string> {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
@@ -73,6 +75,8 @@ async function command(
       },
     );
     const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    let diagnosticBytes = 0;
     let bytes = 0;
     let failure: Error | undefined;
     const stop = (error: Error) => {
@@ -88,20 +92,48 @@ async function command(
       if (bytes > 1024 * 1024) stop(invalid());
       else stdout.push(data);
     });
-    // Drain diagnostics without retaining filenames or unbounded decoder output.
-    child.stderr.on('data', () => {});
+    child.stderr.on('data', (data: Buffer) => {
+      const bounded = data.subarray(0, Math.max(0, 4096 - diagnosticBytes));
+      diagnosticBytes += bounded.length;
+      if (bounded.length) stderr.push(Buffer.from(bounded));
+    });
     child.on('error', () => {
       failure = new MediaError('הכנת סרטונים אינה זמינה כרגע.', 503);
     });
     child.on('close', (code, childSignal) => {
       signal.removeEventListener('abort', abort);
-      if (failure) reject(failure);
-      else if (childSignal)
-        reject(
-          new MediaError('הסרטון חורג ממגבלת משאבי ההכנה. יש לבחור סרטון קטן יותר.', 422),
-        );
-      else if (code !== 0) reject(invalid());
-      else resolve(Buffer.concat(stdout).toString('utf8'));
+      if (failure || childSignal || code !== 0) {
+        const error =
+          failure ??
+          (childSignal
+            ? new MediaError(
+                'הסרטון חורג ממגבלת משאבי ההכנה. יש לבחור סרטון קטן יותר.',
+                422,
+              )
+            : invalid());
+        let detail = stripVTControlCharacters(Buffer.concat(stderr).toString('utf8'));
+        for (const argument of args.filter(isAbsolute))
+          detail = detail.replaceAll(argument, '[media-file]');
+        detail = Array.from(detail)
+          .filter(
+            (char) =>
+              char !== '\uFFFD' &&
+              (char.charCodeAt(0) >= 32 || char === '\n' || char === '\t'),
+          )
+          .join('');
+        error.cause = {
+          stage,
+          binary,
+          wrapper: limited ? 'prlimit' : null,
+          exitCode: code,
+          signal: childSignal,
+          stderr: Buffer.from(detail)
+            .subarray(0, 4096)
+            .toString('utf8')
+            .replaceAll('\uFFFD', ''),
+        };
+        reject(error);
+      } else resolve(Buffer.concat(stdout).toString('utf8'));
     });
   });
 }
@@ -123,7 +155,11 @@ const inputOptions = [
   '5000000',
 ];
 
-async function probe(path: string, signal: AbortSignal): Promise<Probe> {
+async function probe(
+  path: string,
+  signal: AbortSignal,
+  stage: 'probe-source' | 'probe-output',
+): Promise<Probe> {
   const json = await command(
     'ffprobe',
     [
@@ -135,6 +171,7 @@ async function probe(path: string, signal: AbortSignal): Promise<Probe> {
       path,
     ],
     signal,
+    stage,
   );
   const value: Probe = JSON.parse(json);
   if (!Array.isArray(value.streams) || !value.format) throw invalid();
@@ -254,7 +291,7 @@ export async function prepareHeroVideo(
     const source = join(directory, 'source');
     const target = join(directory, 'ready.mp4');
     await writeFile(source, input, { mode: 0o600, signal });
-    const plan = videoEncodingPlan(await probe(source, signal));
+    const plan = videoEncodingPlan(await probe(source, signal, 'probe-source'));
     await command(
       'ffmpeg',
       [
@@ -304,12 +341,13 @@ export async function prepareHeroVideo(
         target,
       ],
       signal,
+      'encode',
     );
     const size = (await stat(target)).size;
     // FFmpeg's -fs can exit successfully after truncation. Never publish a capped encode.
     if (size >= outputBytes || size < 32)
       throw new MediaError('הסרטון חורג ממגבלת ההכנה. יש לבחור סרטון קטן יותר.', 413);
-    const output = await probe(target, signal);
+    const output = await probe(target, signal, 'probe-output');
     const video = output.streams[0];
     if (
       output.streams.length !== 1 ||

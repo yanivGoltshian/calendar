@@ -163,7 +163,17 @@ test('single process slot rejects busy work; invalid, timeout and aborted jobs c
     await first;
     await assert.rejects(
       prepareHeroVideo(Buffer.from('invalid'), { tempRoot: root }),
-      (error: unknown) => error instanceof MediaError && error.status === 415,
+      (error: unknown) => {
+        assert.ok(error instanceof MediaError);
+        assert.equal(error.status, 415);
+        const detail = error.cause;
+        assert.ok(detail && typeof detail === 'object');
+        assert.ok('stderr' in detail && typeof detail.stderr === 'string');
+        assert.ok(Buffer.byteLength(detail.stderr) <= 4096);
+        assert.ok(!detail.stderr.includes(root));
+        assert.ok('stage' in detail && detail.stage === 'probe-source');
+        return true;
+      },
     );
     await assert.rejects(
       prepareHeroVideo(source, { tempRoot: root, timeoutMs: 1 }),

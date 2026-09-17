@@ -9,6 +9,18 @@ const samples = [
   { name: 'representative-hdr', dimensions: '854x886', seconds: 14 },
   { name: 'bounded-4k-hdr', dimensions: '3840x2160', seconds: 1 },
 ];
+function availableMetric(name: string) {
+  try {
+    return readFileSync(`/sys/fs/cgroup/${name}`, 'utf8').trim();
+  } catch (error) {
+    return `unavailable: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+function diagnostic(error: unknown) {
+  return error instanceof Error
+    ? { name: error.name, message: error.message, cause: error.cause }
+    : { message: String(error) };
+}
 async function main() {
   if (process.argv.includes('--generate')) {
     mkdirSync(directory, { recursive: true });
@@ -43,44 +55,73 @@ async function main() {
   } else {
     assert.equal(process.platform, 'linux');
     const reserve = Buffer.alloc(192 * 1024 * 1024, 1);
-    const results = [];
-    for (const sample of samples) {
-      const started = performance.now();
-      const input = readFileSync(join(directory, `${sample.name}.mov`));
-      const output = await prepareHeroVideo(input);
-      const milliseconds = performance.now() - started;
-      assert.ok(milliseconds < VIDEO_LIMITS.timeoutMs);
-      assert.ok(hasFastStart(output));
-      assert.equal(reserve[reserve.length - 1], 1);
-      results.push({
-        ...sample,
-        inputBytes: input.length,
-        outputBytes: output.length,
-        milliseconds,
-      });
-    }
     const evidence = {
       ffmpeg: execFileSync('ffmpeg', ['-version'], { encoding: 'utf8' })
         .split('\n')
         .slice(0, 3),
-      cpuMax: readFileSync('/sys/fs/cgroup/cpu.max', 'utf8').trim(),
-      memoryMax: readFileSync('/sys/fs/cgroup/memory.max', 'utf8').trim(),
-      memoryPeak: readFileSync('/sys/fs/cgroup/memory.peak', 'utf8').trim(),
-      memoryEvents: readFileSync('/sys/fs/cgroup/memory.events', 'utf8').trim(),
+      cpuMax: availableMetric('cpu.max'),
+      memoryMax: availableMetric('memory.max'),
+      memoryPeak: availableMetric('memory.peak'),
+      memoryEvents: availableMetric('memory.events'),
       appHeadroomReservedBytes: reserve.length,
       appHeadroomScope:
         'Resident synthetic reservation plus test Node process; not a live application load test.',
       childAddressSpaceBytes: 268435456,
-      results,
+      results: [] as Array<{
+        name: string;
+        dimensions: string;
+        seconds: number;
+        milliseconds: number;
+        inputBytes?: number;
+        outputBytes?: number;
+        status: 'passed' | 'failed';
+        failure?: ReturnType<typeof diagnostic>;
+      }>,
+      status: 'running',
     };
-    assert.equal(evidence.memoryMax, '536870912');
-    assert.equal(evidence.cpuMax, '25000 100000');
-    assert.match(evidence.memoryEvents, /oom_kill 0/);
-    writeFileSync(
-      join(directory, 'qualification.json'),
-      JSON.stringify(evidence, null, 2),
-    );
-    console.log(JSON.stringify(evidence, null, 2));
+    try {
+      for (const sample of samples) {
+        const started = performance.now();
+        try {
+          const input = readFileSync(join(directory, `${sample.name}.mov`));
+          const output = await prepareHeroVideo(input);
+          const milliseconds = performance.now() - started;
+          assert.ok(milliseconds < VIDEO_LIMITS.timeoutMs);
+          assert.ok(hasFastStart(output));
+          assert.equal(reserve[reserve.length - 1], 1);
+          evidence.results.push({
+            ...sample,
+            inputBytes: input.length,
+            outputBytes: output.length,
+            milliseconds,
+            status: 'passed',
+          });
+        } catch (error) {
+          evidence.results.push({
+            ...sample,
+            milliseconds: performance.now() - started,
+            status: 'failed',
+            failure: diagnostic(error),
+          });
+          throw error;
+        }
+      }
+      assert.equal(evidence.memoryMax, '536870912');
+      assert.equal(evidence.cpuMax, '25000 100000');
+      assert.match(availableMetric('memory.events'), /oom_kill 0/);
+      evidence.status = 'passed';
+    } catch (error) {
+      evidence.status = 'failed';
+      throw error;
+    } finally {
+      evidence.memoryPeak = availableMetric('memory.peak');
+      evidence.memoryEvents = availableMetric('memory.events');
+      writeFileSync(
+        join(directory, 'qualification.json'),
+        JSON.stringify(evidence, null, 2),
+      );
+      console.log(JSON.stringify(evidence, null, 2));
+    }
   }
 }
 void main().catch((error) => {
