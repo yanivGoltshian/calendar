@@ -1144,6 +1144,7 @@ const he = {
       save: 'שמירה',
       saving: 'שומר…',
       saveAll: 'שמירת הכול',
+      manualSaveHint: 'השינויים נשמרים בלחיצה על ״שמירת הכול״.',
       savedShort: 'נשמר',
       unsavedHint: 'יש שינויים שלא נשמרו',
       onboardingCta: 'להשלמת ההקמה המודרכת',
