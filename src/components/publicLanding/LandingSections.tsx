@@ -190,13 +190,14 @@ export default function LandingSections({
                 websiteUrl={content?.contact?.websiteUrl}
                 sourceMapUrl={content?.contact?.mapUrl}
                 directionsCta={l.directionsCta}
-                callCta={l.callCta}
+                callCta={isClinicPremium ? clinic.location.callCta : l.callCta}
                 {...(isClinicPremium
                   ? {
                       mapsCta: clinic.location.mapsCta,
                       wazeCta: clinic.location.wazeCta,
                       whatsappCta: clinic.location.whatsappCta,
                       whatsapp: content?.socialLinks?.whatsapp ?? null,
+                      phoneLabel: clinic.location.phoneLabel,
                       contactCta: clinic.location.contactCta,
                       navTitle: clinic.location.navTitle,
                       mapTitle: `מפת הגעה אל ${businessName}`,

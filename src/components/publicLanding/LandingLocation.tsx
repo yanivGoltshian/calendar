@@ -35,6 +35,7 @@ type Props = {
   wazeCta?: string;
   whatsappCta?: string;
   whatsapp?: string | null;
+  phoneLabel?: string;
   contactCta?: string;
   navTitle?: string;
   mapTitle?: string;
@@ -59,12 +60,14 @@ export default function LandingLocation({
   wazeCta,
   whatsappCta,
   whatsapp,
+  phoneLabel,
   contactCta,
   navTitle,
   mapTitle,
 }: Props) {
+  const phoneTrimmed = phone?.trim();
   const hasHours = workingHours.length > 0;
-  if (!hasHours && !address && !phone && !email && !websiteUrl && !sourceMapUrl) {
+  if (!hasHours && !address && !phoneTrimmed && !email && !websiteUrl && !sourceMapUrl) {
     return null;
   }
 
@@ -75,7 +78,7 @@ export default function LandingLocation({
   const embedUrl = mapEmbedUrl(address);
   const gmapsUrl = sourceMapUrl ?? googleMapsSearchUrl(address);
   const wazeHref = wazeUrl(address);
-  const phoneDisplay = formatIsraeliPhoneDisplay(phone);
+  const phoneDisplay = formatIsraeliPhoneDisplay(phoneTrimmed);
   const whatsappTrimmed = whatsapp?.trim();
 
   // ── מצב פרימיום (קליניקה): כרטיס מפה מוטמע צף + טור פרטים + כפתורי ניווט ──
@@ -118,15 +121,16 @@ export default function LandingLocation({
                   <span>{address}</span>
                 </li>
               ) : null}
-              {phone ? (
+              {phoneTrimmed ? (
                 <li>
                   <a
-                    href={`tel:${phone}`}
-                    aria-label={contactCta ?? callCta}
-                    className="flex items-center gap-2 transition hover:text-white"
+                    href={`tel:${phoneTrimmed}`}
+                    aria-label={`${phoneLabel ?? contactCta ?? callCta}: ${phoneDisplay}`}
+                    className="inline-flex min-h-11 flex-wrap items-center gap-2 transition hover:text-white"
                   >
                     <PhoneIcon className="h-4 w-4 shrink-0 text-[color:var(--c-gold,#c6a86a)]" />
-                    <span dir="ltr" className="tabular-nums">{phoneDisplay}</span>
+                    {phoneLabel ? <span className="text-white/75">{phoneLabel}</span> : null}
+                    <span dir="ltr" className="break-all text-base font-semibold tabular-nums">{phoneDisplay}</span>
                   </a>
                 </li>
               ) : null}
@@ -175,18 +179,18 @@ export default function LandingLocation({
               ) : null}
             </ul>
 
-            {/* כפתורי ניווט: Google (זהב), Waze (רפאים), וואטסאפ (אקו) */}
+            {/* ניווט ויצירת קשר: שתי עמודות במובייל, חיוג משני לצד וואטסאפ */}
             <div className="mt-6">
               {navTitle ? (
                 <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--c-gold,#c6a86a)]">{navTitle}</p>
               ) : null}
-              <div className="flex flex-wrap gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
                 {gmapsUrl ? (
                   <a
                     href={gmapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-[color:var(--c-on-gold-action,#241d10)] shadow-soft transition hover:-translate-y-0.5"
+                    className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-bold text-[color:var(--c-on-gold-action,#241d10)] shadow-soft transition hover:-translate-y-0.5"
                     style={{ background: 'linear-gradient(90deg, var(--c-gold-action-strong), var(--c-gold-action))' }}
                   >
                     <NavigationIcon className="h-4 w-4" />
@@ -198,7 +202,7 @@ export default function LandingLocation({
                     href={wazeHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-[color:var(--c-on-dark,#ffffff)] transition hover:-translate-y-0.5"
+                    className="inline-flex min-h-12 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold text-[color:var(--c-on-dark,#ffffff)] transition hover:-translate-y-0.5"
                     style={{ background: 'rgba(255,255,255,0.10)', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.35)' }}
                   >
                     <NavigationIcon className="h-4 w-4" />
@@ -210,10 +214,19 @@ export default function LandingLocation({
                     href={socialHref('whatsapp', whatsappTrimmed)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-2.5 text-sm font-bold text-[#071f11] transition hover:-translate-y-0.5"
+                    className={`inline-flex min-h-12 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-bold text-[#071f11] transition hover:-translate-y-0.5 ${phoneTrimmed ? '' : 'col-span-2'}`}
                   >
                     <WhatsappIcon className="h-4 w-4" />
                     {whatsappCta}
+                  </a>
+                ) : null}
+                {phoneTrimmed ? (
+                  <a
+                    href={`tel:${phoneTrimmed}`}
+                    className={`inline-flex min-h-12 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-[color:var(--c-gold,#c6a86a)] px-4 py-2.5 text-sm font-semibold text-[color:var(--c-on-dark,#ffffff)] transition hover:-translate-y-0.5 ${whatsappTrimmed && whatsappCta ? '' : 'col-span-2'}`}
+                  >
+                    <PhoneIcon className="h-4 w-4 text-[color:var(--c-gold,#c6a86a)]" />
+                    {callCta}
                   </a>
                 ) : null}
               </div>
@@ -272,7 +285,7 @@ export default function LandingLocation({
           </ul>
         ) : null}
 
-        {address || phone || email || websiteUrl || mapHref ? (
+        {address || phoneTrimmed || email || websiteUrl || mapHref ? (
           <div className="flex flex-col gap-4">
             {address || mapHref ? (
               <div className="rounded-3xl border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-5 shadow-soft">
@@ -295,13 +308,13 @@ export default function LandingLocation({
                 ) : null}
               </div>
             ) : null}
-            {phone ? (
+            {phoneTrimmed ? (
               <a
-                href={`tel:${phone}`}
+                href={`tel:${phoneTrimmed}`}
                 className="flex items-center gap-2 rounded-3xl border border-[color:var(--c-border,#e2e8f0)] bg-[color:var(--c-surface,#ffffff)] p-5 text-sm font-semibold text-[color:var(--c-muted,#334155)] shadow-soft transition hover:border-[color:var(--biz)]"
               >
                 <PhoneIcon className="h-4 w-4 shrink-0 text-[color:var(--biz-text,#334155)]" />
-                <span dir="ltr" className="tabular-nums">{phone}</span>
+                <span dir="ltr" className="tabular-nums">{phoneTrimmed}</span>
                 <span className="ms-auto text-[color:var(--biz-text,#334155)]">{callCta}</span>
               </a>
             ) : null}
