@@ -50,6 +50,12 @@ jobs:
           trap 'docker rm "$container_id" > /dev/null' EXIT
           docker cp "$container_id:/lib" "$toolchain/root/lib"
           docker cp "$container_id:/usr/lib" "$toolchain/root/usr/lib"
+          pulse_library="$toolchain/root/usr/lib/pulseaudio/libpulsecommon-17.0.so"
+          if [ ! -f "$pulse_library" ]; then
+            printf 'Missing copied package dependency: %s\n' "$pulse_library" | tee -a "$provenance" >&2
+            exit 1
+          fi
+          sha256sum "$pulse_library" >> "$provenance"
           for binary in ffmpeg ffprobe; do
             docker cp "$container_id:/usr/bin/$binary" "$toolchain/root/usr/bin/$binary"
             cat > "$toolchain/bin/$binary" <<'WRAPPER'
@@ -57,7 +63,7 @@ jobs:
           set -eu
           toolchain=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
           exec "$toolchain/root/lib/ld-musl-x86_64.so.1" \
-            --library-path "$toolchain/root/lib:$toolchain/root/usr/lib" \
+            --library-path "$toolchain/root/lib:$toolchain/root/usr/lib:$toolchain/root/usr/lib/pulseaudio" \
             "$toolchain/root/usr/bin/${0##*/}" "$@"
           WRAPPER
             chmod +x "$toolchain/bin/$binary"
