@@ -107,6 +107,8 @@ const { saveBusinessReviewAction } =
   require('../src/app/admin/reviews/actions') as typeof import('../src/app/admin/reviews/actions');
 const { submitBusinessReviewAction } =
   require('../src/app/b/[slug]/reviews/actions') as typeof import('../src/app/b/[slug]/reviews/actions');
+const { GET: reviewEligibility } =
+  require('../src/app/api/public/b/[slug]/reviews/eligibility/route') as typeof import('../src/app/api/public/b/[slug]/reviews/eligibility/route');
 
 const prefix = `tenant-${randomUUID()}`;
 const ownerEmail = `${prefix}-owner@example.test`;
@@ -324,6 +326,19 @@ test('review actions derive owner/client identity server-side and ignore forged 
       slug: f.business.slug, appointmentId: appointment.id, name: 'Synthetic customer',
       rating: '5', text: '', status: 'PUBLISHED', authorUserId: buyer.id, origin: 'OWNER',
     });
+    const eligibilityParams = { params: Promise.resolve({ slug: f.business.slug }) };
+    const guestEligibility = await inRequest('', request => reviewEligibility(request, eligibilityParams));
+    assert.deepEqual(await guestEligibility.json(), { mode: 'guest' });
+    assert.equal(guestEligibility.headers.get('cache-control'), 'private, no-store');
+    assert.equal(guestEligibility.headers.get('vary'), 'Cookie');
+    const foreignEligibility = await inRequest(clientCookie(attackerUserId), request => reviewEligibility(request, eligibilityParams));
+    assert.deepEqual(await foreignEligibility.json(), { mode: 'customer', name: '', appointments: [], submitted: [] });
+    const ownEligibility = await inRequest(clientCookie(buyer.id), request => reviewEligibility(request, eligibilityParams));
+    const ownEligibilityBody = await ownEligibility.json();
+    assert.equal(ownEligibilityBody.appointments[0].id, appointment.id);
+    assert.ok(!JSON.stringify(ownEligibilityBody).includes(buyer.id));
+    const otherEligibility = await inRequest(clientCookie(buyer.id), request => reviewEligibility(request, { params: Promise.resolve({ slug: other.business.slug }) }));
+    assert.deepEqual(await otherEligibility.json(), { mode: 'customer', name: '', appointments: [], submitted: [] });
     assert.deepEqual(await inRequest('', () => submitBusinessReviewAction({ ok: false }, submission)), { ok: false, error: 'unauthorized' });
     assert.deepEqual(await inRequest(clientCookie(attackerUserId), () => submitBusinessReviewAction({ ok: false }, submission)), { ok: false, error: 'ineligible' });
     const submitted = await inRequest(clientCookie(buyer.id), () => submitBusinessReviewAction({ ok: false }, submission));

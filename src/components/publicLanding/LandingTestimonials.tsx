@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import Link from 'next/link';
+import ReviewSubmissionDialog from '@/components/reviews/ReviewSubmissionDialog';
 import ReviewCard, { type ReviewCardContent } from '@/components/reviews/ReviewCard';
 import type { PublicBusinessReview } from '@/lib/businessReviews';
 import {
@@ -44,9 +44,7 @@ export default function LandingTestimonials({
           {visible.length || submitHref ? title : googleLabel ?? title}
         </h2>
         {submitHref ? (
-          <Link href={submitHref} className="inline-flex min-h-11 items-center rounded-lg border border-[color:var(--c-border,#e2e8f0)] px-3 text-xs font-semibold text-[color:var(--biz-text,#334155)]">
-            {t.reviews.write}
-          </Link>
+          <ReviewSubmissionDialog href={submitHref} />
         ) : null}
         {googleReviewsUrl && googleCta ? (
           <a

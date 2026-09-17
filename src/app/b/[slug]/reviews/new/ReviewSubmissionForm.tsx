@@ -19,10 +19,12 @@ export default function ReviewSubmissionForm({
   slug,
   name,
   appointments,
+  onClose,
 }: {
   slug: string;
   name: string;
   appointments: { id: string; label: string }[];
+  onClose?: () => void;
 }) {
   const [state, action, pending] = useActionState(submitBusinessReviewAction, initial);
   const [rating, setRating] = useState(0);
@@ -40,12 +42,12 @@ export default function ReviewSubmissionForm({
       >
         <h2 className="text-lg font-bold">{labels.successTitle}</h2>
         <p>{labels.pendingSuccess}</p>
-        <Link
+        {onClose ? <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center font-semibold underline">{labels.back}</button> : <Link
           href={`/b/${encodeURIComponent(slug)}#reviews`}
           className="inline-flex min-h-11 items-center font-semibold underline"
         >
           {labels.back}
-        </Link>
+        </Link>}
       </section>
     );
   }

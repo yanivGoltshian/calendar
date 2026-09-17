@@ -129,6 +129,9 @@ test('published business edits disclose and safely render the retained original'
 test('empty review submission state does not claim a Google profile or invent reviews', () => {
   const html = render({ submitHref: '/b/synthetic/reviews/new' });
   assert.match(html, /\/b\/synthetic\/reviews\/new/);
+  assert.match(html, /data-review-dialog-trigger/);
+  assert.match(html, /aria-haspopup="dialog"/);
+  assert.doesNotMatch(html, /<dialog|appointmentId|authorUserId/);
   assert.ok(html.includes(t.reviews.emptyPublic));
   assert.doesNotMatch(html, /<figure\b|No reviews are stored on this site/);
 });
