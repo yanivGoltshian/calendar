@@ -1554,7 +1554,7 @@ const he = {
               'כך ייראה ראש העמוד שלכם ללקוחות. מלאו את השדות למטה והתצוגה תתעדכן.',
             previewVideoBadge: 'סרטון פעיל',
             uploadVideo: 'העלאת סרטון מהמכשיר',
-            uploadingVideo: 'מעלה…',
+            uploadingVideo: 'מכין את הסרטון…',
             videoTooLarge: 'הקובץ גדול מדי. אפשר עד 30MB.',
             videoBadType: 'אפשר להעלות רק קובץ וידאו בפורמט mp4, webm או mov.',
           },

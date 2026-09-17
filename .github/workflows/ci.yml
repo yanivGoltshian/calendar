@@ -28,6 +28,55 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y postgresql-16
           npx playwright install --with-deps chromium
+      - name: Qualify synthetic hero encoding in the existing production resource envelope
+        run: |
+          mkdir -p .test-runtime/video-qualification
+          docker build -t hero-video-qualification - <<'DOCKERFILE'
+          FROM node:22-alpine
+          RUN apk add --no-cache openssl ffmpeg util-linux && command -v prlimit
+          WORKDIR /workspace
+          DOCKERFILE
+          docker run --rm -v "$PWD:/workspace" hero-video-qualification node --import tsx scripts/qualify-hero-video.ts --generate
+          docker run --rm --cpus=0.25 --memory=512m --memory-swap=512m -v "$PWD:/workspace" hero-video-qualification node --import tsx scripts/qualify-hero-video.ts
+      - name: Reuse the qualified Alpine video toolchain throughout the full gate
+        run: |
+          set -euo pipefail
+          toolchain="$PWD/.test-runtime/hero-video-toolchain"
+          provenance="$PWD/.test-runtime/video-toolchain-provenance.log"
+          mkdir -p "$toolchain/root/usr/bin" "$toolchain/bin"
+          image_id=$(docker image inspect hero-video-qualification --format '{{.Id}}')
+          printf 'qualification_image=%s\n' "$image_id" | tee "$provenance"
+          container_id=$(docker create "$image_id")
+          trap 'docker rm "$container_id" > /dev/null' EXIT
+          docker cp "$container_id:/lib" "$toolchain/root/lib"
+          docker cp "$container_id:/usr/lib" "$toolchain/root/usr/lib"
+          pulse_library="$toolchain/root/usr/lib/pulseaudio/libpulsecommon-17.0.so"
+          if [ ! -f "$pulse_library" ]; then
+            printf 'Missing copied package dependency: %s\n' "$pulse_library" | tee -a "$provenance" >&2
+            exit 1
+          fi
+          sha256sum "$pulse_library" >> "$provenance"
+          for binary in ffmpeg ffprobe; do
+            docker cp "$container_id:/usr/bin/$binary" "$toolchain/root/usr/bin/$binary"
+            cat > "$toolchain/bin/$binary" <<'WRAPPER'
+          #!/bin/sh
+          set -eu
+          toolchain=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+          exec "$toolchain/root/lib/ld-musl-x86_64.so.1" \
+            --library-path "$toolchain/root/lib:$toolchain/root/usr/lib:$toolchain/root/usr/lib/pulseaudio" \
+            "$toolchain/root/usr/bin/${0##*/}" "$@"
+          WRAPPER
+            chmod +x "$toolchain/bin/$binary"
+          done
+          sha256sum "$toolchain/root/usr/bin/ffmpeg" "$toolchain/root/usr/bin/ffprobe" \
+            "$toolchain/root/lib/ld-musl-x86_64.so.1" >> "$provenance"
+          export PATH="$toolchain/bin:$PATH"
+          for binary in ffmpeg ffprobe; do
+            printf 'effective_%s=%s\n' "$binary" "$(command -v "$binary")" >> "$provenance"
+            prlimit --as=335544320 --cpu=75 -- "$binary" -version >> "$provenance" 2>&1
+          done
+          cat "$provenance"
+          printf '%s\n' "$toolchain/bin" >> "$GITHUB_PATH"
       - name: Clean migrations, upgrade history, units, types, lint, build, DB handlers and browser flows
         env:
           TEST_PG_BIN: /usr/lib/postgresql/16/bin
@@ -45,5 +94,7 @@ jobs:
             .test-runtime/**/success.json
             .test-runtime/**/provisioning-upgrade.json
             .test-runtime/**/*-coverage.json
+            .test-runtime/video-qualification/qualification.json
+            .test-runtime/video-toolchain-provenance.log
             playwright-report/
             test-results/

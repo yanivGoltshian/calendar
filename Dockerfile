@@ -53,7 +53,9 @@ RUN npm run build
 
 # ---------- שלב 3: ריצה (runner) ----------
 FROM node:22-alpine AS runner
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl ffmpeg util-linux \
+  && ffmpeg -hide_banner -filters 2>/dev/null | grep -q zscale \
+  && command -v prlimit
 WORKDIR /app
 
 ENV NODE_ENV=production

@@ -705,6 +705,8 @@ export default function OnboardingWizard({
 
   // העלאת סרטון ראש-העמוד מהמכשיר (בנוסף לקישור יוטיוב/וימאו).
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadReady, setUploadReady] = useState(false);
+  useEffect(() => { setUploadReady(true); }, []);
   const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
   const heroVideoInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -819,7 +821,7 @@ export default function OnboardingWizard({
     // ובהצלחה שמירת כתובת ה-blob הציבורית כ-heroVideoUrl.
     const MAX_HERO_VIDEO_BYTES = 30 * 1024 * 1024;
     const handleHeroVideoFile = async (file: File | null | undefined) => {
-      if (!file) return;
+      if (!file || uploadingVideo) return;
       setVideoUploadError(null);
       // מאשרים כל פורמט וידאו מותר (כולל mov של אייפון), דרך מקור אמת אחד.
       const mediaMeta = ALLOWED_MEDIA[file.type];
@@ -1257,7 +1259,7 @@ export default function OnboardingWizard({
         <PwSprite />
 
         <div className="pw-phone-wrap">
-          <form action={premiumFormAction} className="pw-phone">
+          <form action={premiumFormAction} className="pw-phone" data-upload-ready={uploadReady}>
             {/* ── appbar ── */}
             <div className="pw-appbar">
               <button
@@ -1486,6 +1488,7 @@ export default function OnboardingWizard({
                           <input
                             ref={heroVideoInputRef}
                             type="file"
+                            disabled={busy}
                             accept="video/mp4,video/webm,video/quicktime,.mov"
                             className="pw-hidden-file"
                             onChange={(e) => {
@@ -1498,14 +1501,14 @@ export default function OnboardingWizard({
                             type="button"
                             className="pw-drop"
                             onClick={() => heroVideoInputRef.current?.click()}
-                            disabled={uploadingVideo}
+                            disabled={busy}
                           >
                             <span className="pw-drop-ic" aria-hidden>
                               <svg>
                                 <use href="#i-video" />
                               </svg>
                             </span>
-                            <span className="pw-drop-t">
+                            <span className="pw-drop-t" role={uploadingVideo ? 'status' : undefined}>
                               {uploadingVideo ? p.steps.hero.uploadingVideo : wz.about.dropVideoTitle}
                             </span>
                             <span className="pw-drop-s">{wz.about.dropVideoSub}</span>
