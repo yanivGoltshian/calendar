@@ -84,6 +84,16 @@ test('existing map source, email, website and working hours remain available', (
   assert.equal($('iframe').attr('loading'), 'lazy');
 });
 
+test('contact addition preserves the original map wrapper for every phone configuration', () => {
+  for (const overrides of [{}, { phone: null }, { whatsapp: null }]) {
+    const $ = render(overrides);
+    const frame = $('iframe').parent();
+    assert.equal(frame.attr('class'), 'relative overflow-hidden rounded-[22px] border border-white/15 shadow-elevated');
+    assert.equal(frame.attr('style'), 'aspect-ratio:4 / 3');
+    assert.equal(frame.parent().attr('class'), 'order-1 lg:order-2');
+  }
+});
+
 test('standard and address-free fallback layouts keep a single existing call control', () => {
   for (const overrides of [{ mapsCta: undefined, wazeCta: undefined }, { address: null }]) {
     const $ = render(overrides);

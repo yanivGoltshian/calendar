@@ -236,7 +236,8 @@ export default function LandingLocation({
           {/* כרטיס מפה מוטמע — יחס-גובה קבוע מונע קפיצת פריסה */}
           <div className="order-1 lg:order-2">
             <div
-              className="relative aspect-[1.7] overflow-hidden rounded-[22px] border border-white/15 shadow-elevated lg:aspect-[4/3]"
+              className="relative overflow-hidden rounded-[22px] border border-white/15 shadow-elevated"
+              style={{ aspectRatio: '4 / 3' }}
             >
               <iframe
                 src={embedUrl}
