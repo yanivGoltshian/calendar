@@ -224,6 +224,7 @@ model Business {
   // תוכן עמוד הנחיתה (אופציונלי): { heroHeadline?, heroSubtext?, benefits?:[{title,text}],
   // galleryImageUrls?:string[], testimonials?:[{name,quote}] }. nullable ולכן בטוח לפרודקשן.
   landingContent  Json?
+  serviceCategories Json?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 

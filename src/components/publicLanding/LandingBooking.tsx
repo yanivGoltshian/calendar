@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeftIcon } from './icons';
 import { useBusinessDate } from './useBusinessDate';
+import ServiceCategoryTabs, { EmptyServiceCategory } from '@/components/ServiceCategoryTabs';
+import { filterCategoryServices, type ServiceCategory } from '@/lib/serviceCategories';
 
 export type BookingLabels = {
   title: string;
@@ -43,6 +45,7 @@ type Props = {
   timeZone?: string;
   slug: string;
   services: { id: string; name: string }[];
+  categories?: ServiceCategory[];
   staff?: StaffMember[];
   bookHref: string;
   labels: BookingLabels;
@@ -58,7 +61,7 @@ function ymd(y: number, m: number, d: number) {
 
 // ווידג'ט קביעת תור אינטראקטיבי: לוח חודש אמיתי + שעות פנויות אמיתיות מ-/api/availability.
 // הבחירה נישאת לאשף המאובטח דרך פרמטרים בקישור, תוך שמירה על העיצוב היוקרתי כפי שהוא.
-export default function LandingBooking({ slug, services, staff, bookHref, labels, timeZone = 'Asia/Jerusalem' }: Props) {
+export default function LandingBooking({ slug, services, categories = [], staff, bookHref, labels, timeZone = 'Asia/Jerusalem' }: Props) {
   const staffList = staff ?? [];
   const staffChips: StaffMember[] = staffList.length > 1
     ? [{ id: '', displayName: labels.staffAny }, ...staffList]
@@ -67,6 +70,8 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
   const todayStr = useBusinessDate(timeZone);
 
   const [serviceId, setServiceId] = useState(services[0]?.id ?? '');
+  const [categoryId, setCategoryId] = useState('all');
+  const visibleServices = filterCategoryServices(services, categories, categoryId);
   const [selectedStaffId, setSelectedStaffId] = useState(''); // '' = כל הצוות
   const effectiveStaffId = staffList.length === 1 ? staffList[0].id : selectedStaffId;
   const [date, setDate] = useState('');
@@ -77,6 +82,33 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
   const [retry, setRetry] = useState(0);
   const [blocked, setBlocked] = useState(false);
   const [time, setTime] = useState('');
+
+  useEffect(() => {
+    if (categoryId !== 'all' && categoryId !== 'uncategorized' &&
+      !categories.some(category => category.id === categoryId)) {
+      setCategoryId('all');
+    }
+    if (categories.length > 0 && serviceId &&
+      !filterCategoryServices(services, categories, categoryId).some(service => service.id === serviceId)) {
+      setServiceId('');
+      setTime('');
+      setSlots([]);
+      setSlotsError(null);
+      setBlocked(false);
+    }
+  }, [categories, services, categoryId, serviceId]);
+
+  function selectCategory(id: string) {
+    setCategoryId(id);
+    if (!filterCategoryServices(services, categories, id).some(service => service.id === serviceId)) {
+      setServiceId('');
+      setTime('');
+      setSlots([]);
+      setSlotsLoading(false);
+      setSlotsError(null);
+      setBlocked(false);
+    }
+  }
 
   useEffect(() => {
     if (!todayStr) return;
@@ -95,6 +127,7 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
   useEffect(() => {
     if (!serviceId || !queryStaffId || !todayStr || !date || date < todayStr) {
       setSlots([]);
+      setSlotsLoading(false);
       return;
     }
     let cancelled = false;
@@ -220,9 +253,15 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
         <div className="mt-[18px] grid grid-cols-1 gap-[18px] min-[821px]:grid-cols-[1.1fr_1fr_1fr]">
           {/* טיפול + צוות */}
           <div className="min-w-0">
+            <ServiceCategoryTabs
+              categories={categories}
+              services={services}
+              selected={categoryId}
+              onSelect={selectCategory}
+            />
             <p className="mb-2 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.treatmentLabel}</p>
             <div className="flex flex-wrap gap-2">
-              {services.map((s) => (
+              {visibleServices.map((s) => (
                 <button
                   key={s.id}
                   type="button"
@@ -238,6 +277,9 @@ export default function LandingBooking({ slug, services, staff, bookHref, labels
                 </button>
               ))}
             </div>
+            {visibleServices.length === 0 && categories.length > 0 ? (
+              <EmptyServiceCategory onReset={() => selectCategory('all')} />
+            ) : null}
 
             <p className="mb-2 mt-4 text-[0.82rem] font-extrabold text-[color:var(--c-muted,#6e655f)]">{labels.staffLabel}</p>
             <div className="flex flex-wrap gap-2">

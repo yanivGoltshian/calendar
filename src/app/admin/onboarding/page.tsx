@@ -10,6 +10,7 @@ import { getServiceTemplate } from '@/server/onboarding/serviceTemplates';
 import { businessShareUrl } from '@/lib/booking-link';
 import { bookingQrSvg } from '@/lib/qr-svg';
 import { normalizeStoredLandingContent } from '@/lib/publicPageStyle';
+import { readServiceCategories } from '@/lib/serviceCategories';
 import { resolveOnboardingEntry } from './premium';
 import OnboardingWizard, { type WizardService } from './OnboardingWizard';
 
@@ -105,6 +106,7 @@ export default async function AdminOnboardingPage({ searchParams }: Props) {
         brandColor={business.brandColor ?? ''}
         logoUrl={business.logoUrl ?? ''}
         services={wizardServices}
+        serviceCategories={readServiceCategories(business.serviceCategories)}
         serviceExample={serviceExample}
         bookingUrl={link}
         bookingBookUrl={bookLink}

@@ -6,6 +6,8 @@ import { getActiveBusiness } from '@/server/repos/business';
 import { listServicesWithUsage } from '@/server/repos/services';
 import { listStaff } from '@/server/repos/staff';
 import { toAdminServiceSnapshot } from '@/lib/adminServiceSnapshot';
+import { readServiceCategories } from '@/lib/serviceCategories';
+import ServiceCategoriesManager from './ServiceCategoriesManager';
 import ServiceForm from './ServiceForm';
 import ServiceCard from './ServiceCard';
 import { loadServiceTemplatesAction } from './actions';
@@ -88,6 +90,10 @@ export default async function AdminServicesPage({ searchParams }: Props) {
       ) : null}
 
       <ServiceForm staffOptions={staffOptions} />
+      <ServiceCategoriesManager
+        initial={readServiceCategories(business.serviceCategories)}
+        services={services.map(service => ({ id: service.id, name: service.name }))}
+      />
     </main>
   );
 }

@@ -43,6 +43,8 @@ import {
 } from '@/lib/publicPageStyle';
 import { ALLOWED_MEDIA } from '@/app/api/upload/media/validate';
 import DecorativeHeroMedia from '@/components/publicLanding/DecorativeHeroMedia';
+import ServiceCategoriesManager from '../services/ServiceCategoriesManager';
+import { readServiceCategories, type ServiceCategories } from '@/lib/serviceCategories';
 
 /** תת-קבוצה סריאליזבילית של שירות, לרינדור שורות ההחלפה בצעד השירותים. */
 export type WizardService = {
@@ -66,6 +68,7 @@ type Props = {
   brandColor: string;
   logoUrl: string;
   services: WizardService[];
+  serviceCategories?: ServiceCategories;
   serviceExample: string;
   bookingUrl: string;
   bookingBookUrl: string;
@@ -95,6 +98,7 @@ const initialSaveState: SaveState = { ok: false };
 function errorText(state: SaveState): string | null {
   if (!state.error) return null;
   if (state.error === 'no_business') return t.admin.onboarding.errorNoBusiness;
+  if (state.error === 'invalid_category') return t.serviceCategories.invalidService;
   if (state.error === 'google_reviews_url') {
     return t.admin.settings.pageStyle.googleReviewsError;
   }
@@ -607,6 +611,7 @@ export default function OnboardingWizard({
   brandColor,
   logoUrl,
   services,
+  serviceCategories,
   serviceExample,
   bookingUrl,
   bookingBookUrl,
@@ -686,8 +691,12 @@ export default function OnboardingWizard({
   const [draftName, setDraftName] = useState('');
   const [draftDuration, setDraftDuration] = useState('30');
   const [draftPrice, setDraftPrice] = useState('');
+  const [draftCategoryId, setDraftCategoryId] = useState('');
+  const [savedCategories, setSavedCategories] = useState(serviceCategories ?? readServiceCategories(null));
+  const categoryConfig = serviceCategories && serviceCategories.revision > savedCategories.revision
+    ? serviceCategories : savedCategories;
   const [newServices, setNewServices] = useState<
-    { name: string; durationMin: number; priceAgorot: number }[]
+    { name: string; durationMin: number; priceAgorot: number; categoryId?: string }[]
   >([]);
 
   // מצב מקומי לצעד המיתוג: צבע חי לתצוגה המקדימה + בחירת תבנית שעות.
@@ -764,15 +773,26 @@ export default function OnboardingWizard({
         name,
         durationMin: Number.isFinite(parsedDuration) && parsedDuration > 0 ? parsedDuration : 30,
         priceAgorot: shekelToAgorot(draftPrice),
+        categoryId: categoryConfig.enabled ? draftCategoryId : undefined,
       },
     ]);
     setDraftName('');
     setDraftDuration('30');
     setDraftPrice('');
+    setDraftCategoryId('');
   }
 
   function removeNewService(idx: number) {
     setNewServices((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function categoriesSaved(config: ServiceCategories) {
+    setSavedCategories(config);
+    const available = new Set(config.enabled ? config.categories.map(category => category.id) : []);
+    setDraftCategoryId(id => available.has(id) ? id : '');
+    setNewServices(previous => previous.map(service => ({
+      ...service, categoryId: service.categoryId && available.has(service.categoryId) ? service.categoryId : undefined,
+    })));
   }
 
   function updateCustomDay(
@@ -1976,6 +1996,22 @@ export default function OnboardingWizard({
                           ? `₪${(svc.priceAgorot / 100).toLocaleString('he-IL')}`
                           : o.services.free}
                       </span>
+                      {categoryConfig.enabled && categoryConfig.categories.length > 0 ? (
+                        <label className="mt-2 block text-xs text-[#6e655f]">
+                          {t.serviceCategories.category}
+                          <select
+                            value={svc.categoryId ?? ''}
+                            className="ms-2 max-w-full rounded-lg border border-[#d6c8b4] bg-white p-1"
+                            onChange={event => setNewServices(previous => previous.map((item, index) => index === idx
+                              ? { ...item, categoryId: event.target.value } : item))}
+                          >
+                            <option value="">{t.serviceCategories.uncategorized}</option>
+                            {categoryConfig.categories.map(category => (
+                              <option key={category.id} value={category.id}>{category.name}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
                     </span>
                     <button
                       type="button"
@@ -1990,7 +2026,9 @@ export default function OnboardingWizard({
             ) : null}
 
             {/* רשימת השירותים החדשים נשלחת לשרת כ-JSON */}
-            <input type="hidden" name="newServices" value={JSON.stringify(newServices)} />
+            <input type="hidden" name="newServices" value={JSON.stringify(newServices.map(service => ({
+              ...service, categoryId: categoryConfig.enabled ? service.categoryId : undefined,
+            })))} />
 
             {addingService ? (
               <div className="space-y-3 rounded-2xl border border-dashed border-[#d6c8b4] bg-[#f7f2ea] p-4">
@@ -2040,6 +2078,22 @@ export default function OnboardingWizard({
                     />
                   </div>
                 </div>
+                {categoryConfig.enabled && categoryConfig.categories.length > 0 ? (
+                  <label className="block text-sm font-medium text-[#4a4038]">
+                    {t.serviceCategories.category}
+                    <select
+                      name="newCategoryId"
+                      value={draftCategoryId}
+                      onChange={event => setDraftCategoryId(event.target.value)}
+                      className="mt-1 w-full rounded-xl border border-[#d6c8b4] bg-white px-3 py-2.5 text-sm"
+                    >
+                      <option value="">{t.serviceCategories.uncategorized}</option>
+                      {categoryConfig.categories.map(category => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -2056,6 +2110,7 @@ export default function OnboardingWizard({
                       setDraftName('');
                       setDraftDuration('30');
                       setDraftPrice('');
+                      setDraftCategoryId('');
                     }}
                     className="text-sm font-medium text-[#8f8478] hover:text-[#4a4038]"
                   >
@@ -2094,6 +2149,15 @@ export default function OnboardingWizard({
               </button>
             </div>
           </form>
+        ) : null}
+
+        {step === 0 ? (
+          <ServiceCategoriesManager
+            initial={serviceCategories ?? readServiceCategories(null)}
+            services={services}
+            onboarding
+            onSaved={categoriesSaved}
+          />
         ) : null}
 
         {/* ── צעד שעות פעילות ─────────────────────────── */}
