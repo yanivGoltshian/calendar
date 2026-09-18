@@ -5,9 +5,9 @@ export type SettingsBusinessView = Pick<
   | 'name'
   | 'type'
   | 'phone'
+  | 'ownerPhoneIdentity'
   | 'address'
   | 'description'
-  | 'instagramUrl'
   | 'logoUrl'
   | 'coverImageUrl'
   | 'brandColor'
@@ -15,6 +15,8 @@ export type SettingsBusinessView = Pick<
   | 'publicPageStyle'
   | 'landingContent'
 >;
+
+export type SettingsClientBusinessView = Omit<SettingsBusinessView, 'ownerPhoneIdentity'>;
 
 export type SettingsValuesView = Pick<
   BusinessSettings,
@@ -36,15 +38,14 @@ export type SettingsValuesView = Pick<
 export function settingsClientView(
   business: SettingsBusinessView,
   settings: SettingsValuesView,
-): { business: SettingsBusinessView; settings: SettingsValuesView } {
+): { business: SettingsClientBusinessView; settings: SettingsValuesView } {
   return {
     business: {
       name: business.name,
       type: business.type,
-      phone: business.phone,
+      phone: business.phone ?? business.ownerPhoneIdentity,
       address: business.address,
       description: business.description,
-      instagramUrl: business.instagramUrl,
       logoUrl: business.logoUrl,
       coverImageUrl: business.coverImageUrl,
       brandColor: business.brandColor,

@@ -16,6 +16,7 @@ import { setImpersonationCookie } from '@/server/impersonation';
 import { parseProvisionInput } from './provisionInput';
 import { t } from '@/i18n';
 import { normalizeEmail } from '@/lib/crypto';
+import { cleanupUnusedBusinessMedia } from '@/server/media/storage';
 
 /**
  * פעולות שרת לקונסולת ניהול-העל. כל פעולה בודקת מחדש את שער האדמין בצד השרת
@@ -250,6 +251,34 @@ export async function editBusinessDetailsAction(formData: FormData): Promise<voi
   revalidatePath('/businesses');
   revalidatePath('/sitemap.xml');
   revalidatePath('/');
+}
+
+/** שחרור נעילת זהות טלפון: מאפשר לסופר־אדמין להעביר בעלות בלי שהזהות הישנה תמשיך להחזיק את העסק. */
+export async function clearOwnerPhoneIdentityAction(formData: FormData): Promise<void> {
+  await assertPlatformAdmin();
+  const businessId = readBusinessId(formData);
+  const business = await prisma.business.update({
+    where: { id: businessId },
+    data: { ownerPhoneIdentity: null, provisionedBy: null },
+    select: { slug: true },
+  });
+  revalidatePath('/superadmin');
+  revalidatePath(`/b/${business.slug}`);
+}
+
+/** ניקוי מדיה יתומה של עסק יחיד: מוחק רק אובייקטים באחסון שאינם מופיעים יותר בתוכן העסק. */
+export async function cleanupUnusedMediaAction(formData: FormData): Promise<void> {
+  await assertPlatformAdmin();
+  const businessId = readBusinessId(formData);
+  const confirmSlug = String(formData.get('confirmSlug') ?? '');
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { slug: true },
+  });
+  if (!business) notFound();
+  if (!isSlugConfirmed(confirmSlug, business.slug)) return;
+  await cleanupUnusedBusinessMedia(businessId);
+  revalidatePath('/superadmin');
 }
 
 /**

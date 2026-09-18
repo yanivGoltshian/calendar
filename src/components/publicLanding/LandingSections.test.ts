@@ -34,7 +34,7 @@ test('stored public data reaches the section adapter with real ratings, source a
   assert.equal((html.match(/<figure\b/g) ?? []).length, 2);
   assert.equal((html.match(/★/g) ?? []).length, 8);
   assert.equal(html.split(t.publicPage.landing.googleReviewSource).length - 1, 1);
-  assert.match(html, /href="https:\/\/g\.page\/r\/synthetic\/review"/);
+  assert.doesNotMatch(html, /href="https:\/\/g\.page\/r\/synthetic\/review"/);
   assert.doesNotMatch(html, /Hidden review|Hidden author/);
   assert.equal(content?.testimonials?.length, 3);
   assert.equal(content?.testimonials?.[1].hidden, true);

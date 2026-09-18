@@ -11,7 +11,7 @@ Object.assign(globalThis, { React });
 const props: React.ComponentProps<typeof SettingsForm> = {
   business: {
     name: 'Synthetic studio', type: 'OTHER', phone: '030000000', address: 'Synthetic address',
-    description: null, instagramUrl: null, logoUrl: null, coverImageUrl: null,
+    description: null, logoUrl: null, coverImageUrl: null,
     brandColor: null, timezone: 'Asia/Jerusalem', publicPageStyle: 'BOOKING', landingContent: null,
   },
   settings: {
@@ -45,4 +45,11 @@ test('initial settings never claims acknowledged success or hides manual instruc
   const status = $('form button[type="submit"]').parent().find('[role="status"]');
   assert.equal(status.text(), t.admin.settings.manualSaveHint);
   assert.equal(status.parents('.invisible, [hidden]').length, 0);
+});
+
+test('profile settings show the business phone but not the misplaced Instagram field', () => {
+  const $ = load(renderToStaticMarkup(React.createElement(SettingsForm, props)));
+  assert.equal($('input[name="phone"]').attr('value'), '030000000');
+  assert.equal($('input[name="instagramUrl"]').length, 0);
+  assert.ok(!$.text().includes(t.admin.settings.profile.instagramLabel));
 });

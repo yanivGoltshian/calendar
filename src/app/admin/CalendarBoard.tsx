@@ -269,19 +269,7 @@ export default function CalendarBoard({
         ) : null}
       </div>
 
-      {hasServices ? (
-        <div className="legend">
-          {services.map((s) => {
-            const color = serviceColor(s.colorIndex);
-            return (
-              <span key={s.id} className="lg">
-                <i style={{ backgroundColor: color.border }} />
-                {s.name}
-              </span>
-            );
-          })}
-        </div>
-      ) : (
+      {hasServices ? null : (
         <p className="cal-notice">
           {cal.noServices}{' '}
           <Link href="/admin/services">{cal.noServicesCta}</Link>
@@ -411,7 +399,22 @@ export default function CalendarBoard({
           </div>
 
           <div className="cal-foot">
-            <span className="hintx">{cal.dragHint}</span>
+            <div className="cal-guidance">
+              <span className="hintx">{cal.dragHint}</span>
+              {hasServices ? (
+                <div className="legend">
+                  {services.map((s) => {
+                    const color = serviceColor(s.colorIndex);
+                    return (
+                      <span key={s.id} className="lg">
+                        <i style={{ backgroundColor: color.border }} />
+                        {s.name}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
             <button
               type="button"
               className="newbtn"

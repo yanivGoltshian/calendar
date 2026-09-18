@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { prisma } from '../src/lib/db';
-import { storeBusinessMedia, type MediaStorage } from '../src/server/media/storage';
+import {
+  cleanupUnusedBusinessMedia,
+  storeBusinessMedia,
+  type MediaStorage,
+} from '../src/server/media/storage';
 import { createUploadHandler } from '../src/server/media/uploadHandler';
 import { MediaError } from '../src/server/media/uploadPolicy';
 import { bookingFixture, cleanupFixture, requireIsolatedDatabase } from './fixtures';
@@ -10,26 +14,34 @@ requireIsolatedDatabase();
 
 function syntheticStorage() {
   const objects = new Map<string, Buffer>();
+  const lastModified = new Map<string, Date>();
   let failAfterWrite = false;
   const storage: MediaStorage = {
     getBlockBlobClient: (key) => ({
       url: `https://storage.example.invalid/${key}`,
       exists: async () => objects.has(key),
+      deleteIfExists: async () => {
+        objects.delete(key);
+      },
       uploadData: async (data) => {
         await new Promise((resolve) => setTimeout(resolve, 20));
         assert.equal(objects.has(key), false);
         objects.set(key, data);
+        lastModified.set(key, new Date());
         if (failAfterWrite) throw new Error('synthetic_storage_outcome_unknown');
       },
     }),
     async *listBlobsFlat({ prefix }) {
       for (const [key, value] of objects) {
-        if (key.startsWith(prefix)) yield { properties: { contentLength: value.length } };
+        if (key.startsWith(prefix)) {
+          yield { name: key, properties: { contentLength: value.length, lastModified: lastModified.get(key) } };
+        }
       }
     },
   };
   return {
     objects,
+    lastModified,
     storage,
     failNextWrite: () => {
       failAfterWrite = true;
@@ -55,6 +67,17 @@ test('real business row locks serialize storage quotas across concurrent writers
         Buffer.from('old'),
       );
     }
+    await prisma.business.update({
+      where: { id: f.business.id },
+      data: {
+        landingContent: {
+          heroImages: Array.from(
+            { length: 29 },
+            (_, index) => `https://storage.example.invalid/media/${f.business.id}/legacy-${index}.webp`,
+          ),
+        },
+      },
+    });
     const input = [Buffer.from('first'), Buffer.from('second')];
     const results = await Promise.allSettled(
       input.map((value) =>
@@ -89,6 +112,75 @@ test('real business row locks serialize storage quotas across concurrent writers
     );
     assert.equal(replay, winnerResult.value);
     assert.equal(store.objects.size, 30);
+  } finally {
+    await cleanupFixture(f);
+  }
+});
+
+test('unreferenced old media no longer blocks a replacement upload after removal from published content', async () => {
+  const f = await bookingFixture();
+  const store = syntheticStorage();
+  try {
+    await prisma.business.update({
+      where: { id: f.business.id },
+      data: {
+        plan: 'basic',
+        subscriptionStatus: 'trialing',
+        trialEndsAt: new Date(Date.now() + 86_400_000),
+        landingContent: { heroVideoUrl: null, heroImages: [] },
+      },
+    });
+    for (let index = 0; index < 30; index++) {
+      const key = `media/${f.business.id}/removed-${index}.mp4`;
+      store.objects.set(
+        key,
+        Buffer.from('old-video'),
+      );
+      store.lastModified.set(key, new Date(Date.now() - 25 * 60 * 60 * 1000));
+    }
+
+    const uploaded = await storeBusinessMedia(
+      f.business.id,
+      f.business.ownerEmail!,
+      Buffer.from('new-video'),
+      'video/mp4',
+      'mp4',
+      store.storage,
+    );
+
+    assert.match(uploaded, /\/media\//);
+    assert.equal(store.objects.size, 31);
+  } finally {
+    await cleanupFixture(f);
+  }
+});
+
+test('unused business media cleanup deletes only blobs missing from published content', async () => {
+  const f = await bookingFixture();
+  const store = syntheticStorage();
+  try {
+    const active = `media/${f.business.id}/active.webp`;
+    const removed = `media/${f.business.id}/removed.mp4`;
+    const otherBusiness = 'media/other-business/removed.mp4';
+    store.objects.set(active, Buffer.from('active'));
+    store.objects.set(removed, Buffer.from('removed'));
+    store.objects.set(otherBusiness, Buffer.from('other'));
+    await prisma.business.update({
+      where: { id: f.business.id },
+      data: { landingContent: { heroImages: [`https://storage.example.invalid/${active}`] } },
+    });
+
+    const result = await cleanupUnusedBusinessMedia(f.business.id, store.storage);
+
+    assert.deepEqual(result, {
+      usedBytes: 6,
+      usedObjects: 1,
+      unusedBytes: 7,
+      unusedObjects: 1,
+    });
+    assert.equal(store.objects.has(active), true);
+    assert.equal(store.objects.has(removed), false);
+    assert.equal(store.objects.has(otherBusiness), true);
   } finally {
     await cleanupFixture(f);
   }

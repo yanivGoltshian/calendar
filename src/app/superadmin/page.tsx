@@ -11,6 +11,8 @@ import {
   upgradeExclusiveAction,
   revertToBasicAction,
   editBusinessDetailsAction,
+  clearOwnerPhoneIdentityAction,
+  cleanupUnusedMediaAction,
 } from './actions';
 import PublicSiteLink from './PublicSiteLink';
 import { DeleteBusinessForm } from './DeleteBusinessForm';
@@ -550,6 +552,47 @@ export default async function SuperadminPage() {
                           style={{ backgroundColor: NAVY_GLOW, color: GOLD_LIGHT }}
                         >
                           {s.edit.submit}
+                        </button>
+                      </form>
+                      {b.ownerPhoneIdentity ? (
+                        <form action={clearOwnerPhoneIdentityAction} className="pt-2">
+                          <input type="hidden" name="businessId" value={b.id} />
+                          <button
+                            type="submit"
+                            className="min-h-[44px] w-full rounded-lg border px-3 py-2 text-xs font-semibold"
+                            style={{ borderColor: '#7A4B4B', color: '#F0B5B5' }}
+                          >
+                            {s.edit.clearOwnerLock}
+                          </button>
+                        </form>
+                      ) : null}
+                    </Section>
+
+                    <Section title={s.media.title}>
+                      <form action={cleanupUnusedMediaAction} className="flex flex-col gap-2 pt-2">
+                        <input type="hidden" name="businessId" value={b.id} />
+                        <p className="text-xs leading-relaxed" style={{ color: TEXT_MUTED }}>
+                          {s.media.help}
+                        </p>
+                        <label>
+                          <span className="mb-1 block text-xs" style={{ color: TEXT_MUTED }}>
+                            {s.media.confirmLabel}
+                          </span>
+                          <input
+                            type="text"
+                            name="confirmSlug"
+                            placeholder={b.slug}
+                            className={inputClass}
+                            style={inputStyle}
+                            dir="ltr"
+                          />
+                        </label>
+                        <button
+                          type="submit"
+                          className="min-h-[44px] rounded-lg border px-3 py-2 text-xs font-semibold"
+                          style={{ borderColor: '#7A4B4B', color: '#F0B5B5' }}
+                        >
+                          {s.media.cleanup}
                         </button>
                       </form>
                     </Section>

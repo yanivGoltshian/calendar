@@ -25,10 +25,7 @@ type Props = {
 export default function LandingTestimonials({
   title,
   items,
-  googleReviewsUrl,
   googleLabel,
-  googleCta,
-  googleEmptyText,
   platformReviews = [],
   submitHref,
   reviewSubmitAction,
@@ -40,7 +37,7 @@ export default function LandingTestimonials({
     })),
     ...platformReviews.map(review => ({ ...review, source: 'torchick' as const })),
   ];
-  if (visible.length === 0 && !googleReviewsUrl && !submitHref) return null;
+  if (visible.length === 0 && !submitHref) return null;
 
   return (
     <section id="reviews" className="mx-auto mt-12 max-w-4xl sm:mt-16">
@@ -51,23 +48,8 @@ export default function LandingTestimonials({
         {submitHref ? (
           <ReviewSubmissionDialog href={submitHref} action={reviewSubmitAction} />
         ) : null}
-        {googleReviewsUrl && googleCta ? (
-          <a
-            href={googleReviewsUrl}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            className="inline-flex min-h-11 items-center rounded-sm text-xs font-semibold text-[color:var(--biz-text,#334155)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 sm:text-sm"
-          >
-            {googleCta}
-          </a>
-        ) : null}
       </div>
-      {visible.length === 0 && googleReviewsUrl && googleEmptyText ? (
-        <p className="text-sm leading-relaxed text-[color:var(--c-muted,#665d57)]">
-          {googleEmptyText}
-        </p>
-      ) : null}
-      {visible.length === 0 && submitHref && !googleReviewsUrl ? (
+      {visible.length === 0 && submitHref ? (
         <p className="text-sm text-[color:var(--c-muted,#665d57)]">{t.reviews.emptyPublic}</p>
       ) : null}
       {visible.length > 0 ? (

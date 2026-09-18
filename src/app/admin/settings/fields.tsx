@@ -33,7 +33,6 @@ export type ProfileValues = Pick<
   | 'phone'
   | 'address'
   | 'description'
-  | 'instagramUrl'
   | 'logoUrl'
   | 'coverImageUrl'
   | 'brandColor'
@@ -126,17 +125,6 @@ export function ProfileFields({
           rows={2}
           defaultValue={b.description ?? ''}
           placeholder={s.descriptionPlaceholder}
-          className={inputClass}
-        />
-      </div>
-
-      <div>
-        <label className={labelClass}>{s.instagramLabel}</label>
-        <input
-          name="instagramUrl"
-          dir="ltr"
-          defaultValue={b.instagramUrl ?? ''}
-          placeholder="https://instagram.com/…"
           className={inputClass}
         />
       </div>

@@ -644,7 +644,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-  padding: 0 14px 12px;
+  padding: 0;
 }
 .tcah .cal .lg {
   display: inline-flex;
@@ -821,6 +821,13 @@
 .tcah .cal .cal-foot .hintx {
   font-size: 11px;
   color: var(--muted);
+}
+.tcah .cal .cal-guidance {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
 }
 .tcah .cal .newbtn {
   display: inline-flex;

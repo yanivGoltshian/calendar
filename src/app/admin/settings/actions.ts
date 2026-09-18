@@ -75,6 +75,7 @@ export async function saveAllSettingsAction(
   // אחרים (כותרות, גלריה, מבצעים וכו'). בעסק בסגנון עמוד הזמנה (BOOKING) לא
   // נשלח landingContent כלל, כדי לשמר את התוכן הקיים כפי שהוא.
   const profileData = { ...profile.data };
+  if (!fd.has('instagramUrl')) profileData.instagramUrl = business.instagramUrl;
   if (business.publicPageStyle === 'LANDING') {
     const existing = business.landingContent && typeof business.landingContent === 'object' &&
       !Array.isArray(business.landingContent) ? business.landingContent : {};

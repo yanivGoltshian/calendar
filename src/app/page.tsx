@@ -92,17 +92,11 @@ export default async function HomePage() {
                     width={112}
                     height={112}
                     priority
+                    fetchPriority="high"
+                    sizes="(min-width: 640px) 96px, 80px"
                     className="h-20 w-20 object-contain sm:h-24 sm:w-24"
                   />
                 </div>
-              </div>
-              <div>
-                <Badge tone="brand" className="mb-5">
-                  <span className="inline-flex items-center gap-1.5">
-                    <SparkleIcon aria-hidden className="h-3.5 w-3.5" />
-                    {m.hero.badge}
-                  </span>
-                </Badge>
               </div>
               <div>
                 {/*

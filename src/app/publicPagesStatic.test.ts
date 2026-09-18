@@ -58,6 +58,26 @@ test('דף הבית אינו קורא סשן/בעלים בשרת (זיהוי ע�
   assert.ok(home.includes('OwnerAwareCta'), 'ציפינו לרכיב הלקוח OwnerAwareCta שמחליף את ה-CTA');
 });
 
+test('דף הבית לא מציג תג שיווקי מלאכותי מעל הכותרת', () => {
+  assert.ok(!home.includes('m.hero.badge'), 'אין להחזיר את תג הדרך החכמה לנהל תורים');
+  assert.ok(!home.includes('SparkleIcon aria-hidden className="h-3.5 w-3.5"'));
+});
+
+test('תמונות ההירו הקריטיות נטענות מייד ולא מוסתרות עד הידרציה', () => {
+  const heroVisual = read('..', 'components', 'landing', 'HeroVisual.tsx');
+  assert.ok(
+    heroVisual.includes('initial={false}') &&
+      heroVisual.includes('fetchPriority="high"') &&
+      heroVisual.includes('sizes="(min-width: 1024px) 128px, (min-width: 640px) 112px, 96px"'),
+    'תמונת הדמות בהירו חייבת להיות גלויה ב-HTML הראשוני ולקבל עדיפות טעינה',
+  );
+  assert.ok(
+    home.includes('fetchPriority="high"') &&
+      home.includes('sizes="(min-width: 640px) 96px, 80px"'),
+    'לוגו ההירו חייב לקבל עדיפות וגדלים מפורשים כדי לא להיטען מאוחר מדי',
+  );
+});
+
 // --- gate קישור ההדגמה: fallback build-safe (החזרת הרגרסיה #דמו-שנעלם) ---
 // בזמן build אין DATABASE_URL, getFirstBusiness() נכשל → business=null. בלי fallback
 // יציב demoSlug מתאפס וכל שלוש הזיקות (hero ghost, Navbar, Footer) נושרות מה-HTML

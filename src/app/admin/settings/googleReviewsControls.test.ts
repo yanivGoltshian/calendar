@@ -11,7 +11,7 @@ import { ProfileFields, type ProfileValues } from './fields';
 test('settings exposes an ordinary external Google profile link with its existing value', () => {
   const b: ProfileValues = {
     name: 'Synthetic business', type: null, phone: null, address: null,
-    description: null, instagramUrl: null, logoUrl: null, coverImageUrl: null,
+    description: null, logoUrl: null, coverImageUrl: null,
     brandColor: null, timezone: 'Asia/Jerusalem', publicPageStyle: 'BOOKING',
     landingContent: { googleReviewsUrl: 'https://g.page/r/synthetic/review' },
   };
