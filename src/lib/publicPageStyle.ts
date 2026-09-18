@@ -574,9 +574,9 @@ function normalizeContent(raw: unknown, stored: boolean): LandingContent | null 
     if (!quote) continue; // המלצה חייבת ציטוט; שם אופציונלי
     const testimonial: LandingTestimonial = { name, quote };
     if (stored) {
-      const rating = normalizeTestimonialRating(item.rating);
+      const rating = normalizeTestimonialRating(item.rating) ?? 5;
       const reviewSource = normalizeTestimonialSource(item.source);
-      if (rating !== undefined) testimonial.rating = rating;
+      testimonial.rating = rating;
       if (typeof item.hidden === 'boolean') testimonial.hidden = item.hidden;
       if (reviewSource) testimonial.source = reviewSource;
     }

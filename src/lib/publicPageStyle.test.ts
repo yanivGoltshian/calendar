@@ -183,7 +183,7 @@ test('normalizeLandingContent: invalid Google metadata is omitted while factual 
   });
 });
 
-test('stored review ratings accept only actual integers from one to five', () => {
+test('stored review ratings accept actual integers and defaults old unrated reviews to five stars', () => {
   for (const rating of [1, 2, 3, 4, 5]) {
     assert.equal(normalizeTestimonialRating(rating), rating);
     assert.equal(
@@ -196,7 +196,7 @@ test('stored review ratings accept only actual integers from one to five', () =>
     assert.equal(normalizeTestimonialRating(rating), undefined);
     assert.deepEqual(
       normalizeStoredLandingContent({ testimonials: [{ name: 'Author', quote: 'Factual review', rating }] }),
-      { testimonials: [{ name: 'Author', quote: 'Factual review' }] },
+      { testimonials: [{ name: 'Author', quote: 'Factual review', rating: 5 }] },
     );
   }
 });
@@ -214,7 +214,7 @@ test('stored normalization retains hidden records and source fields without chan
   const testimonials = [
     { name: 'First', quote: 'First review', rating: 5, source },
     { name: 'Hidden', quote: 'Hidden review', rating: 4, source, hidden: true },
-    { name: 'Third', quote: 'Third review', hidden: false },
+    { name: 'Third', quote: 'Third review', rating: 5, hidden: false },
   ];
   const original = structuredClone(testimonials);
   const stored = normalizeStoredLandingContent({ testimonials });
