@@ -2183,7 +2183,6 @@ const he = {
       closeMenu: 'סגירת תפריט',
     },
     hero: {
-      badge: 'הדרך החכמה לנהל תורים',
       title: 'העסק שלכם מקבל תורים',
       titleAccent: 'מסביב לשעון',
       subtitle:

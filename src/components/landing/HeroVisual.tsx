@@ -84,7 +84,7 @@ export function HeroVisual() {
 
       {/* שבב אישור צף */}
       <motion.div
-        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16, x: -8 }}
+        initial={false}
         animate={{ opacity: 1, y: 0, x: 0 }}
         transition={{ duration: 0.5, delay: 0.9, ease: [0.2, 0.8, 0.2, 1] }}
         className="absolute -bottom-5 start-0 flex items-center gap-2 rounded-2xl border border-sand-200/70 bg-white/95 px-3.5 py-2.5 shadow-elevated dark:border-sand-700/70 dark:bg-sand-800/95"
@@ -100,7 +100,7 @@ export function HeroVisual() {
 
       {/* מאיה — בעלת עסק, עומדת לצד הכרטיס */}
       <motion.div
-        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 24 }}
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
         className="pointer-events-none absolute -bottom-4 -end-3 z-10 w-24 sm:-end-2 sm:w-28 lg:w-32"
@@ -111,6 +111,8 @@ export function HeroVisual() {
           width={358}
           height={1240}
           priority
+          fetchPriority="high"
+          sizes="(min-width: 1024px) 128px, (min-width: 640px) 112px, 96px"
           className="h-auto w-full drop-shadow-xl"
         />
       </motion.div>
