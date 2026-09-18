@@ -12,11 +12,7 @@ export function reviewActionFailure(error: unknown): ReviewActionState {
 }
 
 export function revalidateBusinessReviews(slug: string) {
-  revalidateAdminBusinessReviews();
-  revalidatePath(`/b/${slug}`);
-}
-
-export function revalidateAdminBusinessReviews() {
   revalidatePath('/admin', 'layout');
   revalidatePath('/admin/reviews');
+  revalidatePath(`/b/${slug}`);
 }
