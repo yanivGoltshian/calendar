@@ -6,10 +6,7 @@ import { reviewInputSchema, type ReviewActionState } from '@/lib/businessReviews
 import { getBusinessBySlug } from '@/server/repos/business';
 import { submitCustomerReview } from '@/server/repos/businessReviews';
 import { notifyOwnerOfReview } from '@/server/notifications/ownerReview';
-import {
-  revalidateBusinessReviews,
-  reviewActionFailure,
-} from '@/server/reviews/actionResult';
+import { reviewActionFailure } from '@/server/reviews/actionResult';
 
 const submissionSchema = reviewInputSchema.extend({
   slug: z.string().min(1).max(120),
@@ -48,6 +45,5 @@ export async function submitBusinessReviewAction(
     reviewId: review.id,
     pushEnabled: business.settings?.pushEnabled ?? false,
   });
-  revalidateBusinessReviews(business.slug);
   return { ok: true, id: review.id };
 }

@@ -263,7 +263,11 @@ for (const width of [390, 1366]) {
       // A real settings save preserves exclusions and invalidates the cached public page.
       await page.locator('input[name=phone]').fill('050-111-2222');
       await page.getByRole('button', { name: t.admin.settings.saveAll, exact: true }).click();
-      await expect(page.getByRole('status').filter({ hasText: t.admin.settings.savedShort })).toHaveClass(/opacity-100/);
+      await expect(
+        page.locator('div[role="status"][aria-live="polite"]').filter({
+          hasText: t.admin.settings.savedShort,
+        }),
+      ).toHaveClass(/opacity-100/);
       await page.goto(`/b/${f.business.slug}`);
       await expect(page.getByRole('heading', { name: t.publicPage.landing.highlightsTitle, exact: true })).toHaveCount(0);
       await expect(whatsapp).toHaveAttribute('href', 'https://wa.me/972501234567');

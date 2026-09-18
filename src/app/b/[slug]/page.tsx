@@ -45,6 +45,7 @@ import AnnouncementBar from '@/components/publicLanding/AnnouncementBar';
 import MediaImage from '@/components/publicLanding/MediaImage';
 import { publicMediaContent } from '@/server/media/publicContent';
 import { businessShareUrl } from '@/lib/booking-link';
+import { submitBusinessReviewAction } from './reviews/actions';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -492,6 +493,7 @@ export default async function BusinessPublicPage({ params }: Props) {
               content={landing}
               platformReviews={platformReviews}
               reviewSubmitHref={reviewSubmitHref}
+              reviewSubmitAction={submitBusinessReviewAction}
               type={business.type}
               services={services}
               staff={bookingStaff.map((m) => ({
@@ -532,6 +534,7 @@ export default async function BusinessPublicPage({ params }: Props) {
                 items={landing?.testimonials ?? []}
                 platformReviews={platformReviews}
                 submitHref={reviewSubmitHref}
+                reviewSubmitAction={submitBusinessReviewAction}
                 googleReviewsUrl={landing?.googleReviewsUrl}
                 googleLabel={t.publicPage.landing.googleReviewsLabel}
                 googleCta={t.publicPage.landing.googleReviewsCta}
