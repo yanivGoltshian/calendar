@@ -14,7 +14,9 @@ const labels = {
   googleEmptyText: 'No reviews are stored on this site. Open the Google profile.',
 };
 
-function render(overrides: Partial<React.ComponentProps<typeof LandingTestimonials>> = {}) {
+function render(
+  overrides: Partial<React.ComponentProps<typeof LandingTestimonials>> = {},
+) {
   return renderToStaticMarkup(
     React.createElement(LandingTestimonials, {
       ...labels,
@@ -56,14 +58,23 @@ test('stored reviews render as cards with one heading and no Google profile acti
 test('rated cards show the actual rating and stored source independently of a business link', () => {
   const html = render({
     items: [
-      { name: 'First author', quote: 'First review', rating: 4, source: { provider: 'google' } },
+      {
+        name: 'First author',
+        quote: 'First review',
+        rating: 4,
+        source: { provider: 'google' },
+      },
       { name: 'Second author', quote: 'Second review', rating: 2 },
     ],
   });
   assert.equal((html.match(/★/g) ?? []).length, 6);
   assert.equal((html.match(/role="img"/g) ?? []).length, 2);
   for (const rating of [4, 2]) {
-    assert.ok(html.includes(t.publicPage.landing.testimonialRating.replace('{rating}', String(rating))));
+    assert.ok(
+      html.includes(
+        t.publicPage.landing.testimonialRating.replace('{rating}', String(rating)),
+      ),
+    );
   }
   assert.equal(html.split(t.publicPage.landing.googleReviewSource).length - 1, 1);
   assert.match(html, /<bdi\b[^>]*>First author<\/bdi>/);
@@ -78,13 +89,21 @@ test('legacy missing and invalid ratings show an unrated indicator without inven
     });
     assert.doesNotMatch(html, /★/);
     assert.ok(html.includes(t.reviews.missingRating));
-    assert.ok(html.includes(t.reviews.sourceUnknown));
+    assert.ok(html.includes(t.reviews.sourcePlatform));
   }
 });
 
 test('platform rating-only cards have the real source logo and no empty quotation', () => {
   const html = render({
-    platformReviews: [{ id: 'synthetic-review', name: 'Synthetic', rating: 5, quote: '', editedByBusiness: false }],
+    platformReviews: [
+      {
+        id: 'synthetic-review',
+        name: 'Synthetic',
+        rating: 5,
+        quote: '',
+        editedByBusiness: false,
+      },
+    ],
     submitHref: '/b/synthetic/reviews/new',
   });
   assert.equal((html.match(/<figure\b/g) ?? []).length, 1);
@@ -100,7 +119,12 @@ test('platform rating-only cards have the real source logo and no empty quotatio
 test('Google cards require explicit stored provenance and do not inherit a business Google link', () => {
   const html = render({
     items: [
-      { name: 'Google fixture', quote: 'Explicit provenance', rating: 4, source: { provider: 'google', input: 'PRIVATE SOURCE METADATA' } },
+      {
+        name: 'Google fixture',
+        quote: 'Explicit provenance',
+        rating: 4,
+        source: { provider: 'google', input: 'PRIVATE SOURCE METADATA' },
+      },
       { name: 'Unattributed fixture', quote: 'No provenance', rating: 3 },
     ],
     googleReviewsUrl: 'https://g.page/r/synthetic/review',
@@ -108,12 +132,21 @@ test('Google cards require explicit stored provenance and do not inherit a busin
   assert.equal((html.match(/data-review-source="google"/g) ?? []).length, 1);
   assert.equal((html.match(/<svg\b/g) ?? []).length, 1);
   assert.doesNotMatch(html, /PRIVATE SOURCE METADATA/);
-  assert.equal((html.match(/data-review-source="unknown"/g) ?? []).length, 1);
+  assert.equal((html.match(/data-review-source="torchick"/g) ?? []).length, 1);
 });
 
 test('published business edits disclose and safely render the retained original', () => {
   const html = render({
-    platformReviews: [{ id: 'edited', name: 'Synthetic', rating: 3, quote: 'Edited text', editedByBusiness: true, originalQuote: '<script>original</script>' }],
+    platformReviews: [
+      {
+        id: 'edited',
+        name: 'Synthetic',
+        rating: 3,
+        quote: 'Edited text',
+        editedByBusiness: true,
+        originalQuote: '<script>original</script>',
+      },
+    ],
   });
   assert.ok(html.includes(t.reviews.edited));
   assert.ok(html.includes(t.reviews.original));

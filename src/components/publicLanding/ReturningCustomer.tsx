@@ -4,6 +4,7 @@ import { useActionState, useCallback, useEffect, useId, useState } from 'react';
 import { t } from '@/i18n';
 import { cancelAppointmentAction, type CancelState } from '@/app/account/actions';
 import AppointmentHistory from './AppointmentHistory';
+import { formatReturningCustomerGreeting } from './returningCustomerLogic';
 
 /** Server-formatted upcoming appointment, including business-local time. */
 export type ReturningAppointmentView = {
@@ -17,6 +18,7 @@ export type ReturningAppointmentView = {
 
 type Props = {
   slug: string;
+  name: string;
   appointments: ReturningAppointmentView[];
 };
 
@@ -137,13 +139,11 @@ function AppointmentRow({
 /**
  * Personal appointments remain client-loaded, scoped to this business.
  */
-export default function ReturningCustomer({ slug, appointments }: Props) {
+export default function ReturningCustomer({ slug, name, appointments }: Props) {
   const r = t.premiumLanding.clinic.returning;
   const id = useId();
-  const [tab, setTab] = useState<'upcoming' | 'history'>(
-    appointments.length ? 'upcoming' : 'history',
-  );
-  const [historyVisited, setHistoryVisited] = useState(appointments.length === 0);
+  const [tab, setTab] = useState<'upcoming' | 'history'>('upcoming');
+  const [historyVisited, setHistoryVisited] = useState(false);
   const [cancelled, setCancelled] = useState<string[]>([]);
   const onCancelled = useCallback((appointmentId: string) => {
     setCancelled((previous) =>
@@ -172,6 +172,12 @@ export default function ReturningCustomer({ slug, appointments }: Props) {
               'linear-gradient(90deg, var(--c-gold), var(--c-accent), var(--c-brand))',
           }}
         />
+        <div className="mb-4">
+          <h2 className="text-xl font-black text-[color:var(--c-ink,#1b1715)]">
+            {formatReturningCustomerGreeting(name)}
+          </h2>
+          <p className="mt-1 text-sm text-[color:var(--c-muted,#6e655f)]">{r.subtitle}</p>
+        </div>
         <div
           role="tablist"
           aria-label={r.title}

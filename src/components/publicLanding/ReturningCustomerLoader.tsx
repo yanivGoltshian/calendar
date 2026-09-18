@@ -93,5 +93,12 @@ export default function ReturningCustomerLoader({ slug }: { slug: string }) {
     return <BookingConfirmationBanner heading={data.heading} />;
   }
 
-  return <ReturningCustomer key={slug} slug={slug} appointments={data.appointments} />;
+  return (
+    <ReturningCustomer
+      key={slug}
+      slug={slug}
+      name={data.name}
+      appointments={data.appointments}
+    />
+  );
 }

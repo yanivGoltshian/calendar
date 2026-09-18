@@ -6,8 +6,12 @@ import { t } from '@/i18n';
 import type { AdminBusinessReview, ReviewStatus } from '@/lib/businessReviews';
 import ReviewCard, { type ReviewCardContent } from '@/components/reviews/ReviewCard';
 import ReviewEditor from './ReviewEditor';
+import LegacyReviewEditor from './LegacyReviewEditor';
 
-export type LegacyAdminReview = ReviewCardContent & { status: ReviewStatus };
+export type LegacyAdminReview = ReviewCardContent & {
+  status: ReviewStatus;
+  index: number;
+};
 
 export default function ReviewsManager({
   reviews,
@@ -27,6 +31,7 @@ export default function ReviewsManager({
   const [editing, setEditing] = useState<string | null>(selectedReviewId ?? null);
   const [creating, setCreating] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [editingLegacy, setEditingLegacy] = useState<number | null>(null);
   const labels = t.reviews;
   const counts = (value: ReviewStatus) =>
     reviews.filter((review) => review.status === value).length +
@@ -168,14 +173,38 @@ export default function ReviewsManager({
         ))}
         {legacy.map((review, index) => (
           <article
-            key={`legacy-${index}`}
+            key={`legacy-${review.index}`}
             className="rounded-xl border border-[#e7ddcd] bg-white p-4"
           >
-            <div className="mb-3 flex flex-wrap justify-between gap-2 text-xs text-[#8f8478]">
-              <span>{labels.existingEntry}</span>
-              <span>{labels.statuses[review.status]}</span>
-            </div>
-            <ReviewCard review={review} />
+            {editingLegacy === review.index ? (
+              <LegacyReviewEditor
+                review={review}
+                index={review.index}
+                onSaved={() => {
+                  setEditingLegacy(null);
+                  setSaved(true);
+                }}
+                onCancel={() => setEditingLegacy(null)}
+              />
+            ) : (
+              <>
+                <div className="mb-3 flex flex-wrap justify-between gap-2 text-xs text-[#8f8478]">
+                  <span>{labels.existingEntry}</span>
+                  <span>{labels.statuses[review.status]}</span>
+                </div>
+                <ReviewCard review={review} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLegacy(review.index);
+                    setSaved(false);
+                  }}
+                  className="mt-3 min-h-11 rounded-lg border border-[#d6c8b4] px-4 text-sm font-semibold"
+                >
+                  {labels.edit}
+                </button>
+              </>
+            )}
           </article>
         ))}
         {current.length + legacy.length === 0 ? (

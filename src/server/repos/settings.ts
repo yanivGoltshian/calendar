@@ -44,30 +44,82 @@ export async function updateBusinessProfile(
   brandingPatch?: LandingBrandingPatch,
 ) {
   const { publicPageStyle, landingContent, ...rest } = data;
-  const update = (client: Pick<Prisma.TransactionClient, 'business'>, content = landingContent) => client.business.update({
-    where: { id: businessId },
-    data: {
-      ...rest,
-      // סגנון העמוד נכתב רק כשנשלח (מסך ההגדרות), כדי לא לדרוס בזמן ההקמה.
-      ...(publicPageStyle !== undefined ? { publicPageStyle } : {}),
-      // Json אופציונלי: ריק ⇐ DbNull במפורש, אחרת נשמר האובייקט המנורמל.
-      ...(content !== undefined
-        ? {
-            landingContent:
-              content === null
-                ? Prisma.DbNull
-                : (content as unknown as Prisma.InputJsonValue),
-          }
-        : {}),
-    },
-  });
-  if (!brandingPatch || Object.values(brandingPatch).every(value => value === undefined)) return update(prisma);
-  return prisma.$transaction(async tx => {
+  const update = (
+    client: Pick<Prisma.TransactionClient, 'business'>,
+    content = landingContent,
+  ) =>
+    client.business.update({
+      where: { id: businessId },
+      data: {
+        ...rest,
+        // סגנון העמוד נכתב רק כשנשלח (מסך ההגדרות), כדי לא לדרוס בזמן ההקמה.
+        ...(publicPageStyle !== undefined ? { publicPageStyle } : {}),
+        // Json אופציונלי: ריק ⇐ DbNull במפורש, אחרת נשמר האובייקט המנורמל.
+        ...(content !== undefined
+          ? {
+              landingContent:
+                content === null
+                  ? Prisma.DbNull
+                  : (content as unknown as Prisma.InputJsonValue),
+            }
+          : {}),
+      },
+    });
+  if (
+    !brandingPatch ||
+    Object.values(brandingPatch).every((value) => value === undefined)
+  )
+    return update(prisma);
+  return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Business" WHERE id = ${businessId} FOR UPDATE`;
     const current = await tx.business.findUniqueOrThrow({
-      where: { id: businessId }, select: { landingContent: true },
+      where: { id: businessId },
+      select: { landingContent: true },
     });
     return update(tx, patchLandingBranding(current.landingContent, brandingPatch));
+  });
+}
+
+export async function updateLegacyTestimonial(
+  businessId: string,
+  index: number,
+  data: { name: string; quote: string; rating?: number },
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Business" WHERE id = ${businessId} FOR UPDATE`;
+    const business = await tx.business.findUniqueOrThrow({
+      where: { id: businessId },
+      select: { landingContent: true },
+    });
+    const content =
+      business.landingContent &&
+      typeof business.landingContent === 'object' &&
+      !Array.isArray(business.landingContent)
+        ? (business.landingContent as Record<string, unknown>)
+        : {};
+    const testimonials = Array.isArray(content.testimonials)
+      ? [...content.testimonials]
+      : [];
+    const existing = testimonials[index];
+    if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+      throw new Error('legacy_testimonial_not_found');
+    }
+    testimonials[index] = {
+      ...(existing as Record<string, unknown>),
+      name: data.name,
+      quote: data.quote,
+      ...(data.rating === undefined ? {} : { rating: data.rating }),
+    };
+    return tx.business.update({
+      where: { id: businessId },
+      data: {
+        landingContent: {
+          ...content,
+          testimonials,
+        } as Prisma.InputJsonValue,
+      },
+      select: { id: true },
+    });
   });
 }
 
