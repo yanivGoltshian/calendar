@@ -1,0 +1,10 @@
+{
+  "name": "torchick-ad-render",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Isolated Playwright frame-capture harness for the Torchick video ad",
+  "dependencies": {
+    "playwright": "^1.62.1"
+  }
+}

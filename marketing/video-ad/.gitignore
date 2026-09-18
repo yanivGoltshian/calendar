@@ -1,0 +1,6 @@
+# Transient / regenerable capture output (900 PNGs, ~1GB) — regenerate via render/capture.mjs
+frames/
+
+# Playwright / Node deps for the capture harness — reinstall via npm i in render/
+render/node_modules/
+render/package-lock.json
