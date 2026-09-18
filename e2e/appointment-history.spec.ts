@@ -95,8 +95,10 @@ test('approved public history preserves upcoming, paginates private snapshots an
       'aria-selected',
       'true',
     );
-    await expect(section.getByText(r.subtitle, { exact: true })).toHaveCount(0);
-    await expect(section.getByRole('heading')).toHaveCount(0);
+    await expect(
+      section.getByRole('heading', { name: 'שלום Synthetic history customer' }),
+    ).toBeVisible();
+    await expect(section.getByText(r.subtitle, { exact: true })).toBeVisible();
     await expect(section.getByRole('link', { name: r.addToCalendarAria })).toBeVisible();
     await page.route('**/history', (route) =>
       route.fulfill({ status: 500, json: { error: 'synthetic_failure' } }),
@@ -168,14 +170,10 @@ test('history-only customers see empty, missing-price, paid and expired-session 
     });
     await authenticate(context, user.id);
     await page.goto(`/b/${f.business.slug}`);
+    await expect(page.locator('#lp-hello')).toHaveCount(0);
     const section = page.locator('#lp-hello');
-    await expect(section.getByRole('tab', { name: r.historyTab })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-    await expect(section.getByText(r.historyEmpty, { exact: true })).toBeVisible();
-    await section.getByRole('tab', { name: r.upcomingTab }).click();
-    await expect(section.getByText(r.empty, { exact: true })).toBeVisible();
+    await expect(page.getByText(r.historyEmpty, { exact: true })).toHaveCount(0);
+    await expect(page.getByText(r.empty, { exact: true })).toHaveCount(0);
     for (let i = 0; i < 2; i++) {
       const appointment = await prisma.appointment.create({
         data: {
@@ -223,6 +221,16 @@ test('history-only customers see empty, missing-price, paid and expired-session 
         });
     }
     await page.reload();
+    await expect(section.getByRole('tab', { name: r.historyTab })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    );
+    await expect(section.getByRole('tab', { name: r.upcomingTab })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(section.getByText(r.empty, { exact: true })).toBeVisible();
+    await section.getByRole('tab', { name: r.historyTab }).click();
     await expect(section.locator('[data-history-card]')).toHaveCount(2);
     const paid = section
       .locator('[data-history-card]')
