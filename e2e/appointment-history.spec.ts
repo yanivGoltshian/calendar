@@ -249,6 +249,7 @@ test('history-only customers see empty, missing-price, paid and expired-session 
       route.fulfill({ status: 401, json: { error: 'unauthorized' } }),
     );
     await page.reload();
+    await section.getByRole('tab', { name: r.historyTab }).click();
     await expect(section.getByRole('alert')).toContainText(r.sessionExpired);
     await expect(section.locator('[data-history-card]')).toHaveCount(0);
     await expect(section.getByRole('link', { name: r.signIn })).toHaveAttribute(
