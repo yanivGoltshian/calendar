@@ -86,6 +86,20 @@ export async function getUpcomingAppointmentsForUserAtBusiness(
   return appointments;
 }
 
+export async function countPastAppointmentsForUserAtBusiness(
+  identity: UserIdentity,
+  businessId: string,
+) {
+  if (!identity.userId) return 0;
+  return prisma.appointment.count({
+    where: {
+      businessId,
+      startAt: { lt: new Date() },
+      client: { userId: identity.userId, identityVerifiedAt: { not: null } },
+    },
+  });
+}
+
 /**
  * מידע לצורך מחיקת חשבון: כמה עסקים בבעלות המשתמש וכמה שיוכי-צוות יש לו.
  * חשבון שהוא בעל עסק או איש צוות אינו נמחק אוטומטית (הגנה על נתוני העסק).

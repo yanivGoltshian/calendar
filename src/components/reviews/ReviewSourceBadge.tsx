@@ -38,11 +38,7 @@ export default function ReviewSourceBadge({ source }: { source: ReviewDisplaySou
         />
       ) : null}
       <span className="block leading-5">
-        {source === 'google'
-          ? t.reviews.sourceGoogle
-          : source === 'torchick'
-            ? t.reviews.sourcePlatform
-            : t.reviews.sourceUnknown}
+        {source === 'google' ? t.reviews.sourceGoogle : t.reviews.sourcePlatform}
       </span>
     </span>
   );

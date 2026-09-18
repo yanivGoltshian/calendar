@@ -32,11 +32,12 @@ export default async function AdminReviewsPage({
       slug={business.slug}
       initialStatus={selectedReview?.status ?? initialStatus}
       selectedReviewId={selectedReview?.id}
-      legacyReviews={legacy.map((review) => ({
+      legacyReviews={legacy.map((review, index) => ({
+        index,
         name: review.name,
         quote: review.quote,
         rating: review.rating,
-        source: review.source?.provider === 'google' ? 'google' : 'unknown',
+        source: review.source?.provider === 'google' ? 'google' : 'torchick',
         status: review.hidden ? 'HIDDEN' : 'PUBLISHED',
       }))}
     />

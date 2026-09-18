@@ -15,7 +15,7 @@ export const reviewsHe = {
   source: 'מקור',
   sourceGoogle: 'מקור: גוגל',
   sourcePlatform: 'מקור: תור צ׳יק',
-  sourceUnknown: 'מקור: לא צוין',
+  sourceUnknown: 'מקור: תור צ׳יק',
   missingRating: 'דירוג לא צוין',
   ratingAria: 'דירוג {rating} מתוך 5',
   starOption: '{rating} כוכבים',

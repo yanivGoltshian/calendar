@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getBusinessBySlug } from '@/server/repos/business';
 import { getClientSession } from '@/lib/session';
-import { getUpcomingAppointmentsForUserAtBusiness } from '@/server/repos/account';
+import {
+  countPastAppointmentsForUserAtBusiness,
+  getUpcomingAppointmentsForUserAtBusiness,
+} from '@/server/repos/account';
+import { shouldRenderReturningCustomer } from '@/components/publicLanding/returningCustomerLogic';
 import { buildGoogleCalendarUrl } from '@/lib/googleCalendar';
 import { t } from '@/i18n';
 import { formatDateString, formatLongDate, formatTime } from '@/lib/time';
@@ -38,15 +42,24 @@ export async function GET(
   // לקוח מזוהה (עוגייה): תורים עתידיים בעסק זה, ממוינים מהקרוב לרחוק.
   const session = await getClientSession();
   if (session) {
-    const upcoming = await getUpcomingAppointmentsForUserAtBusiness(
-      { userId: session.userId },
-      business.id,
-    );
+    const identity = { userId: session.userId };
+    const [upcoming, historyCount] = await Promise.all([
+      getUpcomingAppointmentsForUserAtBusiness(identity, business.id),
+      countPastAppointmentsForUserAtBusiness(identity, business.id),
+    ]);
+    if (!shouldRenderReturningCustomer(upcoming.length, historyCount)) {
+      return NextResponse.json(none, noStore);
+    }
     const nowMs = Date.now();
     const appointments: ReturningAppointmentView[] = upcoming.map((appt) => {
       const title =
-        appt.services.map((s) => s.nameSnapshot).filter(Boolean).join(' + ') || business.name;
-      const staffLabel = appt.staff?.displayName ? `${clinic.withStaff} ${appt.staff.displayName}` : '';
+        appt.services
+          .map((s) => s.nameSnapshot)
+          .filter(Boolean)
+          .join(' + ') || business.name;
+      const staffLabel = appt.staff?.displayName
+        ? `${clinic.withStaff} ${appt.staff.displayName}`
+        : '';
       const whenLabel = `${formatLongDate(formatDateString(appt.startAt, tz), tz)} • ${formatTime(
         appt.startAt,
         tz,
@@ -55,7 +68,9 @@ export async function GET(
         title,
         start: appt.startAt,
         end: appt.endAt,
-        details: appt.staff?.displayName ? `${business.name} — ${appt.staff.displayName}` : business.name,
+        details: appt.staff?.displayName
+          ? `${business.name} — ${appt.staff.displayName}`
+          : business.name,
         location: business.address ?? undefined,
       });
       const windowHours = appt.business.settings?.cancellationWindowHours ?? 0;
@@ -63,7 +78,10 @@ export async function GET(
       return { id: appt.id, title, staffLabel, whenLabel, googleUrl, canCancel };
     });
     const name = session.name?.trim() || session.email?.split('@')[0]?.trim() || '';
-    return NextResponse.json({ mode: 'returning', name, appointments } as ReturningResponse, noStore);
+    return NextResponse.json(
+      { mode: 'returning', name, appointments } as ReturningResponse,
+      noStore,
+    );
   }
 
   // An appointment ID is not proof of ownership. Only acknowledge the guest's
