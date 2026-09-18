@@ -11,6 +11,7 @@ export const MEDIA_PREFIXES = (businessId: string) => [
   `media/${businessId}-`,
   `hero/${businessId}-`,
 ];
+const MEDIA_DRAFT_GRACE_MS = 24 * 60 * 60 * 1000;
 
 export type MediaStorage = {
   getBlockBlobClient: (key: string) => {
@@ -29,7 +30,7 @@ export type MediaStorage = {
   listBlobsFlat: (options: {
     prefix: string;
     abortSignal: AbortSignal;
-  }) => AsyncIterable<{ name?: string; properties: { contentLength?: number } }>;
+  }) => AsyncIterable<{ name?: string; properties: { contentLength?: number; lastModified?: Date } }>;
 };
 
 function stringsFromArray(value: unknown): string[] {
@@ -102,6 +103,7 @@ async function mediaUsageForPublishedKeys(
   abortSignal: AbortSignal,
   deleteUnused = false,
   unknownByteSize = 0,
+  countRecentDrafts = false,
 ): Promise<MediaUsageSummary> {
   const summary: MediaUsageSummary = {
     usedBytes: 0,
@@ -113,7 +115,11 @@ async function mediaUsageForPublishedKeys(
     for await (const asset of container.listBlobsFlat({ prefix, abortSignal })) {
       if (!asset.name) continue;
       const bytes = asset.properties.contentLength ?? unknownByteSize;
-      if (publishedKeys.has(asset.name)) {
+      const isRecentDraft =
+        countRecentDrafts &&
+        (!asset.properties.lastModified ||
+          Date.now() - asset.properties.lastModified.getTime() < MEDIA_DRAFT_GRACE_MS);
+      if (publishedKeys.has(asset.name) || isRecentDraft) {
         summary.usedBytes += bytes;
         summary.usedObjects++;
         continue;
@@ -202,6 +208,7 @@ export async function storeBusinessMedia(
         abortSignal,
         false,
         mediaQuota(business.plan).bytes,
+        true,
       );
       assertMediaQuota(
         business.plan,

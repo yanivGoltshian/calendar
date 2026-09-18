@@ -14,6 +14,7 @@ requireIsolatedDatabase();
 
 function syntheticStorage() {
   const objects = new Map<string, Buffer>();
+  const lastModified = new Map<string, Date>();
   let failAfterWrite = false;
   const storage: MediaStorage = {
     getBlockBlobClient: (key) => ({
@@ -26,17 +27,21 @@ function syntheticStorage() {
         await new Promise((resolve) => setTimeout(resolve, 20));
         assert.equal(objects.has(key), false);
         objects.set(key, data);
+        lastModified.set(key, new Date());
         if (failAfterWrite) throw new Error('synthetic_storage_outcome_unknown');
       },
     }),
     async *listBlobsFlat({ prefix }) {
       for (const [key, value] of objects) {
-        if (key.startsWith(prefix)) yield { name: key, properties: { contentLength: value.length } };
+        if (key.startsWith(prefix)) {
+          yield { name: key, properties: { contentLength: value.length, lastModified: lastModified.get(key) } };
+        }
       }
     },
   };
   return {
     objects,
+    lastModified,
     storage,
     failNextWrite: () => {
       failAfterWrite = true;
@@ -126,10 +131,12 @@ test('unreferenced old media no longer blocks a replacement upload after removal
       },
     });
     for (let index = 0; index < 30; index++) {
+      const key = `media/${f.business.id}/removed-${index}.mp4`;
       store.objects.set(
-        `media/${f.business.id}/removed-${index}.mp4`,
+        key,
         Buffer.from('old-video'),
       );
+      store.lastModified.set(key, new Date(Date.now() - 25 * 60 * 60 * 1000));
     }
 
     const uploaded = await storeBusinessMedia(
