@@ -3,6 +3,7 @@ import ReviewSubmissionDialog from '@/components/reviews/ReviewSubmissionDialog'
 import ReviewCard, { type ReviewCardContent } from '@/components/reviews/ReviewCard';
 import type { PublicBusinessReview, ReviewSubmitAction } from '@/lib/businessReviews';
 import {
+  normalizeTestimonialRating,
   visibleLandingTestimonials,
   type LandingTestimonial,
 } from '@/lib/publicPageStyle';
@@ -31,7 +32,7 @@ export default function LandingTestimonials({
     ...visibleLandingTestimonials(items).map((review) => ({
       name: review.name,
       quote: review.quote,
-      rating: review.rating,
+      rating: normalizeTestimonialRating(review.rating) ?? 5,
       source:
         review.source?.provider === 'google'
           ? ('google' as const)

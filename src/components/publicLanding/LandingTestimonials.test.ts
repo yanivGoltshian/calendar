@@ -35,7 +35,7 @@ test('URL-only state stays hidden because the Google reviews link is no longer a
   assert.equal(html, '');
 });
 
-test('stored reviews render as cards with one heading and no Google profile action', () => {
+test('stored reviews render as rated cards with one heading and no Google profile action', () => {
   const html = render({
     items: [
       { name: 'Dana', quote: 'Excellent service' },
@@ -50,8 +50,8 @@ test('stored reviews render as cards with one heading and no Google profile acti
   assert.equal((html.match(/<figure\b/g) ?? []).length, 3);
   assert.equal((html.match(/<svg\b/g) ?? []).length, 0);
   assert.equal((html.match(/<a\b/g) ?? []).length, 0);
-  assert.doesNotMatch(html, /★/);
-  assert.equal(html.split(t.reviews.missingRating).length - 1, 3);
+  assert.equal((html.match(/★★★★★/g) ?? []).length, 3);
+  assert.doesNotMatch(html, new RegExp(t.reviews.missingRating));
   assert.ok(!html.includes(t.publicPage.landing.googleReviewSource));
 });
 
@@ -81,14 +81,14 @@ test('rated cards show the actual rating and stored source independently of a bu
   assert.doesNotMatch(html, /box-shadow|rounded-full/);
 });
 
-test('legacy missing and invalid ratings show an unrated indicator without invented filled stars', () => {
+test('legacy missing and invalid ratings default to five stars for old testimonials', () => {
   for (const rating of [undefined, 0, -1, 6, 4.5, NaN, Infinity]) {
     const html = render({
       items: [{ quote: 'Review without a usable rating', rating }],
       googleReviewsUrl: 'https://g.page/r/synthetic/review',
     });
-    assert.doesNotMatch(html, /★/);
-    assert.ok(html.includes(t.reviews.missingRating));
+    assert.match(html, /★★★★★/);
+    assert.doesNotMatch(html, new RegExp(t.reviews.missingRating));
     assert.ok(html.includes(t.reviews.sourcePlatform));
   }
 });

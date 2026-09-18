@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { t } from '@/i18n';
+import RatingInput from '@/components/reviews/RatingInput';
 import { saveLegacyReviewAction, type LegacyReviewActionState } from './actions';
 import type { LegacyAdminReview } from './ReviewsManager';
 
@@ -24,7 +25,7 @@ export default function LegacyReviewEditor({
   const [state, action, pending] = useActionState(saveLegacyReviewAction, initial);
   const [name, setName] = useState(review.name ?? '');
   const [quote, setQuote] = useState(review.quote);
-  const [rating, setRating] = useState(review.rating ? String(review.rating) : '');
+  const [rating, setRating] = useState(review.rating ?? 5);
   const handled = useRef<LegacyReviewActionState | null>(null);
   const router = useRouter();
   const labels = t.reviews;
@@ -63,19 +64,7 @@ export default function LegacyReviewEditor({
           rows={4}
         />
       </label>
-      <label className="block space-y-1">
-        <span className="text-sm font-semibold">{labels.rating}</span>
-        <input
-          name="rating"
-          type="number"
-          min="1"
-          max="5"
-          step="1"
-          value={rating}
-          onChange={(event) => setRating(event.target.value)}
-          className={inputClass}
-        />
-      </label>
+      <RatingInput value={rating} onChange={setRating} disabled={pending} />
       {state.error ? (
         <p role="alert" className="text-sm text-red-700">
           {labels.errors[state.error]}
