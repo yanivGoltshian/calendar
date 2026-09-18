@@ -68,7 +68,7 @@ test('settings client view removes sensitive values before the client boundary',
 
   const view = settingsClientView(business, settings);
   assert.deepEqual(Object.keys(view.business).sort(), [
-    'name', 'type', 'phone', 'address', 'description', 'instagramUrl', 'logoUrl',
+    'name', 'type', 'phone', 'address', 'description', 'logoUrl',
     'coverImageUrl', 'brandColor', 'timezone', 'publicPageStyle', 'landingContent',
   ].sort());
   assert.deepEqual(Object.keys(view.settings).sort(), [
@@ -82,4 +82,41 @@ test('settings client view removes sensitive values before the client boundary',
   assert.equal(view.business.phone, business.phone);
   assert.equal(view.business.address, business.address);
   assert.equal(view.settings.reminderChannel, settings.reminderChannel);
+});
+
+test('settings client view falls back to owner phone identity when business phone is empty', () => {
+  const business = {
+    name: 'עסק',
+    type: null,
+    phone: null,
+    ownerPhoneIdentity: '+972501234567',
+    address: null,
+    description: null,
+    logoUrl: null,
+    coverImageUrl: null,
+    brandColor: null,
+    timezone: 'Asia/Jerusalem',
+    publicPageStyle: 'BOOKING' as const,
+    landingContent: null,
+  };
+  const settings = {
+    minLeadTimeMinutes: 0,
+    cancellationWindowHours: 0,
+    slotGranularityMinutes: 30,
+    maxAdvanceBookingDays: 30,
+    bookingRequiresApproval: false,
+    remindersEnabled: true,
+    reminderChannel: 'AUTO' as const,
+    reminderLeadHours: 24,
+    confirmationRequired: true,
+    notifyOnBooking: true,
+    notifyOnCancellation: true,
+    pushEnabled: true,
+    onboardingCompleted: true,
+  };
+
+  const view = settingsClientView(business, settings);
+  assert.equal(view.business.phone, '+972501234567');
+  assert.equal('ownerPhoneIdentity' in view.business, false);
+  assert.equal('instagramUrl' in view.business, false);
 });

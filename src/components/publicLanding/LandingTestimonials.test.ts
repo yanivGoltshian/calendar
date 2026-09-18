@@ -28,16 +28,12 @@ test('reviews section stays absent without factual cards or a valid profile link
   assert.equal(render(), '');
 });
 
-test('URL-only state renders one honest title, one message and one action without cards', () => {
+test('URL-only state stays hidden because the Google reviews link is no longer a public CTA', () => {
   const html = render({ googleReviewsUrl: 'https://g.page/r/synthetic/review' });
-  assert.equal((html.match(/<h2\b/g) ?? []).length, 1);
-  assert.equal((html.match(/Reviews on Google/g) ?? []).length, 1);
-  assert.equal((html.match(/No reviews are stored on this site/g) ?? []).length, 1);
-  assert.equal((html.match(/<figure\b/g) ?? []).length, 0);
-  assert.equal((html.match(/<a\b/g) ?? []).length, 1);
+  assert.equal(html, '');
 });
 
-test('stored reviews render as cards with one heading and at most one Google action', () => {
+test('stored reviews render as cards with one heading and no Google profile action', () => {
   const html = render({
     items: [
       { name: 'Dana', quote: 'Excellent service' },
@@ -51,7 +47,7 @@ test('stored reviews render as cards with one heading and at most one Google act
   assert.equal((html.match(/Reviews on Google/g) ?? []).length, 0);
   assert.equal((html.match(/<figure\b/g) ?? []).length, 3);
   assert.equal((html.match(/<svg\b/g) ?? []).length, 0);
-  assert.equal((html.match(/<a\b/g) ?? []).length, 1);
+  assert.equal((html.match(/<a\b/g) ?? []).length, 0);
   assert.doesNotMatch(html, /★/);
   assert.equal(html.split(t.reviews.missingRating).length - 1, 3);
   assert.ok(!html.includes(t.publicPage.landing.googleReviewSource));
@@ -157,7 +153,5 @@ test('visibility is explicit and reversible rather than a positional two-review 
     items: [{ quote: 'Hidden only', hidden: true }],
     googleReviewsUrl: 'https://g.page/r/synthetic/review',
   });
-  assert.doesNotMatch(linkOnly, /Hidden only|<figure\b/);
-  assert.match(linkOnly, /Reviews on Google/);
-  assert.equal((linkOnly.match(/<a\b/g) ?? []).length, 1);
+  assert.equal(linkOnly, '');
 });

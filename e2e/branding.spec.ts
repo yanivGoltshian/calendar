@@ -94,7 +94,9 @@ for (const width of [390, 1366]) {
       await page.goto(`/b/${f.business.slug}`);
       await expect(page.getByText(announcement, { exact: true }).first()).toBeVisible();
       await expect(page.getByRole('link', { name: t.publicPage.landing.googleReviewsCta, exact: true }))
-        .toHaveAttribute('href', googleReviewsUrl);
+        .toHaveCount(0);
+      await expect(page.getByRole('link', { name: t.reviews.write, exact: true }))
+        .toHaveCount(1);
       await expect.poll(() => page.locator('#lp-book').evaluate(element =>
         getComputedStyle(element).getPropertyValue('--c-brand').trim())).toBe(second.theme.brand);
       await page.goto('/admin/settings');

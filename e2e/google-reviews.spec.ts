@@ -42,12 +42,14 @@ for (const width of [390, 1366]) {
         const section = page.locator('section').filter({ has: heading });
         await expect(section).toHaveCount(1);
         await expect(section.locator('figure')).toHaveCount(storedReviews.length);
-        await expect(
-          section.getByRole('link', {
-            name: t.publicPage.landing.googleReviewsCta,
-            exact: true,
-          }),
-        ).toHaveAttribute('href', googleUrl);
+        await expect(section.getByRole('link', {
+          name: t.publicPage.landing.googleReviewsCta,
+          exact: true,
+        })).toHaveCount(0);
+        await expect(section.getByRole('link', {
+          name: t.reviews.write,
+          exact: true,
+        })).toHaveCount(1);
         await expect(section.getByText(t.publicPage.landing.googleReviewsLabel, { exact: true }))
           .toHaveCount(0);
       } finally {
@@ -75,14 +77,12 @@ test('a valid profile link without stored reviews renders one honest empty state
         exact: true,
       }),
     ).toHaveCount(1);
-    await expect(page.getByText(t.publicPage.landing.googleReviewsEmpty, { exact: true }))
+    await expect(page.getByText(t.reviews.emptyPublic, { exact: true }))
       .toHaveCount(1);
-    await expect(
-      page.getByRole('link', {
-        name: t.publicPage.landing.googleReviewsCta,
-        exact: true,
-      }),
-    ).toHaveCount(1);
+    await expect(page.getByRole('link', {
+      name: t.publicPage.landing.googleReviewsCta,
+      exact: true,
+    })).toHaveCount(0);
     await expect(page.locator('section').filter({
       has: page.getByRole('heading', {
         name: t.publicPage.landing.testimonialsTitle,
